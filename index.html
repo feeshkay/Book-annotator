@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Annotator" />
+<meta name="theme-color" content="#2C2825" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+<title>Book Annotator</title>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══════════════ LIBRARY SCREEN ══════════════ -->
+  <div id="lib-screen" class="screen active">
+    <div class="nav-bar">
+      <h1>My Library</h1>
+      <button class="btn btn-sm" onclick="exportData()">Export</button>
+      <button class="btn btn-sm btn-primary" onclick="openNewBookSheet()">+ Book</button>
+    </div>
+    <div class="rel">
+      <div class="scroll-area" id="lib-list"></div>
+      <div style="padding:8px 16px 16px;display:flex;gap:8px;flex-shrink:0">
+        <label class="btn-full secondary" onclick="importData()" style="text-align:center;cursor:pointer;font-size:14px;padding:11px">Import backup</label>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ BOOK SCREEN ══════════════ -->
+  <div id="book-screen" class="screen">
+    <div class="nav-bar">
+      <button class="back-btn" onclick="goLibrary()">‹ Library</button>
+      <div style="flex:1;min-width:0">
+        <div id="book-nav-title" style="font-family:'Lora',serif;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      </div>
+      <button class="btn btn-sm" style="color:var(--red);border-color:var(--red);background:transparent;font-size:12px" onclick="deleteBook(currentBookId);goLibrary()">Delete</button>
+    </div>
+
+    <!-- Log panel -->
+    <div id="log-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="filter-scroll" id="filter-bar"></div>
+      <div class="scroll-area" id="entries-list"></div>
+      <button class="fab" onclick="openEntrySheet()">+</button>
+    </div>
+
+    <!-- Characters panel -->
+    <div id="chars-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="scroll-area" id="chars-list"></div>
+    </div>
+
+    <!-- Web panel -->
+    <div id="web-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="scroll-area web-wrap">
+        <svg id="web-svg" style="width:100%;display:block" height="340"></svg>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-item active" data-tab="log" onclick="switchTab('log')">
+        <span class="tab-icon">✏️</span>
+        <span class="tab-label">Log</span>
+      </button>
+      <button class="tab-item" data-tab="chars" id="tab-chars" onclick="switchTab('chars')">
+        <span class="tab-icon">👤</span>
+        <span class="tab-label">Characters</span>
+      </button>
+      <button class="tab-item" data-tab="web" onclick="switchTab('web')">
+        <span class="tab-icon">🕸</span>
+        <span class="tab-label">Web</span>
+      </button>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- ══════════════ NEW BOOK SHEET ══════════════ -->
+<div class="sheet-overlay" id="new-book-sheet" style="display:none">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">New book</div>
+    <div class="sheet-scroll">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="nb-title" placeholder="Book title" />
+      </div>
+      <div class="form-group">
+        <label>Author</label>
+        <input type="text" id="nb-author" placeholder="Author name" />
+      </div>
+      <div class="form-group">
+        <label>Genre</label>
+        <select id="nb-genre">
+          <option value="fiction">Fiction</option>
+          <option value="nonfiction">Non-Fiction</option>
+          <option value="memoir">Memoir / Biography</option>
+          <option value="mystery">Mystery / Thriller</option>
+          <option value="scifi">Sci-Fi / Fantasy</option>
+          <option value="history">History</option>
+          <option value="selfhelp">Self-Help</option>
+          <option value="poetry">Poetry</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="nb-status">
+          <option value="reading">Currently reading</option>
+          <option value="finished">Finished</option>
+          <option value="want">Want to read</option>
+        </select>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-full" onclick="createBook()">Create log</button>
+      <button class="btn-full secondary" style="margin-top:10px" onclick="closeSheet('new-book-sheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ENTRY SHEET ══════════════ -->
+<div class="sheet-overlay" id="entry-sheet" style="display:none">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add annotation</div>
+    <div class="sheet-scroll">
+      <div class="form-group">
+        <label>What is this?</label>
+        <select id="entry-type" onchange="onTypeChange()"></select>
+      </div>
+      <div class="form-group" id="es-link-group" style="display:none">
+        <label id="es-link-label">Link to character</label>
+        <select id="es-char-link"></select>
+      </div>
+      <div class="form-group" id="es-char-b-group" style="display:none">
+        <label>Character B</label>
+        <select id="es-char-b"></select>
+      </div>
+      <div class="form-group" id="es-rel-type-group" style="display:none">
+        <label>Relationship type</label>
+        <input type="text" id="es-rel-type" placeholder="e.g. rivals, siblings, mentor..." />
+      </div>
+      <div class="form-group" id="es-extra-group" style="display:none">
+        <label id="es-extra-label">Extra</label>
+        <input type="text" id="es-extra-val" placeholder="" />
+      </div>
+      <div class="form-group">
+        <label id="es-content-label">Content</label>
+        <textarea id="entry-content" placeholder="Enter content..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Your note (optional)</label>
+        <input type="text" id="entry-note" placeholder="Your thoughts, reactions..." />
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-full" onclick="addEntry()">Save annotation</button>
+      <button class="btn-full secondary" style="margin-top:10px" onclick="closeSheet('entry-sheet')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
