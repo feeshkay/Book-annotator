@@ -16,146 +16,152 @@
   --card:#ffffff;--cb:rgba(0,0,0,0.09);
   --text:#1a1410;--t2:#6b6457;--t3:#b0a898;
   --accent:#534AB7;--al:#EEEDFE;--am:#7F77DD;
-  --radius:10px;--rlg:14px;--rxl:18px;
+  --r:10px;--rl:14px;--rx:18px;
   --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#1a1412;--bg2:#221e1a;--bg3:#2a2420;
-  --card:#2a2420;--cb:rgba(255,255,255,0.09);
-  --text:#f0ebe2;--t2:#a09880;--t3:#5a5248;
-  --al:#2a2660;--am:#9f99e8;
+  --bg:#1a1412;--bg2:#221e1a;--bg3:#2a2420;--card:#2a2420;--cb:rgba(255,255,255,0.09);
+  --text:#f0ebe2;--t2:#a09880;--t3:#5a5248;--al:#2a2660;--am:#9f99e8;
 }}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding-top:var(--st);padding-bottom:var(--sb);overflow-x:hidden;}
-.screen{display:none;flex-direction:column;height:calc(100vh - var(--st) - var(--sb));overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding-top:var(--st);overflow-x:hidden;}
+.screen{display:none;flex-direction:column;height:calc(100vh - var(--st));overflow:hidden;}
 .screen.active{display:flex;}
-.topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;background:var(--bg);border-bottom:0.5px solid var(--cb);flex-shrink:0;}
-.topbar-title{font-size:17px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.scroll-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}
-button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--radius);transition:all 0.15s;}
-.btn{background:var(--bg2);color:var(--text);padding:8px 16px;font-size:14px;font-weight:500;border:0.5px solid var(--cb);}
-.btn:active{opacity:0.7;}
+.topbar{display:flex;align-items:center;gap:8px;padding:12px 16px 10px;background:var(--bg);border-bottom:0.5px solid var(--cb);flex-shrink:0;}
+.topbar-title{font-size:16px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scroll-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);transition:opacity 0.15s;}
+.btn{background:var(--bg2);color:var(--text);padding:8px 14px;font-size:14px;font-weight:500;border:0.5px solid var(--cb);}
+.btn:active,.btn-primary:active{opacity:0.7;}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
-.btn-primary:active{background:#3C3489;}
-.btn-icon{background:transparent;color:var(--accent);font-size:14px;font-weight:600;padding:4px 4px;}
+.btn-icon{background:transparent;color:var(--accent);font-size:14px;font-weight:600;padding:4px;}
 .btn-back{background:transparent;color:var(--accent);font-size:15px;font-weight:500;padding:4px 0;display:flex;align-items:center;}
-.btn-back::before{content:"‹";font-size:22px;line-height:1;margin-right:2px;}
-.btn-link{background:transparent;color:var(--accent);font-size:13px;padding:4px 0;text-decoration:underline;}
+.btn-back::before{content:"‹";font-size:22px;line-height:1;margin-right:1px;}
+.btn-sm{font-size:12px;padding:3px 8px;background:transparent;color:var(--accent);border:0.5px solid var(--am);}
 /* library */
-.book-card{background:var(--card);border-radius:var(--rlg);border:0.5px solid var(--cb);padding:16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:flex-start;gap:12px;}
+.book-card{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:flex-start;gap:12px;}
 .book-card:active{opacity:0.7;}
-.book-spine{width:36px;height:52px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;writing-mode:vertical-rl;letter-spacing:0.08em;}
+.book-cover{width:52px;height:74px;border-radius:6px;flex-shrink:0;object-fit:cover;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.book-cover-text{font-size:10px;font-weight:700;color:#fff;text-align:center;line-height:1.2;padding:4px;}
 .book-info{flex:1;min-width:0;}
-.book-title{font-size:16px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.book-author{font-size:13px;color:var(--t2);margin-bottom:6px;}
-.book-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.genre-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--al);color:var(--accent);}
-.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.book-title{font-size:15px;font-weight:600;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.book-author{font-size:13px;color:var(--t2);margin-bottom:5px;}
+.book-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.gbadge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--al);color:var(--accent);}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
 .status-reading{background:#1D9E75;}.status-finished{background:#378ADD;}.status-want{background:#888780;}
-.book-count{font-size:12px;color:var(--t3);}
 /* sheets */
 .sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;}
 .sheet-overlay.open{display:flex;}
-.sheet{background:var(--bg);border-radius:var(--rxl) var(--rxl) 0 0;padding:20px 16px calc(20px + var(--sb));width:100%;max-height:94vh;overflow-y:auto;}
-.sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 16px;}
-.sheet-title{font-size:17px;font-weight:600;margin-bottom:16px;}
+.sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));width:100%;max-height:95vh;overflow-y:auto;}
+.sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 14px;}
+.sheet-title{font-size:16px;font-weight:600;margin-bottom:14px;}
 /* forms */
-.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
-.fg label{font-size:12px;color:var(--t2);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;}
-input,select,textarea{font-family:inherit;font-size:16px;border:0.5px solid var(--cb);border-radius:var(--radius);padding:10px 12px;background:var(--bg2);color:var(--text);outline:none;width:100%;-webkit-appearance:none;appearance:none;}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+.fg label,.fg-label{font-size:11px;color:var(--t2);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;}
+input,select,textarea{font-family:inherit;font-size:15px;border:0.5px solid var(--cb);border-radius:var(--r);padding:9px 11px;background:var(--bg2);color:var(--text);outline:none;width:100%;-webkit-appearance:none;appearance:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--am);}
-textarea{resize:none;min-height:76px;}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-.form-actions{display:flex;gap:10px;margin-top:4px;}
-.form-actions .btn{flex:1;padding:12px;font-size:15px;}
+textarea{resize:none;min-height:70px;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.fa{display:flex;gap:8px;margin-top:6px;}
+.fa .btn{flex:1;padding:11px;font-size:14px;}
+.divider{height:0.5px;background:var(--cb);margin:14px 0;}
 /* tabs */
 .tab-bar{display:flex;background:var(--bg);border-bottom:0.5px solid var(--cb);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
 .tab-bar::-webkit-scrollbar{display:none;}
-.tab{flex-shrink:0;padding:10px 12px;font-size:12px;font-weight:500;color:var(--t2);background:transparent;border-bottom:2px solid transparent;border-radius:0;white-space:nowrap;}
+.tab{flex-shrink:0;padding:9px 12px;font-size:12px;font-weight:500;color:var(--t2);background:transparent;border-bottom:2px solid transparent;border-radius:0;white-space:nowrap;}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .panel{display:none;}.panel.active{display:block;}
 /* entry cards */
-.entry-card{background:var(--card);border-radius:var(--rlg);border:0.5px solid var(--cb);padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--am);}
-.entry-card.quote{border-left-color:#1D9E75;}.entry-card.character,.entry-card.person,.entry-card.suspect{border-left-color:#D85A30;}
-.entry-card.theme{border-left-color:#378ADD;}.entry-card.chapter{border-left-color:#BA7517;}
-.entry-card.setting{border-left-color:#D4537E;}.entry-card.relationship{border-left-color:#888780;}
-.entry-card.symbol{border-left-color:#639922;}.entry-card.argument,.entry-card.redflag{border-left-color:#A32D2D;}
-.entry-card.concept,.entry-card.keyidea{border-left-color:#185FA5;}.entry-card.evidence{border-left-color:#0F6E56;}
-.entry-card.question{border-left-color:#7F77DD;}.entry-card.timeline{border-left-color:#D4537E;}
-.entry-card.word{border-left-color:#854F0B;}.entry-card.characteristic{border-left-color:#993C1D;}
-.entry-meta{display:flex;align-items:center;gap:5px;margin-bottom:6px;flex-wrap:wrap;}
-.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.ec{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;border-left:3px solid var(--am);}
+.ec.quote{border-left-color:#1D9E75;}.ec.character,.ec.person,.ec.suspect{border-left-color:#D85A30;}
+.ec.theme{border-left-color:#378ADD;}.ec.chapter{border-left-color:#BA7517;}
+.ec.setting{border-left-color:#D4537E;}.ec.relationship{border-left-color:#888780;}
+.ec.symbol{border-left-color:#639922;}.ec.argument,.ec.redflag{border-left-color:#A32D2D;}
+.ec.concept,.ec.keyidea{border-left-color:#185FA5;}.ec.evidence{border-left-color:#0F6E56;}
+.ec.question{border-left-color:#7F77DD;}.ec.timeline,.ec.majorevent{border-left-color:#D4537E;}
+.ec.word{border-left-color:#854F0B;}.ec.characteristic{border-left-color:#993C1D;}
+.emeta{display:flex;align-items:center;gap:4px;margin-bottom:5px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
 .tag-quote{background:#E1F5EE;color:#0F6E56;}.tag-character,.tag-person,.tag-suspect{background:#FAECE7;color:#993C1D;}
 .tag-theme{background:#E6F1FB;color:#185FA5;}.tag-chapter{background:#FAEEDA;color:#854F0B;}
 .tag-setting{background:#FBEAF0;color:#993556;}.tag-relationship{background:#F1EFE8;color:#5F5E5A;}
 .tag-symbol{background:#EAF3DE;color:#3B6D11;}.tag-argument,.tag-redflag{background:#FCEBEB;color:#A32D2D;}
 .tag-concept,.tag-keyidea{background:#E6F1FB;color:#0C447C;}.tag-evidence{background:#E1F5EE;color:#085041;}
-.tag-question{background:#EEEDFE;color:#534AB7;}.tag-timeline{background:#FBEAF0;color:#993556;}
+.tag-question{background:#EEEDFE;color:#534AB7;}.tag-timeline,.tag-majorevent{background:#FBEAF0;color:#993556;}
 .tag-word{background:#FAEEDA;color:#633806;}.tag-characteristic{background:#FAECE7;color:#712B13;}
 .tag-default{background:var(--al);color:var(--accent);}
-.page-badge{font-size:11px;color:var(--t3);background:var(--bg2);padding:2px 7px;border-radius:20px;border:0.5px solid var(--cb);}
-.char-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;margin-right:3px;}
-.emotion-badge{font-size:11px;padding:2px 7px;border-radius:20px;background:#FFF3CD;color:#7a5c00;border:0.5px solid #f0c040;}
-@media(prefers-color-scheme:dark){.emotion-badge{background:#3a2e00;color:#f0c040;}}
-.entry-content{font-size:14px;line-height:1.55;color:var(--text);}
-.entry-sub{font-size:12px;color:var(--t2);margin-top:3px;}
-.entry-note{font-size:13px;color:var(--t2);margin-top:4px;font-style:italic;}
-.entry-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;}
-.btn-del{background:transparent;color:var(--t3);font-size:12px;padding:2px 6px;}
+.pbadge{font-size:10px;color:var(--t3);background:var(--bg2);padding:2px 6px;border-radius:20px;border:0.5px solid var(--cb);white-space:nowrap;}
+.cbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
+.ebadge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+/* emotion colors */
+.emo-positive{background:#E1F5EE;color:#0F6E56;}
+.emo-neutral{background:#E6F1FB;color:#185FA5;}
+.emo-negative{background:#FCEBEB;color:#A32D2D;}
+.econtent{font-size:13px;line-height:1.5;color:var(--text);}
+.enote{font-size:12px;color:var(--t2);margin-top:3px;font-style:italic;}
+.eactions{display:flex;gap:6px;justify-content:flex-end;margin-top:6px;}
+.btn-del{background:transparent;color:var(--t3);font-size:11px;padding:2px 5px;}
 .btn-del:active{color:#E24B4A;}
-.btn-edit{background:transparent;color:var(--accent);font-size:12px;padding:2px 6px;}
-/* filter */
-.filter-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-.filter-scroll::-webkit-scrollbar{display:none;}
-.chip{white-space:nowrap;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--t2);}
+.btn-edit{background:transparent;color:var(--accent);font-size:11px;padding:2px 5px;}
+/* filters */
+.fscroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.fscroll::-webkit-scrollbar{display:none;}
+.chip{white-space:nowrap;font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--t2);}
 .chip.active{background:var(--al);color:var(--accent);border-color:var(--am);}
 /* char list */
-.char-list-card{border-radius:var(--rlg);border:0.5px solid var(--cb);padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;}
-.char-list-card:active{opacity:0.7;}
-.char-avatar{border-radius:50%;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.clcard{border-radius:var(--rl);border:0.5px solid var(--cb);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;}
+.clcard:active{opacity:0.7;}
+.avatar{border-radius:50%;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
 /* char detail */
-.char-detail-hero{padding:20px 16px 16px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap;}
-.char-section{margin-bottom:18px;}
-.char-section-label{font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px;}
-.char-detail-item{background:var(--card);border:0.5px solid var(--cb);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;font-size:14px;line-height:1.5;}
-.item-label{font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:3px;}
-.item-page{font-size:11px;color:var(--t3);margin-top:5px;}
-.rel-pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-right:4px;}
+.char-hero{padding:16px;border-bottom:0.5px solid var(--cb);display:flex;align-items:flex-start;gap:12px;flex-shrink:0;}
+.csec{margin-bottom:16px;}
+.csec-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:7px;}
+.citem{background:var(--card);border:0.5px solid var(--cb);border-radius:var(--r);padding:9px 11px;margin-bottom:5px;font-size:13px;line-height:1.5;}
+.ilabel{font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;}
+.ipage{font-size:11px;color:var(--t3);margin-top:4px;}
 /* timeline */
-.timeline-item{display:flex;gap:12px;margin-bottom:16px;position:relative;}
-.timeline-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.timeline-line{position:absolute;left:5px;top:16px;bottom:-16px;width:2px;background:var(--cb);}
-.timeline-body{flex:1;}
-.timeline-date{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:2px;}
-.timeline-content{font-size:14px;line-height:1.5;}
-.timeline-sub{font-size:12px;color:var(--t3);margin-top:2px;}
+.titem{display:flex;gap:10px;margin-bottom:14px;position:relative;}
+.tdot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.tline{position:absolute;left:4px;top:14px;bottom:-14px;width:2px;background:var(--cb);}
 /* map */
-#map-container{width:100%;height:calc(100vh - var(--st) - var(--sb) - 100px);border-radius:var(--rlg);overflow:hidden;}
-.location-pin{background:var(--card);border-radius:var(--rlg);border:0.5px solid var(--cb);padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;}
-.pin-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.locpin{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;}
 /* web */
 .web-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 /* empty */
-.empty{text-align:center;padding:40px 16px;color:var(--t3);}
-.empty-icon{font-size:36px;margin-bottom:10px;}
-.empty-text{font-size:15px;font-weight:500;}
-.empty-sub{font-size:13px;margin-top:5px;}
+.empty{text-align:center;padding:36px 16px;color:var(--t3);}
+.empty-icon{font-size:32px;margin-bottom:8px;}
+.empty-text{font-size:14px;font-weight:500;}
+.empty-sub{font-size:12px;margin-top:4px;}
 /* fab */
-.fab{position:fixed;bottom:calc(24px + var(--sb));right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(83,74,183,0.35);z-index:50;border:none;}
-.fab:active{transform:scale(0.93);}
-/* char involved tags row */
-.involved-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
-/* word entry */
-.word-def{font-size:13px;color:var(--t2);margin-top:4px;font-style:italic;}
-/* section divider */
-.section-label{font-size:12px;font-weight:600;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;}
-/* char picker row in form */
-.char-pick-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
-.char-pick-chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;}
-.char-pick-chip.selected{opacity:1;}.char-pick-chip:not(.selected){opacity:0.4;}
+.fab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));right:18px;width:50px;height:50px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(83,74,183,0.35);z-index:50;border:none;}
+.fab:active{transform:scale(0.92);}
+/* char picker */
+.cpick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
+.cpick{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;opacity:0.4;transition:opacity 0.15s;}
+.cpick.sel{opacity:1;}
+/* photo upload */
+.photo-box{width:100%;height:100px;border:1px dashed var(--cb);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;position:relative;overflow:hidden;}
+.photo-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.photo-box span{font-size:12px;color:var(--t2);position:relative;}
+/* suggestion banner */
+.suggestion-box{background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:13px;}
+.suggestion-box strong{display:block;font-size:12px;color:var(--accent);margin-bottom:5px;}
+.sug-btn{font-size:12px;padding:4px 10px;background:var(--accent);color:#fff;border-radius:20px;margin:2px 4px 2px 0;display:inline-block;cursor:pointer;}
+/* chapter setup */
+.chap-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;}
+.chap-row input{flex:1;min-width:0;}
+.involved-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;}
+/* section divider label */
+.slabel{font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;}
+/* word */
+.word-def{font-size:12px;color:var(--t2);margin-top:3px;font-style:italic;}
+/* relationship type label in web */
+.rel-tag{font-size:9px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -164,13 +170,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div id="lib-screen" class="screen active">
   <div class="topbar">
     <div class="topbar-title">My Books</div>
-    <button class="btn-icon" onclick="openSheet('new-book-overlay')">+ New</button>
+    <button class="btn-icon" onclick="openSheet('nb-overlay')">+ New</button>
   </div>
   <div class="scroll-body">
     <div id="book-list"></div>
     <div id="lib-empty" class="empty" style="display:none">
       <div class="empty-icon">📚</div><div class="empty-text">No books yet</div>
-      <div class="empty-sub">Tap + New to start your first log</div>
+      <div class="empty-sub">Tap + New to start</div>
     </div>
   </div>
 </div>
@@ -179,53 +185,36 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div id="book-screen" class="screen">
   <div class="topbar">
     <button class="btn-back" onclick="goLib()"></button>
-    <div class="topbar-title" id="bs-title" style="font-size:15px;"></div>
-    <span id="bs-genre" class="genre-badge" style="flex-shrink:0;"></span>
+    <div class="topbar-title" id="bs-title"></div>
+    <button class="btn-icon" id="bs-settings-btn" onclick="openBookSettings()" style="font-size:18px;">⚙</button>
   </div>
   <div class="tab-bar" id="tab-bar"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="panel-wrap">
-    <div id="log-panel" class="panel active" style="padding:14px 14px 100px;">
-      <div class="filter-scroll" id="filter-bar"></div>
+    <div id="log-panel" class="panel active" style="padding:12px 12px 90px;">
+      <div class="fscroll" id="filter-bar"></div>
       <div id="entries-list"></div>
-      <div id="log-empty" class="empty" style="display:none">
-        <div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div>
-        <div class="empty-sub">Tap + to add your first annotation</div>
-      </div>
+      <div id="log-empty" class="empty" style="display:none"><div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div><div class="empty-sub">Tap + to begin</div></div>
     </div>
-    <div id="chars-panel" class="panel" style="padding:14px 14px 100px;">
+    <div id="chars-panel" class="panel" style="padding:12px 12px 90px;">
       <div id="chars-list"></div>
-      <div id="chars-empty" class="empty" style="display:none">
-        <div class="empty-icon">👤</div><div class="empty-text">No characters yet</div>
-        <div class="empty-sub">Log a Character in the Log tab first</div>
-      </div>
+      <div id="chars-empty" class="empty" style="display:none"><div class="empty-icon">👤</div><div class="empty-text">No characters yet</div></div>
     </div>
-    <div id="web-panel" class="panel" style="padding:10px 14px 100px;">
-      <div style="font-size:12px;color:var(--t3);text-align:center;margin-bottom:10px;">Tap a character to view their profile</div>
+    <div id="web-panel" class="panel" style="padding:10px 12px 90px;">
+      <div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:8px;">Tap a character to open their profile</div>
       <div class="web-wrap"><svg id="web-svg" style="width:100%;display:block;margin:0 auto;" height="520" viewBox="0 0 360 520"></svg></div>
-      <div id="web-empty" class="empty" style="display:none">
-        <div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div>
-      </div>
+      <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
-    <div id="timeline-panel" class="panel" style="padding:14px 14px 100px;">
+    <div id="timeline-panel" class="panel" style="padding:12px 12px 90px;">
       <div id="timeline-list"></div>
-      <div id="timeline-empty" class="empty" style="display:none">
-        <div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div>
-        <div class="empty-sub">Add a Timeline entry in the Log tab</div>
-      </div>
+      <div id="tl-empty" class="empty" style="display:none"><div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div><div class="empty-sub">Add a Timeline or Major Event entry</div></div>
     </div>
-    <div id="map-panel" class="panel" style="padding:14px 14px 100px;">
-      <div id="map-locations-list"></div>
-      <div id="map-empty" class="empty" style="display:none">
-        <div class="empty-icon">📍</div><div class="empty-text">No locations yet</div>
-        <div class="empty-sub">Add a location field to any entry</div>
-      </div>
+    <div id="map-panel" class="panel" style="padding:12px 12px 90px;">
+      <div id="map-list"></div>
+      <div id="map-empty" class="empty" style="display:none"><div class="empty-icon">📍</div><div class="empty-text">No locations yet</div></div>
     </div>
-    <div id="words-panel" class="panel" style="padding:14px 14px 100px;">
+    <div id="words-panel" class="panel" style="padding:12px 12px 90px;">
       <div id="words-list"></div>
-      <div id="words-empty" class="empty" style="display:none">
-        <div class="empty-icon">📖</div><div class="empty-text">No vocabulary entries yet</div>
-        <div class="empty-sub">Add a "Word / Vocabulary" entry in the Log</div>
-      </div>
+      <div id="words-empty" class="empty" style="display:none"><div class="empty-icon">📖</div><div class="empty-text">No vocabulary yet</div></div>
     </div>
   </div>
   <button class="fab" onclick="openAddSheet()">+</button>
@@ -235,20 +224,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div id="char-screen" class="screen">
   <div class="topbar">
     <button class="btn-back" id="char-back-btn"></button>
-    <div class="topbar-title" id="char-screen-title" style="font-size:15px;"></div>
+    <div class="topbar-title" id="char-screen-title"></div>
+    <button class="btn-icon" id="char-edit-btn" style="font-size:14px;">Edit</button>
   </div>
-  <div class="char-detail-hero" id="char-hero"></div>
-  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;" id="char-detail-body"></div>
+  <div class="char-hero" id="char-hero"></div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 40px;" id="char-body"></div>
 </div>
 
 <!-- ══ NEW BOOK SHEET ══ -->
-<div class="sheet-overlay" id="new-book-overlay" onclick="maybeClose('new-book-overlay',event)">
+<div class="sheet-overlay" id="nb-overlay" onclick="mc('nb-overlay',event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">New book</div>
-    <div class="fg"><label>Title</label><input type="text" id="nb-title" placeholder="e.g. East of Eden"/></div>
+    <div class="sheet-title" id="nb-title-label">New book</div>
+    <input type="hidden" id="nb-edit-id"/>
+    <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden"/></div>
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
-    <div class="row2">
+    <div class="r2">
       <div class="fg"><label>Genre</label>
         <select id="nb-genre">
           <option value="fiction">Fiction</option><option value="nonfiction">Non-Fiction</option>
@@ -258,129 +249,208 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </select>
       </div>
       <div class="fg"><label>Status</label>
-        <select id="nb-status">
-          <option value="reading">Reading</option><option value="finished">Finished</option><option value="want">Want to read</option>
-        </select>
+        <select id="nb-status"><option value="reading">Reading</option><option value="finished">Finished</option><option value="want">Want to read</option></select>
       </div>
     </div>
-    <div class="row2">
-      <div class="fg"><label>Date started</label><input type="date" id="nb-date-start"/></div>
-      <div class="fg"><label>Date finished</label><input type="date" id="nb-date-end"/></div>
+    <div class="r2">
+      <div class="fg"><label>Date started</label><input type="date" id="nb-ds"/></div>
+      <div class="fg"><label>Date finished</label><input type="date" id="nb-de"/></div>
     </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" onclick="createBook()">Create log</button>
-      <button class="btn" onclick="closeSheet('new-book-overlay')">Cancel</button>
+    <div class="divider"></div>
+    <div class="slabel">Publication info</div>
+    <div class="r2">
+      <div class="fg"><label>Publisher</label><input type="text" id="nb-pub" placeholder="e.g. Penguin"/></div>
+      <div class="fg"><label>Year published</label><input type="text" id="nb-year" placeholder="e.g. 1952"/></div>
+    </div>
+    <div class="fg"><label>ISBN</label><input type="text" id="nb-isbn" placeholder="e.g. 978-0-14-303943-3"/></div>
+    <div class="fg"><label>Edition / format</label><input type="text" id="nb-edition" placeholder="e.g. Paperback, 3rd ed."/></div>
+    <div class="divider"></div>
+    <div class="slabel">Cover photo</div>
+    <div class="fg">
+      <div class="photo-box" id="nb-cover-box" onclick="triggerPhoto('nb-cover-input','nb-cover-box','nb-cover-data')">
+        <span style="font-size:24px;">📷</span><span>Tap to upload cover</span>
+      </div>
+      <input type="file" id="nb-cover-input" accept="image/*" style="display:none" onchange="handlePhoto(this,'nb-cover-box','nb-cover-data')"/>
+      <input type="hidden" id="nb-cover-data"/>
+    </div>
+    <div class="divider"></div>
+    <div class="slabel">Chapter setup <span style="font-weight:400;font-size:10px;color:var(--t3);">(auto-assigns chapter from page #)</span></div>
+    <div id="chap-setup-list"></div>
+    <button class="btn btn-sm" onclick="addChapSetupRow()" style="margin-bottom:12px;">+ Add chapter</button>
+    <div class="fa">
+      <button class="btn btn-primary" onclick="saveBook()">Save</button>
+      <button class="btn" onclick="closeSheet('nb-overlay')">Cancel</button>
     </div>
   </div>
 </div>
 
 <!-- ══ ADD/EDIT ENTRY SHEET ══ -->
-<div class="sheet-overlay" id="add-entry-overlay" onclick="maybeClose('add-entry-overlay',event)">
+<div class="sheet-overlay" id="ae-overlay" onclick="mc('ae-overlay',event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title" id="ae-sheet-title">Add annotation</div>
-    <input type="hidden" id="ae-edit-id" value=""/>
-
+    <input type="hidden" id="ae-edit-id"/>
     <div class="fg"><label>What is this?</label><select id="ae-type" onchange="onTypeChange()"></select></div>
 
-    <!-- character fields -->
-    <div id="ae-char-fields" style="display:none">
-      <div class="fg"><label>Full name</label><input type="text" id="ae-char-name" placeholder="e.g. Elizabeth Bennet"/></div>
-      <div class="row2">
-        <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nickname" placeholder="e.g. Lizzy"/></div>
-        <div class="fg"><label>Role / title</label><input type="text" id="ae-char-role" placeholder="e.g. protagonist"/></div>
+    <!-- CHARACTER FIELDS -->
+    <div id="ae-char-section" style="display:none">
+      <div class="r2">
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet"/></div>
+        <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
-      <div class="fg"><label>Brief description</label><textarea id="ae-char-desc" placeholder="Appearance, personality…" style="min-height:56px;"></textarea></div>
+      <div class="r3">
+        <div class="fg"><label>Role</label>
+          <select id="ae-crole"><option value="">Unknown</option><option value="main">Main</option><option value="side">Side</option><option value="minor">Minor</option><option value="antagonist">Antagonist</option><option value="narrator">Narrator</option></select>
+        </div>
+        <div class="fg"><label>Status</label>
+          <select id="ae-cstatus"><option value="unknown">Unknown</option><option value="alive">Alive</option><option value="deceased">Deceased</option></select>
+        </div>
+        <div class="fg"><label>Introduced</label><input type="text" id="ae-cintro" placeholder="Ch./p."/></div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="ae-cdesc" placeholder="Appearance, personality…" style="min-height:56px;"></textarea></div>
+      <div class="fg"><label>Photo</label>
+        <div class="photo-box" id="ae-char-photo-box" onclick="triggerPhoto('ae-char-photo-input','ae-char-photo-box','ae-char-photo-data')">
+          <span style="font-size:20px;">📷</span><span>Tap to upload</span>
+        </div>
+        <input type="file" id="ae-char-photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this,'ae-char-photo-box','ae-char-photo-data')"/>
+        <input type="hidden" id="ae-char-photo-data"/>
+      </div>
+      <div class="divider"></div>
+      <div class="slabel">Quick relationships</div>
+      <div id="ae-quick-rels-list"></div>
+      <button class="btn btn-sm" onclick="addQuickRelRow()" style="margin-bottom:10px;">+ Add relationship</button>
+      <div id="ae-sug-box" style="display:none" class="suggestion-box">
+        <strong>Suggested connections</strong>
+        <div id="ae-sug-content"></div>
+      </div>
     </div>
 
-    <!-- non-char content -->
-    <div id="ae-content-group">
-      <div class="fg"><label id="ae-content-label">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+    <!-- NON-CHAR CONTENT -->
+    <div id="ae-content-section">
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
     </div>
 
-    <!-- quote extras -->
-    <div id="ae-quote-extras" style="display:none">
-      <div class="row2">
-        <div class="fg"><label>Who said this?</label><select id="ae-quote-speaker"></select></div>
+    <!-- QUOTE EXTRAS -->
+    <div id="ae-quote-ex" style="display:none">
+      <div class="r2">
+        <div class="fg"><label>Speaker</label><select id="ae-speaker"></select></div>
         <div class="fg"><label>Emotion / tone</label><select id="ae-emotion">
           <option value="">— none —</option>
-          <option>Angry</option><option>Fearful</option><option>Sad</option><option>Joyful</option>
-          <option>Surprised</option><option>Disgusted</option><option>Anxious</option><option>Hopeful</option>
-          <option>Bitter</option><option>Sarcastic</option><option>Manipulative</option><option>Deceptive</option>
-          <option>Sweet</option><option>Caring</option><option>Kind</option><option>Loving</option>
-          <option>Tender</option><option>Playful</option><option>Mournful</option><option>Resigned</option>
-          <option>Defiant</option><option>Proud</option><option>Ashamed</option><option>Guilty</option>
-          <option>Threatening</option><option>Pleading</option><option>Confused</option><option>Cold</option>
-          <option>Warm</option><option>Wistful</option><option>Envious</option><option>Relieved</option>
+          <optgroup label="Positive">
+            <option data-tone="positive">Admiring</option><option data-tone="positive">Caring</option><option data-tone="positive">Cheerful</option><option data-tone="positive">Compassionate</option><option data-tone="positive">Confident</option><option data-tone="positive">Excited</option><option data-tone="positive">Grateful</option><option data-tone="positive">Hopeful</option><option data-tone="positive">Joyful</option><option data-tone="positive">Kind</option><option data-tone="positive">Loving</option><option data-tone="positive">Optimistic</option><option data-tone="positive">Playful</option><option data-tone="positive">Proud</option><option data-tone="positive">Reassuring</option><option data-tone="positive">Relieved</option><option data-tone="positive">Sweet</option><option data-tone="positive">Tender</option><option data-tone="positive">Warm</option>
+          </optgroup>
+          <optgroup label="Neutral">
+            <option data-tone="neutral">Analytical</option><option data-tone="neutral">Confused</option><option data-tone="neutral">Curious</option><option data-tone="neutral">Detached</option><option data-tone="neutral">Matter-of-fact</option><option data-tone="neutral">Nostalgic</option><option data-tone="neutral">Pensive</option><option data-tone="neutral">Resigned</option><option data-tone="neutral">Sarcastic</option><option data-tone="neutral">Surprised</option><option data-tone="neutral">Wistful</option>
+          </optgroup>
+          <optgroup label="Negative">
+            <option data-tone="negative">Angry</option><option data-tone="negative">Anxious</option><option data-tone="negative">Ashamed</option><option data-tone="negative">Bitter</option><option data-tone="negative">Cold</option><option data-tone="negative">Contemptuous</option><option data-tone="negative">Deceptive</option><option data-tone="negative">Defiant</option><option data-tone="negative">Desperate</option><option data-tone="negative">Disgusted</option><option data-tone="negative">Envious</option><option data-tone="negative">Fearful</option><option data-tone="negative">Guilty</option><option data-tone="negative">Hateful</option><option data-tone="negative">Jealous</option><option data-tone="negative">Manipulative</option><option data-tone="negative">Mournful</option><option data-tone="negative">Pleading</option><option data-tone="negative">Sad</option><option data-tone="negative">Shameful</option><option data-tone="negative">Threatening</option>
+          </optgroup>
         </select></div>
       </div>
     </div>
 
-    <!-- characteristic extras -->
-    <div id="ae-char-extra" style="display:none">
-      <div class="fg"><label>Supporting quote</label><input type="text" id="ae-support-quote" placeholder="Quote that shows this trait…"/></div>
-      <div class="row2">
-        <div class="fg"><label>Quote page #</label><input type="number" id="ae-support-page" min="1" placeholder="p."/></div>
-        <div class="fg"><label>Quote chapter #</label><input type="number" id="ae-support-chap" min="1" placeholder="ch."/></div>
+    <!-- CHARACTERISTIC EXTRAS -->
+    <div id="ae-char-ex" style="display:none">
+      <div class="fg"><label>Supporting quote</label><input type="text" id="ae-sq" placeholder="Quote supporting this trait…"/></div>
+      <div class="r2">
+        <div class="fg"><label>Quote page range</label><input type="text" id="ae-sqp" placeholder="e.g. 47 or 47–52"/></div>
+        <div class="fg"><label>Quote chapter</label><input type="number" id="ae-sqc" min="1" placeholder="ch."/></div>
       </div>
     </div>
 
-    <!-- word/vocab extras -->
-    <div id="ae-word-extras" style="display:none">
-      <div class="fg"><label>Definition</label><textarea id="ae-definition" placeholder="What does it mean?" style="min-height:56px;"></textarea></div>
-      <div class="fg"><label>Source (dictionary, context…)</label><input type="text" id="ae-word-source" placeholder="e.g. Merriam-Webster"/></div>
+    <!-- WORD EXTRAS -->
+    <div id="ae-word-ex" style="display:none">
+      <div class="fg"><label>Definition</label><textarea id="ae-def" style="min-height:56px;" placeholder="What does it mean?"></textarea></div>
+      <div class="fg"><label>Source</label><input type="text" id="ae-wsrc" placeholder="e.g. Merriam-Webster"/></div>
     </div>
 
-    <!-- timeline extras -->
-    <div id="ae-timeline-extras" style="display:none">
-      <div class="row2">
-        <div class="fg"><label>Event date / period</label><input type="text" id="ae-event-date" placeholder="e.g. 1943, Ch.4"/></div>
+    <!-- TIMELINE EXTRAS -->
+    <div id="ae-tl-ex" style="display:none">
+      <div class="r2">
+        <div class="fg"><label>Event date / period</label><input type="text" id="ae-evdate" placeholder="e.g. 1943, Ch.4"/></div>
         <div class="fg"><label>Importance</label>
-          <select id="ae-importance"><option value="normal">Normal</option><option value="major">Major</option><option value="minor">Minor</option></select>
+          <select id="ae-imp"><option value="normal">Normal</option><option value="major">Major</option><option value="minor">Minor</option></select>
         </div>
       </div>
     </div>
 
-    <!-- relationship extras -->
-    <div id="ae-rel-extras" style="display:none">
-      <div class="fg"><label>Relationship type</label>
-        <select id="ae-rel-type">
-          <option value="">— select —</option>
-          <optgroup label="Family"><option>Mother</option><option>Father</option><option>Grandmother</option><option>Grandfather</option><option>Great-grandmother</option><option>Great-grandfather</option><option>Sibling</option><option>Half-sibling</option><option>Step-sibling</option><option>Aunt</option><option>Uncle</option><option>Cousin</option><option>Child</option><option>Grandchild</option><option>Step-parent</option><option>Step-child</option><option>Guardian</option><option>Ward</option><option>In-law</option><option>Adoptive parent</option><option>Adopted child</option></optgroup>
-          <optgroup label="Romantic"><option>Partner</option><option>Spouse</option><option>Ex-partner</option><option>Love interest</option><option>Admirer</option><option>Estranged spouse</option></optgroup>
-          <optgroup label="Social"><option>Friend</option><option>Close friend</option><option>Best friend</option><option>Acquaintance</option><option>Neighbour</option><option>Rival</option><option>Enemy</option><option>Ally</option><option>Mentor</option><option>Protégé</option><option>Confidant</option></optgroup>
-          <optgroup label="Professional"><option>Employer</option><option>Employee</option><option>Colleague</option><option>Business partner</option><option>Teacher</option><option>Student</option><option>Master</option><option>Servant</option><option>Commander</option><option>Subordinate</option></optgroup>
-          <optgroup label="Other"><option>Unknown</option><option>Complicated</option></optgroup>
-        </select>
+    <!-- MAJOR EVENT EXTRAS -->
+    <div id="ae-me-ex" style="display:none">
+      <div class="r2">
+        <div class="fg"><label>Event type</label>
+          <select id="ae-metype">
+            <option value="">— select —</option>
+            <option>Death</option><option>Birth</option><option>Marriage</option><option>Divorce</option>
+            <option>Betrayal</option><option>Revelation</option><option>Injury</option><option>Loss</option>
+            <option>Reunion</option><option>Departure</option><option>Arrival</option><option>Life-changing moment</option>
+            <option>Crime</option><option>Rescue</option><option>Confrontation</option><option>Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Date / when</label><input type="text" id="ae-medate" placeholder="e.g. Ch.7, p.134"/></div>
       </div>
-      <div class="fg"><label>Character A</label><select id="ae-rel-a"></select></div>
-      <div class="fg"><label>Character B</label><select id="ae-rel-b"></select></div>
-      <div class="fg"><label>Description</label><textarea id="ae-rel-desc" placeholder="Describe the relationship…" style="min-height:60px;"></textarea></div>
     </div>
 
-    <!-- chapter/page for non-char, non-rel, non-word entries -->
-    <div id="ae-location-row">
-      <div class="row2" id="ae-chappage-row">
-        <div class="fg"><label>Chapter #</label><input type="number" id="ae-chapnum" min="1" placeholder="e.g. 3"/></div>
-        <div class="fg"><label>Page #</label><input type="number" id="ae-pagenum" min="1" placeholder="e.g. 47"/></div>
+    <!-- RELATIONSHIP EXTRAS -->
+    <div id="ae-rel-ex" style="display:none">
+      <div class="fg"><label>Relationship type</label><select id="ae-reltype">
+        <option value="">— select —</option>
+        <optgroup label="Distant Family"><option>Great-great-grandparent</option><option>Great-great-grandchild</option><option>Distant relative (unknown degree)</option><option>Distant ancestor</option><option>Distant descendant</option></optgroup>
+        <optgroup label="Family"><option>Mother</option><option>Father</option><option>Grandmother</option><option>Grandfather</option><option>Great-grandmother</option><option>Great-grandfather</option><option>Great-great-grandmother</option><option>Great-great-grandfather</option><option>Sibling</option><option>Half-sibling</option><option>Step-sibling</option><option>Aunt</option><option>Uncle</option><option>Cousin</option><option>Child</option><option>Grandchild</option><option>Great-grandchild</option><option>Step-parent</option><option>Step-child</option><option>Guardian</option><option>Ward</option><option>In-law</option><option>Adoptive parent</option><option>Adopted child</option></optgroup>
+        <optgroup label="Romantic"><option>Partner</option><option>Spouse</option><option>Ex-partner</option><option>Love interest</option><option>Admirer</option><option>Estranged spouse</option><option>Betrothed</option></optgroup>
+        <optgroup label="Social"><option>Friend</option><option>Close friend</option><option>Best friend</option><option>Acquaintance</option><option>Neighbour</option><option>Rival</option><option>Enemy</option><option>Ally</option><option>Mentor</option><option>Protégé</option><option>Confidant</option></optgroup>
+        <optgroup label="Professional"><option>Employer</option><option>Employee</option><option>Colleague</option><option>Business partner</option><option>Teacher</option><option>Student</option><option>Master</option><option>Servant</option><option>Commander</option><option>Subordinate</option></optgroup>
+        <optgroup label="Other"><option>Unknown</option><option>Complicated</option></optgroup>
+      </select></div>
+      <div class="r2">
+        <div class="fg"><label>Character A</label><select id="ae-rela"></select></div>
+        <div class="fg"><label>Character B</label><select id="ae-relb"></select></div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="ae-reldesc" style="min-height:56px;" placeholder="Describe the relationship…"></textarea></div>
+    </div>
+
+    <!-- COMMON FIELDS -->
+    <div id="ae-common">
+      <div class="divider"></div>
+      <div class="r2" id="ae-chappage">
+        <div class="fg"><label>Chapter #</label><input type="number" id="ae-ch" min="1" placeholder="e.g. 3"/></div>
+        <div class="fg"><label>Page range</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52"/></div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
-      <div class="fg"><label>Location in story</label><input type="text" id="ae-location" placeholder="e.g. Bennet estate, Paris…"/></div>
-    </div>
-
-    <!-- characters involved -->
-    <div id="ae-involved-group" style="display:none">
-      <div class="fg"><label>Characters involved</label>
-        <div class="char-pick-row" id="char-pick-row"></div>
+      <div class="fg"><label>Location in story</label><input type="text" id="ae-loc" placeholder="e.g. Bennet estate, Paris…"/></div>
+      <div class="fg"><label>Photo (optional)</label>
+        <div class="photo-box" id="ae-photo-box" onclick="triggerPhoto('ae-photo-input','ae-photo-box','ae-photo-data')" style="height:70px;">
+          <span style="font-size:18px;">📷</span><span>Tap to upload</span>
+        </div>
+        <input type="file" id="ae-photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this,'ae-photo-box','ae-photo-data')"/>
+        <input type="hidden" id="ae-photo-data"/>
+      </div>
+      <div id="ae-inv-group">
+        <div class="fg-label" style="margin-bottom:4px;">Characters involved</div>
+        <div class="cpick-row" id="cpick-row"></div>
       </div>
     </div>
 
-    <!-- note -->
-    <div class="fg"><label>Your note (optional)</label><input type="text" id="ae-note" placeholder="Your thoughts…"/></div>
-
-    <div class="form-actions">
+    <div class="divider"></div>
+    <div class="fg"><label>Your note</label><input type="text" id="ae-note" placeholder="Your thoughts…"/></div>
+    <div class="fa">
       <button class="btn btn-primary" onclick="submitEntry()">Save</button>
-      <button class="btn" onclick="closeSheet('add-entry-overlay')">Cancel</button>
+      <button class="btn" onclick="closeSheet('ae-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOOK SETTINGS SHEET ══ -->
+<div class="sheet-overlay" id="settings-overlay" onclick="mc('settings-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Book settings</div>
+    <div class="fa" style="margin-bottom:14px;">
+      <button class="btn" onclick="openEditBook()">Edit book info</button>
+      <button class="btn" onclick="exportData()">Export data</button>
+      <button class="btn" onclick="importData()">Import data</button>
+    </div>
+    <div class="fa">
+      <button class="btn" style="color:#A32D2D;" onclick="deleteBook()">Delete this book</button>
     </div>
   </div>
 </div>
@@ -388,74 +458,115 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <script>
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 const GENRES={
-  fiction:   {tabs:['log','chars','web','timeline','map','words'],types:['Quote','Character','Characteristic','Relationship','Chapter','Setting','Theme','Symbol','Question','Timeline','Word / Vocabulary','Narrator quote']},
-  nonfiction:{tabs:['log','timeline','map','words'],              types:['Quote','Argument','Concept','Evidence','Chapter','Theme','Question','Author note','Timeline','Word / Vocabulary']},
-  memoir:    {tabs:['log','chars','web','timeline','map','words'],types:['Quote','Person','Characteristic','Relationship','Event','Reflection','Theme','Setting','Question','Timeline','Word / Vocabulary']},
-  mystery:   {tabs:['log','chars','web','timeline','map','words'],types:['Quote','Character','Characteristic','Clue','Red herring','Suspect','Chapter','Setting','Plot twist','Theme','Question','Timeline','Word / Vocabulary']},
-  scifi:     {tabs:['log','chars','web','timeline','map','words'],types:['Quote','Character','Characteristic','Relationship','World element','Faction','Chapter','Setting','Theme','Symbol','Question','Timeline','Word / Vocabulary']},
-  history:   {tabs:['log','timeline','map','words'],              types:['Quote','Event','Figure','Argument','Evidence','Theme','Question','Timeline','Word / Vocabulary','Date/Period','Place']},
-  selfhelp:  {tabs:['log','timeline','words'],                    types:['Key idea','Quote','Exercise','Principle','Chapter','Question','Actionable','Objection','Word / Vocabulary']},
-  poetry:    {tabs:['log','words'],                               types:['Line/stanza','Theme','Image','Technique','Poem','Emotion','Symbol','Question','Word / Vocabulary']},
+  fiction:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Major event','Narrator quote','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary']},
+  nonfiction:{tabs:['log','timeline','map','words'],types:['Argument','Author note','Chapter','Concept','Evidence','Question','Quote','Theme','Timeline','Word / Vocabulary']},
+  memoir:   {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Event','Major event','Question','Quote','Reflection','Relationship','Setting','Theme','Timeline','Word / Vocabulary']},
+  mystery:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Clue','Major event','Plot twist','Question','Quote','Red herring','Relationship','Setting','Suspect','Theme','Timeline','Word / Vocabulary']},
+  scifi:    {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Faction','Major event','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary','World element']},
+  history:  {tabs:['log','timeline','map','words'],types:['Argument','Date/Period','Evidence','Event','Figure','Major event','Place','Question','Quote','Theme','Timeline','Word / Vocabulary']},
+  selfhelp: {tabs:['log','timeline','words'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Objection','Principle','Question','Quote','Timeline','Word / Vocabulary']},
+  poetry:   {tabs:['log','words'],types:['Emotion','Image','Line/stanza','Poem','Question','Symbol','Technique','Theme','Word / Vocabulary']},
 };
-const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir / Bio',mystery:'Mystery',scifi:'Sci-Fi / Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry'};
+const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to read'};
 const SPINE=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D11','#A32D2D'];
-const CHAR_TYPES=['Character','Person','Figure','Suspect'];
-const FAMILY_TYPES=['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Sibling','Half-sibling','Step-sibling','Aunt','Uncle','Cousin','Child','Grandchild','Step-parent','Step-child','Guardian','Ward','In-law','Adoptive parent','Adopted child'];
-const GEN_ORDER={'Great-grandmother':0,'Great-grandfather':0,'Grandmother':1,'Grandfather':1,'Mother':2,'Father':2,'Adoptive parent':2,'Step-parent':2,'Guardian':2,'Aunt':2,'Uncle':2,'Sibling':3,'Half-sibling':3,'Step-sibling':3,'Cousin':3,'In-law':3,'Partner':3,'Spouse':3,'Ex-partner':3,'Love interest':3,'Estranged spouse':3,'Friend':3,'Close friend':3,'Best friend':3,'Rival':3,'Enemy':3,'Ally':3,'Mentor':3,'Confidant':3,'Employer':3,'Teacher':3,'Master':3,'Commander':3,'Colleague':3,'Acquaintance':3,'Neighbour':3,'Admirer':3,'Protégé':4,'Business partner':3,'Employee':4,'Student':4,'Servant':4,'Subordinate':4,'Child':4,'Ward':4,'Adopted child':5,'Grandchild':5};
+const CT=['Character','Person','Figure','Suspect'];
+const PARENT_TYPES=['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Great-great-grandparent','Distant ancestor','Adoptive parent','Step-parent','Guardian'];
+const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
+const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4};
+const TONE_COLOR={positive:'emo-positive',neutral:'emo-neutral',negative:'emo-negative'};
 
-// 24-color palette
-const CHAR_PALETTE=[
-  {bg:'#FAECE7',text:'#712B13',stroke:'#D85A30'},
-  {bg:'#E6F1FB',text:'#0C447C',stroke:'#378ADD'},
-  {bg:'#E1F5EE',text:'#085041',stroke:'#1D9E75'},
-  {bg:'#FBEAF0',text:'#72243E',stroke:'#D4537E'},
-  {bg:'#EAF3DE',text:'#27500A',stroke:'#639922'},
-  {bg:'#FAEEDA',text:'#633806',stroke:'#EF9F27'},
-  {bg:'#EEEDFE',text:'#3C3489',stroke:'#7F77DD'},
-  {bg:'#FCEBEB',text:'#791F1F',stroke:'#E24B4A'},
-  {bg:'#F1EFE8',text:'#2C2C2A',stroke:'#888780'},
-  {bg:'#E1F5EE',text:'#04342C',stroke:'#5DCAA5'},
-  {bg:'#FFF0E0',text:'#7a3c00',stroke:'#E8853C'},
-  {bg:'#F0EAF8',text:'#4a2070',stroke:'#9B59B6'},
-  {bg:'#E8F8F0',text:'#145a32',stroke:'#27AE60'},
-  {bg:'#FEF9E0',text:'#7a6c00',stroke:'#D4AC0D'},
-  {bg:'#E8F4FC',text:'#0e4d6e',stroke:'#2E86C1'},
-  {bg:'#FDE8F0',text:'#7a0036',stroke:'#C0392B'},
-  {bg:'#E8FCF8',text:'#0b5345',stroke:'#17A589'},
-  {bg:'#FDF2E8',text:'#6e3800',stroke:'#CA6F1E'},
-  {bg:'#F2E8FD',text:'#4a0070',stroke:'#8E44AD'},
-  {bg:'#E8F8FC',text:'#0b4b5a',stroke:'#1A8FA1'},
-  {bg:'#FEE8E8',text:'#7a0000',stroke:'#E74C3C'},
-  {bg:'#E8FDE8',text:'#0b5c0b',stroke:'#2ECC71'},
-  {bg:'#FDF8E8',text:'#5c4800',stroke:'#D4A017'},
-  {bg:'#F0F0F0',text:'#2C2C2A',stroke:'#7F8C8D'},
+// 24 char colors
+const CP=[
+  {bg:'#FAECE7',text:'#712B13',stroke:'#D85A30'},{bg:'#E6F1FB',text:'#0C447C',stroke:'#378ADD'},
+  {bg:'#E1F5EE',text:'#085041',stroke:'#1D9E75'},{bg:'#FBEAF0',text:'#72243E',stroke:'#D4537E'},
+  {bg:'#EAF3DE',text:'#27500A',stroke:'#639922'},{bg:'#FAEEDA',text:'#633806',stroke:'#EF9F27'},
+  {bg:'#EEEDFE',text:'#3C3489',stroke:'#7F77DD'},{bg:'#FCEBEB',text:'#791F1F',stroke:'#E24B4A'},
+  {bg:'#F1EFE8',text:'#2C2C2A',stroke:'#888780'},{bg:'#E8F4FC',text:'#0e4d6e',stroke:'#2E86C1'},
+  {bg:'#FFF0E0',text:'#7a3c00',stroke:'#E8853C'},{bg:'#F0EAF8',text:'#4a2070',stroke:'#9B59B6'},
+  {bg:'#E8F8F0',text:'#145a32',stroke:'#27AE60'},{bg:'#FEF9E0',text:'#7a6c00',stroke:'#D4AC0D'},
+  {bg:'#FDE8F0',text:'#7a0036',stroke:'#C0392B'},{bg:'#E8FCF8',text:'#0b5345',stroke:'#17A589'},
+  {bg:'#FDF2E8',text:'#6e3800',stroke:'#CA6F1E'},{bg:'#F2E8FD',text:'#4a0070',stroke:'#8E44AD'},
+  {bg:'#E8F8FC',text:'#0b4b5a',stroke:'#1A8FA1'},{bg:'#FEE8E8',text:'#7a0000',stroke:'#E74C3C'},
+  {bg:'#E8FDE8',text:'#0b5c0b',stroke:'#2ECC71'},{bg:'#FDF8E8',text:'#5c4800',stroke:'#D4A017'},
+  {bg:'#F0F8FF',text:'#003366',stroke:'#4A90D9'},{bg:'#FFF5F0',text:'#5a1800',stroke:'#C0603A'},
 ];
 
 let library={};
 let currentId=null;
 let activeFilter='all';
 let activeTab='log';
-let charColorMap={};
+let ccMap={};  // bookId -> charName -> colorIdx
+let currentCharName=null;
 
-function save(){localStorage.setItem('book-annotator-v3',JSON.stringify(library));}
-function load(){try{const d=localStorage.getItem('book-annotator-v3');if(d)library=JSON.parse(d);}catch(e){library={};}}
+function save(){localStorage.setItem('book-annotator-v4',JSON.stringify(library));}
+function load(){try{const d=localStorage.getItem('book-annotator-v4');if(d)library=JSON.parse(d);}catch(e){library={};}}
 function book(){return library[currentId];}
 function entries(){return book()?.entries||[];}
 
-function getCharColor(name){
-  if(!currentId)return CHAR_PALETTE[0];
-  if(!charColorMap[currentId])charColorMap[currentId]={};
-  const m=charColorMap[currentId];
-  if(m[name]===undefined){const u=Object.values(m);let i=0;while(u.includes(i)&&i<CHAR_PALETTE.length-1)i++;m[name]=i;}
-  return CHAR_PALETTE[m[name]%CHAR_PALETTE.length];
+function getCC(name){
+  if(!currentId)return CP[0];
+  if(!ccMap[currentId])ccMap[currentId]={};
+  const m=ccMap[currentId];
+  if(m[name]===undefined){const u=Object.values(m);let i=0;while(u.includes(i)&&i<CP.length-1)i++;m[name]=i;}
+  return CP[m[name]%CP.length];
 }
-function initColors(){charColorMap[currentId]={};entries().filter(e=>CHAR_TYPES.includes(e.type)).forEach(e=>getCharColor(e.charName||e.content));}
+function initCC(){if(!currentId)return;ccMap[currentId]={};entries().filter(e=>CT.includes(e.type)).forEach(e=>getCC(e.cn||e.content));}
 
 function show(on,...off){off.forEach(s=>document.getElementById(s).classList.remove('active'));document.getElementById(on).classList.add('active');}
 function openSheet(id){document.getElementById(id).classList.add('open');}
 function closeSheet(id){document.getElementById(id).classList.remove('open');}
-function maybeClose(id,e){if(e.target===document.getElementById(id))closeSheet(id);}
+function mc(id,e){if(e.target===document.getElementById(id))closeSheet(id);}
+function fmt(d){if(!d)return'';try{const p=d.split('-');return`${+p[1]}/${+p[2]}/${p[0]}`;}catch(e){return d;}}
+function tk(t){return t.toLowerCase().replace(/[^a-z]/g,'').replace('narratorquote','quote').replace('authornote','note').replace('linestanza','note').replace('redherring','redflag').replace('plottwist','note').replace('worldelement','concept').replace('dateperiod','concept').replace('actionable','concept').replace('wordvocabulary','word').replace('majorevent','majorevent').replace('keyidea','keyidea');}
+
+// ── PHOTO HELPERS ──────────────────────────────────────────────────────────
+function triggerPhoto(inputId,boxId,dataId){document.getElementById(inputId).click();}
+function handlePhoto(input,boxId,dataId){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const data=e.target.result;
+    document.getElementById(dataId).value=data;
+    const box=document.getElementById(boxId);
+    box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
+  };
+  reader.readAsDataURL(file);
+}
+function setPhotoBox(boxId,data,placeholder){
+  const box=document.getElementById(boxId);
+  if(data){box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;}
+  else{box.innerHTML=`<span style="font-size:${boxId.includes('char')?'20':'18'}px;">📷</span><span>${placeholder}</span>`;}
+}
+
+// ── CHAPTER SETUP ──────────────────────────────────────────────────────────
+function addChapSetupRow(num,start,end){
+  const list=document.getElementById('chap-setup-list');
+  const idx=list.children.length;
+  const row=document.createElement('div');row.className='chap-row';
+  row.innerHTML=`<span style="font-size:12px;color:var(--t2);width:48px;flex-shrink:0;">Ch.${idx+1}</span>
+    <input type="number" placeholder="Start p." min="1" value="${start||''}" style="width:80px;min-width:0;"/>
+    <span style="font-size:12px;color:var(--t2);">–</span>
+    <input type="number" placeholder="End p." min="1" value="${end||''}" style="width:80px;min-width:0;"/>
+    <button onclick="this.parentElement.remove();renumberChapRows()" style="background:transparent;color:var(--t3);font-size:16px;padding:0 4px;">×</button>`;
+  list.appendChild(row);
+}
+function renumberChapRows(){document.querySelectorAll('#chap-setup-list .chap-row span:first-child').forEach((s,i)=>s.textContent=`Ch.${i+1}`);}
+function getChapSetup(){
+  const rows=document.querySelectorAll('#chap-setup-list .chap-row');
+  return [...rows].map((r,i)=>{const ins=r.querySelectorAll('input');return{ch:i+1,start:+ins[0].value||0,end:+ins[1].value||0};}).filter(r=>r.start>0);
+}
+function pageToChapter(page){
+  const setup=book()?.chapSetup||[];
+  if(!setup.length)return null;
+  const p=parseInt(page);if(isNaN(p))return null;
+  for(const c of setup){if(p>=c.start&&(c.end===0||p<=c.end))return c.ch;}
+  return null;
+}
+function renderChapSetup(setup){
+  document.getElementById('chap-setup-list').innerHTML='';
+  (setup||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end));
+}
 
 // ── LIBRARY ────────────────────────────────────────────────────────────────
 function renderLibrary(){
@@ -465,43 +576,69 @@ function renderLibrary(){
   if(!books.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   list.innerHTML=books.map((b,i)=>{
-    const c=SPINE[i%SPINE.length];
+    const col=SPINE[i%SPINE.length];
     const ini=b.title.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
-    const dates=[b.dateStart?`Started ${fmt(b.dateStart)}`:null,b.dateEnd?`Finished ${fmt(b.dateEnd)}`:null].filter(Boolean).join(' · ');
+    const coverHTML=b.cover?`<img src="${b.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;"/>`:`<div class="book-cover-text" style="background:${col};width:100%;height:100%;border-radius:6px;display:flex;align-items:center;justify-content:center;">${ini}</div>`;
+    const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
+    const pubInfo=[b.pub,b.year,b.isbn?`ISBN ${b.isbn}`:null].filter(Boolean).join(' · ');
     return `<div class="book-card" onclick="openBook('${b.id}')">
-      <div class="book-spine" style="background:${c}">${ini}</div>
+      <div class="book-cover" style="width:52px;height:74px;">${coverHTML}</div>
       <div class="book-info">
         <div class="book-title">${b.title}</div>
         <div class="book-author">${b.author||'—'}</div>
-        ${dates?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px;">${dates}</div>`:''}
+        ${dates?`<div style="font-size:11px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
+        ${pubInfo?`<div style="font-size:11px;color:var(--t3);margin-bottom:3px;">${pubInfo}</div>`:''}
         <div class="book-meta">
-          <span class="genre-badge">${GL[b.genre]||b.genre}</span>
-          <span class="status-dot status-${b.status}"></span>
-          <span class="book-count">${SL[b.status]} · ${b.entries.length} entr${b.entries.length===1?'y':'ies'}</span>
+          <span class="gbadge">${GL[b.genre]||b.genre}</span>
+          <span class="sdot status-${b.status}"></span>
+          <span style="font-size:11px;color:var(--t3);">${SL[b.status]} · ${b.entries.length} entries</span>
         </div>
       </div>
     </div>`;
   }).join('');
 }
-function fmt(d){if(!d)return'';try{const p=d.split('-');return`${p[1]}/${p[2]}/${p[0]}`;}catch(e){return d;}}
-
 function openBook(id){
-  currentId=id;activeFilter='all';activeTab='log';
-  initColors();
-  const b=book();
-  document.getElementById('bs-title').textContent=b.title;
-  document.getElementById('bs-genre').textContent=GL[b.genre]||b.genre;
-  show('book-screen','lib-screen');
-  buildTabs();buildTypeSelect();renderAll();
+  currentId=id;activeFilter='all';activeTab='log';initCC();
+  document.getElementById('bs-title').textContent=book().title;
+  show('book-screen','lib-screen');buildTabs();buildTypeSelect();renderAll();
 }
 function goLib(){currentId=null;show('lib-screen','book-screen');renderLibrary();}
 
-function createBook(){
+function openBookSettings(){openSheet('settings-overlay');}
+function openEditBook(){
+  closeSheet('settings-overlay');
+  const b=book();
+  document.getElementById('nb-edit-id').value=b.id;
+  document.getElementById('nb-title-label').textContent='Edit book';
+  document.getElementById('nb-title').value=b.title;
+  document.getElementById('nb-author').value=b.author||'';
+  document.getElementById('nb-genre').value=b.genre;
+  document.getElementById('nb-status').value=b.status;
+  document.getElementById('nb-ds').value=b.ds||'';
+  document.getElementById('nb-de').value=b.de||'';
+  document.getElementById('nb-pub').value=b.pub||'';
+  document.getElementById('nb-year').value=b.year||'';
+  document.getElementById('nb-isbn').value=b.isbn||'';
+  document.getElementById('nb-edition').value=b.edition||'';
+  document.getElementById('nb-cover-data').value=b.cover||'';
+  setPhotoBox('nb-cover-box',b.cover,'Tap to upload cover');
+  renderChapSetup(b.chapSetup);
+  openSheet('nb-overlay');
+}
+function deleteBook(){if(!confirm('Delete this book and all annotations?'))return;delete library[currentId];save();goLib();}
+
+function saveBook(){
   const title=document.getElementById('nb-title').value.trim();if(!title)return;
-  const id='b'+Date.now();
-  library[id]={id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,dateStart:document.getElementById('nb-date-start').value,dateEnd:document.getElementById('nb-date-end').value,entries:[],created:Date.now()};
-  ['nb-title','nb-author','nb-date-start','nb-date-end'].forEach(x=>document.getElementById(x).value='');
-  closeSheet('new-book-overlay');save();renderLibrary();
+  const editId=document.getElementById('nb-edit-id').value;
+  const id=editId||('b'+Date.now());
+  const existing=editId?library[editId]:{entries:[],created:Date.now()};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup()};
+  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('nb-edit-id').value='';document.getElementById('nb-cover-data').value='';
+  setPhotoBox('nb-cover-box','','Tap to upload cover');
+  document.getElementById('chap-setup-list').innerHTML='';
+  closeSheet('nb-overlay');save();renderLibrary();
+  if(editId&&currentId===editId){document.getElementById('bs-title').textContent=library[id].title;}
 }
 
 // ── TABS ───────────────────────────────────────────────────────────────────
@@ -512,8 +649,7 @@ function buildTabs(){
   cfg.tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
 }
 function switchTab(t,btn){
-  activeTab=t;
-  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  activeTab=t;document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();if(t==='chars')renderChars();
@@ -521,10 +657,76 @@ function switchTab(t,btn){
 }
 function forceTab(t){
   activeTab=t;
-  document.querySelectorAll('#tab-bar .tab').forEach(b=>{const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary'};b.classList.toggle('active',b.textContent===(lbl[t]||t));});
+  const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary'};
+  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.toggle('active',b.textContent===(lbl[t]||t)));
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();
+}
+
+// ── QUICK RELATIONSHIPS (in character form) ────────────────────────────────
+function addQuickRelRow(relType,charName){
+  const list=document.getElementById('ae-quick-rels-list');
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const row=document.createElement('div');row.className='r2';row.style.marginBottom='8px';
+  row.innerHTML=`<div class="fg" style="margin-bottom:0"><select class="qr-type">${buildRelTypeOpts(relType||'')}</select></div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div class="fg" style="flex:1;margin-bottom:0"><select class="qr-char"><option value="">— select char —</option>${chars.map(c=>`<option${charName&&c===charName?' selected':''}>${c}</option>`).join('')}</select></div>
+      <button onclick="this.closest('.r2').remove()" style="background:transparent;color:var(--t3);font-size:18px;padding:2px 4px;">×</button>
+    </div>`;
+  list.appendChild(row);
+  // add suggestion listener
+  row.querySelectorAll('select').forEach(s=>s.addEventListener('change',checkSuggestions));
+}
+function buildRelTypeOpts(sel){
+  const groups=[
+    ['Distant Family',['Great-great-grandparent','Great-great-grandmother','Great-great-grandfather','Distant relative (unknown degree)','Distant ancestor','Distant descendant']],
+    ['Family',['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Sibling','Half-sibling','Step-sibling','Aunt','Uncle','Cousin','Child','Grandchild','Great-grandchild','Step-parent','Step-child','Guardian','Ward','In-law','Adoptive parent','Adopted child']],
+    ['Romantic',['Partner','Spouse','Ex-partner','Love interest','Admirer','Estranged spouse','Betrothed']],
+    ['Social',['Friend','Close friend','Best friend','Acquaintance','Neighbour','Rival','Enemy','Ally','Mentor','Protégé','Confidant']],
+    ['Professional',['Employer','Employee','Colleague','Business partner','Teacher','Student','Master','Servant','Commander','Subordinate']],
+    ['Other',['Unknown','Complicated']],
+  ];
+  return`<option value="">— type —</option>`+groups.map(([g,opts])=>`<optgroup label="${g}">${opts.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join('')}</optgroup>`).join('');
+}
+
+function checkSuggestions(){
+  const rows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
+  const newCharName=document.getElementById('ae-cn').value.trim();
+  const sug=[];
+  rows.forEach(row=>{
+    const rt=row.querySelector('.qr-type').value;
+    const ch=row.querySelector('.qr-char').value;
+    if(!rt||!ch)return;
+    // If new char is child of someone, suggest that someone is also parent to siblings
+    if(PARENT_TYPES.includes(rt)){
+      const siblings=entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content)!==ch&&(e.cn||e.content)!==newCharName);
+      siblings.forEach(sib=>{
+        const sibName=sib.cn||sib.content;
+        const alreadyRel=entries().some(e=>e.type==='Relationship'&&((e.relA===ch&&e.relB===sibName)||(e.relA===sibName&&e.relB===ch)));
+        if(!alreadyRel&&!sug.find(s=>s.a===ch&&s.b===sibName)){
+          sug.push({a:ch,b:sibName,rt:rt==='Mother'?'Mother':rt==='Father'?'Father':'Parent',label:`Is ${ch} also a ${rt==='Mother'?'mother':'father'} to ${sibName}?`});
+        }
+      });
+    }
+  });
+  const box=document.getElementById('ae-sug-box');
+  const content=document.getElementById('ae-sug-content');
+  if(!sug.length){box.style.display='none';return;}
+  box.style.display='';
+  content.innerHTML=sug.map((s,i)=>`<span class="sug-btn" onclick="acceptSuggestion(${i})">${s.label}</span>`).join('');
+  box._suggestions=sug;
+}
+function acceptSuggestion(i){
+  const sug=document.getElementById('ae-sug-content').parentElement._suggestions[i];
+  if(!sug)return;
+  const confirm2=window.confirm(`Confirm: ${sug.a} → ${sug.rt} → ${sug.b}?\n(Tap Cancel if it's a step-relationship instead)`);
+  if(confirm2){
+    book().entries.push({id:Date.now(),type:'Relationship',content:`${sug.a} is ${sug.b}'s ${sug.rt}`,relType:sug.rt,relA:sug.a,relB:sug.b,pageNum:'',chapNum:'',date:'',location:'',involved:[],note:'Auto-suggested'});
+    save();renderAll();
+  }
+  // remove suggestion
+  document.getElementById('ae-sug-box').style.display='none';
 }
 
 // ── ENTRY FORM ─────────────────────────────────────────────────────────────
@@ -536,151 +738,109 @@ function buildTypeSelect(){
 function onTypeChange(){
   if(!currentId)return;
   const type=document.getElementById('ae-type').value;
-  const isChar=CHAR_TYPES.includes(type);
+  const isChar=CT.includes(type);
   const isRel=type==='Relationship';
-  const isQuote=type==='Quote'||type==='Line/stanza'||type==='Narrator quote';
-  const isCharTrait=type==='Characteristic';
+  const isQ=type==='Quote'||type==='Line/stanza'||type==='Narrator quote';
+  const isTrait=type==='Characteristic';
   const isWord=type==='Word / Vocabulary';
-  const isTimeline=type==='Timeline';
+  const isTL=type==='Timeline';
+  const isME=type==='Major event';
   const isChap=type==='Chapter';
-  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type)).map(e=>e.charName||e.content);
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
 
-  document.getElementById('ae-char-fields').style.display=isChar?'':'none';
-  document.getElementById('ae-content-group').style.display=isChar?'none':'';
-  document.getElementById('ae-quote-extras').style.display=isQuote?'':'none';
-  document.getElementById('ae-char-extra').style.display=isCharTrait?'':'none';
-  document.getElementById('ae-word-extras').style.display=isWord?'':'none';
-  document.getElementById('ae-timeline-extras').style.display=isTimeline?'':'none';
-  document.getElementById('ae-rel-extras').style.display=isRel?'':'none';
-  document.getElementById('ae-location-row').style.display=isChar?'none':'';
-  document.getElementById('ae-involved-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
-  document.getElementById('ae-chappage-row').style.display=isRel?'none':'';
+  document.getElementById('ae-char-section').style.display=isChar?'':'none';
+  document.getElementById('ae-content-section').style.display=isChar?'none':'';
+  document.getElementById('ae-quote-ex').style.display=isQ?'':'none';
+  document.getElementById('ae-char-ex').style.display=isTrait?'':'none';
+  document.getElementById('ae-word-ex').style.display=isWord?'':'none';
+  document.getElementById('ae-tl-ex').style.display=isTL?'':'none';
+  document.getElementById('ae-me-ex').style.display=isME?'':'none';
+  document.getElementById('ae-rel-ex').style.display=isRel?'':'none';
+  document.getElementById('ae-common').style.display=isChar?'none':'';
+  document.getElementById('ae-inv-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
+  document.getElementById('ae-chappage').style.display=isRel?'none':'';
+  document.getElementById('ae-clabel').textContent=isQ?'Quote / passage':isChap?'Chapter title or number':isTL?'Event description':isME?'What happened?':'Content';
 
-  document.getElementById('ae-content-label').textContent=
-    isQuote?'Quote / passage':isChap?'Chapter title / number':
-    isTimeline?'Event description':isWord?'Word':'Content';
+  if(isQ&&chars.length){document.getElementById('ae-speaker').innerHTML=`<option value="">— narrator —</option>`+chars.map(c=>`<option>${c}</option>`).join('');}
+  if(isRel&&chars.length){const o=chars.map(c=>`<option>${c}</option>`).join('');document.getElementById('ae-rela').innerHTML=o;document.getElementById('ae-relb').innerHTML=o;if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;}
+  if(!isChar&&!isRel&&chars.length)buildCPick(chars);
 
-  if(isQuote&&chars.length){
-    document.getElementById('ae-quote-speaker').innerHTML=`<option value="">— narrator / unknown —</option>`+chars.map(c=>`<option>${c}</option>`).join('');
-  }
-  if(isRel&&chars.length){
-    const opts=chars.map(c=>`<option>${c}</option>`).join('');
-    document.getElementById('ae-rel-a').innerHTML=opts;
-    document.getElementById('ae-rel-b').innerHTML=opts;
-    if(chars.length>1)document.getElementById('ae-rel-b').selectedIndex=1;
-  }
-  if(!isChar&&!isRel&&chars.length){
-    buildCharPicker(chars);
-  }
+  // clear quick rels
+  if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
 }
 
-function buildCharPicker(chars){
-  const row=document.getElementById('char-pick-row');
-  row.innerHTML=chars.map(c=>{
-    const col=getCharColor(c);
-    return `<span class="char-pick-chip" style="background:${col.bg};color:${col.text};border-color:${col.stroke};" data-name="${c}" onclick="toggleCharPick(this)">${c}</span>`;
-  }).join('');
+function buildCPick(chars){
+  document.getElementById('cpick-row').innerHTML=chars.map(c=>{const cc=getCC(c);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c}" onclick="this.classList.toggle('sel')">${c}</span>`;}).join('');
 }
-function toggleCharPick(el){el.classList.toggle('selected');}
-function getPickedChars(){return [...document.querySelectorAll('.char-pick-chip.selected')].map(el=>el.dataset.name);}
+function getPicked(){return[...document.querySelectorAll('.cpick.sel')].map(e=>e.dataset.name);}
 
 function openAddSheet(){
-  buildTypeSelect();
-  document.getElementById('ae-edit-id').value='';
-  document.getElementById('ae-sheet-title').textContent='Add annotation';
+  buildTypeSelect();document.getElementById('ae-edit-id').value='';document.getElementById('ae-sheet-title').textContent='Add annotation';
   document.getElementById('ae-date').value=new Date().toISOString().slice(0,10);
-  clearEntryForm();
-  openSheet('add-entry-overlay');
-  onTypeChange();
+  clearAEForm();openSheet('ae-overlay');onTypeChange();
 }
-
-function clearEntryForm(){
-  ['ae-content','ae-char-name','ae-nickname','ae-char-role','ae-char-desc','ae-note','ae-pagenum','ae-chapnum','ae-location','ae-rel-desc','ae-support-quote','ae-support-page','ae-support-chap','ae-definition','ae-word-source','ae-event-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.querySelectorAll('.char-pick-chip').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('ae-emotion').value='';
-  document.getElementById('ae-importance').value='normal';
-  document.getElementById('ae-rel-type').value='';
+function clearAEForm(){
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-note','ae-ch','ae-pg','ae-loc','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-wsrc','ae-evdate','ae-medate','ae-cintro'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
+  document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
+  document.getElementById('ae-char-photo-data').value='';setPhotoBox('ae-char-photo-box','','Tap to upload');
+  document.getElementById('ae-photo-data').value='';setPhotoBox('ae-photo-box','','Tap to upload');
+  document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
+  document.getElementById('ae-metype').value='';
 }
 
 function submitEntry(){
   if(!currentId)return;
   const type=document.getElementById('ae-type').value;
   const editId=document.getElementById('ae-edit-id').value;
-  const isChar=CHAR_TYPES.includes(type);
-  const isRel=type==='Relationship';
-  const isQuote=type==='Quote'||type==='Line/stanza'||type==='Narrator quote';
-  const isWord=type==='Word / Vocabulary';
-  const isTimeline=type==='Timeline';
-  const isCharTrait=type==='Characteristic';
+  const isChar=CT.includes(type);const isRel=type==='Relationship';
+  const isME=type==='Major event';
 
-  let content='';
-  let charName='';
-  if(isChar){
-    charName=document.getElementById('ae-char-name').value.trim();
-    if(!charName)return;
-    content=charName;
-  } else {
-    content=document.getElementById('ae-content').value.trim();
-    if(!content&&!isRel)return;
-    if(isRel){content=document.getElementById('ae-rel-desc').value.trim()||'Relationship';}
-  }
+  let content='',cn='';
+  if(isChar){cn=document.getElementById('ae-cn').value.trim();if(!cn)return;content=cn;}
+  else if(isRel){content=document.getElementById('ae-reldesc').value.trim()||'Relationship';}
+  else{content=document.getElementById('ae-content').value.trim();if(!content)return;}
 
-  const entry={
-    id:editId?Number(editId):Date.now(),
-    type,content,
-    note:document.getElementById('ae-note').value.trim(),
-    pageNum:document.getElementById('ae-pagenum').value||'',
-    chapNum:document.getElementById('ae-chapnum').value||'',
-    date:document.getElementById('ae-date').value||'',
-    location:document.getElementById('ae-location').value.trim(),
-    involved:getPickedChars(),
-  };
+  // auto-assign chapter from page
+  let chapNum=isChar||isRel?'':document.getElementById('ae-ch').value;
+  const pgVal=isChar||isRel?'':document.getElementById('ae-pg').value.trim();
+  if(pgVal&&!chapNum){const autoC=pageToChapter(pgVal.split('–')[0].split('-')[0]);if(autoC)chapNum=String(autoC);}
 
-  if(isChar){
-    entry.charName=charName;
-    entry.nickname=document.getElementById('ae-nickname').value.trim();
-    entry.charRole=document.getElementById('ae-char-role').value.trim();
-    entry.charDesc=document.getElementById('ae-char-desc').value.trim();
-  }
-  if(isQuote){
-    entry.speaker=document.getElementById('ae-quote-speaker').value;
-    entry.emotion=document.getElementById('ae-emotion').value;
-  }
-  if(isCharTrait){
-    entry.supportQuote=document.getElementById('ae-support-quote').value.trim();
-    entry.supportPage=document.getElementById('ae-support-page').value;
-    entry.supportChap=document.getElementById('ae-support-chap').value;
-  }
-  if(isWord){
-    entry.definition=document.getElementById('ae-definition').value.trim();
-    entry.wordSource=document.getElementById('ae-word-source').value.trim();
-  }
-  if(isTimeline){
-    entry.eventDate=document.getElementById('ae-event-date').value.trim();
-    entry.importance=document.getElementById('ae-importance').value;
-  }
-  if(isRel){
-    entry.relType=document.getElementById('ae-rel-type').value;
-    entry.relA=document.getElementById('ae-rel-a').value;
-    entry.relB=document.getElementById('ae-rel-b').value;
-    entry.content=entry.content||'Relationship';
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||'',location:isChar||isRel?'':document.getElementById('ae-loc').value.trim(),involved:isChar||isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value};
+
+  if(isChar){entry.nickname=document.getElementById('ae-nick').value.trim();entry.charRole=document.getElementById('ae-crole').value;entry.charStatus=document.getElementById('ae-cstatus').value;entry.charIntro=document.getElementById('ae-cintro').value.trim();entry.charDesc=document.getElementById('ae-cdesc').value.trim();}
+  if(type==='Quote'||type==='Narrator quote'||type==='Line/stanza'){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;}
+  if(type==='Characteristic'){entry.sq=document.getElementById('ae-sq').value.trim();entry.sqp=document.getElementById('ae-sqp').value.trim();entry.sqc=document.getElementById('ae-sqc').value;}
+  if(type==='Word / Vocabulary'){entry.definition=document.getElementById('ae-def').value.trim();entry.wsrc=document.getElementById('ae-wsrc').value.trim();}
+  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;}
+  if(isME){entry.metype=document.getElementById('ae-metype').value;entry.evdate=document.getElementById('ae-medate').value.trim();}
+  if(isRel){entry.relType=document.getElementById('ae-reltype').value;entry.relA=document.getElementById('ae-rela').value;entry.relB=document.getElementById('ae-relb').value;}
+
+  if(isChar)getCC(cn);
+
+  if(editId){const idx=book().entries.findIndex(e=>e.id===Number(editId));if(idx>=0)book().entries[idx]=entry;}
+  else book().entries.unshift(entry);
+
+  // save quick relationships
+  if(isChar&&!editId){
+    const qrows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
+    qrows.forEach(row=>{
+      const rt=row.querySelector('.qr-type').value;
+      const ch=row.querySelector('.qr-char').value;
+      if(!rt||!ch)return;
+      book().entries.push({id:Date.now()+Math.random(),type:'Relationship',content:`${cn} — ${rt} — ${ch}`,relType:rt,relA:cn,relB:ch,pageNum:'',chapNum:'',date:'',location:'',involved:[],note:''});
+    });
   }
 
-  if(isChar)getCharColor(charName);
-
-  if(editId){
-    const idx=book().entries.findIndex(e=>e.id===Number(editId));
-    if(idx>=0)book().entries[idx]=entry;
-  } else {
-    book().entries.unshift(entry);
-  }
-  save();closeSheet('add-entry-overlay');renderAll();buildTypeSelect();
+  save();closeSheet('ae-overlay');renderAll();buildTypeSelect();
 }
 
 function deleteEntry(id){
   if(!confirm('Delete this entry?'))return;
   book().entries=book().entries.filter(e=>e.id!==id);
   save();renderAll();
+  if(currentCharName)renderCharDetail(currentCharName);
 }
 
 function editEntry(id){
@@ -691,36 +851,25 @@ function editEntry(id){
   document.getElementById('ae-type').value=e.type;
   onTypeChange();
   setTimeout(()=>{
-    const isChar=CHAR_TYPES.includes(e.type);
-    if(isChar){
-      document.getElementById('ae-char-name').value=e.charName||e.content;
-      document.getElementById('ae-nickname').value=e.nickname||'';
-      document.getElementById('ae-char-role').value=e.charRole||'';
-      document.getElementById('ae-char-desc').value=e.charDesc||'';
-    } else {
-      document.getElementById('ae-content').value=e.type==='Relationship'?e.content:e.content;
-    }
-    if(e.type==='Relationship'){document.getElementById('ae-rel-desc').value=e.content||'';document.getElementById('ae-rel-type').value=e.relType||'';if(e.relA)document.getElementById('ae-rel-a').value=e.relA;if(e.relB)document.getElementById('ae-rel-b').value=e.relB;}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-cintro').value=e.charIntro||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-char-photo-data').value=e.photo||'';setPhotoBox('ae-char-photo-box',e.photo||'','Tap to upload');}
+    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)document.getElementById('ae-rela').value=e.relA;if(e.relB)document.getElementById('ae-relb').value=e.relB;}
+    else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';
-    document.getElementById('ae-pagenum').value=e.pageNum||'';
-    document.getElementById('ae-chapnum').value=e.chapNum||'';
+    document.getElementById('ae-ch').value=e.chapNum||'';
+    document.getElementById('ae-pg').value=e.pageNum||'';
     document.getElementById('ae-date').value=e.date||'';
-    document.getElementById('ae-location').value=e.location||'';
+    document.getElementById('ae-loc').value=e.location||'';
+    document.getElementById('ae-photo-data').value=e.photo||'';setPhotoBox('ae-photo-box',e.photo||'','Tap to upload');
     if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;
-    if(e.speaker)document.getElementById('ae-quote-speaker').value=e.speaker;
-    if(e.supportQuote)document.getElementById('ae-support-quote').value=e.supportQuote;
-    if(e.supportPage)document.getElementById('ae-support-page').value=e.supportPage;
-    if(e.supportChap)document.getElementById('ae-support-chap').value=e.supportChap;
-    if(e.definition)document.getElementById('ae-definition').value=e.definition;
-    if(e.wordSource)document.getElementById('ae-word-source').value=e.wordSource;
-    if(e.eventDate)document.getElementById('ae-event-date').value=e.eventDate;
-    if(e.importance)document.getElementById('ae-importance').value=e.importance;
-    // re-pick chars
-    if(e.involved&&e.involved.length){
-      document.querySelectorAll('.char-pick-chip').forEach(c=>{if(e.involved.includes(c.dataset.name))c.classList.add('selected');});
-    }
-  },50);
-  openSheet('add-entry-overlay');
+    if(e.speaker)document.getElementById('ae-speaker').value=e.speaker;
+    if(e.sq)document.getElementById('ae-sq').value=e.sq;if(e.sqp)document.getElementById('ae-sqp').value=e.sqp;if(e.sqc)document.getElementById('ae-sqc').value=e.sqc;
+    if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
+    if(e.evdate)document.getElementById('ae-evdate').value=e.evdate;if(e.evdate&&e.type==='Major event')document.getElementById('ae-medate').value=e.evdate;
+    if(e.importance)document.getElementById('ae-imp').value=e.importance;
+    if(e.metype)document.getElementById('ae-metype').value=e.metype;
+    if(e.involved?.length){setTimeout(()=>e.involved.forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),100);}
+  },40);
+  openSheet('ae-overlay');
 }
 
 // ── RENDER ─────────────────────────────────────────────────────────────────
@@ -732,37 +881,23 @@ function renderAll(){
   if(activeTab==='map')renderMap();
   if(activeTab==='words')renderWords();
   buildFilterBar();
-}
-
-function typeKey(t){
-  return t.toLowerCase().replace(/[^a-z]/g,'')
-    .replace('narratorquote','quote').replace('authornote','note').replace('linestanza','note')
-    .replace('redherring','redflag').replace('plottwist','note').replace('worldelement','concept')
-    .replace('dateperiod','concept').replace('actionable','concept').replace('wordvocabulary','word')
-    .replace('keyidea','keyidea');
+  if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
 }
 
 function buildFilterBar(){
   const all=entries();
   const types=[...new Set(all.map(e=>e.type))];
-  const chapters=[...new Set(all.filter(e=>e.chapNum).map(e=>e.chapNum))].sort((a,b)=>Number(a)-Number(b));
-  const pages=[...new Set(all.filter(e=>e.pageNum).map(e=>e.pageNum))].sort((a,b)=>Number(a)-Number(b));
-
+  // Chapter filters only
+  const chaps=[...new Set(all.filter(e=>e.chapNum).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
   let chips=`<button class="chip${activeFilter==='all'?' active':''}" onclick="setFilter('all')">All</button>`;
-  chips+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter('${t.replace(/'/g,"\\'")}')">${t}</button>`).join('');
-  if(chapters.length){chips+=`<span style="font-size:11px;color:var(--t3);padding:5px 4px;flex-shrink:0;">Ch:</span>`+chapters.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')">Ch.${c}</button>`).join('');}
-  if(pages.length&&pages.length<=20){chips+=`<span style="font-size:11px;color:var(--t3);padding:5px 4px;flex-shrink:0;">p:</span>`+pages.map(p=>`<button class="chip${activeFilter==='pg:'+p?' active':''}" onclick="setFilter('pg:${p}')">p.${p}</button>`).join('');}
+  chips+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter(${JSON.stringify(t)})">${t}</button>`).join('');
+  if(chaps.length)chips+=`<span style="font-size:10px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;">Ch:</span>`+chaps.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')">Ch.${c}</button>`).join('');
   document.getElementById('filter-bar').innerHTML=chips;
 }
 function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
+function filterEntries(){const all=entries();if(activeFilter==='all')return all;if(activeFilter.startsWith('ch:'))return all.filter(e=>e.chapNum===activeFilter.slice(3));return all.filter(e=>e.type===activeFilter);}
 
-function filterEntries(){
-  const all=entries();
-  if(activeFilter==='all')return all;
-  if(activeFilter.startsWith('ch:'))return all.filter(e=>e.chapNum===activeFilter.slice(3));
-  if(activeFilter.startsWith('pg:'))return all.filter(e=>e.pageNum===activeFilter.slice(3));
-  return all.filter(e=>e.type===activeFilter);
-}
+function toneClass(emotion){if(!emotion)return'';const opt=[...document.getElementById('ae-emotion').options].find(o=>o.value===emotion||o.text===emotion);if(opt&&opt.dataset.tone)return TONE_COLOR[opt.dataset.tone]||'';const pos=['Admiring','Caring','Cheerful','Compassionate','Confident','Excited','Grateful','Hopeful','Joyful','Kind','Loving','Optimistic','Playful','Proud','Reassuring','Relieved','Sweet','Tender','Warm'];const neg=['Angry','Anxious','Ashamed','Bitter','Cold','Contemptuous','Deceptive','Defiant','Desperate','Disgusted','Envious','Fearful','Guilty','Hateful','Jealous','Manipulative','Mournful','Pleading','Sad','Shameful','Threatening'];if(pos.includes(emotion))return'emo-positive';if(neg.includes(emotion))return'emo-negative';return'emo-neutral';}
 
 function renderEntries(){
   const list=document.getElementById('entries-list');
@@ -770,56 +905,59 @@ function renderEntries(){
   const filtered=filterEntries();
   if(!filtered.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  list.innerHTML=filtered.map(e=>entryCardHTML(e)).join('');
+  list.innerHTML=filtered.map(e=>ecHTML(e,false)).join('');
 }
 
-function entryCardHTML(e){
-  const tk=typeKey(e.type);
-  const isChar=CHAR_TYPES.includes(e.type);
-  const col=isChar?getCharColor(e.charName||e.content):null;
+function ecHTML(e,compact){
+  const k=tk(e.type);
+  const isChar=CT.includes(e.type);
+  const isRel=e.type==='Relationship';
+  const col=isChar?getCC(e.cn||e.content):null;
   const leftStyle=isChar?`border-left-color:${col.stroke};`:'';
-  const clickAttr=isChar?`onclick="openCharDetail('${(e.charName||e.content).replace(/'/g,"\\'")}',false)" style="${leftStyle}cursor:pointer;"`:
-                         `style="${leftStyle}"`;
-  const tag=`<span class="tag tag-${tk}">${e.type}</span>`;
-  const pg=(e.chapNum?`<span class="page-badge">Ch.${e.chapNum}</span>`:'')+(e.pageNum?`<span class="page-badge">p.${e.pageNum}</span>`:'');
-  const dateBadge=e.date?`<span class="page-badge">${fmt(e.date)}</span>`:'';
-  const emoBadge=e.emotion?`<span class="emotion-badge">${e.emotion}</span>`:'';
+  const clickable=isChar?`onclick="openCharDetail('${(e.cn||e.content).replace(/'/g,"\\'")}',false)" style="${leftStyle}cursor:pointer;"`:`style="${leftStyle}"`;
 
-  let content='';
+  const tag=`<span class="tag tag-${k}">${e.type}</span>`;
+  const pg=[];
+  if(e.chapNum)pg.push(`<span class="pbadge">Ch.${e.chapNum}</span>`);
+  if(e.pageNum)pg.push(`<span class="pbadge">p.${e.pageNum}</span>`);
+  if(e.evdate)pg.push(`<span class="pbadge">📅 ${e.evdate}</span>`);
+  if(e.date)pg.push(`<span class="pbadge">${fmt(e.date)}</span>`);
+  const emoBadge=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
+  const locBadge=e.location?`<span class="pbadge">📍 ${e.location}</span>`:'';
+  const spkBadge=e.speaker?`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};">${e.speaker}</span>`:'';
+
+  let body='';
   if(isChar){
-    const c=col;
-    const ini=(e.charName||e.content).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    content=`<div style="display:flex;align-items:center;gap:10px;">
-      <div class="char-avatar" style="width:36px;height:36px;font-size:13px;background:${c.bg};color:${c.text};">${ini}</div>
-      <div>
-        <div style="font-weight:600;color:${c.text};">${e.charName||e.content}</div>
-        ${e.nickname?`<div style="font-size:12px;color:var(--t2);">aka ${e.nickname}</div>`:''}
-        ${e.charRole?`<div style="font-size:12px;color:var(--t3);">${e.charRole}</div>`:''}
-      </div>
-    </div>`;
-  } else if(e.type==='Relationship'){
-    content=`<div class="entry-content"><strong style="color:${e.relA&&getCharColor(e.relA)?getCharColor(e.relA).text:'inherit'}">${e.relA||'?'}</strong> <span style="color:var(--t2);font-size:13px;">${e.relType?'('+e.relType+')':''}</span> <strong style="color:${e.relB&&getCharColor(e.relB)?getCharColor(e.relB).text:'inherit'}">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div class="entry-sub">${e.content}</div>`:''}</div>`;
+    const ini=(e.cn||e.content).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const photoHTML=e.photo?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:ini;
+    const statusIcon=e.charStatus==='deceased'?'✝ ':'';
+    body=`<div style="display:flex;align-items:center;gap:10px;">
+      <div class="avatar" style="width:38px;height:38px;font-size:13px;background:${col.bg};color:${col.text};overflow:hidden;">${photoHTML}</div>
+      <div><div style="font-weight:600;color:${col.text};">${statusIcon}${e.cn||e.content}${e.nickname?` <span style="font-size:11px;font-weight:400;">(${e.nickname})</span>`:''}</div>
+      ${e.charRole?`<div style="font-size:11px;color:var(--t3);">${e.charRole}${e.charIntro?` · intro: ${e.charIntro}`:''}</div>`:''}</div></div>`;
+  } else if(isRel){
+    const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
+    body=`<div class="econtent"><strong style="color:${ac?.text||'inherit'}">${e.relA||'?'}</strong> <span style="font-size:12px;color:var(--t2);">${e.relType?'('+e.relType+')':''}</span> <strong style="color:${bc?.text||'inherit'}">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div style="font-size:12px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}</div>`;
   } else if(e.type==='Word / Vocabulary'){
-    content=`<div class="entry-content"><strong>${e.content}</strong>${e.definition?`<div class="word-def">${e.definition}</div>`:''}</div>`;
+    body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div class="word-def">${e.definition}</div>`:''}</div>`;
   } else if(e.type==='Characteristic'){
-    content=`<div class="entry-content">${e.content}${e.supportQuote?`<div class="entry-sub" style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;">"${e.supportQuote}"${e.supportPage?` — p.${e.supportPage}`:''}</div>`:''}</div>`;
+    body=`<div class="econtent">${e.content}${e.sq?`<div style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;font-size:12px;color:var(--t2);">"${e.sq}"${e.sqp?` — p.${e.sqp}`:''}</div>`:''}</div>`;
+  } else if(e.type==='Major event'){
+    const meIcon={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡',Departure:'🚪',Arrival:'🚪',Other:'📌','Life-changing moment':'⭐'}[e.metype]||'📌';
+    body=`<div class="econtent">${meIcon} <strong>${e.metype||'Major event'}:</strong> ${e.content}</div>`;
   } else {
-    content=`<div class="entry-content">${e.content}</div>`;
+    const photoThumb=e.photo?`<img src="${e.photo}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;float:right;margin-left:8px;"/>`:'' ;
+    body=`<div class="econtent">${photoThumb}${e.content}</div>`;
   }
 
-  const invBadges=e.involved&&e.involved.length?e.involved.map(c=>{const cc=getCharColor(c);return `<span class="char-badge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join(''):'';
-  const locBadge=e.location?`<span class="page-badge">📍 ${e.location}</span>`:'';
-  const spkBadge=e.speaker?`<span class="char-badge" style="background:${getCharColor(e.speaker)?.bg||'#eee'};color:${getCharColor(e.speaker)?.text||'#333'};">${e.speaker}</span>`:'';
+  const invBadges=e.involved?.length?`<div class="involved-row">${e.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join('')}</div>`:'';
 
-  return `<div class="entry-card ${tk}" ${clickAttr}>
-    <div class="entry-meta">${tag}${pg}${dateBadge}${locBadge}${emoBadge}${spkBadge}</div>
-    ${content}
-    ${invBadges?`<div class="involved-row">${invBadges}</div>`:''}
-    ${e.note?`<div class="entry-note">${e.note}</div>`:''}
-    <div class="entry-actions">
-      <button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button>
-      <button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button>
-    </div>
+  return `<div class="ec ${k}" ${clickable}>
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emoBadge}${spkBadge}</div>
+    ${body}
+    ${invBadges}
+    ${e.note?`<div class="enote">${e.note}</div>`:''}
+    ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
 }
 
@@ -827,177 +965,118 @@ function entryCardHTML(e){
 function renderChars(){
   const list=document.getElementById('chars-list');
   const empty=document.getElementById('chars-empty');
-  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type));
+  const chars=entries().filter(e=>CT.includes(e.type));
   if(!chars.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   list.innerHTML=chars.map(c=>{
-    const name=c.charName||c.content;
-    const col=getCharColor(name);
+    const name=c.cn||c.content;
+    const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const all=entries();
-    const tc=all.filter(e=>e.links&&e.links.includes(name)||e.involved&&e.involved.includes(name)||((e.relA===name||e.relB===name)&&e.type==='Relationship')||e.type==='Characteristic'&&e.involved&&e.involved.includes(name)).length;
-    return `<div class="char-list-card" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${name.replace(/'/g,"\\'")}',false)">
-      <div class="char-avatar" style="width:42px;height:42px;font-size:14px;background:${col.stroke}30;color:${col.text};">${ini}</div>
+    const photoHTML=c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
+    const statusIcon=c.charStatus==='deceased'?'✝ ':'';
+    const roleLabel={main:'Main character',side:'Side character',minor:'Minor character',antagonist:'Antagonist',narrator:'Narrator'}[c.charRole]||'';
+    return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${name.replace(/'/g,"\\'")}',false)">
+      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${col.stroke}28;color:${col.text};">${photoHTML||ini}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:15px;font-weight:600;color:${col.text};">${name}${c.nickname?` <span style="font-size:12px;font-weight:400;color:${col.text}88;">(${c.nickname})</span>`:''}</div>
-        <div style="font-size:12px;color:var(--t2);">${c.charRole||c.charDesc?.slice(0,50)||'No description'}</div>
+        <div style="font-size:14px;font-weight:600;color:${col.text};">${statusIcon}${name}${c.nickname?` <span style="font-size:11px;font-weight:400;">(${c.nickname})</span>`:''}</div>
+        <div style="font-size:11px;color:var(--t2);">${roleLabel}${c.charIntro?` · intro ${c.charIntro}`:''}</div>
       </div>
-      <span style="color:var(--t3);font-size:18px;">›</span>
+      <span style="color:var(--t3);font-size:16px;">›</span>
     </div>`;
   }).join('');
 }
 
 // ── CHARACTER DETAIL ────────────────────────────────────────────────────────
 function openCharDetail(name,fromWeb){
-  const col=getCharColor(name);
-  const all=entries();
-  const charEntry=all.find(e=>CHAR_TYPES.includes(e.type)&&(e.charName||e.content)===name);
-  const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-
+  currentCharName=name;
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
-
-  document.getElementById('char-hero').innerHTML=`
-    <div class="char-avatar" style="width:60px;height:60px;font-size:22px;background:${col.stroke}28;color:${col.text};">${ini}</div>
-    <div>
-      <div style="font-size:20px;font-weight:700;color:${col.text};">${name}${charEntry?.nickname?` <span style="font-size:14px;font-weight:400;">(${charEntry.nickname})</span>`:''}</div>
-      ${charEntry?.charRole?`<div style="font-size:13px;color:var(--t2);">${charEntry.charRole}</div>`:''}
-      ${charEntry?.charDesc?`<div style="font-size:13px;color:var(--t2);font-style:italic;margin-top:4px;">${charEntry.charDesc}</div>`:''}
-    </div>`;
-
-  const traits=all.filter(e=>e.type==='Characteristic'&&(e.involved?.includes(name)));
-  const quotes=all.filter(e=>(e.type==='Quote'||e.type==='Narrator quote'||e.type==='Line/stanza')&&(e.speaker===name||e.involved?.includes(name)));
-  const rels=all.filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
-  const clues=all.filter(e=>(e.type==='Clue'||e.type==='Red herring')&&e.involved?.includes(name));
-  const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
-  const other=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Clue','Red herring','Question'].includes(e.type)&&!CHAR_TYPES.includes(e.type)&&e.involved?.includes(name));
-
-  const pg=e=>`${e.chapNum?`Ch.${e.chapNum} `:''}${e.pageNum?`p.${e.pageNum}`:''}`;
-  const note=e=>e.note?`<div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:3px;">${e.note}</div>`:'';
-
-  let html='';
-  if(traits.length){
-    html+=sec(col,'Traits & characteristics',traits.map(t=>`<div class="char-detail-item">
-      <div class="item-label" style="color:${col.text};">Trait</div>${t.content}
-      ${t.supportQuote?`<div style="border-left:2px solid ${col.stroke};padding-left:8px;margin-top:6px;font-size:13px;color:var(--t2);">"${t.supportQuote}"${t.supportPage?` — p.${t.supportPage}`:''}</div>`:''}
-      ${note(t)}<div class="item-page">${pg(t)}</div></div>`).join(''));
-  }
-  if(quotes.length){
-    html+=sec(col,'Quotes',quotes.map(q=>`<div class="char-detail-item" style="border-left:3px solid ${col.stroke};border-radius:0 var(--radius) var(--radius) 0;">
-      <div class="item-label" style="color:${col.text};">Said${q.emotion?` · <span style="text-transform:none;font-weight:400;">${q.emotion}</span>`:''}</div>
-      "${q.content}"${note(q)}<div class="item-page">${pg(q)}</div></div>`).join(''));
-  }
-  if(rels.length){
-    html+=sec(col,'Relationships',rels.map(r=>{
-      const other=r.relA===name?r.relB:r.relA;
-      const oc=getCharColor(other);
-      return `<div class="char-detail-item"><span style="font-weight:700;color:${oc.text};">↔ ${other}</span>
-        ${r.relType?`<span class="rel-pill" style="background:${col.stroke}18;color:${col.text};">${r.relType}</span>`:''}
-        ${r.content&&r.content!=='Relationship'?`<div style="font-size:13px;color:var(--t2);margin-top:4px;">${r.content}</div>`:''}
-        <div class="item-page">${pg(r)}</div></div>`;
-    }).join(''));
-  }
-  if(clues.length) html+=sec(col,'Clues & red herrings',clues.map(cl=>`<div class="char-detail-item"><div class="item-label" style="color:${col.text};">${cl.type}</div>${cl.content}<div class="item-page">${pg(cl)}</div></div>`).join(''));
-  if(questions.length) html+=sec(col,'Open questions',questions.map(q=>`<div class="char-detail-item">${q.content}${note(q)}<div class="item-page">${pg(q)}</div></div>`).join(''));
-  if(other.length) html+=sec(col,'Other entries',other.map(o=>`<div class="char-detail-item"><div class="item-label" style="color:${col.text};">${o.type}</div>${o.content}<div class="item-page">${pg(o)}</div></div>`).join(''));
-  if(!html)html=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add traits, quotes, or relationships and select ${name} as involved</div></div>`;
-
-  document.getElementById('char-detail-body').innerHTML=html;
+  document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e)editEntry(e.id);show('book-screen','char-screen');};
+  renderCharDetail(name);
   show('char-screen','book-screen');
 }
-function sec(col,label,content){return `<div class="char-section"><div class="char-section-label" style="color:${col.stroke};">${label}</div>${content}</div>`;}
+
+function renderCharDetail(name){
+  const col=getCC(name);
+  const all=entries();
+  const ce=all.find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
+  const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const photoHTML=ce?.photo?`<img src="${ce.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
+  const roleLabel={main:'Main character',side:'Side character',minor:'Minor character',antagonist:'Antagonist',narrator:'Narrator',unknown:'Unknown role'}[ce?.charRole||'unknown']||'';
+  const statusLabel={alive:'Alive',deceased:'Deceased ✝',unknown:'Status unknown'}[ce?.charStatus||'unknown']||'';
+
+  document.getElementById('char-hero').innerHTML=`
+    <div class="avatar" style="width:56px;height:56px;font-size:20px;background:${col.stroke}28;color:${col.text};flex-shrink:0;overflow:hidden;">${photoHTML||ini}</div>
+    <div style="flex:1;">
+      <div style="font-size:18px;font-weight:700;color:${col.text};">${ce?.charStatus==='deceased'?'✝ ':''}${name}${ce?.nickname?` <span style="font-size:13px;font-weight:400;">(${ce.nickname})</span>`:''}</div>
+      <div style="font-size:12px;color:var(--t2);">${roleLabel} · ${statusLabel}</div>
+      ${ce?.charIntro?`<div style="font-size:11px;color:var(--t3);">Introduced: ${ce.charIntro}</div>`:''}
+      ${ce?.charDesc?`<div style="font-size:12px;color:var(--t2);margin-top:4px;font-style:italic;">${ce.charDesc}</div>`:''}
+    </div>`;
+
+  const traits=all.filter(e=>e.type==='Characteristic'&&e.involved?.includes(name));
+  const quotes=all.filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&(e.speaker===name||e.involved?.includes(name)));
+  const rels=all.filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
+  const events=all.filter(e=>e.type==='Major event'&&e.involved?.includes(name));
+  const clues=all.filter(e=>['Clue','Red herring'].includes(e.type)&&e.involved?.includes(name));
+  const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
+  const other=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Major event','Clue','Red herring','Question',...CT].includes(e.type)&&e.involved?.includes(name));
+
+  const pg=e=>[e.chapNum?`Ch.${e.chapNum}`:'',e.pageNum?`p.${e.pageNum}`:''].filter(Boolean).join(' ');
+  const pgTag=e=>pg(e)?`<div class="ipage">${pg(e)}</div>`:'';
+  const noteTag=e=>e.note?`<div style="font-size:11px;color:var(--t2);font-style:italic;margin-top:2px;">${e.note}</div>`:'';
+  const actions=(e)=>`<div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button></div>`;
+
+  let html='';
+  if(traits.length)html+=csec(col,'Traits & characteristics',traits.map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Trait</div>${t.content}${t.sq?`<div style="border-left:2px solid ${col.stroke};padding-left:7px;margin-top:5px;font-size:12px;color:var(--t2);">"${t.sq}"${t.sqp?` — p.${t.sqp}`:''}</div>`:''} ${noteTag(t)}${pgTag(t)}${actions(t)}</div>`).join(''));
+  if(quotes.length)html+=csec(col,'Quotes',quotes.map(q=>`<div class="citem" style="border-left:3px solid ${col.stroke};border-radius:0 var(--r) var(--r) 0;"><div class="ilabel" style="color:${col.text};">Said${q.emotion?` · <span class="ebadge ${toneClass(q.emotion)}" style="text-transform:none;">${q.emotion}</span>`:''}</div>"${q.content}"${noteTag(q)}${pgTag(q)}${actions(q)}</div>`).join(''));
+  if(rels.length)html+=csec(col,'Relationships',rels.map(r=>{const other=r.relA===name?r.relB:r.relA;const oc=getCC(other);return`<div class="citem"><span style="font-weight:700;color:${oc.text};">↔ ${other}</span>${r.relType?`<span class="ebadge" style="background:${col.stroke}18;color:${col.text};margin-left:5px;">${r.relType}</span>`:''}${r.content&&r.content!=='Relationship'?`<div style="font-size:12px;color:var(--t2);margin-top:4px;">${r.content}</div>`:''} ${pgTag(r)}${actions(r)}</div>`;}).join(''));
+  if(events.length)html+=csec(col,'Major events',events.map(e=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${e.metype||'Event'}${e.evdate?` — ${e.evdate}`:''}</div>${e.content}${pgTag(e)}${actions(e)}</div>`).join(''));
+  if(clues.length)html+=csec(col,'Clues & red herrings',clues.map(c=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${c.type}</div>${c.content}${pgTag(c)}${actions(c)}</div>`).join(''));
+  if(questions.length)html+=csec(col,'Questions',questions.map(q=>`<div class="citem">${q.content}${noteTag(q)}${pgTag(q)}${actions(q)}</div>`).join(''));
+  if(other.length)html+=csec(col,'Other entries',other.map(o=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${o.type}</div>${o.content}${pgTag(o)}${actions(o)}</div>`).join(''));
+  if(!html)html=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add entries and select ${name} as involved</div></div>`;
+  document.getElementById('char-body').innerHTML=html;
+}
+function csec(col,label,content){return`<div class="csec"><div class="csec-label" style="color:${col.stroke};">${label}</div>${content}</div>`;}
 
 // ── GENEALOGY WEB ───────────────────────────────────────────────────────────
 function renderWeb(){
   const svg=document.getElementById('web-svg');
   const empty=document.getElementById('web-empty');
   svg.innerHTML='';
-  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type)).map(e=>({name:e.charName||e.content,col:getCharColor(e.charName||e.content)}));
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||''}));
   if(!chars.length){svg.style.display='none';empty.style.display='';return;}
   svg.style.display='';empty.style.display='none';
-
-  // Build relationship edges
   const rels=entries().filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
-
-  // Assign generations
-  const genMap={};
-  chars.forEach(c=>genMap[c.name]=3); // default mid
+  const genMap={};chars.forEach(c=>genMap[c.name]=4);
   rels.forEach(r=>{
-    const g=GEN_ORDER[r.relType]??3;
-    // relA is at g, relB is the reference person
-    // We interpret: if relType=Mother, then relA is the mother of relB
-    // So relA is one gen above relB
-    if(FAMILY_TYPES.includes(r.relType)){
-      const parentTypes=['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Adoptive parent','Step-parent','Guardian','Aunt','Uncle'];
-      const childTypes=['Child','Grandchild','Adopted child','Ward','Step-child'];
-      if(parentTypes.includes(r.relType)){genMap[r.relA]=g;genMap[r.relB]=g+1;}
-      else if(childTypes.includes(r.relType)){genMap[r.relA]=g;genMap[r.relB]=g-1;}
-    }
+    if(PARENT_TYPES.includes(r.relType)){genMap[r.relA]=Math.min(genMap[r.relA]??4,(GEN_ORDER[r.relType]??4));genMap[r.relB]=Math.max(genMap[r.relB]??4,(GEN_ORDER[r.relType]??4)+1);}
+    if(CHILD_TYPES.includes(r.relType)){genMap[r.relA]=Math.max(genMap[r.relA]??4,(GEN_ORDER[r.relType]??4));genMap[r.relB]=Math.min(genMap[r.relB]??4,(GEN_ORDER[r.relType]??4)-1);}
   });
-
-  // Group chars by generation
-  const gens={};
-  chars.forEach(c=>{const g=genMap[c.name]??3;if(!gens[g])gens[g]=[];gens[g].push(c);});
-  const genKeys=Object.keys(gens).map(Number).sort((a,b)=>a-b);
-
-  const W=360,nodeR=28;
-  const rowH=110;
-  const totalH=Math.max(genKeys.length*rowH+80,300);
-  svg.setAttribute('viewBox',`0 0 ${W} ${totalH}`);
-  svg.setAttribute('height',totalH);
-
-  // Position nodes
-  genKeys.forEach((g,gi)=>{
-    const row=gens[g];
-    const y=50+gi*rowH;
-    row.forEach((c,ci)=>{
-      const x=(W/(row.length+1))*(ci+1);
-      c.x=x;c.y=y;
-    });
-  });
-  const allNodes={};chars.forEach(c=>{allNodes[c.name]=c;});
-
-  // Draw edges
+  const gens={};chars.forEach(c=>{const g=genMap[c.name]??4;if(!gens[g])gens[g]=[];gens[g].push(c);});
+  const gks=Object.keys(gens).map(Number).sort((a,b)=>a-b);
+  const W=360,NR=28,rowH=110;
+  const H=Math.max(gks.length*rowH+80,300);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('height',H);
+  gks.forEach((g,gi)=>{const row=gens[g];const y=50+gi*rowH;row.forEach((c,ci)=>{c.x=(W/(row.length+1))*(ci+1);c.y=y;});});
+  const nm={};chars.forEach(c=>{nm[c.name]=c;});
   rels.forEach(r=>{
-    const A=allNodes[r.relA],B=allNodes[r.relB];if(!A||!B)return;
+    const A=nm[r.relA],B=nm[r.relB];if(!A||!B)return;
     const line=document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',A.x);line.setAttribute('y1',A.y);line.setAttribute('x2',B.x);line.setAttribute('y2',B.y);
-    line.setAttribute('stroke',A.col.stroke+'66');line.setAttribute('stroke-width','2');svg.appendChild(line);
-    if(r.relType){
-      const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
-      const tw=Math.min(r.relType.length*5.5+12,110);
-      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-9);bg.setAttribute('width',tw);bg.setAttribute('height',17);
-      bg.setAttribute('rx','8');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);
-      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');
-      lt.setAttribute('font-size','9');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');
-      lt.textContent=r.relType.length>14?r.relType.slice(0,13)+'…':r.relType;svg.appendChild(lt);
-    }
+    line.setAttribute('stroke',A.col.stroke+'55');line.setAttribute('stroke-width','2');svg.appendChild(line);
+    if(r.relType){const mx=(A.x+B.x)/2,my=(A.y+B.y)/2,tw=Math.min(r.relType.length*4.5+10,100);const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-8);bg.setAttribute('width',tw);bg.setAttribute('height',15);bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);const lt=document.createElementNS('http://www.w3.org/2000/svg','text');lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','8');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');lt.textContent=r.relType.length>14?r.relType.slice(0,13)+'…':r.relType;svg.appendChild(lt);}
   });
-
-  // Draw nodes
   chars.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor='pointer';
-    g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\\'")}',true)`);
-    const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');
-    ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',nodeR);
-    ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);
-    const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const ti=document.createElementNS('http://www.w3.org/2000/svg','text');
-    ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');
-    ti.setAttribute('font-size','14');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');
-    ti.textContent=ini;g.appendChild(ti);
-    const words=n.name.split(' ');
-    const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
-    tl.setAttribute('x',n.x);tl.setAttribute('y',n.y+nodeR+11);tl.setAttribute('text-anchor','middle');
-    tl.setAttribute('font-size','10');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
-    if(words.length>1){
-      const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',n.x);s1.setAttribute('dy','0');s1.textContent=words[0];
-      const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',n.x);s2.setAttribute('dy','12');s2.textContent=words.slice(1).join(' ');
-      tl.appendChild(s1);tl.appendChild(s2);
-    } else {tl.textContent=n.name;}
+    g.style.cursor='pointer';g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\\'")}',true)`);
+    if(n.photo){const clip=document.createElementNS('http://www.w3.org/2000/svg','clipPath');const cid='clip'+n.name.replace(/[^a-z]/gi,'');clip.setAttribute('id',cid);const cc=document.createElementNS('http://www.w3.org/2000/svg','circle');cc.setAttribute('cx',n.x);cc.setAttribute('cy',n.y);cc.setAttribute('r',NR);clip.appendChild(cc);svg.appendChild(clip);const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);const im=document.createElementNS('http://www.w3.org/2000/svg','image');im.setAttribute('href',n.photo);im.setAttribute('x',n.x-NR);im.setAttribute('y',n.y-NR);im.setAttribute('width',NR*2);im.setAttribute('height',NR*2);im.setAttribute('clip-path',`url(#${cid})`);im.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(im);}
+    else{const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();const ti=document.createElementNS('http://www.w3.org/2000/svg','text');ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size','14');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);}
+    if(n.status==='deceased'){const x=document.createElementNS('http://www.w3.org/2000/svg','text');x.setAttribute('x',n.x+NR-6);x.setAttribute('y',n.y-NR+6);x.setAttribute('text-anchor','middle');x.setAttribute('font-size','10');x.setAttribute('fill',n.col.text);x.textContent='✝';g.appendChild(x);}
+    const words=n.name.split(' ');const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    tl.setAttribute('x',n.x);tl.setAttribute('y',n.y+NR+11);tl.setAttribute('text-anchor','middle');tl.setAttribute('font-size','10');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
+    if(words.length>1){const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',n.x);s1.setAttribute('dy','0');s1.textContent=words[0];const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',n.x);s2.setAttribute('dy','12');s2.textContent=words.slice(1).join(' ');tl.appendChild(s1);tl.appendChild(s2);}else{tl.textContent=n.name;}
     g.appendChild(tl);svg.appendChild(g);
   });
 }
@@ -1005,54 +1084,48 @@ function renderWeb(){
 // ── TIMELINE ───────────────────────────────────────────────────────────────
 function renderTimeline(){
   const list=document.getElementById('timeline-list');
-  const empty=document.getElementById('timeline-empty');
-  const items=entries().filter(e=>e.type==='Timeline'||e.type==='Event'||e.type==='Date/Period').sort((a,b)=>(a.eventDate||a.dateVal||'').localeCompare(b.eventDate||b.dateVal||'')||(Number(a.chapNum||0)-Number(b.chapNum||0))||(Number(a.pageNum||0)-Number(b.pageNum||0)));
+  const empty=document.getElementById('tl-empty');
+  const items=entries().filter(e=>e.type==='Timeline'||e.type==='Major event'||e.type==='Event'||e.type==='Date/Period').sort((a,b)=>((a.evdate||a.eventDate||'')).localeCompare((b.evdate||b.eventDate||'')||(+a.chapNum||0)-(+b.chapNum||0)));
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  const impColor={major:'#D4537E',minor:'#888780',normal:'#534AB7'};
-  list.innerHTML=`<div style="padding-left:6px;">` + items.map((item,i)=>{
-    const col=impColor[item.importance||'normal']||'#534AB7';
-    const involved=item.involved?.length?item.involved.map(c=>{const cc=getCharColor(c);return`<span class="char-badge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join(''):'';
-    return `<div class="timeline-item">
-      ${i<items.length-1?`<div class="timeline-line" style="background:${col}44;"></div>`:''}
-      <div class="timeline-dot" style="background:${col};"></div>
-      <div class="timeline-body">
-        <div class="timeline-date">${item.eventDate||item.dateVal||''}${item.chapNum?` · Ch.${item.chapNum}`:''}${item.pageNum?` · p.${item.pageNum}`:''}</div>
-        <div class="timeline-content">${item.content}</div>
-        ${item.location?`<div class="timeline-sub">📍 ${item.location}</div>`:''}
-        ${involved?`<div class="involved-row" style="margin-top:4px;">${involved}</div>`:''}
-        ${item.note?`<div class="entry-note">${item.note}</div>`:''}
-        <div class="entry-actions" style="margin-top:4px;">
-          <button class="btn-edit" onclick="editEntry(${item.id})">Edit</button>
-          <button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button>
-        </div>
+  const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780'};
+  list.innerHTML=`<div style="padding-left:6px;">`+items.map((item,i)=>{
+    const col=icol[item.importance||'normal']||'#534AB7';
+    const isME=item.type==='Major event';
+    const meIcon={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡','Life-changing moment':'⭐',Other:'📌'}[item.metype]||'';
+    const invB=item.involved?.length?item.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join(''):'';
+    return`<div class="titem">
+      ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
+      <div class="tdot" style="background:${col};"></div>
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:600;color:var(--t2);">${item.evdate||item.eventDate||item.dateVal||''}${item.chapNum?` · Ch.${item.chapNum}`:''}${item.pageNum?` · p.${item.pageNum}`:''}</div>
+        <div style="font-size:13px;line-height:1.5;">${isME?`${meIcon} <strong>${item.metype||'Event'}:</strong> `:''} ${item.content}</div>
+        ${item.location?`<div style="font-size:11px;color:var(--t3);">📍 ${item.location}</div>`:''}
+        ${invB?`<div class="involved-row" style="margin-top:3px;">${invB}</div>`:''}
+        ${item.note?`<div class="enote">${item.note}</div>`:''}
+        <div class="eactions"><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>`;
   }).join('')+'</div>';
 }
 
-// ── MAP / LOCATIONS ────────────────────────────────────────────────────────
+// ── MAP ─────────────────────────────────────────────────────────────────────
 function renderMap(){
-  const list=document.getElementById('map-locations-list');
+  const list=document.getElementById('map-list');
   const empty=document.getElementById('map-empty');
-  const items=entries().filter(e=>e.location&&e.location.trim());
+  const items=entries().filter(e=>e.location?.trim());
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  const locGroups={};
-  items.forEach(e=>{const l=e.location.trim();if(!locGroups[l])locGroups[l]=[];locGroups[l].push(e);});
-  list.innerHTML=Object.entries(locGroups).map(([loc,es])=>{
-    return `<div class="location-pin">
-      <div class="pin-dot" style="background:var(--accent);margin-top:6px;flex-shrink:0;width:10px;height:10px;border-radius:50%;"></div>
-      <div style="flex:1;">
-        <div style="font-weight:600;font-size:14px;margin-bottom:6px;">📍 ${loc}</div>
-        ${es.map(e=>`<div style="font-size:13px;color:var(--t2);padding:4px 0;border-top:0.5px solid var(--cb);">
-          <span class="tag tag-${typeKey(e.type)}" style="font-size:10px;">${e.type}</span>
-          ${e.chapNum?`<span class="page-badge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="page-badge">p.${e.pageNum}</span>`:''}
-          <div style="margin-top:3px;">${(e.charName||e.content).slice(0,80)}</div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-  }).join('');
+  const groups={};items.forEach(e=>{const l=e.location.trim();if(!groups[l])groups[l]=[];groups[l].push(e);});
+  list.innerHTML=Object.entries(groups).map(([loc,es])=>`<div class="locpin">
+    <div style="font-weight:600;font-size:13px;margin-bottom:6px;">📍 ${loc}</div>
+    ${es.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-top:0.5px solid var(--cb);display:flex;align-items:center;gap:6px;">
+      <span class="tag tag-${tk(e.type)}">${e.type}</span>
+      ${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}
+      <span style="flex:1;">${(e.cn||e.content).slice(0,60)}</span>
+      <button class="btn-edit" onclick="editEntry(${e.id})">Edit</button>
+    </div>`).join('')}
+  </div>`).join('');
 }
 
 // ── VOCABULARY ─────────────────────────────────────────────────────────────
@@ -1062,37 +1135,21 @@ function renderWords(){
   const items=entries().filter(e=>e.type==='Word / Vocabulary').sort((a,b)=>a.content.localeCompare(b.content));
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  list.innerHTML=items.map(e=>`<div class="char-detail-item">
-    <div style="font-size:16px;font-weight:700;color:var(--accent);">${e.content}</div>
-    ${e.definition?`<div style="font-size:14px;color:var(--text);margin-top:4px;">${e.definition}</div>`:''}
-    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-      ${e.wordSource?`<span class="page-badge">Source: ${e.wordSource}</span>`:''}
-      ${e.chapNum?`<span class="page-badge">Ch.${e.chapNum}</span>`:''}
-      ${e.pageNum?`<span class="page-badge">p.${e.pageNum}</span>`:''}
+  list.innerHTML=items.map(e=>`<div class="citem">
+    <div style="font-size:15px;font-weight:700;color:var(--accent);">${e.content}</div>
+    ${e.definition?`<div style="font-size:13px;margin-top:3px;">${e.definition}</div>`:''}
+    <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">
+      ${e.wsrc?`<span class="pbadge">Source: ${e.wsrc}</span>`:''}
+      ${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}
     </div>
-    ${e.note?`<div class="entry-note">${e.note}</div>`:''}
-    <div class="entry-actions">
-      <button class="btn-edit" onclick="editEntry(${e.id})">Edit</button>
-      <button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button>
-    </div>
+    ${e.note?`<div class="enote">${e.note}</div>`:''}
+    <div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button></div>
   </div>`).join('');
 }
 
 // ── EXPORT / IMPORT ─────────────────────────────────────────────────────────
-function exportData(){
-  const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();
-}
-function importData(){
-  const input=document.createElement('input');input.type='file';input.accept='.json';
-  input.onchange=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{try{Object.assign(library,JSON.parse(ev.target.result));save();renderLibrary();alert('Imported!');}catch{alert('Invalid file.');}};
-    reader.readAsText(file);
-  };input.click();
-}
+function exportData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
+function importData(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{Object.assign(library,JSON.parse(ev.target.result));save();renderLibrary();alert('Imported!');}catch{alert('Invalid file.');}};reader.readAsText(file);};input.click();}
 
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 load();renderLibrary();
