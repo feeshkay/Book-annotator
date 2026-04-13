@@ -1,11 +1,11 @@
 {
   "name": "Book Annotator",
   "short_name": "Annotator",
-  "description": "Your personal book annotation journal",
-  "start_url": "/index.html",
+  "description": "A personal book annotation journal",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#FAF8F4",
-  "theme_color": "#2C2825",
+  "background_color": "#1a1412",
+  "theme_color": "#1a1412",
   "orientation": "portrait",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
