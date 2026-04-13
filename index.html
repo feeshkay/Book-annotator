@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Annotator"/>
+<meta name="theme-color" content="#1a1412"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="apple-touch-icon" href="./icons/icon-192.png"/>
+<title>Book Annotator</title>
+<style>
+:root{
+  --bg:#faf9f6;--bg2:#f0ede6;--bg3:#e8e3d8;
+  --card:#ffffff;--card-border:rgba(0,0,0,0.09);
+  --text:#1a1410;--text2:#6b6457;--text3:#b0a898;
+  --accent:#534AB7;--accent-light:#EEEDFE;--accent-mid:#7F77DD;
+  --green:#0F6E56;--green-light:#E1F5EE;
+  --coral:#993C1D;--coral-light:#FAECE7;
+  --blue:#185FA5;--blue-light:#E6F1FB;
+  --amber:#854F0B;--amber-light:#FAEEDA;
+  --pink:#993556;--pink-light:#FBEAF0;
+  --gray:#5F5E5A;--gray-light:#F1EFE8;
+  --olive:#3B6D11;--olive-light:#EAF3DE;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --radius:10px;--radius-lg:14px;--radius-xl:18px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1a1412;--bg2:#221e1a;--bg3:#2a2420;
+    --card:#2a2420;--card-border:rgba(255,255,255,0.09);
+    --text:#f0ebe2;--text2:#a09880;--text3:#5a5248;
+    --accent-light:#2a2660;--accent-mid:#9f99e8;
+    --green-light:#0a2e25;--coral-light:#2e1a12;
+    --blue-light:#0c2040;--amber-light:#2a1e08;
+    --pink-light:#2a1020;--gray-light:#201e1c;
+    --olive-light:#162010;--red-light:#2a1010;
+  }
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding-top:var(--safe-top);padding-bottom:var(--safe-bot);overflow-x:hidden;}
+.screen{display:none;flex-direction:column;height:calc(100vh - var(--safe-top) - var(--safe-bot));overflow:hidden;}
+.screen.active{display:flex;}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;background:var(--bg);border-bottom:0.5px solid var(--card-border);flex-shrink:0;}
+.topbar-title{font-size:17px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scroll-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--radius);transition:all 0.15s;}
+.btn{background:var(--bg2);color:var(--text);padding:8px 16px;font-size:14px;font-weight:500;border:0.5px solid var(--card-border);}
+.btn:active{opacity:0.7;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:active{background:#3C3489;}
+.btn-icon{background:transparent;color:var(--accent);font-size:14px;font-weight:600;padding:4px 2px;}
+.btn-back{background:transparent;color:var(--accent);font-size:15px;font-weight:500;padding:4px 0;display:flex;align-items:center;gap:3px;}
+.btn-back::before{content:"‹";font-size:20px;line-height:1;}
+.book-card{background:var(--card);border-radius:var(--radius-lg);border:0.5px solid var(--card-border);padding:16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:flex-start;gap:12px;}
+.book-card:active{opacity:0.7;}
+.book-spine{width:36px;height:52px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;writing-mode:vertical-rl;letter-spacing:0.08em;overflow:hidden;}
+.book-info{flex:1;min-width:0;}
+.book-title{font-size:16px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.book-author{font-size:13px;color:var(--text2);margin-bottom:6px;}
+.book-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.genre-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--accent-light);color:var(--accent);}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.status-reading{background:#1D9E75;}.status-finished{background:#378ADD;}.status-want{background:#888780;}
+.book-count{font-size:12px;color:var(--text3);}
+.sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-end;}
+.sheet-overlay.open{display:flex;}
+.sheet{background:var(--bg);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:20px 16px calc(20px + var(--safe-bot));width:100%;max-height:92vh;overflow-y:auto;}
+.sheet-handle{width:36px;height:4px;background:var(--text3);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:17px;font-weight:600;margin-bottom:16px;}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.form-group label{font-size:12px;color:var(--text2);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;}
+input,select,textarea{font-family:inherit;font-size:16px;border:0.5px solid var(--card-border);border-radius:var(--radius);padding:10px 12px;background:var(--bg2);color:var(--text);outline:none;width:100%;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent-mid);}
+textarea{resize:none;min-height:80px;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-actions{display:flex;gap:10px;margin-top:4px;}
+.form-actions .btn{flex:1;padding:12px;font-size:15px;}
+.tab-bar{display:flex;background:var(--bg);border-bottom:0.5px solid var(--card-border);flex-shrink:0;}
+.tab{flex:1;padding:10px 4px;font-size:13px;font-weight:500;color:var(--text2);background:transparent;border-bottom:2px solid transparent;border-radius:0;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;}.panel.active{display:block;}
+.entry-card{background:var(--card);border-radius:var(--radius-lg);border:0.5px solid var(--card-border);padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--accent-mid);}
+.entry-card.quote{border-left-color:#1D9E75;}
+.entry-card.character,.entry-card.person,.entry-card.figure,.entry-card.suspect{border-left-color:#D85A30;}
+.entry-card.theme{border-left-color:#378ADD;}.entry-card.chapter{border-left-color:#BA7517;}
+.entry-card.setting{border-left-color:#D4537E;}.entry-card.relationship{border-left-color:#888780;}
+.entry-card.symbol{border-left-color:#639922;}.entry-card.argument,.entry-card.redflag{border-left-color:#A32D2D;}
+.entry-card.concept,.entry-card.keyidea{border-left-color:#185FA5;}.entry-card.evidence{border-left-color:#0F6E56;}
+.entry-meta{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.tag-quote{background:var(--green-light);color:var(--green);}
+.tag-character,.tag-person,.tag-figure,.tag-suspect{background:var(--coral-light);color:var(--coral);}
+.tag-theme{background:var(--blue-light);color:var(--blue);}
+.tag-chapter{background:var(--amber-light);color:var(--amber);}
+.tag-setting{background:var(--pink-light);color:var(--pink);}
+.tag-relationship{background:var(--gray-light);color:var(--gray);}
+.tag-symbol{background:var(--olive-light);color:var(--olive);}
+.tag-argument,.tag-redflag{background:var(--red-light);color:var(--red);}
+.tag-concept,.tag-keyidea{background:var(--blue-light);color:var(--blue);}
+.tag-evidence{background:var(--green-light);color:var(--green);}
+.tag-default{background:var(--accent-light);color:var(--accent);}
+.entry-link-badge{font-size:11px;color:var(--accent);background:var(--accent-light);padding:2px 8px;border-radius:20px;}
+.page-badge{font-size:11px;color:var(--text3);background:var(--bg2);padding:2px 7px;border-radius:20px;border:0.5px solid var(--card-border);}
+.entry-content{font-size:14px;line-height:1.55;color:var(--text);}
+.entry-note{font-size:13px;color:var(--text2);margin-top:4px;font-style:italic;}
+.entry-actions{display:flex;justify-content:flex-end;margin-top:6px;}
+.btn-del{background:transparent;color:var(--text3);font-size:12px;padding:2px 6px;}
+.btn-del:active{color:#E24B4A;}
+.filter-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.filter-scroll::-webkit-scrollbar{display:none;}
+.chip{white-space:nowrap;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:0.5px solid var(--card-border);background:var(--bg2);color:var(--text2);}
+.chip.active{background:var(--accent-light);color:var(--accent);border-color:var(--accent-mid);}
+.char-list-card{border-radius:var(--radius-lg);border:0.5px solid var(--card-border);padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;}
+.char-list-card:active{opacity:0.7;}
+.char-avatar{width:42px;height:42px;border-radius:50%;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.char-list-name{font-size:15px;font-weight:600;margin-bottom:2px;}
+.char-list-sub{font-size:12px;color:var(--text2);}
+.char-chevron{color:var(--text3);font-size:18px;}
+.char-detail-hero{padding:20px 16px 16px;border-bottom:0.5px solid var(--card-border);display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.char-detail-avatar{width:56px;height:56px;border-radius:50%;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.char-detail-name{font-size:20px;font-weight:700;margin-bottom:2px;}
+.char-detail-desc{font-size:13px;color:var(--text2);font-style:italic;}
+.char-section{margin-bottom:18px;}
+.char-section-label{font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px;}
+.char-detail-item{background:var(--card);border:0.5px solid var(--card-border);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;font-size:14px;line-height:1.5;}
+.char-detail-item .item-label{font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:3px;}
+.char-detail-item .item-page{font-size:11px;color:var(--text3);margin-top:5px;}
+.rel-pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-right:4px;}
+.web-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px;}
+.empty{text-align:center;padding:48px 16px;color:var(--text3);}
+.empty-icon{font-size:40px;margin-bottom:12px;}
+.empty-text{font-size:15px;font-weight:500;}
+.empty-sub{font-size:13px;margin-top:6px;}
+.fab{position:fixed;bottom:calc(24px + var(--safe-bot));right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(83,74,183,0.35);z-index:50;border:none;}
+.fab:active{transform:scale(0.93);}
+</style>
+</head>
+<body>
+
+<!-- LIBRARY -->
+<div id="lib-screen" class="screen active">
+  <div class="topbar">
+    <div class="topbar-title">My Books</div>
+    <button class="btn-icon" onclick="openSheet()">+ New</button>
+  </div>
+  <div class="scroll-body">
+    <div id="book-list"></div>
+    <div id="lib-empty" class="empty" style="display:none">
+      <div class="empty-icon">📚</div>
+      <div class="empty-text">No books yet</div>
+      <div class="empty-sub">Tap + New to start your first log</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOK -->
+<div id="book-screen" class="screen">
+  <div class="topbar">
+    <button class="btn-back" onclick="goLib()"></button>
+    <div class="topbar-title" id="bs-title" style="font-size:15px;"></div>
+    <span id="bs-genre" class="genre-badge"></span>
+  </div>
+  <div class="tab-bar" id="tab-bar"></div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="panel-wrap">
+    <div id="log-panel" class="panel active" style="padding:14px 14px 100px;">
+      <div class="filter-scroll" id="filter-bar"></div>
+      <div id="entries-list"></div>
+      <div id="log-empty" class="empty" style="display:none">
+        <div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div>
+        <div class="empty-sub">Tap + to add your first annotation</div>
+      </div>
+    </div>
+    <div id="chars-panel" class="panel" style="padding:14px 14px 100px;">
+      <div id="chars-list"></div>
+      <div id="chars-empty" class="empty" style="display:none">
+        <div class="empty-icon">👤</div><div class="empty-text">No characters yet</div>
+        <div class="empty-sub">Log a Character in the Log tab first</div>
+      </div>
+    </div>
+    <div id="web-panel" class="panel" style="padding:10px 14px 100px;">
+      <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px;">Tap a character to view their profile</div>
+      <div class="web-wrap">
+        <svg id="web-svg" style="width:100%;max-width:500px;display:block;margin:0 auto;" height="480" viewBox="0 0 340 480"></svg>
+      </div>
+      <div id="web-empty" class="empty" style="display:none">
+        <div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div>
+        <div class="empty-sub">Add characters to see their connections here</div>
+      </div>
+    </div>
+  </div>
+  <button class="fab" onclick="openAddSheet()">+</button>
+</div>
+
+<!-- CHARACTER DETAIL -->
+<div id="char-screen" class="screen">
+  <div class="topbar">
+    <button class="btn-back" id="char-back-btn"></button>
+    <div class="topbar-title" id="char-screen-title" style="font-size:15px;"></div>
+  </div>
+  <div class="char-detail-hero" id="char-hero"></div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;" id="char-detail-body"></div>
+</div>
+
+<!-- NEW BOOK SHEET -->
+<div class="sheet-overlay" id="new-book-overlay" onclick="closeSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">New book</div>
+    <div class="form-group"><label>Title</label><input type="text" id="nb-title" placeholder="e.g. East of Eden"/></div>
+    <div class="form-group"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Genre</label>
+        <select id="nb-genre">
+          <option value="fiction">Fiction</option><option value="nonfiction">Non-Fiction</option>
+          <option value="memoir">Memoir / Bio</option><option value="mystery">Mystery / Thriller</option>
+          <option value="scifi">Sci-Fi / Fantasy</option><option value="history">History</option>
+          <option value="selfhelp">Self-Help</option><option value="poetry">Poetry</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="nb-status">
+          <option value="reading">Reading</option><option value="finished">Finished</option><option value="want">Want to read</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="createBook()">Create log</button>
+      <button class="btn" onclick="closeSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ENTRY SHEET -->
+<div class="sheet-overlay" id="add-entry-overlay" onclick="closeAddSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add annotation</div>
+    <div class="form-group"><label>What is this?</label><select id="ae-type" onchange="onAeTypeChange()"></select></div>
+    <div class="form-group" id="ae-link-group" style="display:none"><label id="ae-link-label">Link to character</label><select id="ae-link"></select></div>
+    <div class="form-group" id="ae-charb-group" style="display:none"><label>Character B</label><select id="ae-charb"></select></div>
+    <div class="form-group" id="ae-reltype-group" style="display:none"><label>Relationship type</label><input type="text" id="ae-reltype" placeholder="e.g. rivals, siblings…"/></div>
+    <div class="form-row-2" id="ae-chappage-row" style="display:none">
+      <div class="form-group"><label>Chapter #</label><input type="number" id="ae-chapnum" min="1" placeholder="e.g. 3"/></div>
+      <div class="form-group"><label>Page #</label><input type="number" id="ae-pagenum" min="1" placeholder="e.g. 47"/></div>
+    </div>
+    <div class="form-group" id="ae-pageonly-row" style="display:none">
+      <label>Page #</label><input type="number" id="ae-pagenum2" min="1" placeholder="e.g. 47"/>
+    </div>
+    <div class="form-group" id="ae-date-group" style="display:none"><label>Date / period</label><input type="text" id="ae-date" placeholder="e.g. 1945, ca. 200 BCE"/></div>
+    <div class="form-group"><label id="ae-content-label">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+    <div class="form-group"><label>Your note (optional)</label><input type="text" id="ae-note" placeholder="Your thoughts…"/></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="addEntry()">Add</button>
+      <button class="btn" onclick="closeAddSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GENRES={
+  fiction:   {tabs:['log','chars','web'],types:['Quote','Character','Characteristic','Relationship','Chapter','Setting','Theme','Symbol','Narrator quote']},
+  nonfiction:{tabs:['log','web'],        types:['Quote','Argument','Concept','Evidence','Chapter','Theme','Author note','Question']},
+  memoir:    {tabs:['log','chars','web'],types:['Quote','Person','Characteristic','Relationship','Event','Reflection','Theme','Setting']},
+  mystery:   {tabs:['log','chars','web'],types:['Quote','Character','Clue','Red herring','Suspect','Chapter','Setting','Plot twist','Theme']},
+  scifi:     {tabs:['log','chars','web'],types:['Quote','Character','Characteristic','World element','Faction','Chapter','Setting','Theme','Symbol']},
+  history:   {tabs:['log','web'],        types:['Quote','Event','Figure','Argument','Evidence','Theme','Date/Period','Place']},
+  selfhelp:  {tabs:['log','web'],        types:['Key idea','Quote','Exercise','Principle','Chapter','Question','Actionable','Objection']},
+  poetry:    {tabs:['log','web'],        types:['Line/stanza','Theme','Image','Technique','Poem','Emotion','Symbol']},
+};
+const GENRE_LABELS={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir / Bio',mystery:'Mystery',scifi:'Sci-Fi / Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry'};
+const STATUS_LABELS={reading:'Reading',finished:'Finished',want:'Want to read'};
+const SPINE_COLORS=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D11','#A32D2D'];
+const CHAR_TYPES=['Character','Person','Figure','Suspect'];
+const LINK_TYPES=['Characteristic','Relationship','Clue','Red herring','Faction','Quote','Reflection','Plot twist'];
+const CHAR_PALETTE=[
+  {bg:'#FAECE7',text:'#993C1D',stroke:'#D85A30'},
+  {bg:'#E6F1FB',text:'#185FA5',stroke:'#378ADD'},
+  {bg:'#E1F5EE',text:'#0F6E56',stroke:'#1D9E75'},
+  {bg:'#FBEAF0',text:'#993556',stroke:'#D4537E'},
+  {bg:'#EAF3DE',text:'#3B6D11',stroke:'#639922'},
+  {bg:'#FAEEDA',text:'#854F0B',stroke:'#EF9F27'},
+  {bg:'#EEEDFE',text:'#534AB7',stroke:'#7F77DD'},
+  {bg:'#FCEBEB',text:'#A32D2D',stroke:'#E24B4A'},
+  {bg:'#F1EFE8',text:'#444441',stroke:'#888780'},
+  {bg:'#E1F5EE',text:'#085041',stroke:'#5DCAA5'},
+];
+
+let library={};
+let currentId=null;
+let currentCharName=null;
+let activeFilter='all';
+let activeTab='log';
+let charColorMap={};
+
+function save(){localStorage.setItem('book-annotator-v2',JSON.stringify(library));}
+function load(){try{const d=localStorage.getItem('book-annotator-v2');if(d)library=JSON.parse(d);}catch(e){library={};}}
+function book(){return library[currentId];}
+function entries(){return book()?.entries||[];}
+
+function getCharColor(charName){
+  if(!currentId)return CHAR_PALETTE[0];
+  if(!charColorMap[currentId])charColorMap[currentId]={};
+  const map=charColorMap[currentId];
+  if(map[charName]===undefined){
+    const used=Object.values(map);
+    let idx=0;while(used.includes(idx)&&idx<CHAR_PALETTE.length-1)idx++;
+    map[charName]=idx;
+  }
+  return CHAR_PALETTE[map[charName]%CHAR_PALETTE.length];
+}
+
+// pre-populate color map from existing entries so colors are stable
+function initColorMap(){
+  if(!currentId)return;
+  charColorMap[currentId]={};
+  entries().filter(e=>CHAR_TYPES.includes(e.type)).forEach(e=>getCharColor(e.content));
+}
+
+function show(on,...off){
+  off.forEach(s=>document.getElementById(s).classList.remove('active'));
+  document.getElementById(on).classList.add('active');
+}
+
+// LIBRARY
+function renderLibrary(){
+  const books=Object.values(library).sort((a,b)=>b.created-a.created);
+  const list=document.getElementById('book-list');
+  const empty=document.getElementById('lib-empty');
+  if(!books.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  list.innerHTML=books.map((b,i)=>{
+    const col=SPINE_COLORS[i%SPINE_COLORS.length];
+    const ini=b.title.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
+    return `<div class="book-card" onclick="openBook('${b.id}')">
+      <div class="book-spine" style="background:${col}">${ini}</div>
+      <div class="book-info">
+        <div class="book-title">${b.title}</div>
+        <div class="book-author">${b.author||'—'}</div>
+        <div class="book-meta">
+          <span class="genre-badge">${GENRE_LABELS[b.genre]||b.genre}</span>
+          <span class="status-dot status-${b.status}"></span>
+          <span class="book-count">${STATUS_LABELS[b.status]} · ${b.entries.length} entr${b.entries.length===1?'y':'ies'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openBook(id){
+  currentId=id;activeFilter='all';activeTab='log';
+  initColorMap();
+  const b=book();
+  document.getElementById('bs-title').textContent=b.title;
+  document.getElementById('bs-genre').textContent=GENRE_LABELS[b.genre]||b.genre;
+  show('book-screen','lib-screen');
+  buildTabs();buildTypeSelect();renderAll();
+}
+
+function goLib(){currentId=null;show('lib-screen','book-screen');renderLibrary();}
+
+// SHEETS
+function openSheet(){document.getElementById('new-book-overlay').classList.add('open');document.getElementById('nb-title').focus();}
+function closeSheet(e){if(!e||e.target===document.getElementById('new-book-overlay'))document.getElementById('new-book-overlay').classList.remove('open');}
+function openAddSheet(){buildTypeSelect();document.getElementById('add-entry-overlay').classList.add('open');onAeTypeChange();}
+function closeAddSheet(e){
+  if(!e||e.target===document.getElementById('add-entry-overlay')){
+    document.getElementById('add-entry-overlay').classList.remove('open');
+    ['ae-content','ae-note','ae-pagenum','ae-pagenum2','ae-reltype','ae-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  }
+}
+
+function createBook(){
+  const title=document.getElementById('nb-title').value.trim();if(!title)return;
+  const id='b'+Date.now();
+  library[id]={id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,entries:[],created:Date.now()};
+  document.getElementById('nb-title').value='';document.getElementById('nb-author').value='';
+  closeSheet();save();renderLibrary();
+}
+
+// TABS
+function buildTabs(){
+  const cfg=GENRES[book().genre];
+  const labels={log:'Log',chars:'Characters',web:'Web'};
+  document.getElementById('tab-bar').innerHTML=cfg.tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${labels[t]||t}</button>`).join('');
+  cfg.tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
+}
+
+function switchTab(t,btn){
+  activeTab=t;
+  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
+  const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
+  if(t==='web')renderWeb();if(t==='chars')renderChars();
+}
+
+function forceTab(t){
+  activeTab=t;
+  document.querySelectorAll('#tab-bar .tab').forEach(b=>{
+    const lbl={log:'Log',chars:'Characters',web:'Web'};
+    if(b.textContent===lbl[t])b.classList.add('active');else b.classList.remove('active');
+  });
+  document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
+  const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
+  if(t==='web')renderWeb();
+}
+
+// FORM
+function buildTypeSelect(){
+  if(!currentId)return;
+  document.getElementById('ae-type').innerHTML=GENRES[book().genre].types.map(t=>`<option>${t}</option>`).join('');
+}
+
+function onAeTypeChange(){
+  if(!currentId)return;
+  const type=document.getElementById('ae-type').value;
+  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type)).map(e=>e.content);
+  const isChar=CHAR_TYPES.includes(type);
+  const isRel=type==='Relationship';
+  const isChap=type==='Chapter';
+  const isDate=type==='Date/Period'||type==='Event';
+  const needsLink=LINK_TYPES.includes(type)&&!isChar;
+
+  const lg=document.getElementById('ae-link-group');
+  lg.style.display=needsLink&&chars.length?'':'none';
+  if(needsLink&&chars.length){
+    document.getElementById('ae-link-label').textContent=isRel?'Character A':'Link to character';
+    document.getElementById('ae-link').innerHTML=chars.map(c=>`<option>${c}</option>`).join('');
+  }
+  document.getElementById('ae-charb-group').style.display=isRel&&chars.length>1?'':'none';
+  document.getElementById('ae-reltype-group').style.display=isRel?'':'none';
+  if(isRel&&chars.length>1)document.getElementById('ae-charb').innerHTML=chars.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('ae-chappage-row').style.display=isChap?'':'none';
+  document.getElementById('ae-pageonly-row').style.display=(!isChap&&!isDate&&!isChar)?'':'none';
+  document.getElementById('ae-date-group').style.display=isDate?'':'none';
+  document.getElementById('ae-content-label').textContent=
+    (type==='Quote'||type==='Line/stanza')?'Quote / passage':
+    isRel?'Describe the relationship':isChap?'Chapter title / number':'Content';
+}
+
+function addEntry(){
+  if(!currentId)return;
+  const type=document.getElementById('ae-type').value;
+  const content=document.getElementById('ae-content').value.trim();
+  if(!content)return;
+  const isChar=CHAR_TYPES.includes(type);
+  const isChap=type==='Chapter';
+  const isDate=type==='Date/Period'||type==='Event';
+  const entry={id:Date.now(),type,content,note:document.getElementById('ae-note').value.trim(),links:[]};
+  if(document.getElementById('ae-link-group').style.display!=='none'){
+    const v=document.getElementById('ae-link').value;if(v)entry.links.push(v);
+  }
+  if(type==='Relationship'){
+    if(document.getElementById('ae-charb-group').style.display!=='none'){
+      entry.charB=document.getElementById('ae-charb').value;
+      if(entry.links[0])entry.links.push(entry.charB);
+    }
+    entry.relType=document.getElementById('ae-reltype').value;
+  }
+  if(isChap){
+    const cn=document.getElementById('ae-chapnum').value;if(cn)entry.chapNum=cn;
+    const pn=document.getElementById('ae-pagenum').value;if(pn)entry.pageNum=pn;
+  } else if(!isDate&&!isChar){
+    const pn=document.getElementById('ae-pagenum2').value;if(pn)entry.pageNum=pn;
+  }
+  if(isDate){const dv=document.getElementById('ae-date').value;if(dv)entry.dateVal=dv;}
+  if(isChar)getCharColor(content); // assign color on creation
+  book().entries.unshift(entry);
+  save();closeAddSheet();renderAll();buildTypeSelect();
+}
+
+function deleteEntry(id){
+  if(!confirm('Delete this entry?'))return;
+  book().entries=book().entries.filter(e=>e.id!==id);
+  save();renderAll();
+}
+
+// RENDER
+function renderAll(){renderEntries();if(activeTab==='chars')renderChars();if(activeTab==='web')renderWeb();buildFilterBar();}
+
+function typeKey(t){
+  return t.toLowerCase().replace(/[^a-z]/g,'')
+    .replace('narratorquote','quote').replace('authornote','note')
+    .replace('linestanza','note').replace('redherring','redflag')
+    .replace('plottwist','note').replace('worldelement','concept')
+    .replace('dateperiod','concept').replace('actionable','concept');
+}
+
+function buildFilterBar(){
+  const types=[...new Set(entries().map(e=>e.type))];
+  document.getElementById('filter-bar').innerHTML=['all',...types].map(t=>
+    `<button class="chip${activeFilter===t?' active':''}" onclick="setFilter('${t}')">${t==='all'?'All':t}</button>`
+  ).join('');
+}
+function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
+
+function renderEntries(){
+  const list=document.getElementById('entries-list');
+  const empty=document.getElementById('log-empty');
+  let filtered=activeFilter==='all'?entries():entries().filter(e=>e.type===activeFilter);
+  if(!filtered.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  list.innerHTML=filtered.map(e=>{
+    const tk=typeKey(e.type);
+    const isChar=CHAR_TYPES.includes(e.type);
+    const col=isChar?getCharColor(e.content):null;
+    const leftStyle=isChar?`border-left-color:${col.stroke};`:'';
+    const clickAttr=isChar?`onclick="openCharDetail('${e.content.replace(/'/g,"\\'")}',false)" style="${leftStyle}cursor:pointer;"`:
+                           `style="${leftStyle}"`;
+    const tag=`<span class="tag tag-${tk}">${e.type}</span>`;
+    const lb=e.links.length?`<span class="entry-link-badge">${e.links.join(' + ')}</span>`:'';
+    const pg=e.pageNum?`<span class="page-badge">p.${e.pageNum}</span>`:'';
+    const extra=(e.relType?` <em style="font-size:12px;color:var(--text2)">(${e.relType})</em>`:'')
+               +(e.chapNum?` — ch.${e.chapNum}`:'')+(e.dateVal?` — ${e.dateVal}`:'');
+    return `<div class="entry-card ${tk}" ${clickAttr}>
+      <div class="entry-meta">${tag}${lb}${pg}</div>
+      <div class="entry-content">${e.content}${extra}</div>
+      ${e.note?`<div class="entry-note">${e.note}</div>`:''}
+      <div class="entry-actions"><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>
+    </div>`;
+  }).join('');
+}
+
+// CHARACTER LIST
+function renderChars(){
+  const list=document.getElementById('chars-list');
+  const empty=document.getElementById('chars-empty');
+  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type));
+  if(!chars.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  list.innerHTML=chars.map(c=>{
+    const col=getCharColor(c.content);
+    const ini=c.content.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const all=entries();
+    const tc=all.filter(e=>e.links.includes(c.content)&&e.type==='Characteristic').length;
+    const qc=all.filter(e=>e.links.includes(c.content)&&e.type==='Quote').length;
+    const rc=all.filter(e=>e.links.includes(c.content)&&e.type==='Relationship').length;
+    const parts=[tc?`${tc} trait${tc>1?'s':''}`:null,qc?`${qc} quote${qc>1?'s':''}`:null,rc?`${rc} rel${rc>1?'s':''}`:null].filter(Boolean);
+    return `<div class="char-list-card" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${c.content.replace(/'/g,"\\'")}',false)">
+      <div class="char-avatar" style="background:${col.stroke}30;color:${col.text};">${ini}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="char-list-name" style="color:${col.text};">${c.content}</div>
+        <div class="char-list-sub">${parts.length?parts.join(' · '):'No linked entries yet'}</div>
+      </div>
+      <span class="char-chevron">›</span>
+    </div>`;
+  }).join('');
+}
+
+// CHARACTER DETAIL
+function openCharDetail(charName,fromWeb){
+  currentCharName=charName;
+  const col=getCharColor(charName);
+  const all=entries();
+  const charEntry=all.find(e=>CHAR_TYPES.includes(e.type)&&e.content===charName);
+  const ini=charName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  document.getElementById('char-screen-title').textContent=charName;
+  document.getElementById('char-back-btn').onclick=()=>{
+    show('book-screen','char-screen');
+    if(fromWeb)forceTab('web');
+  };
+
+  document.getElementById('char-hero').innerHTML=`
+    <div class="char-detail-avatar" style="background:${col.stroke}28;color:${col.text};">${ini}</div>
+    <div>
+      <div class="char-detail-name" style="color:${col.text};">${charName}</div>
+      ${charEntry?.note?`<div class="char-detail-desc">${charEntry.note}</div>`:''}
+    </div>`;
+
+  const traits=all.filter(e=>e.links.includes(charName)&&e.type==='Characteristic');
+  const quotes=all.filter(e=>e.links.includes(charName)&&e.type==='Quote');
+  const rels=all.filter(e=>e.links.includes(charName)&&e.type==='Relationship');
+  const clues=all.filter(e=>e.links.includes(charName)&&(e.type==='Clue'||e.type==='Red herring'));
+  const refs=all.filter(e=>e.links.includes(charName)&&e.type==='Reflection');
+  const other=all.filter(e=>e.links.includes(charName)&&!['Characteristic','Quote','Relationship','Clue','Red herring','Reflection'].includes(e.type));
+
+  const pageTag=p=>p?`<div class="item-page">p. ${p}</div>`:'';
+  const noteTag=n=>n?`<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:3px;">${n}</div>`:'';
+
+  let html='';
+  if(traits.length){
+    html+=section(col,'Traits & characteristics',traits.map(t=>`<div class="char-detail-item"><div class="item-label" style="color:${col.text};">Trait</div>${t.content}${noteTag(t.note)}${pageTag(t.pageNum)}</div>`).join(''));
+  }
+  if(quotes.length){
+    html+=section(col,'Quotes',quotes.map(q=>`<div class="char-detail-item" style="border-left:3px solid ${col.stroke};border-radius:0 var(--radius) var(--radius) 0;"><div class="item-label" style="color:${col.text};">Said</div>"${q.content}"${noteTag(q.note)}${pageTag(q.pageNum)}</div>`).join(''));
+  }
+  if(rels.length){
+    html+=section(col,'Relationships',rels.map(r=>{
+      const otherName=r.links.find(l=>l!==charName)||(r.charB!==charName?r.charB:'');
+      const oc=otherName?getCharColor(otherName):null;
+      const relBadge=r.relType?`<span class="rel-pill" style="background:${col.stroke}18;color:${col.text};">${r.relType}</span>`:'';
+      return `<div class="char-detail-item">${oc?`<span style="font-weight:700;color:${oc.text};">↔ ${otherName}</span> `:''}${relBadge}<div style="font-size:13px;color:var(--text2);margin-top:5px;">${r.content}</div>${pageTag(r.pageNum)}</div>`;
+    }).join(''));
+  }
+  if(clues.length){
+    html+=section(col,'Clues & red herrings',clues.map(cl=>`<div class="char-detail-item"><div class="item-label" style="color:${col.text};">${cl.type}</div>${cl.content}${pageTag(cl.pageNum)}</div>`).join(''));
+  }
+  if(refs.length){
+    html+=section(col,'Reflections',refs.map(r=>`<div class="char-detail-item">${r.content}${noteTag(r.note)}${pageTag(r.pageNum)}</div>`).join(''));
+  }
+  if(other.length){
+    html+=section(col,'Other entries',other.map(o=>`<div class="char-detail-item"><div class="item-label" style="color:${col.text};">${o.type}</div>${o.content}${pageTag(o.pageNum)}</div>`).join(''));
+  }
+  if(!html)html=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add traits, quotes, or relationships linked to ${charName}</div></div>`;
+
+  document.getElementById('char-detail-body').innerHTML=html;
+  show('char-screen','book-screen');
+}
+
+function section(col,label,content){
+  return `<div class="char-section"><div class="char-section-label" style="color:${col.stroke};">${label}</div>${content}</div>`;
+}
+
+// CONNECTION WEB — characters only
+function renderWeb(){
+  const svg=document.getElementById('web-svg');
+  const empty=document.getElementById('web-empty');
+  svg.innerHTML='';
+  const chars=entries().filter(e=>CHAR_TYPES.includes(e.type));
+  if(!chars.length){svg.style.display='none';empty.style.display='';return;}
+  svg.style.display='';empty.style.display='none';
+
+  const W=340,H=480;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  const nodes=chars.map(c=>({name:c.content,col:getCharColor(c.content)}));
+
+  // edges from Relationship entries that link two characters
+  const edges=[];
+  entries().filter(e=>e.type==='Relationship').forEach(r=>{
+    const a=r.links[0];
+    const b=r.links.length>=2?r.links[1]:(r.charB||null);
+    if(!a||!b||a===b)return;
+    const ai=nodes.findIndex(n=>n.name===a);
+    const bi=nodes.findIndex(n=>n.name===b);
+    if(ai<0||bi<0)return;
+    if(!edges.find(e=>(e.a===ai&&e.b===bi)||(e.a===bi&&e.b===ai)))
+      edges.push({a:ai,b:bi,label:r.relType||''});
+  });
+
+  // layout
+  const cx=W/2,cy=H/2-10;
+  const radius=nodes.length<=1?0:nodes.length===2?90:Math.min(cx-50,cy-60);
+  nodes.forEach((n,i)=>{
+    const a=(2*Math.PI*i/nodes.length)-Math.PI/2;
+    n.x=nodes.length===1?cx:cx+radius*Math.cos(a);
+    n.y=nodes.length===1?cy:cy+radius*Math.sin(a);
+  });
+
+  // draw edges
+  edges.forEach(e=>{
+    const A=nodes[e.a],B=nodes[e.b];
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',A.x);line.setAttribute('y1',A.y);
+    line.setAttribute('x2',B.x);line.setAttribute('y2',B.y);
+    line.setAttribute('stroke',A.col.stroke+'55');line.setAttribute('stroke-width','2');
+    svg.appendChild(line);
+    if(e.label){
+      const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+      const tw=Math.min(e.label.length*5.5+12,120);
+      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-9);bg.setAttribute('width',tw);bg.setAttribute('height',17);
+      bg.setAttribute('rx','8');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);
+      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');
+      lt.setAttribute('font-size','9');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');
+      lt.textContent=e.label.length>16?e.label.slice(0,15)+'…':e.label;svg.appendChild(lt);
+    }
+  });
+
+  // draw nodes
+  nodes.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor='pointer';
+    g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\\'")}',true)`);
+
+    const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',36);
+    ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);
+
+    const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const ti=document.createElementNS('http://www.w3.org/2000/svg','text');
+    ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');
+    ti.setAttribute('font-size','15');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');
+    ti.textContent=ini;g.appendChild(ti);
+
+    // name below
+    const words=n.name.split(' ');
+    const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    tl.setAttribute('x',n.x);tl.setAttribute('y',n.y+44);tl.setAttribute('text-anchor','middle');
+    tl.setAttribute('font-size','11');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
+    if(words.length>1){
+      const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',n.x);s1.setAttribute('dy','0');s1.textContent=words[0];
+      const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',n.x);s2.setAttribute('dy','13');s2.textContent=words.slice(1).join(' ');
+      tl.appendChild(s1);tl.appendChild(s2);
+    } else {tl.textContent=n.name;}
+    g.appendChild(tl);
+    svg.appendChild(g);
+  });
+}
+
+// EXPORT / IMPORT
+function exportData(){
+  const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function importData(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{try{Object.assign(library,JSON.parse(ev.target.result));save();renderLibrary();alert('Imported!');}catch(err){alert('Invalid file.');}};
+    reader.readAsText(file);
+  };input.click();
+}
+
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
+load();renderLibrary();
+</script>
+</body>
+</html>
