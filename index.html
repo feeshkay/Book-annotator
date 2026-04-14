@@ -458,11 +458,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <script>
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 const GENRES={
-  fiction:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Major event','Narrator quote','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary']},
+  fiction:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Major event','Narrator quote','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary']},
   nonfiction:{tabs:['log','timeline','map','words'],types:['Argument','Author note','Chapter','Concept','Evidence','Question','Quote','Theme','Timeline','Word / Vocabulary']},
-  memoir:   {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Event','Major event','Question','Quote','Reflection','Relationship','Setting','Theme','Timeline','Word / Vocabulary']},
-  mystery:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Clue','Major event','Plot twist','Question','Quote','Red herring','Relationship','Setting','Suspect','Theme','Timeline','Word / Vocabulary']},
-  scifi:    {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Faction','Major event','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary','World element']},
+  memoir:   {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Event','Major event','Person','Question','Quote','Reflection','Relationship','Setting','Theme','Timeline','Word / Vocabulary']},
+  mystery:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Clue','Major event','Plot twist','Question','Quote','Red herring','Relationship','Setting','Suspect','Theme','Timeline','Word / Vocabulary']},
+  scifi:    {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Faction','Major event','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary','World element']},
   history:  {tabs:['log','timeline','map','words'],types:['Argument','Date/Period','Evidence','Event','Figure','Major event','Place','Question','Quote','Theme','Timeline','Word / Vocabulary']},
   selfhelp: {tabs:['log','timeline','words'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Objection','Principle','Question','Quote','Timeline','Word / Vocabulary']},
   poetry:   {tabs:['log','words'],types:['Emotion','Image','Line/stanza','Poem','Question','Symbol','Technique','Theme','Word / Vocabulary']},
@@ -757,6 +757,8 @@ function onTypeChange(){
   document.getElementById('ae-me-ex').style.display=isME?'':'none';
   document.getElementById('ae-rel-ex').style.display=isRel?'':'none';
   document.getElementById('ae-common').style.display=isChar?'none':'';
+  // Show involved picker for anything except char entry and relationship (which has its own A/B pickers)
+  // Major event explicitly needs it so characters can be linked
   document.getElementById('ae-inv-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
   document.getElementById('ae-chappage').style.display=isRel?'none':'';
   document.getElementById('ae-clabel').textContent=isQ?'Quote / passage':isChap?'Chapter title or number':isTL?'Event description':isME?'What happened?':'Content';
@@ -807,7 +809,7 @@ function submitEntry(){
   const pgVal=isChar||isRel?'':document.getElementById('ae-pg').value.trim();
   if(pgVal&&!chapNum){const autoC=pageToChapter(pgVal.split('–')[0].split('-')[0]);if(autoC)chapNum=String(autoC);}
 
-  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||'',location:isChar||isRel?'':document.getElementById('ae-loc').value.trim(),involved:isChar||isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value};
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||'',location:isChar?'':document.getElementById('ae-loc').value.trim(),involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value};
 
   if(isChar){entry.nickname=document.getElementById('ae-nick').value.trim();entry.charRole=document.getElementById('ae-crole').value;entry.charStatus=document.getElementById('ae-cstatus').value;entry.charIntro=document.getElementById('ae-cintro').value.trim();entry.charDesc=document.getElementById('ae-cdesc').value.trim();}
   if(type==='Quote'||type==='Narrator quote'||type==='Line/stanza'){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;}
