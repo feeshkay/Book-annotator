@@ -12,8 +12,7 @@
 <title>Book Annotator</title>
 <style>
 :root{
-  --bg:#faf9f6;--bg2:#f0ede6;--bg3:#e8e3d8;
-  --card:#ffffff;--cb:rgba(0,0,0,0.09);
+  --bg:#faf9f6;--bg2:#f0ede6;--bg3:#e8e3d8;--card:#ffffff;--cb:rgba(0,0,0,0.09);
   --text:#1a1410;--t2:#6b6457;--t3:#b0a898;
   --accent:#534AB7;--al:#EEEDFE;--am:#7F77DD;
   --r:10px;--rl:14px;--rx:18px;
@@ -42,8 +41,7 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);tra
 /* library */
 .book-card{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:flex-start;gap:12px;}
 .book-card:active{opacity:0.7;}
-.book-cover{width:52px;height:74px;border-radius:6px;flex-shrink:0;object-fit:cover;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.book-cover-text{font-size:10px;font-weight:700;color:#fff;text-align:center;line-height:1.2;padding:4px;}
+.book-cover{width:52px;height:74px;border-radius:6px;flex-shrink:0;overflow:hidden;background:var(--bg2);}
 .book-info{flex:1;min-width:0;}
 .book-title{font-size:15px;font-weight:600;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .book-author{font-size:13px;color:var(--t2);margin-bottom:5px;}
@@ -69,6 +67,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .fa{display:flex;gap:8px;margin-top:6px;}
 .fa .btn{flex:1;padding:11px;font-size:14px;}
 .divider{height:0.5px;background:var(--cb);margin:14px 0;}
+.slabel{font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;}
 /* tabs */
 .tab-bar{display:flex;background:var(--bg);border-bottom:0.5px solid var(--cb);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
 .tab-bar::-webkit-scrollbar{display:none;}
@@ -84,6 +83,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ec.concept,.ec.keyidea{border-left-color:#185FA5;}.ec.evidence{border-left-color:#0F6E56;}
 .ec.question{border-left-color:#7F77DD;}.ec.timeline,.ec.majorevent{border-left-color:#D4537E;}
 .ec.word{border-left-color:#854F0B;}.ec.characteristic{border-left-color:#993C1D;}
+.ec.reference{border-left-color:#2E86C1;}
 .emeta{display:flex;align-items:center;gap:4px;margin-bottom:5px;flex-wrap:wrap;}
 .tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
 .tag-quote{background:#E1F5EE;color:#0F6E56;}.tag-character,.tag-person,.tag-suspect{background:#FAECE7;color:#993C1D;}
@@ -93,11 +93,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .tag-concept,.tag-keyidea{background:#E6F1FB;color:#0C447C;}.tag-evidence{background:#E1F5EE;color:#085041;}
 .tag-question{background:#EEEDFE;color:#534AB7;}.tag-timeline,.tag-majorevent{background:#FBEAF0;color:#993556;}
 .tag-word{background:#FAEEDA;color:#633806;}.tag-characteristic{background:#FAECE7;color:#712B13;}
-.tag-default{background:var(--al);color:var(--accent);}
+.tag-reference{background:#E6F1FB;color:#0C447C;}.tag-default{background:var(--al);color:var(--accent);}
 .pbadge{font-size:10px;color:var(--t3);background:var(--bg2);padding:2px 6px;border-radius:20px;border:0.5px solid var(--cb);white-space:nowrap;}
 .cbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
 .ebadge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
-/* emotion colors */
 .emo-positive{background:#E1F5EE;color:#0F6E56;}
 .emo-neutral{background:#E6F1FB;color:#185FA5;}
 .emo-negative{background:#FCEBEB;color:#A32D2D;}
@@ -112,13 +111,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .fscroll::-webkit-scrollbar{display:none;}
 .chip{white-space:nowrap;font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--t2);}
 .chip.active{background:var(--al);color:var(--accent);border-color:var(--am);}
-/* char list */
+/* char */
 .clcard{border-radius:var(--rl);border:0.5px solid var(--cb);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;}
 .clcard:active{opacity:0.7;}
 .avatar{border-radius:50%;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
-.avatar img{width:100%;height:100%;object-fit:cover;}
-/* char detail */
-.char-hero{padding:16px;border-bottom:0.5px solid var(--cb);display:flex;align-items:flex-start;gap:12px;flex-shrink:0;}
+.char-hero{padding:16px;border-bottom:0.5px solid var(--cb);display:flex;align-items:flex-start;gap:12px;flex-shrink:0;flex-wrap:wrap;}
 .csec{margin-bottom:16px;}
 .csec-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:7px;}
 .citem{background:var(--card);border:0.5px solid var(--cb);border-radius:var(--r);padding:9px 11px;margin-bottom:5px;font-size:13px;line-height:1.5;}
@@ -128,8 +125,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .titem{display:flex;gap:10px;margin-bottom:14px;position:relative;}
 .tdot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:3px;}
 .tline{position:absolute;left:4px;top:14px;bottom:-14px;width:2px;background:var(--cb);}
-/* map */
-.locpin{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;}
 /* web */
 .web-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 /* empty */
@@ -144,24 +139,35 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cpick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
 .cpick{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;opacity:0.4;transition:opacity 0.15s;}
 .cpick.sel{opacity:1;}
-/* photo upload */
-.photo-box{width:100%;height:100px;border:1px dashed var(--cb);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;position:relative;overflow:hidden;}
+/* photo */
+.photo-box{width:100%;height:90px;border:1px dashed var(--cb);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;position:relative;overflow:hidden;}
 .photo-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .photo-box span{font-size:12px;color:var(--t2);position:relative;}
 /* suggestion banner */
-.suggestion-box{background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:13px;}
-.suggestion-box strong{display:block;font-size:12px;color:var(--accent);margin-bottom:5px;}
+.sug-box{background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:13px;}
+.sug-box strong{display:block;font-size:12px;color:var(--accent);margin-bottom:5px;}
 .sug-btn{font-size:12px;padding:4px 10px;background:var(--accent);color:#fff;border-radius:20px;margin:2px 4px 2px 0;display:inline-block;cursor:pointer;}
 /* chapter setup */
 .chap-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;}
 .chap-row input{flex:1;min-width:0;}
-.involved-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;}
-/* section divider label */
-.slabel{font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;}
+/* type hint */
+.type-hint{background:var(--al);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--accent);line-height:1.6;}
+.type-hint strong{display:block;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px;}
+/* questions */
+.q-card{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;border-left:3px solid #7F77DD;}
+/* references */
+.ref-card{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;border-left:3px solid #2E86C1;}
+.ref-type-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.ref-type-book{background:#E1F5EE;color:#0F6E56;}
+.ref-type-watch{background:#FBEAF0;color:#993556;}
+.ref-type-explore{background:#E6F1FB;color:#185FA5;}
+.ref-done{opacity:0.5;text-decoration:line-through;}
+/* involved row */
+.inv-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;}
+/* locpin */
+.locpin{background:var(--card);border-radius:var(--rl);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:8px;}
 /* word */
 .word-def{font-size:12px;color:var(--t2);margin-top:3px;font-style:italic;}
-/* relationship type label in web */
-.rel-tag{font-size:9px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -173,10 +179,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" onclick="openSheet('nb-overlay')">+ New</button>
   </div>
   <div class="scroll-body">
+    <div style="font-size:11px;color:var(--t3);text-align:center;padding:4px 0 10px;">Your data stays on this device — private to you.</div>
     <div id="book-list"></div>
     <div id="lib-empty" class="empty" style="display:none">
-      <div class="empty-icon">📚</div><div class="empty-text">No books yet</div>
-      <div class="empty-sub">Tap + New to start</div>
+      <div class="empty-icon">📚</div><div class="empty-text">No books yet</div><div class="empty-sub">Tap + New to start</div>
     </div>
   </div>
 </div>
@@ -186,7 +192,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="topbar">
     <button class="btn-back" onclick="goLib()"></button>
     <div class="topbar-title" id="bs-title"></div>
-    <button class="btn-icon" id="bs-settings-btn" onclick="openBookSettings()" style="font-size:18px;">⚙</button>
+    <button class="btn-icon" onclick="openBookSettings()" style="font-size:18px;">⚙</button>
   </div>
   <div class="tab-bar" id="tab-bar"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="panel-wrap">
@@ -216,6 +222,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="words-list"></div>
       <div id="words-empty" class="empty" style="display:none"><div class="empty-icon">📖</div><div class="empty-text">No vocabulary yet</div></div>
     </div>
+    <div id="questions-panel" class="panel" style="padding:12px 12px 90px;">
+      <div id="questions-list"></div>
+      <div id="q-empty" class="empty" style="display:none"><div class="empty-icon">❓</div><div class="empty-text">No questions yet</div><div class="empty-sub">Add a Question entry to track uncertainties</div></div>
+    </div>
+    <div id="refs-panel" class="panel" style="padding:12px 12px 90px;">
+      <div class="fscroll" id="ref-filter-bar"></div>
+      <div id="refs-list"></div>
+      <div id="refs-empty" class="empty" style="display:none"><div class="empty-icon">🔖</div><div class="empty-text">No references yet</div><div class="empty-sub">Add a Reference entry to track things to read, watch, or explore</div></div>
+    </div>
   </div>
   <button class="fab" onclick="openAddSheet()">+</button>
 </div>
@@ -225,7 +240,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="topbar">
     <button class="btn-back" id="char-back-btn"></button>
     <div class="topbar-title" id="char-screen-title"></div>
-    <button class="btn-icon" id="char-edit-btn" style="font-size:14px;">Edit</button>
+    <button class="btn-icon" id="char-edit-btn" style="font-size:13px;">Edit</button>
+    <button class="btn-icon" id="char-add-rel-btn" style="font-size:13px;margin-left:2px;">+ Rel</button>
   </div>
   <div class="char-hero" id="char-hero"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 40px;" id="char-body"></div>
@@ -235,7 +251,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div class="sheet-overlay" id="nb-overlay" onclick="mc('nb-overlay',event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title" id="nb-title-label">New book</div>
+    <div class="sheet-title" id="nb-sheet-title">New book</div>
     <input type="hidden" id="nb-edit-id"/>
     <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden"/></div>
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
@@ -249,18 +265,38 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </select>
       </div>
       <div class="fg"><label>Status</label>
-        <select id="nb-status"><option value="reading">Reading</option><option value="finished">Finished</option><option value="want">Want to read</option></select>
+        <select id="nb-status" onchange="toggleRatingVisibility()">
+          <option value="reading">Reading</option><option value="finished">Finished</option><option value="want">Want to read</option>
+        </select>
       </div>
     </div>
     <div class="r2">
       <div class="fg"><label>Date started</label><input type="date" id="nb-ds"/></div>
       <div class="fg"><label>Date finished</label><input type="date" id="nb-de"/></div>
     </div>
+    <div class="fg" id="nb-rating-group" style="display:none">
+      <label>Rating</label>
+      <select id="nb-rating">
+        <option value="">Not yet rated</option>
+        <option value="1">⭐ — Didn't enjoy it</option>
+        <option value="2">⭐⭐ — It was okay</option>
+        <option value="3">⭐⭐⭐ — Liked it</option>
+        <option value="4">⭐⭐⭐⭐ — Really enjoyed it</option>
+        <option value="5">⭐⭐⭐⭐⭐ — Loved it</option>
+      </select>
+    </div>
+    <div class="fg"><label>Reading progress</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="nb-progress-page" min="1" placeholder="Current page" style="flex:1;"/>
+        <span style="font-size:13px;color:var(--t2);">of</span>
+        <input type="number" id="nb-total-pages" min="1" placeholder="Total pages" style="flex:1;"/>
+      </div>
+    </div>
     <div class="divider"></div>
     <div class="slabel">Publication info</div>
     <div class="r2">
       <div class="fg"><label>Publisher</label><input type="text" id="nb-pub" placeholder="e.g. Penguin"/></div>
-      <div class="fg"><label>Year published</label><input type="text" id="nb-year" placeholder="e.g. 1952"/></div>
+      <div class="fg"><label>Year</label><input type="text" id="nb-year" placeholder="e.g. 1952"/></div>
     </div>
     <div class="fg"><label>ISBN</label><input type="text" id="nb-isbn" placeholder="e.g. 978-0-14-303943-3"/></div>
     <div class="fg"><label>Edition / format</label><input type="text" id="nb-edition" placeholder="e.g. Paperback, 3rd ed."/></div>
@@ -291,21 +327,25 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="sheet-title" id="ae-sheet-title">Add annotation</div>
     <input type="hidden" id="ae-edit-id"/>
     <div class="fg"><label>What is this?</label><select id="ae-type" onchange="onTypeChange()"></select></div>
+    <div id="ae-type-hint" class="type-hint" style="display:none;"></div>
 
-    <!-- CHARACTER FIELDS -->
+    <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
         <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
-      <div class="r3">
+      <div class="r2">
         <div class="fg"><label>Role</label>
           <select id="ae-crole"><option value="">Unknown</option><option value="main">Main</option><option value="side">Side</option><option value="minor">Minor</option><option value="antagonist">Antagonist</option><option value="narrator">Narrator</option></select>
         </div>
         <div class="fg"><label>Status</label>
           <select id="ae-cstatus"><option value="unknown">Unknown</option><option value="alive">Alive</option><option value="deceased">Deceased</option></select>
         </div>
-        <div class="fg"><label>Introduced</label><input type="text" id="ae-cintro" placeholder="Ch./p."/></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" placeholder="e.g. 2" min="1"/></div>
+        <div class="fg"><label>Introduced — p.</label><input type="number" id="ae-cintro-pg" placeholder="e.g. 34" min="1"/></div>
       </div>
       <div class="fg"><label>Description</label><textarea id="ae-cdesc" placeholder="Appearance, personality…" style="min-height:56px;"></textarea></div>
       <div class="fg"><label>Photo</label>
@@ -319,15 +359,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="slabel">Quick relationships</div>
       <div id="ae-quick-rels-list"></div>
       <button class="btn btn-sm" onclick="addQuickRelRow()" style="margin-bottom:10px;">+ Add relationship</button>
-      <div id="ae-sug-box" style="display:none" class="suggestion-box">
+      <div id="ae-sug-box" style="display:none" class="sug-box">
         <strong>Suggested connections</strong>
         <div id="ae-sug-content"></div>
       </div>
     </div>
 
-    <!-- NON-CHAR CONTENT -->
+    <!-- CONTENT -->
     <div id="ae-content-section">
       <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+    </div>
+
+    <!-- QUESTION EXTRAS -->
+    <div id="ae-q-ex" style="display:none">
+      <div class="fg"><label>Answer (fill in when resolved)</label><textarea id="ae-qanswer" placeholder="Answer or resolution…" style="min-height:56px;"></textarea></div>
     </div>
 
     <!-- QUOTE EXTRAS -->
@@ -336,15 +381,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Speaker</label><select id="ae-speaker"></select></div>
         <div class="fg"><label>Emotion / tone</label><select id="ae-emotion">
           <option value="">— none —</option>
-          <optgroup label="Positive">
-            <option data-tone="positive">Admiring</option><option data-tone="positive">Caring</option><option data-tone="positive">Cheerful</option><option data-tone="positive">Compassionate</option><option data-tone="positive">Confident</option><option data-tone="positive">Excited</option><option data-tone="positive">Grateful</option><option data-tone="positive">Hopeful</option><option data-tone="positive">Joyful</option><option data-tone="positive">Kind</option><option data-tone="positive">Loving</option><option data-tone="positive">Optimistic</option><option data-tone="positive">Playful</option><option data-tone="positive">Proud</option><option data-tone="positive">Reassuring</option><option data-tone="positive">Relieved</option><option data-tone="positive">Sweet</option><option data-tone="positive">Tender</option><option data-tone="positive">Warm</option>
-          </optgroup>
-          <optgroup label="Neutral">
-            <option data-tone="neutral">Analytical</option><option data-tone="neutral">Confused</option><option data-tone="neutral">Curious</option><option data-tone="neutral">Detached</option><option data-tone="neutral">Matter-of-fact</option><option data-tone="neutral">Nostalgic</option><option data-tone="neutral">Pensive</option><option data-tone="neutral">Resigned</option><option data-tone="neutral">Sarcastic</option><option data-tone="neutral">Surprised</option><option data-tone="neutral">Wistful</option>
-          </optgroup>
-          <optgroup label="Negative">
-            <option data-tone="negative">Angry</option><option data-tone="negative">Anxious</option><option data-tone="negative">Ashamed</option><option data-tone="negative">Bitter</option><option data-tone="negative">Cold</option><option data-tone="negative">Contemptuous</option><option data-tone="negative">Deceptive</option><option data-tone="negative">Defiant</option><option data-tone="negative">Desperate</option><option data-tone="negative">Disgusted</option><option data-tone="negative">Envious</option><option data-tone="negative">Fearful</option><option data-tone="negative">Guilty</option><option data-tone="negative">Hateful</option><option data-tone="negative">Jealous</option><option data-tone="negative">Manipulative</option><option data-tone="negative">Mournful</option><option data-tone="negative">Pleading</option><option data-tone="negative">Sad</option><option data-tone="negative">Shameful</option><option data-tone="negative">Threatening</option>
-          </optgroup>
+          <optgroup label="Positive"><option data-tone="positive">Admiring</option><option data-tone="positive">Caring</option><option data-tone="positive">Cheerful</option><option data-tone="positive">Compassionate</option><option data-tone="positive">Confident</option><option data-tone="positive">Excited</option><option data-tone="positive">Grateful</option><option data-tone="positive">Hopeful</option><option data-tone="positive">Joyful</option><option data-tone="positive">Kind</option><option data-tone="positive">Loving</option><option data-tone="positive">Optimistic</option><option data-tone="positive">Playful</option><option data-tone="positive">Proud</option><option data-tone="positive">Reassuring</option><option data-tone="positive">Relieved</option><option data-tone="positive">Sweet</option><option data-tone="positive">Tender</option><option data-tone="positive">Warm</option></optgroup>
+          <optgroup label="Neutral"><option data-tone="neutral">Analytical</option><option data-tone="neutral">Confused</option><option data-tone="neutral">Curious</option><option data-tone="neutral">Detached</option><option data-tone="neutral">Matter-of-fact</option><option data-tone="neutral">Nostalgic</option><option data-tone="neutral">Pensive</option><option data-tone="neutral">Resigned</option><option data-tone="neutral">Sarcastic</option><option data-tone="neutral">Surprised</option><option data-tone="neutral">Wistful</option></optgroup>
+          <optgroup label="Negative"><option data-tone="negative">Angry</option><option data-tone="negative">Anxious</option><option data-tone="negative">Ashamed</option><option data-tone="negative">Bitter</option><option data-tone="negative">Cold</option><option data-tone="negative">Contemptuous</option><option data-tone="negative">Deceptive</option><option data-tone="negative">Defiant</option><option data-tone="negative">Desperate</option><option data-tone="negative">Disgusted</option><option data-tone="negative">Envious</option><option data-tone="negative">Fearful</option><option data-tone="negative">Guilty</option><option data-tone="negative">Hateful</option><option data-tone="negative">Jealous</option><option data-tone="negative">Manipulative</option><option data-tone="negative">Mournful</option><option data-tone="negative">Pleading</option><option data-tone="negative">Sad</option><option data-tone="negative">Shameful</option><option data-tone="negative">Threatening</option></optgroup>
         </select></div>
       </div>
     </div>
@@ -380,26 +419,43 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Event type</label>
           <select id="ae-metype">
             <option value="">— select —</option>
-            <option>Death</option><option>Birth</option><option>Marriage</option><option>Divorce</option>
-            <option>Betrayal</option><option>Revelation</option><option>Injury</option><option>Loss</option>
-            <option>Reunion</option><option>Departure</option><option>Arrival</option><option>Life-changing moment</option>
-            <option>Crime</option><option>Rescue</option><option>Confrontation</option><option>Other</option>
+            <optgroup label="Life Events"><option>Birth</option><option>Coming of age</option><option>Death</option><option>Divorce</option><option>Illness</option><option>Injury</option><option>Life-changing moment</option><option>Marriage</option><option>Pregnancy</option></optgroup>
+            <optgroup label="Relationships"><option>Adoption</option><option>Betrayal</option><option>Breakup</option><option>Estrangement</option><option>Falling out</option><option>Meeting</option><option>Reconciliation</option><option>Reunion</option></optgroup>
+            <optgroup label="Action &amp; Conflict"><option>Arrest</option><option>Battle</option><option>Capture</option><option>Confrontation</option><option>Crime</option><option>Escape</option><option>Fight</option><option>Rescue</option><option>Threat</option></optgroup>
+            <optgroup label="Discovery &amp; Change"><option>Arrival</option><option>Departure</option><option>Discovery</option><option>Loss</option><option>Revelation</option><option>Transformation</option></optgroup>
+            <optgroup label="Other"><option>Other</option></optgroup>
           </select>
         </div>
         <div class="fg"><label>Date / when</label><input type="text" id="ae-medate" placeholder="e.g. Ch.7, p.134"/></div>
       </div>
     </div>
 
+    <!-- REFERENCE EXTRAS -->
+    <div id="ae-ref-ex" style="display:none">
+      <div class="r2">
+        <div class="fg"><label>Reference type</label>
+          <select id="ae-ref-type">
+            <option value="book">📚 Book / Article</option>
+            <option value="watch">🎬 Watch (film/doc/video)</option>
+            <option value="explore">🔍 Explore (Wikipedia/research)</option>
+          </select>
+        </div>
+        <div class="fg"><label>Author / Creator</label><input type="text" id="ae-ref-author" placeholder="e.g. Author name"/></div>
+      </div>
+      <div class="fg"><label>Link / URL</label><input type="text" id="ae-ref-url" placeholder="e.g. https://en.wikipedia.org/…"/></div>
+      <div id="ae-goodreads-hint" style="display:none;font-size:11px;color:var(--t2);margin-top:-6px;margin-bottom:8px;">💡 This is a book — consider adding it to <span style="color:var(--accent);cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent(document.getElementById('ae-content').value))">Goodreads</span> too.</div>
+    </div>
+
     <!-- RELATIONSHIP EXTRAS -->
     <div id="ae-rel-ex" style="display:none">
       <div class="fg"><label>Relationship type</label><select id="ae-reltype">
         <option value="">— select —</option>
-        <optgroup label="Distant Family"><option>Great-great-grandparent</option><option>Great-great-grandchild</option><option>Distant relative (unknown degree)</option><option>Distant ancestor</option><option>Distant descendant</option></optgroup>
-        <optgroup label="Family"><option>Mother</option><option>Father</option><option>Grandmother</option><option>Grandfather</option><option>Great-grandmother</option><option>Great-grandfather</option><option>Great-great-grandmother</option><option>Great-great-grandfather</option><option>Sibling</option><option>Half-sibling</option><option>Step-sibling</option><option>Aunt</option><option>Uncle</option><option>Cousin</option><option>Child</option><option>Grandchild</option><option>Great-grandchild</option><option>Step-parent</option><option>Step-child</option><option>Guardian</option><option>Ward</option><option>In-law</option><option>Adoptive parent</option><option>Adopted child</option></optgroup>
-        <optgroup label="Romantic"><option>Partner</option><option>Spouse</option><option>Ex-partner</option><option>Love interest</option><option>Admirer</option><option>Estranged spouse</option><option>Betrothed</option></optgroup>
-        <optgroup label="Social"><option>Friend</option><option>Close friend</option><option>Best friend</option><option>Acquaintance</option><option>Neighbour</option><option>Rival</option><option>Enemy</option><option>Ally</option><option>Mentor</option><option>Protégé</option><option>Confidant</option></optgroup>
-        <optgroup label="Professional"><option>Employer</option><option>Employee</option><option>Colleague</option><option>Business partner</option><option>Teacher</option><option>Student</option><option>Master</option><option>Servant</option><option>Commander</option><option>Subordinate</option></optgroup>
-        <optgroup label="Other"><option>Unknown</option><option>Complicated</option></optgroup>
+        <optgroup label="Distant Family"><option>Distant ancestor</option><option>Distant descendant</option><option>Distant relative (unknown degree)</option><option>Great-great-grandchild</option><option>Great-great-grandparent</option><option>Great-great-grandfather</option><option>Great-great-grandmother</option></optgroup>
+        <optgroup label="Family"><option>Adopted child</option><option>Adoptive parent</option><option>Aunt</option><option>Child</option><option>Cousin</option><option>Father</option><option>Grandchild</option><option>Grandfather</option><option>Grandmother</option><option>Great-grandchild</option><option>Great-grandfather</option><option>Great-grandmother</option><option>Guardian</option><option>Half-sibling</option><option>In-law</option><option>Mother</option><option>Sibling</option><option>Step-child</option><option>Step-parent</option><option>Step-sibling</option><option>Uncle</option><option>Ward</option></optgroup>
+        <optgroup label="Romantic"><option>Admirer</option><option>Betrothed</option><option>Estranged spouse</option><option>Ex-partner</option><option>Love interest</option><option>Partner</option><option>Spouse</option></optgroup>
+        <optgroup label="Social"><option>Acquaintance</option><option>Ally</option><option>Best friend</option><option>Close friend</option><option>Confidant</option><option>Enemy</option><option>Friend</option><option>Mentor</option><option>Neighbour</option><option>Protégé</option><option>Rival</option></optgroup>
+        <optgroup label="Professional"><option>Business partner</option><option>Colleague</option><option>Commander</option><option>Employee</option><option>Employer</option><option>Master</option><option>Servant</option><option>Student</option><option>Subordinate</option><option>Teacher</option></optgroup>
+        <optgroup label="Other"><option>Complicated</option><option>Unknown</option></optgroup>
       </select></div>
       <div class="r2">
         <div class="fg"><label>Character A</label><select id="ae-rela"></select></div>
@@ -444,39 +500,62 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">Book settings</div>
-    <div class="fa" style="margin-bottom:14px;">
-      <button class="btn" onclick="openEditBook()">Edit book info</button>
-      <button class="btn" onclick="exportData()">Export data</button>
-      <button class="btn" onclick="importData()">Import data</button>
+    <div class="fa" style="margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn" onclick="closeSheet('settings-overlay');openEditBook()">Edit book info</button>
+      <button class="btn" onclick="exportData()">Export / backup</button>
+    </div>
+    <div class="fa" style="margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn" onclick="importDataMerge()">Import (merge)</button>
+      <button class="btn" onclick="exportPDF()">Download PDF</button>
     </div>
     <div class="fa">
       <button class="btn" style="color:#A32D2D;" onclick="deleteBook()">Delete this book</button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:14px;line-height:1.6;">
+      <strong style="display:block;margin-bottom:3px;">Privacy:</strong>
+      Your annotations live entirely on this device in Safari's storage. They are never sent to any server. To keep data safe across updates, use Export / backup regularly and Import (merge) after any app update.
     </div>
   </div>
 </div>
 
 <script>
-// ── CONSTANTS ──────────────────────────────────────────────────────────────
+// ── CONSTANTS ───────────────────────────────────────────────────────────────
 const GENRES={
-  fiction:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Major event','Narrator quote','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary']},
-  nonfiction:{tabs:['log','timeline','map','words'],types:['Argument','Author note','Chapter','Concept','Evidence','Question','Quote','Theme','Timeline','Word / Vocabulary']},
-  memoir:   {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Characteristic','Event','Major event','Person','Question','Quote','Reflection','Relationship','Setting','Theme','Timeline','Word / Vocabulary']},
-  mystery:  {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Clue','Major event','Plot twist','Question','Quote','Red herring','Relationship','Setting','Suspect','Theme','Timeline','Word / Vocabulary']},
-  scifi:    {tabs:['log','chars','web','timeline','map','words'],types:['Chapter','Character','Characteristic','Faction','Major event','Question','Quote','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary','World element']},
-  history:  {tabs:['log','timeline','map','words'],types:['Argument','Date/Period','Evidence','Event','Figure','Major event','Place','Question','Quote','Theme','Timeline','Word / Vocabulary']},
-  selfhelp: {tabs:['log','timeline','words'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Objection','Principle','Question','Quote','Timeline','Word / Vocabulary']},
-  poetry:   {tabs:['log','words'],types:['Emotion','Image','Line/stanza','Poem','Question','Symbol','Technique','Theme','Word / Vocabulary']},
+  fiction:  {tabs:['log','chars','web','timeline','map','words','questions','refs'],types:['Chapter','Character','Characteristic','Major event','Narrator quote','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary']},
+  nonfiction:{tabs:['log','timeline','map','words','questions','refs'],types:['Argument','Author note','Chapter','Concept','Evidence','Question','Quote','Reference','Theme','Timeline','Word / Vocabulary']},
+  memoir:   {tabs:['log','chars','web','timeline','map','words','questions','refs'],types:['Chapter','Characteristic','Event','Major event','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Word / Vocabulary']},
+  mystery:  {tabs:['log','chars','web','timeline','map','words','questions','refs'],types:['Chapter','Character','Characteristic','Clue','Major event','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Word / Vocabulary']},
+  scifi:    {tabs:['log','chars','web','timeline','map','words','questions','refs'],types:['Chapter','Character','Characteristic','Faction','Major event','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Word / Vocabulary','World element']},
+  history:  {tabs:['log','timeline','map','words','questions','refs'],types:['Argument','Date/Period','Evidence','Event','Figure','Major event','Place','Question','Quote','Reference','Theme','Timeline','Word / Vocabulary']},
+  selfhelp: {tabs:['log','timeline','words','questions','refs'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Objection','Principle','Question','Quote','Reference','Timeline','Word / Vocabulary']},
+  poetry:   {tabs:['log','words','questions','refs'],types:['Emotion','Image','Line/stanza','Poem','Question','Reference','Symbol','Technique','Theme','Word / Vocabulary']},
 };
 const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to read'};
 const SPINE=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D11','#A32D2D'];
 const CT=['Character','Person','Figure','Suspect'];
 const PARENT_TYPES=['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Great-great-grandparent','Distant ancestor','Adoptive parent','Step-parent','Guardian'];
-const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
+const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4};
-const TONE_COLOR={positive:'emo-positive',neutral:'emo-neutral',negative:'emo-negative'};
-
-// 24 char colors
+const TYPE_HINTS={
+  'Quote':{icon:'💬',desc:'A direct passage from the text.',tips:['Who said it and to whom?','What emotion does it carry?','What does it reveal about character or theme?','Is this ironic, symbolic, or literal?']},
+  'Characteristic':{icon:'🔍',desc:'A personality trait, habit, or physical feature.',tips:['What evidence supports this trait?','Attach a quote and page number as proof.','Does this trait change over the course of the story?']},
+  'Relationship':{icon:'🔗',desc:'A connection between two characters.',tips:['What is the power dynamic?','How does this relationship evolve?','What conflict or tension exists between them?']},
+  'Setting':{icon:'🌍',desc:'A place, time period, or atmosphere in the story.',tips:['Note: Setting ≠ Location. Setting is literary context (Victorian London, post-war America). Location is a specific scene place (The library, Ch.3).','How does this setting affect mood or theme?','What does it symbolize?','How do characters interact with their environment?']},
+  'Theme':{icon:'💡',desc:'A central idea or message the author explores.',tips:['How is this theme developed across chapters?','Which characters embody or challenge this theme?','What events reinforce it?','Does the author resolve this theme or leave it open?']},
+  'Symbol':{icon:'🔮',desc:'An object, place, or event that carries deeper meaning.',tips:['What does it represent on a literal vs symbolic level?','How does its meaning shift through the story?','Is this symbol tied to a specific character?']},
+  'Chapter':{icon:'📖',desc:'A chapter summary or key notes.',tips:['Summarize the key events.','What changed by the end of this chapter?','What questions does it raise?']},
+  'Question':{icon:'❓',desc:'Something uncertain — an unanswered mystery or confusion.',tips:['Mark it answered when you find out.','Tag the characters involved.','It will move to the Answered section of the Questions tab when checked.']},
+  'Major event':{icon:'⭐',desc:'A significant turning point — death, revelation, betrayal, etc.',tips:['Tag all characters affected.','It will appear on their profile pages.','Connect it to the Timeline for chronological context.']},
+  'Timeline':{icon:'📅',desc:'A chronological story beat or time marker.',tips:['Use this for quiet narrative beats, not just big events.','e.g. "Three years pass," "War begins in the background," "Ch.5 is one week after Ch.4".','Major Events are the emotional turning points; Timeline fills the connective tissue.']},
+  'Word / Vocabulary':{icon:'📖',desc:'An unfamiliar or interesting word.',tips:['Record the definition and source.','Tap 🔍 M-W on the Vocabulary tab to look it up in Merriam-Webster.']},
+  'Clue':{icon:'🔎',desc:'A piece of evidence in a mystery.',tips:['Is this a red herring?','What does it point toward?','Which character does it implicate?']},
+  'Red herring':{icon:'🎣',desc:'A misleading clue.',tips:['Why did it seem significant?','What was its actual meaning?']},
+  'Reflection':{icon:'🪞',desc:'Your personal response to a memoir passage.',tips:['What resonates with your own experience?','What surprises or unsettles you?']},
+  'Reference':{icon:'🔖',desc:'Something to read, watch, or explore later that was mentioned or inspired by this book.',tips:['Books → consider adding to Goodreads.','Use the link field to save a URL.','Check it off when done.']},
+  'Key idea':{icon:'💡',desc:'A core takeaway or principle.',tips:['How might you apply this?','What does it challenge in your thinking?']},
+  'Argument':{icon:'⚖️',desc:'A claim the author makes.',tips:['Do you agree or disagree?','What evidence supports or undermines it?']},
+};
 const CP=[
   {bg:'#FAECE7',text:'#712B13',stroke:'#D85A30'},{bg:'#E6F1FB',text:'#0C447C',stroke:'#378ADD'},
   {bg:'#E1F5EE',text:'#085041',stroke:'#1D9E75'},{bg:'#FBEAF0',text:'#72243E',stroke:'#D4537E'},
@@ -496,14 +575,14 @@ let library={};
 let currentId=null;
 let activeFilter='all';
 let activeTab='log';
-let ccMap={};  // bookId -> charName -> colorIdx
+let ccMap={};
 let currentCharName=null;
+let activeRefFilter='all';
 
 function save(){localStorage.setItem('book-annotator-v4',JSON.stringify(library));}
 function load(){try{const d=localStorage.getItem('book-annotator-v4');if(d)library=JSON.parse(d);}catch(e){library={};}}
 function book(){return library[currentId];}
 function entries(){return book()?.entries||[];}
-
 function getCC(name){
   if(!currentId)return CP[0];
   if(!ccMap[currentId])ccMap[currentId]={};
@@ -512,31 +591,26 @@ function getCC(name){
   return CP[m[name]%CP.length];
 }
 function initCC(){if(!currentId)return;ccMap[currentId]={};entries().filter(e=>CT.includes(e.type)).forEach(e=>getCC(e.cn||e.content));}
-
 function show(on,...off){off.forEach(s=>document.getElementById(s).classList.remove('active'));document.getElementById(on).classList.add('active');}
 function openSheet(id){document.getElementById(id).classList.add('open');}
 function closeSheet(id){document.getElementById(id).classList.remove('open');}
 function mc(id,e){if(e.target===document.getElementById(id))closeSheet(id);}
 function fmt(d){if(!d)return'';try{const p=d.split('-');return`${+p[1]}/${+p[2]}/${p[0]}`;}catch(e){return d;}}
 function tk(t){return t.toLowerCase().replace(/[^a-z]/g,'').replace('narratorquote','quote').replace('authornote','note').replace('linestanza','note').replace('redherring','redflag').replace('plottwist','note').replace('worldelement','concept').replace('dateperiod','concept').replace('actionable','concept').replace('wordvocabulary','word').replace('majorevent','majorevent').replace('keyidea','keyidea');}
+function openLink(url){try{window.open(url,'_blank');}catch(e){location.href=url;}}
 
-// ── PHOTO HELPERS ──────────────────────────────────────────────────────────
-function triggerPhoto(inputId,boxId,dataId){document.getElementById(inputId).click();}
-function handlePhoto(input,boxId,dataId){
+// ── PHOTO ──────────────────────────────────────────────────────────────────
+function triggerPhoto(iid,bid,did){document.getElementById(iid).click();}
+function handlePhoto(input,bid,did){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=e=>{
-    const data=e.target.result;
-    document.getElementById(dataId).value=data;
-    const box=document.getElementById(boxId);
-    box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
-  };
+  reader.onload=e=>{const d=e.target.result;document.getElementById(did).value=d;const box=document.getElementById(bid);box.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;};
   reader.readAsDataURL(file);
 }
-function setPhotoBox(boxId,data,placeholder){
-  const box=document.getElementById(boxId);
-  if(data){box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;}
-  else{box.innerHTML=`<span style="font-size:${boxId.includes('char')?'20':'18'}px;">📷</span><span>${placeholder}</span>`;}
+function setPhotoBox(bid,data,ph){
+  const box=document.getElementById(bid);
+  if(data)box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
+  else box.innerHTML=`<span style="font-size:${bid.includes('char')?'20':'18'}px;">📷</span><span>${ph}</span>`;
 }
 
 // ── CHAPTER SETUP ──────────────────────────────────────────────────────────
@@ -553,19 +627,16 @@ function addChapSetupRow(num,start,end){
 }
 function renumberChapRows(){document.querySelectorAll('#chap-setup-list .chap-row span:first-child').forEach((s,i)=>s.textContent=`Ch.${i+1}`);}
 function getChapSetup(){
-  const rows=document.querySelectorAll('#chap-setup-list .chap-row');
-  return [...rows].map((r,i)=>{const ins=r.querySelectorAll('input');return{ch:i+1,start:+ins[0].value||0,end:+ins[1].value||0};}).filter(r=>r.start>0);
+  return [...document.querySelectorAll('#chap-setup-list .chap-row')].map((r,i)=>{const ins=r.querySelectorAll('input');return{ch:i+1,start:+ins[0].value||0,end:+ins[1].value||0};}).filter(r=>r.start>0);
 }
+function renderChapSetup(s){document.getElementById('chap-setup-list').innerHTML='';(s||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end));}
 function pageToChapter(page){
-  const setup=book()?.chapSetup||[];
-  if(!setup.length)return null;
-  const p=parseInt(page);if(isNaN(p))return null;
-  for(const c of setup){if(p>=c.start&&(c.end===0||p<=c.end))return c.ch;}
-  return null;
+  const s=book()?.chapSetup||[];const p=parseInt(page);if(isNaN(p)||!s.length)return null;
+  for(const c of s){if(p>=c.start&&(c.end===0||p<=c.end))return c.ch;}return null;
 }
-function renderChapSetup(setup){
-  document.getElementById('chap-setup-list').innerHTML='';
-  (setup||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end));
+function toggleRatingVisibility(){
+  const s=document.getElementById('nb-status').value;
+  document.getElementById('nb-rating-group').style.display=s==='finished'?'':'none';
 }
 
 // ── LIBRARY ────────────────────────────────────────────────────────────────
@@ -578,16 +649,19 @@ function renderLibrary(){
   list.innerHTML=books.map((b,i)=>{
     const col=SPINE[i%SPINE.length];
     const ini=b.title.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
-    const coverHTML=b.cover?`<img src="${b.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;"/>`:`<div class="book-cover-text" style="background:${col};width:100%;height:100%;border-radius:6px;display:flex;align-items:center;justify-content:center;">${ini}</div>`;
+    const coverHTML=b.cover?`<img src="${b.cover}" style="width:100%;height:100%;object-fit:cover;"/>`:`<div style="background:${col};width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;text-align:center;padding:4px;">${ini}</div>`;
     const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
-    const pubInfo=[b.pub,b.year,b.isbn?`ISBN ${b.isbn}`:null].filter(Boolean).join(' · ');
+    const stars=b.rating?'⭐'.repeat(+b.rating):'';
+    let progress='';
+    if(b.progressPage&&b.totalPages){const pct=Math.round((+b.progressPage/+b.totalPages)*100);progress=`<div style="margin-top:4px;"><div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;"><div style="height:100%;background:${col};width:${pct}%;"></div></div><div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${b.progressPage} of ${b.totalPages} (${pct}%)</div></div>`;}
     return `<div class="book-card" onclick="openBook('${b.id}')">
-      <div class="book-cover" style="width:52px;height:74px;">${coverHTML}</div>
+      <div class="book-cover">${coverHTML}</div>
       <div class="book-info">
         <div class="book-title">${b.title}</div>
         <div class="book-author">${b.author||'—'}</div>
         ${dates?`<div style="font-size:11px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
-        ${pubInfo?`<div style="font-size:11px;color:var(--t3);margin-bottom:3px;">${pubInfo}</div>`:''}
+        ${stars?`<div style="font-size:13px;margin-bottom:3px;">${stars}</div>`:''}
+        ${progress}
         <div class="book-meta">
           <span class="gbadge">${GL[b.genre]||b.genre}</span>
           <span class="sdot status-${b.status}"></span>
@@ -597,19 +671,18 @@ function renderLibrary(){
     </div>`;
   }).join('');
 }
+
 function openBook(id){
-  currentId=id;activeFilter='all';activeTab='log';initCC();
+  currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';initCC();
   document.getElementById('bs-title').textContent=book().title;
   show('book-screen','lib-screen');buildTabs();buildTypeSelect();renderAll();
 }
-function goLib(){currentId=null;show('lib-screen','book-screen');renderLibrary();}
-
+function goLib(){currentId=null;currentCharName=null;show('lib-screen','book-screen');renderLibrary();}
 function openBookSettings(){openSheet('settings-overlay');}
 function openEditBook(){
-  closeSheet('settings-overlay');
   const b=book();
   document.getElementById('nb-edit-id').value=b.id;
-  document.getElementById('nb-title-label').textContent='Edit book';
+  document.getElementById('nb-sheet-title').textContent='Edit book';
   document.getElementById('nb-title').value=b.title;
   document.getElementById('nb-author').value=b.author||'';
   document.getElementById('nb-genre').value=b.genre;
@@ -621,50 +694,55 @@ function openEditBook(){
   document.getElementById('nb-isbn').value=b.isbn||'';
   document.getElementById('nb-edition').value=b.edition||'';
   document.getElementById('nb-cover-data').value=b.cover||'';
-  setPhotoBox('nb-cover-box',b.cover,'Tap to upload cover');
+  document.getElementById('nb-progress-page').value=b.progressPage||'';
+  document.getElementById('nb-total-pages').value=b.totalPages||'';
+  document.getElementById('nb-rating').value=b.rating||'';
+  setPhotoBox('nb-cover-box',b.cover||'','Tap to upload cover');
   renderChapSetup(b.chapSetup);
+  toggleRatingVisibility();
   openSheet('nb-overlay');
 }
 function deleteBook(){if(!confirm('Delete this book and all annotations?'))return;delete library[currentId];save();goLib();}
-
 function saveBook(){
   const title=document.getElementById('nb-title').value.trim();if(!title)return;
   const editId=document.getElementById('nb-edit-id').value;
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup()};
-  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition'].forEach(x=>document.getElementById(x).value='');
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-progress-page').value,totalPages:document.getElementById('nb-total-pages').value};
+  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-progress-page','nb-total-pages'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('nb-edit-id').value='';document.getElementById('nb-cover-data').value='';
   setPhotoBox('nb-cover-box','','Tap to upload cover');
   document.getElementById('chap-setup-list').innerHTML='';
   closeSheet('nb-overlay');save();renderLibrary();
-  if(editId&&currentId===editId){document.getElementById('bs-title').textContent=library[id].title;}
+  if(editId&&currentId===editId)document.getElementById('bs-title').textContent=library[id].title;
 }
 
 // ── TABS ───────────────────────────────────────────────────────────────────
 function buildTabs(){
   const cfg=GENRES[book().genre];
-  const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary'};
+  const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References'};
   document.getElementById('tab-bar').innerHTML=cfg.tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${lbl[t]||t}</button>`).join('');
   cfg.tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
 }
 function switchTab(t,btn){
-  activeTab=t;document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  activeTab=t;
+  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();if(t==='chars')renderChars();
-  if(t==='timeline')renderTimeline();if(t==='map')renderMap();if(t==='words')renderWords();
+  if(t==='timeline')renderTimeline();if(t==='map')renderMap();
+  if(t==='words')renderWords();if(t==='questions')renderQuestions();if(t==='refs')renderRefs();
 }
 function forceTab(t){
   activeTab=t;
-  const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary'};
+  const lbl={log:'Log',chars:'Characters',web:'Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References'};
   document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.toggle('active',b.textContent===(lbl[t]||t)));
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();
 }
 
-// ── QUICK RELATIONSHIPS (in character form) ────────────────────────────────
+// ── QUICK RELS ─────────────────────────────────────────────────────────────
 function addQuickRelRow(relType,charName){
   const list=document.getElementById('ae-quick-rels-list');
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
@@ -675,21 +753,19 @@ function addQuickRelRow(relType,charName){
       <button onclick="this.closest('.r2').remove()" style="background:transparent;color:var(--t3);font-size:18px;padding:2px 4px;">×</button>
     </div>`;
   list.appendChild(row);
-  // add suggestion listener
   row.querySelectorAll('select').forEach(s=>s.addEventListener('change',checkSuggestions));
 }
 function buildRelTypeOpts(sel){
   const groups=[
-    ['Distant Family',['Great-great-grandparent','Great-great-grandmother','Great-great-grandfather','Distant relative (unknown degree)','Distant ancestor','Distant descendant']],
-    ['Family',['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Sibling','Half-sibling','Step-sibling','Aunt','Uncle','Cousin','Child','Grandchild','Great-grandchild','Step-parent','Step-child','Guardian','Ward','In-law','Adoptive parent','Adopted child']],
-    ['Romantic',['Partner','Spouse','Ex-partner','Love interest','Admirer','Estranged spouse','Betrothed']],
-    ['Social',['Friend','Close friend','Best friend','Acquaintance','Neighbour','Rival','Enemy','Ally','Mentor','Protégé','Confidant']],
-    ['Professional',['Employer','Employee','Colleague','Business partner','Teacher','Student','Master','Servant','Commander','Subordinate']],
-    ['Other',['Unknown','Complicated']],
+    ['Distant Family',['Distant ancestor','Distant descendant','Distant relative (unknown degree)','Great-great-grandfather','Great-great-grandmother','Great-great-grandchild','Great-great-grandparent']],
+    ['Family',['Adopted child','Adoptive parent','Aunt','Child','Cousin','Father','Grandchild','Grandfather','Grandmother','Great-grandchild','Great-grandfather','Great-grandmother','Guardian','Half-sibling','In-law','Mother','Sibling','Step-child','Step-parent','Step-sibling','Uncle','Ward']],
+    ['Romantic',['Admirer','Betrothed','Estranged spouse','Ex-partner','Love interest','Partner','Spouse']],
+    ['Social',['Acquaintance','Ally','Best friend','Close friend','Confidant','Enemy','Friend','Mentor','Neighbour','Protégé','Rival']],
+    ['Professional',['Business partner','Colleague','Commander','Employee','Employer','Master','Servant','Student','Subordinate','Teacher']],
+    ['Other',['Complicated','Unknown']],
   ];
   return`<option value="">— type —</option>`+groups.map(([g,opts])=>`<optgroup label="${g}">${opts.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join('')}</optgroup>`).join('');
 }
-
 function checkSuggestions(){
   const rows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
   const newCharName=document.getElementById('ae-cn').value.trim();
@@ -698,15 +774,22 @@ function checkSuggestions(){
     const rt=row.querySelector('.qr-type').value;
     const ch=row.querySelector('.qr-char').value;
     if(!rt||!ch)return;
-    // If new char is child of someone, suggest that someone is also parent to siblings
+    // If new char is child of someone, suggest same parent for other existing characters
     if(PARENT_TYPES.includes(rt)){
-      const siblings=entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content)!==ch&&(e.cn||e.content)!==newCharName);
-      siblings.forEach(sib=>{
+      entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content)!==ch&&(e.cn||e.content)!==newCharName).forEach(sib=>{
         const sibName=sib.cn||sib.content;
-        const alreadyRel=entries().some(e=>e.type==='Relationship'&&((e.relA===ch&&e.relB===sibName)||(e.relA===sibName&&e.relB===ch)));
-        if(!alreadyRel&&!sug.find(s=>s.a===ch&&s.b===sibName)){
-          sug.push({a:ch,b:sibName,rt:rt==='Mother'?'Mother':rt==='Father'?'Father':'Parent',label:`Is ${ch} also a ${rt==='Mother'?'mother':'father'} to ${sibName}?`});
-        }
+        const already=entries().some(e=>e.type==='Relationship'&&PARENT_TYPES.includes(e.relType)&&e.relA===ch&&e.relB===sibName);
+        if(!already&&!sug.find(s=>s.a===ch&&s.b===sibName))
+          sug.push({a:ch,b:sibName,rt,label:`Is ${ch} also a ${rt.toLowerCase()} to ${sibName}?`});
+      });
+    }
+    // If adding as sibling, look up existing character's known parents and suggest them for new char
+    if(['Sibling','Half-sibling','Step-sibling'].includes(rt)){
+      entries().filter(e=>e.type==='Relationship'&&PARENT_TYPES.includes(e.relType)&&e.relB===ch).forEach(pr=>{
+        const parent=pr.relA;if(!parent||parent===newCharName)return;
+        const already=entries().some(e=>e.type==='Relationship'&&PARENT_TYPES.includes(e.relType)&&e.relA===parent&&e.relB===newCharName);
+        if(!already&&!sug.find(s=>s.a===parent&&s.b===newCharName))
+          sug.push({a:parent,b:newCharName,rt:rt==='Step-sibling'?'Step-parent':pr.relType,label:`Is ${parent} also a ${rt==='Step-sibling'?'step-parent':''+pr.relType.toLowerCase()} to ${newCharName}? (or step?)`});
       });
     }
   });
@@ -718,15 +801,11 @@ function checkSuggestions(){
   box._suggestions=sug;
 }
 function acceptSuggestion(i){
-  const sug=document.getElementById('ae-sug-content').parentElement._suggestions[i];
-  if(!sug)return;
-  const confirm2=window.confirm(`Confirm: ${sug.a} → ${sug.rt} → ${sug.b}?\n(Tap Cancel if it's a step-relationship instead)`);
-  if(confirm2){
-    book().entries.push({id:Date.now(),type:'Relationship',content:`${sug.a} is ${sug.b}'s ${sug.rt}`,relType:sug.rt,relA:sug.a,relB:sug.b,pageNum:'',chapNum:'',date:'',location:'',involved:[],note:'Auto-suggested'});
-    save();renderAll();
-  }
-  // remove suggestion
-  document.getElementById('ae-sug-box').style.display='none';
+  const sug=document.getElementById('ae-sug-content').parentElement._suggestions[i];if(!sug)return;
+  const ok=confirm(`Confirm: ${sug.a} → ${sug.rt} → ${sug.b}?\n\nCancel = step-relationship instead.`);
+  const finalRt=ok?sug.rt:(sug.rt.startsWith('Step-')?sug.rt:'Step-parent');
+  book().entries.push({id:Date.now(),type:'Relationship',content:`${sug.a} is ${finalRt.toLowerCase()} to ${sug.b}`,relType:finalRt,relA:sug.a,relB:sug.b,pageNum:'',chapNum:'',date:'',location:'',involved:[],note:'Auto-suggested'});
+  save();renderAll();document.getElementById('ae-sug-box').style.display='none';
 }
 
 // ── ENTRY FORM ─────────────────────────────────────────────────────────────
@@ -734,55 +813,74 @@ function buildTypeSelect(){
   if(!currentId)return;
   document.getElementById('ae-type').innerHTML=GENRES[book().genre].types.map(t=>`<option>${t}</option>`).join('');
 }
-
+function toneClass(emotion){
+  if(!emotion)return'';
+  const pos=['Admiring','Caring','Cheerful','Compassionate','Confident','Excited','Grateful','Hopeful','Joyful','Kind','Loving','Optimistic','Playful','Proud','Reassuring','Relieved','Sweet','Tender','Warm'];
+  const neg=['Angry','Anxious','Ashamed','Bitter','Cold','Contemptuous','Deceptive','Defiant','Desperate','Disgusted','Envious','Fearful','Guilty','Hateful','Jealous','Manipulative','Mournful','Pleading','Sad','Shameful','Threatening'];
+  return pos.includes(emotion)?'emo-positive':neg.includes(emotion)?'emo-negative':'emo-neutral';
+}
 function onTypeChange(){
   if(!currentId)return;
   const type=document.getElementById('ae-type').value;
-  const isChar=CT.includes(type);
-  const isRel=type==='Relationship';
+  const isChar=CT.includes(type);const isRel=type==='Relationship';
   const isQ=type==='Quote'||type==='Line/stanza'||type==='Narrator quote';
-  const isTrait=type==='Characteristic';
-  const isWord=type==='Word / Vocabulary';
-  const isTL=type==='Timeline';
-  const isME=type==='Major event';
-  const isChap=type==='Chapter';
+  const isQuestion=type==='Question';const isTrait=type==='Characteristic';
+  const isWord=type==='Word / Vocabulary';const isTL=type==='Timeline';
+  const isME=type==='Major event';const isChap=type==='Chapter';
+  const isRef=type==='Reference';
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+
+  // Type hint
+  const hint=TYPE_HINTS[type];
+  const hintEl=document.getElementById('ae-type-hint');
+  if(hint&&!isChar){
+    hintEl.style.display='';
+    hintEl.innerHTML=`<strong>${hint.icon} ${type}</strong>${hint.desc}<ul style="margin-top:5px;padding-left:14px;">${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul>`;
+  } else {hintEl.style.display='none';}
 
   document.getElementById('ae-char-section').style.display=isChar?'':'none';
   document.getElementById('ae-content-section').style.display=isChar?'none':'';
   document.getElementById('ae-quote-ex').style.display=isQ?'':'none';
   document.getElementById('ae-char-ex').style.display=isTrait?'':'none';
+  const qex=document.getElementById('ae-q-ex');if(qex)qex.style.display=isQuestion?'':'none';
   document.getElementById('ae-word-ex').style.display=isWord?'':'none';
   document.getElementById('ae-tl-ex').style.display=isTL?'':'none';
   document.getElementById('ae-me-ex').style.display=isME?'':'none';
   document.getElementById('ae-rel-ex').style.display=isRel?'':'none';
+  const refex=document.getElementById('ae-ref-ex');if(refex)refex.style.display=isRef?'':'none';
   document.getElementById('ae-common').style.display=isChar?'none':'';
-  // Show involved picker for anything except char entry and relationship (which has its own A/B pickers)
-  // Major event explicitly needs it so characters can be linked
   document.getElementById('ae-inv-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
-  document.getElementById('ae-chappage').style.display=isRel?'none':'';
-  document.getElementById('ae-clabel').textContent=isQ?'Quote / passage':isChap?'Chapter title or number':isTL?'Event description':isME?'What happened?':'Content';
+  document.getElementById('ae-chappage').style.display=isRel||isRef?'none':'';
+
+  document.getElementById('ae-clabel').textContent=isQ?'Quote / passage':isChap?'Chapter title or number':isTL?'Event description':isME?'What happened?':isRef?'Title or description':isWord?'Word':'Content';
 
   if(isQ&&chars.length){document.getElementById('ae-speaker').innerHTML=`<option value="">— narrator —</option>`+chars.map(c=>`<option>${c}</option>`).join('');}
   if(isRel&&chars.length){const o=chars.map(c=>`<option>${c}</option>`).join('');document.getElementById('ae-rela').innerHTML=o;document.getElementById('ae-relb').innerHTML=o;if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;}
   if(!isChar&&!isRel&&chars.length)buildCPick(chars);
-
-  // clear quick rels
   if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
-}
 
+  // Goodreads hint for Reference:Book
+  if(isRef){
+    const rt=document.getElementById('ae-ref-type');
+    if(rt)rt.onchange=()=>document.getElementById('ae-goodreads-hint').style.display=rt.value==='book'?'':'none';
+  }
+}
 function buildCPick(chars){
   document.getElementById('cpick-row').innerHTML=chars.map(c=>{const cc=getCC(c);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c}" onclick="this.classList.toggle('sel')">${c}</span>`;}).join('');
 }
 function getPicked(){return[...document.querySelectorAll('.cpick.sel')].map(e=>e.dataset.name);}
 
-function openAddSheet(){
-  buildTypeSelect();document.getElementById('ae-edit-id').value='';document.getElementById('ae-sheet-title').textContent='Add annotation';
+function openAddSheet(preType){
+  buildTypeSelect();
+  document.getElementById('ae-edit-id').value='';
+  document.getElementById('ae-sheet-title').textContent='Add annotation';
   document.getElementById('ae-date').value=new Date().toISOString().slice(0,10);
-  clearAEForm();openSheet('ae-overlay');onTypeChange();
+  clearAEForm();
+  if(preType)document.getElementById('ae-type').value=preType;
+  openSheet('ae-overlay');onTypeChange();
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-note','ae-ch','ae-pg','ae-loc','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-wsrc','ae-evdate','ae-medate','ae-cintro'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-note','ae-ch','ae-pg','ae-loc','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-wsrc','ae-evdate','ae-medate','ae-cintro-ch','ae-cintro-pg','ae-ref-author','ae-ref-url'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
@@ -790,6 +888,9 @@ function clearAEForm(){
   document.getElementById('ae-photo-data').value='';setPhotoBox('ae-photo-box','','Tap to upload');
   document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
   document.getElementById('ae-metype').value='';
+  const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
+  const rt=document.getElementById('ae-ref-type');if(rt)rt.value='book';
+  document.getElementById('ae-goodreads-hint').style.display='none';
 }
 
 function submitEntry(){
@@ -797,44 +898,51 @@ function submitEntry(){
   const type=document.getElementById('ae-type').value;
   const editId=document.getElementById('ae-edit-id').value;
   const isChar=CT.includes(type);const isRel=type==='Relationship';
-  const isME=type==='Major event';
+  const isME=type==='Major event';const isRef=type==='Reference';
 
   let content='',cn='';
   if(isChar){cn=document.getElementById('ae-cn').value.trim();if(!cn)return;content=cn;}
   else if(isRel){content=document.getElementById('ae-reldesc').value.trim()||'Relationship';}
   else{content=document.getElementById('ae-content').value.trim();if(!content)return;}
 
-  // auto-assign chapter from page
-  let chapNum=isChar||isRel?'':document.getElementById('ae-ch').value;
-  const pgVal=isChar||isRel?'':document.getElementById('ae-pg').value.trim();
+  let chapNum=isChar||isRel||isRef?'':document.getElementById('ae-ch').value;
+  const pgVal=isChar||isRel||isRef?'':document.getElementById('ae-pg').value.trim();
   if(pgVal&&!chapNum){const autoC=pageToChapter(pgVal.split('–')[0].split('-')[0]);if(autoC)chapNum=String(autoC);}
 
-  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||'',location:isChar?'':document.getElementById('ae-loc').value.trim(),involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value};
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||'',location:isChar||isRef?'':document.getElementById('ae-loc').value.trim(),involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value};
 
-  if(isChar){entry.nickname=document.getElementById('ae-nick').value.trim();entry.charRole=document.getElementById('ae-crole').value;entry.charStatus=document.getElementById('ae-cstatus').value;entry.charIntro=document.getElementById('ae-cintro').value.trim();entry.charDesc=document.getElementById('ae-cdesc').value.trim();}
+  if(isChar){entry.nickname=document.getElementById('ae-nick').value.trim();entry.charRole=document.getElementById('ae-crole').value;entry.charStatus=document.getElementById('ae-cstatus').value;const ich=document.getElementById('ae-cintro-ch').value;const ipg=document.getElementById('ae-cintro-pg').value;entry.charIntroCh=ich;entry.charIntroPg=ipg;entry.charIntro=[ich?'Ch.'+ich:'',ipg?'p.'+ipg:''].filter(Boolean).join(', ');entry.charDesc=document.getElementById('ae-cdesc').value.trim();}
   if(type==='Quote'||type==='Narrator quote'||type==='Line/stanza'){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;}
   if(type==='Characteristic'){entry.sq=document.getElementById('ae-sq').value.trim();entry.sqp=document.getElementById('ae-sqp').value.trim();entry.sqc=document.getElementById('ae-sqc').value;}
   if(type==='Word / Vocabulary'){entry.definition=document.getElementById('ae-def').value.trim();entry.wsrc=document.getElementById('ae-wsrc').value.trim();}
+  if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;}
   if(isME){entry.metype=document.getElementById('ae-metype').value;entry.evdate=document.getElementById('ae-medate').value.trim();}
-  if(isRel){entry.relType=document.getElementById('ae-reltype').value;entry.relA=document.getElementById('ae-rela').value;entry.relB=document.getElementById('ae-relb').value;}
-
+  if(isRef){const rt=document.getElementById('ae-ref-type');entry.refType=rt?rt.value:'book';entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refDone=false;}
+  if(isRel){
+    entry.relType=document.getElementById('ae-reltype').value;
+    entry.relA=document.getElementById('ae-rela').value;
+    entry.relB=document.getElementById('ae-relb').value;
+    if(!editId&&entry.relA&&entry.relB){
+      const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===entry.relA&&e.relB===entry.relB)||(e.relA===entry.relB&&e.relB===entry.relA)));
+      if(existing.length){
+        const desc=existing.map(e=>e.relType||e.content).join(', ');
+        const ok=confirm(`${entry.relA} and ${entry.relB} already have a relationship logged: "${desc}".\n\nAdd another relationship anyway?`);
+        if(!ok)return;
+      }
+    }
+  }
   if(isChar)getCC(cn);
-
   if(editId){const idx=book().entries.findIndex(e=>e.id===Number(editId));if(idx>=0)book().entries[idx]=entry;}
   else book().entries.unshift(entry);
-
   // save quick relationships
   if(isChar&&!editId){
-    const qrows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
-    qrows.forEach(row=>{
-      const rt=row.querySelector('.qr-type').value;
-      const ch=row.querySelector('.qr-char').value;
+    [...document.querySelectorAll('#ae-quick-rels-list .r2')].forEach(row=>{
+      const rt=row.querySelector('.qr-type').value;const ch=row.querySelector('.qr-char').value;
       if(!rt||!ch)return;
       book().entries.push({id:Date.now()+Math.random(),type:'Relationship',content:`${cn} — ${rt} — ${ch}`,relType:rt,relA:cn,relB:ch,pageNum:'',chapNum:'',date:'',location:'',involved:[],note:''});
     });
   }
-
   save();closeSheet('ae-overlay');renderAll();buildTypeSelect();
 }
 
@@ -842,34 +950,29 @@ function deleteEntry(id){
   if(!confirm('Delete this entry?'))return;
   book().entries=book().entries.filter(e=>e.id!==id);
   save();renderAll();
-  if(currentCharName)renderCharDetail(currentCharName);
+  if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
 }
-
 function editEntry(id){
   const e=entries().find(x=>x.id===id);if(!e)return;
   buildTypeSelect();
   document.getElementById('ae-edit-id').value=id;
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
-  document.getElementById('ae-type').value=e.type;
-  onTypeChange();
+  document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
-    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-cintro').value=e.charIntro||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-char-photo-data').value=e.photo||'';setPhotoBox('ae-char-photo-box',e.photo||'','Tap to upload');}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-char-photo-data').value=e.photo||'';setPhotoBox('ae-char-photo-box',e.photo||'','Tap to upload');}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)document.getElementById('ae-rela').value=e.relA;if(e.relB)document.getElementById('ae-relb').value=e.relB;}
     else{document.getElementById('ae-content').value=e.content||'';}
-    document.getElementById('ae-note').value=e.note||'';
-    document.getElementById('ae-ch').value=e.chapNum||'';
-    document.getElementById('ae-pg').value=e.pageNum||'';
-    document.getElementById('ae-date').value=e.date||'';
-    document.getElementById('ae-loc').value=e.location||'';
+    document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||'';document.getElementById('ae-loc').value=e.location||'';
     document.getElementById('ae-photo-data').value=e.photo||'';setPhotoBox('ae-photo-box',e.photo||'','Tap to upload');
-    if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;
-    if(e.speaker)document.getElementById('ae-speaker').value=e.speaker;
+    if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;if(e.speaker)document.getElementById('ae-speaker').value=e.speaker;
     if(e.sq)document.getElementById('ae-sq').value=e.sq;if(e.sqp)document.getElementById('ae-sqp').value=e.sqp;if(e.sqc)document.getElementById('ae-sqc').value=e.sqc;
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
-    if(e.evdate)document.getElementById('ae-evdate').value=e.evdate;if(e.evdate&&e.type==='Major event')document.getElementById('ae-medate').value=e.evdate;
-    if(e.importance)document.getElementById('ae-imp').value=e.importance;
-    if(e.metype)document.getElementById('ae-metype').value=e.metype;
-    if(e.involved?.length){setTimeout(()=>e.involved.forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),100);}
+    const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
+    if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Major event')document.getElementById('ae-medate').value=e.evdate;}
+    if(e.importance)document.getElementById('ae-imp').value=e.importance;if(e.metype)document.getElementById('ae-metype').value=e.metype;
+    if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
+    if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;
+    if(e.involved?.length)setTimeout(()=>e.involved.forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),100);
   },40);
   openSheet('ae-overlay');
 }
@@ -877,66 +980,52 @@ function editEntry(id){
 // ── RENDER ─────────────────────────────────────────────────────────────────
 function renderAll(){
   renderEntries();
-  if(activeTab==='chars')renderChars();
-  if(activeTab==='web')renderWeb();
-  if(activeTab==='timeline')renderTimeline();
-  if(activeTab==='map')renderMap();
-  if(activeTab==='words')renderWords();
+  if(activeTab==='chars')renderChars();if(activeTab==='web')renderWeb();
+  if(activeTab==='timeline')renderTimeline();if(activeTab==='map')renderMap();
+  if(activeTab==='words')renderWords();if(activeTab==='questions')renderQuestions();
+  if(activeTab==='refs')renderRefs();
   buildFilterBar();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
 }
-
 function buildFilterBar(){
-  const all=entries();
-  const types=[...new Set(all.map(e=>e.type))];
-  // Chapter filters only
-  const chaps=[...new Set(all.filter(e=>e.chapNum).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
+  const types=[...new Set(entries().filter(e=>e.type!=='Reference').map(e=>e.type))];
+  const chaps=[...new Set(entries().filter(e=>e.chapNum).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
   let chips=`<button class="chip${activeFilter==='all'?' active':''}" onclick="setFilter('all')">All</button>`;
   chips+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter(${JSON.stringify(t)})">${t}</button>`).join('');
   if(chaps.length)chips+=`<span style="font-size:10px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;">Ch:</span>`+chaps.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')">Ch.${c}</button>`).join('');
   document.getElementById('filter-bar').innerHTML=chips;
 }
 function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
-function filterEntries(){const all=entries();if(activeFilter==='all')return all;if(activeFilter.startsWith('ch:'))return all.filter(e=>e.chapNum===activeFilter.slice(3));return all.filter(e=>e.type===activeFilter);}
-
-function toneClass(emotion){if(!emotion)return'';const opt=[...document.getElementById('ae-emotion').options].find(o=>o.value===emotion||o.text===emotion);if(opt&&opt.dataset.tone)return TONE_COLOR[opt.dataset.tone]||'';const pos=['Admiring','Caring','Cheerful','Compassionate','Confident','Excited','Grateful','Hopeful','Joyful','Kind','Loving','Optimistic','Playful','Proud','Reassuring','Relieved','Sweet','Tender','Warm'];const neg=['Angry','Anxious','Ashamed','Bitter','Cold','Contemptuous','Deceptive','Defiant','Desperate','Disgusted','Envious','Fearful','Guilty','Hateful','Jealous','Manipulative','Mournful','Pleading','Sad','Shameful','Threatening'];if(pos.includes(emotion))return'emo-positive';if(neg.includes(emotion))return'emo-negative';return'emo-neutral';}
-
+function filterEntries(){
+  const all=entries().filter(e=>e.type!=='Reference');
+  if(activeFilter==='all')return all;if(activeFilter.startsWith('ch:'))return all.filter(e=>e.chapNum===activeFilter.slice(3));
+  return all.filter(e=>e.type===activeFilter);
+}
 function renderEntries(){
-  const list=document.getElementById('entries-list');
-  const empty=document.getElementById('log-empty');
+  const list=document.getElementById('entries-list');const empty=document.getElementById('log-empty');
   const filtered=filterEntries();
   if(!filtered.length){list.innerHTML='';empty.style.display='';return;}
-  empty.style.display='none';
-  list.innerHTML=filtered.map(e=>ecHTML(e,false)).join('');
+  empty.style.display='none';list.innerHTML=filtered.map(e=>ecHTML(e,false)).join('');
 }
-
 function ecHTML(e,compact){
-  const k=tk(e.type);
-  const isChar=CT.includes(e.type);
-  const isRel=e.type==='Relationship';
+  const k=tk(e.type);const isChar=CT.includes(e.type);const isRel=e.type==='Relationship';
   const col=isChar?getCC(e.cn||e.content):null;
   const leftStyle=isChar?`border-left-color:${col.stroke};`:'';
-  const clickable=isChar?`onclick="openCharDetail('${(e.cn||e.content).replace(/'/g,"\\'")}',false)" style="${leftStyle}cursor:pointer;"`:`style="${leftStyle}"`;
-
+  const clickable=isChar?`onclick="openCharDetail('${(e.cn||e.content).replace(/'/g,"\\'")}',false)" style="${leftStyle}cursor:pointer;"`:isRel?`style="${leftStyle}"`:isChar?`style="${leftStyle}"`:` style="${leftStyle}"`;
   const tag=`<span class="tag tag-${k}">${e.type}</span>`;
   const pg=[];
   if(e.chapNum)pg.push(`<span class="pbadge">Ch.${e.chapNum}</span>`);
   if(e.pageNum)pg.push(`<span class="pbadge">p.${e.pageNum}</span>`);
   if(e.evdate)pg.push(`<span class="pbadge">📅 ${e.evdate}</span>`);
   if(e.date)pg.push(`<span class="pbadge">${fmt(e.date)}</span>`);
-  const emoBadge=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
-  const locBadge=e.location?`<span class="pbadge">📍 ${e.location}</span>`:'';
-  const spkBadge=e.speaker?`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};">${e.speaker}</span>`:'';
-
+  const emo=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
+  const loc=e.location?`<span class="pbadge">📍 ${e.location}</span>`:'';
+  const spk=e.speaker?`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};">${e.speaker}</span>`:'';
   let body='';
   if(isChar){
     const ini=(e.cn||e.content).split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const photoHTML=e.photo?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:ini;
-    const statusIcon=e.charStatus==='deceased'?'✝ ':'';
-    body=`<div style="display:flex;align-items:center;gap:10px;">
-      <div class="avatar" style="width:38px;height:38px;font-size:13px;background:${col.bg};color:${col.text};overflow:hidden;">${photoHTML}</div>
-      <div><div style="font-weight:600;color:${col.text};">${statusIcon}${e.cn||e.content}${e.nickname?` <span style="font-size:11px;font-weight:400;">(${e.nickname})</span>`:''}</div>
-      ${e.charRole?`<div style="font-size:11px;color:var(--t3);">${e.charRole}${e.charIntro?` · intro: ${e.charIntro}`:''}</div>`:''}</div></div>`;
+    const ph=e.photo?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:ini;
+    body=`<div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="width:38px;height:38px;font-size:13px;background:${col.bg};color:${col.text};overflow:hidden;">${ph}</div><div><div style="font-weight:600;color:${col.text};">${e.charStatus==='deceased'?'✝ ':''}${e.cn||e.content}${e.nickname?` <span style="font-size:11px;font-weight:400;">(${e.nickname})</span>`:''}</div>${e.charRole?`<div style="font-size:11px;color:var(--t3);">${e.charRole}${e.charIntro?` · intro: ${e.charIntro}`:''}</div>`:''}</div></div>`;
   } else if(isRel){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     body=`<div class="econtent"><strong style="color:${ac?.text||'inherit'}">${e.relA||'?'}</strong> <span style="font-size:12px;color:var(--t2);">${e.relType?'('+e.relType+')':''}</span> <strong style="color:${bc?.text||'inherit'}">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div style="font-size:12px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}</div>`;
@@ -945,42 +1034,35 @@ function ecHTML(e,compact){
   } else if(e.type==='Characteristic'){
     body=`<div class="econtent">${e.content}${e.sq?`<div style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;font-size:12px;color:var(--t2);">"${e.sq}"${e.sqp?` — p.${e.sqp}`:''}</div>`:''}</div>`;
   } else if(e.type==='Major event'){
-    const meIcon={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡',Departure:'🚪',Arrival:'🚪',Other:'📌','Life-changing moment':'⭐'}[e.metype]||'📌';
-    body=`<div class="econtent">${meIcon} <strong>${e.metype||'Major event'}:</strong> ${e.content}</div>`;
+    const meIcons={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡',Departure:'🚪',Arrival:'🚪',Other:'📌','Life-changing moment':'⭐'};
+    body=`<div class="econtent">${meIcons[e.metype]||'📌'} <strong>${e.metype||'Major event'}:</strong> ${e.content}</div>`;
   } else {
-    const photoThumb=e.photo?`<img src="${e.photo}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;float:right;margin-left:8px;"/>`:'' ;
-    body=`<div class="econtent">${photoThumb}${e.content}</div>`;
+    const ph=e.photo?`<img src="${e.photo}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;float:right;margin-left:8px;"/>`:'' ;
+    body=`<div class="econtent">${ph}${e.content}</div>`;
   }
-
-  const invBadges=e.involved?.length?`<div class="involved-row">${e.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join('')}</div>`:'';
-
+  const invB=e.involved?.length?`<div class="inv-row">${e.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join('')}</div>`:'';
   return `<div class="ec ${k}" ${clickable}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emoBadge}${spkBadge}</div>
-    ${body}
-    ${invBadges}
+    <div class="emeta">${tag}${pg.join('')}${loc}${emo}${spk}</div>${body}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
 }
 
-// ── CHARACTER LIST ──────────────────────────────────────────────────────────
+// ── CHARACTERS ─────────────────────────────────────────────────────────────
 function renderChars(){
-  const list=document.getElementById('chars-list');
-  const empty=document.getElementById('chars-empty');
+  const list=document.getElementById('chars-list');const empty=document.getElementById('chars-empty');
   const chars=entries().filter(e=>CT.includes(e.type));
   if(!chars.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   list.innerHTML=chars.map(c=>{
-    const name=c.cn||c.content;
-    const col=getCC(name);
+    const name=c.cn||c.content;const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const photoHTML=c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
-    const statusIcon=c.charStatus==='deceased'?'✝ ':'';
+    const ph=c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
     const roleLabel={main:'Main character',side:'Side character',minor:'Minor character',antagonist:'Antagonist',narrator:'Narrator'}[c.charRole]||'';
     return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${name.replace(/'/g,"\\'")}',false)">
-      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${col.stroke}28;color:${col.text};">${photoHTML||ini}</div>
+      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${col.stroke}28;color:${col.text};">${ph||ini}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;color:${col.text};">${statusIcon}${name}${c.nickname?` <span style="font-size:11px;font-weight:400;">(${c.nickname})</span>`:''}</div>
+        <div style="font-size:14px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'✝ ':''}${name}${c.nickname?` <span style="font-size:11px;font-weight:400;">(${c.nickname})</span>`:''}</div>
         <div style="font-size:11px;color:var(--t2);">${roleLabel}${c.charIntro?` · intro ${c.charIntro}`:''}</div>
       </div>
       <span style="color:var(--t3);font-size:16px;">›</span>
@@ -993,22 +1075,27 @@ function openCharDetail(name,fromWeb){
   currentCharName=name;
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
-  document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e)editEntry(e.id);show('book-screen','char-screen');};
-  renderCharDetail(name);
-  show('char-screen','book-screen');
+  document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
+  document.getElementById('char-add-rel-btn').onclick=()=>{
+    buildTypeSelect();clearAEForm();
+    document.getElementById('ae-edit-id').value='';
+    document.getElementById('ae-sheet-title').textContent='Add relationship for '+name;
+    document.getElementById('ae-type').value='Relationship';
+    onTypeChange();
+    setTimeout(()=>{const ra=document.getElementById('ae-rela');if(ra)ra.value=name;},60);
+    openSheet('ae-overlay');
+  };
+  renderCharDetail(name);show('char-screen','book-screen');
 }
-
 function renderCharDetail(name){
-  const col=getCC(name);
-  const all=entries();
+  const col=getCC(name);const all=entries();
   const ce=all.find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
   const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const photoHTML=ce?.photo?`<img src="${ce.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
+  const ph=ce?.photo?`<img src="${ce.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
   const roleLabel={main:'Main character',side:'Side character',minor:'Minor character',antagonist:'Antagonist',narrator:'Narrator',unknown:'Unknown role'}[ce?.charRole||'unknown']||'';
   const statusLabel={alive:'Alive',deceased:'Deceased ✝',unknown:'Status unknown'}[ce?.charStatus||'unknown']||'';
-
   document.getElementById('char-hero').innerHTML=`
-    <div class="avatar" style="width:56px;height:56px;font-size:20px;background:${col.stroke}28;color:${col.text};flex-shrink:0;overflow:hidden;">${photoHTML||ini}</div>
+    <div class="avatar" style="width:56px;height:56px;font-size:20px;background:${col.stroke}28;color:${col.text};flex-shrink:0;overflow:hidden;">${ph||ini}</div>
     <div style="flex:1;">
       <div style="font-size:18px;font-weight:700;color:${col.text};">${ce?.charStatus==='deceased'?'✝ ':''}${name}${ce?.nickname?` <span style="font-size:13px;font-weight:400;">(${ce.nickname})</span>`:''}</div>
       <div style="font-size:12px;color:var(--t2);">${roleLabel} · ${statusLabel}</div>
@@ -1025,85 +1112,194 @@ function renderCharDetail(name){
   const other=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Major event','Clue','Red herring','Question',...CT].includes(e.type)&&e.involved?.includes(name));
 
   const pg=e=>[e.chapNum?`Ch.${e.chapNum}`:'',e.pageNum?`p.${e.pageNum}`:''].filter(Boolean).join(' ');
-  const pgTag=e=>pg(e)?`<div class="ipage">${pg(e)}</div>`:'';
-  const noteTag=e=>e.note?`<div style="font-size:11px;color:var(--t2);font-style:italic;margin-top:2px;">${e.note}</div>`:'';
-  const actions=(e)=>`<div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button></div>`;
+  const pgT=e=>pg(e)?`<div class="ipage">${pg(e)}</div>`:'';
+  const nT=e=>e.note?`<div style="font-size:11px;color:var(--t2);font-style:italic;margin-top:2px;">${e.note}</div>`:'';
+  const act=(e)=>`<div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button></div>`;
 
   let html='';
-  if(traits.length)html+=csec(col,'Traits & characteristics',traits.map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Trait</div>${t.content}${t.sq?`<div style="border-left:2px solid ${col.stroke};padding-left:7px;margin-top:5px;font-size:12px;color:var(--t2);">"${t.sq}"${t.sqp?` — p.${t.sqp}`:''}</div>`:''} ${noteTag(t)}${pgTag(t)}${actions(t)}</div>`).join(''));
-  if(quotes.length)html+=csec(col,'Quotes',quotes.map(q=>`<div class="citem" style="border-left:3px solid ${col.stroke};border-radius:0 var(--r) var(--r) 0;"><div class="ilabel" style="color:${col.text};">Said${q.emotion?` · <span class="ebadge ${toneClass(q.emotion)}" style="text-transform:none;">${q.emotion}</span>`:''}</div>"${q.content}"${noteTag(q)}${pgTag(q)}${actions(q)}</div>`).join(''));
-  if(rels.length)html+=csec(col,'Relationships',rels.map(r=>{const other=r.relA===name?r.relB:r.relA;const oc=getCC(other);return`<div class="citem"><span style="font-weight:700;color:${oc.text};">↔ ${other}</span>${r.relType?`<span class="ebadge" style="background:${col.stroke}18;color:${col.text};margin-left:5px;">${r.relType}</span>`:''}${r.content&&r.content!=='Relationship'?`<div style="font-size:12px;color:var(--t2);margin-top:4px;">${r.content}</div>`:''} ${pgTag(r)}${actions(r)}</div>`;}).join(''));
-  if(events.length)html+=csec(col,'Major events',events.map(e=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${e.metype||'Event'}${e.evdate?` — ${e.evdate}`:''}</div>${e.content}${pgTag(e)}${actions(e)}</div>`).join(''));
-  if(clues.length)html+=csec(col,'Clues & red herrings',clues.map(c=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${c.type}</div>${c.content}${pgTag(c)}${actions(c)}</div>`).join(''));
-  if(questions.length)html+=csec(col,'Questions',questions.map(q=>`<div class="citem">${q.content}${noteTag(q)}${pgTag(q)}${actions(q)}</div>`).join(''));
-  if(other.length)html+=csec(col,'Other entries',other.map(o=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${o.type}</div>${o.content}${pgTag(o)}${actions(o)}</div>`).join(''));
+  if(traits.length)html+=csec(col,'Traits & characteristics',traits.map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Trait</div>${t.content}${t.sq?`<div style="border-left:2px solid ${col.stroke};padding-left:7px;margin-top:5px;font-size:12px;color:var(--t2);">"${t.sq}"${t.sqp?` — p.${t.sqp}`:''}</div>`:''} ${nT(t)}${pgT(t)}${act(t)}</div>`).join(''));
+  if(quotes.length)html+=csec(col,'Quotes',quotes.map(q=>`<div class="citem" style="border-left:3px solid ${col.stroke};border-radius:0 var(--r) var(--r) 0;"><div class="ilabel" style="color:${col.text};">Said${q.emotion?` · <span class="ebadge ${toneClass(q.emotion)}">${q.emotion}</span>`:''}</div>"${q.content}"${nT(q)}${pgT(q)}${act(q)}</div>`).join(''));
+  if(rels.length)html+=csec(col,'Relationships',rels.map(r=>{const other=r.relA===name?r.relB:r.relA;const oc=getCC(other);return`<div class="citem"><span style="font-weight:700;color:${oc.text};">↔ ${other}</span>${r.relType?`<span class="ebadge" style="background:${col.stroke}18;color:${col.text};margin-left:5px;">${r.relType}</span>`:''}${r.content&&r.content!=='Relationship'?`<div style="font-size:12px;color:var(--t2);margin-top:4px;">${r.content}</div>`:''} ${pgT(r)}${act(r)}</div>`;}).join(''));
+  if(events.length)html+=csec(col,'Major events',events.map(e=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${e.metype||'Event'}${e.evdate?` — ${e.evdate}`:''}</div>${e.content}${pgT(e)}${act(e)}</div>`).join(''));
+  if(clues.length)html+=csec(col,'Clues & red herrings',clues.map(c=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${c.type}</div>${c.content}${pgT(c)}${act(c)}</div>`).join(''));
+  if(questions.length)html+=csec(col,'Questions',questions.map(q=>`<div class="citem">${q.content}${q.qanswer?`<div style="font-size:12px;color:var(--t2);border-left:2px solid #1D9E75;padding-left:6px;margin-top:4px;">${q.qanswer}</div>`:''} ${nT(q)}${pgT(q)}${act(q)}</div>`).join(''));
+  if(other.length)html+=csec(col,'Other entries',other.map(o=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${o.type}</div>${o.content}${pgT(o)}${act(o)}</div>`).join(''));
   if(!html)html=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add entries and select ${name} as involved</div></div>`;
   document.getElementById('char-body').innerHTML=html;
 }
 function csec(col,label,content){return`<div class="csec"><div class="csec-label" style="color:${col.stroke};">${label}</div>${content}</div>`;}
 
-// ── GENEALOGY WEB ───────────────────────────────────────────────────────────
+// ── WEB ─────────────────────────────────────────────────────────────────────
 function renderWeb(){
-  const svg=document.getElementById('web-svg');
-  const empty=document.getElementById('web-empty');
+  const svg=document.getElementById('web-svg');const empty=document.getElementById('web-empty');
   svg.innerHTML='';
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||''}));
   if(!chars.length){svg.style.display='none';empty.style.display='';return;}
   svg.style.display='';empty.style.display='none';
   const rels=entries().filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
+
+  // Assign generation levels
   const genMap={};chars.forEach(c=>genMap[c.name]=4);
   rels.forEach(r=>{
-    if(PARENT_TYPES.includes(r.relType)){genMap[r.relA]=Math.min(genMap[r.relA]??4,(GEN_ORDER[r.relType]??4));genMap[r.relB]=Math.max(genMap[r.relB]??4,(GEN_ORDER[r.relType]??4)+1);}
-    if(CHILD_TYPES.includes(r.relType)){genMap[r.relA]=Math.max(genMap[r.relA]??4,(GEN_ORDER[r.relType]??4));genMap[r.relB]=Math.min(genMap[r.relB]??4,(GEN_ORDER[r.relType]??4)-1);}
+    if(PARENT_TYPES.includes(r.relType)){
+      const pg=GEN_ORDER[r.relType]??3;
+      genMap[r.relA]=Math.min(genMap[r.relA]??4,pg);
+      genMap[r.relB]=Math.max(genMap[r.relB]??4,pg+1);
+    }
+    if(CHILD_TYPES.includes(r.relType)){
+      const cg=GEN_ORDER[r.relType]??5;
+      genMap[r.relA]=Math.min(genMap[r.relA]??4,cg-1);
+      genMap[r.relB]=Math.max(genMap[r.relB]??4,cg);
+    }
   });
+
+  // Group by generation
   const gens={};chars.forEach(c=>{const g=genMap[c.name]??4;if(!gens[g])gens[g]=[];gens[g].push(c);});
   const gks=Object.keys(gens).map(Number).sort((a,b)=>a-b);
-  const W=360,NR=28,rowH=110;
-  const H=Math.max(gks.length*rowH+80,300);
+  const W=360,NR=28,rowH=115;
+  const H=Math.max(gks.length*rowH+90,320);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('height',H);
-  gks.forEach((g,gi)=>{const row=gens[g];const y=50+gi*rowH;row.forEach((c,ci)=>{c.x=(W/(row.length+1))*(ci+1);c.y=y;});});
+
+  // Place nodes — each character gets unique coordinates
+  gks.forEach((g,gi)=>{
+    const row=gens[g];const y=55+gi*rowH;const step=W/(row.length+1);
+    row.forEach((c,ci)=>{c.x=step*(ci+1);c.y=y;});
+  });
   const nm={};chars.forEach(c=>{nm[c.name]=c;});
+
+  // Draw edges
   rels.forEach(r=>{
     const A=nm[r.relA],B=nm[r.relB];if(!A||!B)return;
     const line=document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',A.x);line.setAttribute('y1',A.y);line.setAttribute('x2',B.x);line.setAttribute('y2',B.y);
     line.setAttribute('stroke',A.col.stroke+'55');line.setAttribute('stroke-width','2');svg.appendChild(line);
-    if(r.relType){const mx=(A.x+B.x)/2,my=(A.y+B.y)/2,tw=Math.min(r.relType.length*4.5+10,100);const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-8);bg.setAttribute('width',tw);bg.setAttribute('height',15);bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);const lt=document.createElementNS('http://www.w3.org/2000/svg','text');lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','8');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');lt.textContent=r.relType.length>14?r.relType.slice(0,13)+'…':r.relType;svg.appendChild(lt);}
+    if(r.relType){
+      const mx=(A.x+B.x)/2,my=(A.y+B.y)/2,tw=Math.min(r.relType.length*4.5+10,100);
+      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-8);bg.setAttribute('width',tw);bg.setAttribute('height',15);bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);
+      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','8');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');
+      lt.textContent=r.relType.length>14?r.relType.slice(0,13)+'…':r.relType;svg.appendChild(lt);
+    }
   });
+
+  // Draw nodes
   chars.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.style.cursor='pointer';g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\\'")}',true)`);
-    if(n.photo){const clip=document.createElementNS('http://www.w3.org/2000/svg','clipPath');const cid='clip'+n.name.replace(/[^a-z]/gi,'');clip.setAttribute('id',cid);const cc=document.createElementNS('http://www.w3.org/2000/svg','circle');cc.setAttribute('cx',n.x);cc.setAttribute('cy',n.y);cc.setAttribute('r',NR);clip.appendChild(cc);svg.appendChild(clip);const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);const im=document.createElementNS('http://www.w3.org/2000/svg','image');im.setAttribute('href',n.photo);im.setAttribute('x',n.x-NR);im.setAttribute('y',n.y-NR);im.setAttribute('width',NR*2);im.setAttribute('height',NR*2);im.setAttribute('clip-path',`url(#${cid})`);im.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(im);}
-    else{const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();const ti=document.createElementNS('http://www.w3.org/2000/svg','text');ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size','14');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);}
+    if(n.photo){
+      const cid='cl'+n.name.replace(/[^a-z0-9]/gi,'');
+      const clip=document.createElementNS('http://www.w3.org/2000/svg','clipPath');clip.setAttribute('id',cid);
+      const cc=document.createElementNS('http://www.w3.org/2000/svg','circle');cc.setAttribute('cx',n.x);cc.setAttribute('cy',n.y);cc.setAttribute('r',NR);clip.appendChild(cc);svg.appendChild(clip);
+      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);
+      const im=document.createElementNS('http://www.w3.org/2000/svg','image');im.setAttribute('href',n.photo);im.setAttribute('x',n.x-NR);im.setAttribute('y',n.y-NR);im.setAttribute('width',NR*2);im.setAttribute('height',NR*2);im.setAttribute('clip-path',`url(#${cid})`);im.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(im);
+    } else {
+      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',n.x);ci.setAttribute('cy',n.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2.5');g.appendChild(ci);
+      const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const ti=document.createElementNS('http://www.w3.org/2000/svg','text');ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size','14');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
+    }
     if(n.status==='deceased'){const x=document.createElementNS('http://www.w3.org/2000/svg','text');x.setAttribute('x',n.x+NR-6);x.setAttribute('y',n.y-NR+6);x.setAttribute('text-anchor','middle');x.setAttribute('font-size','10');x.setAttribute('fill',n.col.text);x.textContent='✝';g.appendChild(x);}
     const words=n.name.split(' ');const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
     tl.setAttribute('x',n.x);tl.setAttribute('y',n.y+NR+11);tl.setAttribute('text-anchor','middle');tl.setAttribute('font-size','10');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
-    if(words.length>1){const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',n.x);s1.setAttribute('dy','0');s1.textContent=words[0];const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',n.x);s2.setAttribute('dy','12');s2.textContent=words.slice(1).join(' ');tl.appendChild(s1);tl.appendChild(s2);}else{tl.textContent=n.name;}
+    if(words.length>1){const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',n.x);s1.setAttribute('dy','0');s1.textContent=words[0];const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',n.x);s2.setAttribute('dy','12');s2.textContent=words.slice(1).join(' ');tl.appendChild(s1);tl.appendChild(s2);}
+    else tl.textContent=n.name;
     g.appendChild(tl);svg.appendChild(g);
   });
 }
 
+// ── QUESTIONS ──────────────────────────────────────────────────────────────
+function renderQuestions(){
+  const list=document.getElementById('questions-list');const empty=document.getElementById('q-empty');
+  const all=entries().filter(e=>e.type==='Question');
+  if(!all.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const unanswered=all.filter(q=>!q.answered);const answered=all.filter(q=>q.answered);
+  let html='';
+  if(unanswered.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Open (${unanswered.length})</div>`+unanswered.map(q=>qHTML(q)).join('');
+  if(answered.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin:14px 0 8px;">Answered (${answered.length})</div>`+answered.map(q=>qHTML(q)).join('');
+  list.innerHTML=html;
+}
+function qHTML(q){
+  const checked=q.answered;
+  const invB=q.involved?.length?q.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join(''):'';
+  return`<div class="q-card" style="${checked?'opacity:0.65;':''}">
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div onclick="toggleQ(${q.id})" style="cursor:pointer;flex-shrink:0;margin-top:2px;">
+        <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${checked?'#1D9E75':'var(--am)'};background:${checked?'#1D9E75':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">${checked?'✓':''}</div>
+      </div>
+      <div style="flex:1;">
+        <div class="econtent" style="${checked?'text-decoration:line-through;color:var(--t2);':''}">${q.content}</div>
+        ${q.qanswer?`<div style="font-size:12px;color:var(--t2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-radius:var(--r);border-left:2px solid #1D9E75;"><strong style="font-size:10px;color:#0F6E56;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Answer</strong>${q.qanswer}</div>`:''}
+        ${invB?`<div class="inv-row" style="margin-top:4px;">${invB}</div>`:''}
+        ${q.chapNum||q.pageNum?`<div style="margin-top:4px;">${q.chapNum?`<span class="pbadge">Ch.${q.chapNum}</span>`:''}${q.pageNum?`<span class="pbadge">p.${q.pageNum}</span>`:''}</div>`:''}
+        ${q.note?`<div class="enote">${q.note}</div>`:''}
+        <div class="eactions"><button class="btn-edit" onclick="editEntry(${q.id})">Edit / Answer</button><button class="btn-del" onclick="deleteEntry(${q.id})">Delete</button></div>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleQ(id){const e=entries().find(x=>x.id===id);if(!e)return;e.answered=!e.answered;save();renderQuestions();if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);}
+
+// ── REFERENCES ─────────────────────────────────────────────────────────────
+function renderRefs(){
+  const list=document.getElementById('refs-list');const empty=document.getElementById('refs-empty');
+  let all=entries().filter(e=>e.type==='Reference');
+  if(activeRefFilter!=='all')all=all.filter(e=>e.refType===activeRefFilter);
+  const refTypes=[...new Set(entries().filter(e=>e.type==='Reference').map(e=>e.refType||'book'))];
+  const filterLabel={book:'📚 Books',watch:'🎬 Watch',explore:'🔍 Explore'};
+  let rfHtml=`<button class="chip${activeRefFilter==='all'?' active':''}" onclick="setRefFilter('all')">All</button>`;
+  rfHtml+=refTypes.map(t=>`<button class="chip${activeRefFilter===t?' active':''}" onclick="setRefFilter('${t}')">${filterLabel[t]||t}</button>`).join('');
+  document.getElementById('ref-filter-bar').innerHTML=rfHtml;
+  if(!all.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const undone=all.filter(r=>!r.refDone);const done=all.filter(r=>r.refDone);
+  const rtLabel={book:'📚',watch:'🎬',explore:'🔍'};
+  const refCard=(r)=>`<div class="ref-card" style="${r.refDone?'opacity:0.55;':''}">
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div onclick="toggleRef(${r.id})" style="cursor:pointer;flex-shrink:0;margin-top:2px;">
+        <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${r.refDone?'#2E86C1':'#2E86C1'};background:${r.refDone?'#2E86C1':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">${r.refDone?'✓':''}</div>
+      </div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span class="ref-type-badge ref-type-${r.refType||'book'}">${rtLabel[r.refType||'book']||'📚'} ${r.refType==='book'?'Book / Article':r.refType==='watch'?'Watch':'Explore'}</span>
+        </div>
+        <div class="econtent" style="${r.refDone?'text-decoration:line-through;':'font-weight:600;'}">${r.content}</div>
+        ${r.refAuthor?`<div style="font-size:12px;color:var(--t2);">by ${r.refAuthor}</div>`:''}
+        ${r.refUrl?`<div style="font-size:12px;margin-top:4px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);">🔗 Open link</a></div>`:''}
+        ${r.refType==='book'&&!r.refDone?`<div style="font-size:11px;margin-top:3px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent('${r.content.replace(/'/g,"\\'")}'))">+ Add to Goodreads</span></div>`:''}
+        ${r.note?`<div class="enote">${r.note}</div>`:''}
+        <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
+      </div>
+    </div>
+  </div>`;
+  let html='';
+  if(undone.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">To explore (${undone.length})</div>`+undone.map(refCard).join('');
+  if(done.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin:14px 0 8px;">Done (${done.length})</div>`+done.map(refCard).join('');
+  list.innerHTML=html;
+}
+function setRefFilter(t){activeRefFilter=t;renderRefs();}
+function toggleRef(id){const e=entries().find(x=>x.id===id);if(!e)return;e.refDone=!e.refDone;save();renderRefs();}
+
 // ── TIMELINE ───────────────────────────────────────────────────────────────
 function renderTimeline(){
-  const list=document.getElementById('timeline-list');
-  const empty=document.getElementById('tl-empty');
-  const items=entries().filter(e=>e.type==='Timeline'||e.type==='Major event'||e.type==='Event'||e.type==='Date/Period').sort((a,b)=>((a.evdate||a.eventDate||'')).localeCompare((b.evdate||b.eventDate||'')||(+a.chapNum||0)-(+b.chapNum||0)));
+  const list=document.getElementById('timeline-list');const empty=document.getElementById('tl-empty');
+  const items=entries().filter(e=>['Timeline','Major event','Event','Date/Period'].includes(e.type)).sort((a,b)=>(a.evdate||a.eventDate||'').localeCompare(b.evdate||b.eventDate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0));
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780'};
   list.innerHTML=`<div style="padding-left:6px;">`+items.map((item,i)=>{
     const col=icol[item.importance||'normal']||'#534AB7';
     const isME=item.type==='Major event';
-    const meIcon={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡','Life-changing moment':'⭐',Other:'📌'}[item.metype]||'';
+    const meIcons={Death:'⚰️',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡','Life-changing moment':'⭐',Other:'📌'};
     const invB=item.involved?.length?item.involved.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};">${c}</span>`;}).join(''):'';
     return`<div class="titem">
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
         <div style="font-size:11px;font-weight:600;color:var(--t2);">${item.evdate||item.eventDate||item.dateVal||''}${item.chapNum?` · Ch.${item.chapNum}`:''}${item.pageNum?` · p.${item.pageNum}`:''}</div>
-        <div style="font-size:13px;line-height:1.5;">${isME?`${meIcon} <strong>${item.metype||'Event'}:</strong> `:''} ${item.content}</div>
+        <div style="font-size:13px;line-height:1.5;">${isME?`${meIcons[item.metype]||'📌'} <strong>${item.metype||'Event'}:</strong> `:''}${item.content}</div>
         ${item.location?`<div style="font-size:11px;color:var(--t3);">📍 ${item.location}</div>`:''}
-        ${invB?`<div class="involved-row" style="margin-top:3px;">${invB}</div>`:''}
+        ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
@@ -1113,27 +1309,20 @@ function renderTimeline(){
 
 // ── MAP ─────────────────────────────────────────────────────────────────────
 function renderMap(){
-  const list=document.getElementById('map-list');
-  const empty=document.getElementById('map-empty');
+  const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
   const items=entries().filter(e=>e.location?.trim());
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const groups={};items.forEach(e=>{const l=e.location.trim();if(!groups[l])groups[l]=[];groups[l].push(e);});
   list.innerHTML=Object.entries(groups).map(([loc,es])=>`<div class="locpin">
     <div style="font-weight:600;font-size:13px;margin-bottom:6px;">📍 ${loc}</div>
-    ${es.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-top:0.5px solid var(--cb);display:flex;align-items:center;gap:6px;">
-      <span class="tag tag-${tk(e.type)}">${e.type}</span>
-      ${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}
-      <span style="flex:1;">${(e.cn||e.content).slice(0,60)}</span>
-      <button class="btn-edit" onclick="editEntry(${e.id})">Edit</button>
-    </div>`).join('')}
+    ${es.map(e=>`<div style="font-size:12px;color:var(--t2);padding:4px 0;border-top:0.5px solid var(--cb);display:flex;align-items:center;gap:6px;"><span class="tag tag-${tk(e.type)}">${e.type}</span>${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}<span style="flex:1;">${(e.cn||e.content).slice(0,60)}</span><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button></div>`).join('')}
   </div>`).join('');
 }
 
 // ── VOCABULARY ─────────────────────────────────────────────────────────────
 function renderWords(){
-  const list=document.getElementById('words-list');
-  const empty=document.getElementById('words-empty');
+  const list=document.getElementById('words-list');const empty=document.getElementById('words-empty');
   const items=entries().filter(e=>e.type==='Word / Vocabulary').sort((a,b)=>a.content.localeCompare(b.content));
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
@@ -1141,17 +1330,104 @@ function renderWords(){
     <div style="font-size:15px;font-weight:700;color:var(--accent);">${e.content}</div>
     ${e.definition?`<div style="font-size:13px;margin-top:3px;">${e.definition}</div>`:''}
     <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">
-      ${e.wsrc?`<span class="pbadge">Source: ${e.wsrc}</span>`:''}
-      ${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}
+      ${e.wsrc?`<span class="pbadge">Source: ${e.wsrc}</span>`:''}${e.chapNum?`<span class="pbadge">Ch.${e.chapNum}</span>`:''}${e.pageNum?`<span class="pbadge">p.${e.pageNum}</span>`:''}
     </div>
     ${e.note?`<div class="enote">${e.note}</div>`:''}
-    <div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button></div>
+    <div class="eactions">
+      <button class="btn-edit" style="color:#1D9E75;" onclick="openLink('https://www.merriam-webster.com/dictionary/'+encodeURIComponent('${e.content.replace(/'/g,"\\'")}'))">🔍 M-W</button>
+      <button class="btn-edit" onclick="editEntry(${e.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${e.id})">Delete</button>
+    </div>
   </div>`).join('');
 }
 
-// ── EXPORT / IMPORT ─────────────────────────────────────────────────────────
-function exportData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
-function importData(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{Object.assign(library,JSON.parse(ev.target.result));save();renderLibrary();alert('Imported!');}catch{alert('Invalid file.');}};reader.readAsText(file);};input.click();}
+// ── EXPORT / IMPORT / PDF ──────────────────────────────────────────────────
+function exportData(){
+  const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function importDataMerge(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const imported=JSON.parse(ev.target.result);
+        // Merge: for each imported book, if it already exists merge entries by id, otherwise add
+        let added=0,merged=0;
+        Object.values(imported).forEach(b=>{
+          if(!library[b.id]){library[b.id]=b;added++;}
+          else{
+            const existingIds=new Set(library[b.id].entries.map(e=>e.id));
+            const newEntries=b.entries.filter(e=>!existingIds.has(e.id));
+            library[b.id].entries=[...library[b.id].entries,...newEntries];
+            merged+=newEntries.length;
+          }
+        });
+        save();renderLibrary();
+        alert(`Import complete!\n${added} new book(s) added.\n${merged} new entries merged.`);
+      }catch{alert('Invalid backup file.');}
+    };reader.readAsText(file);
+  };input.click();
+}
+function exportPDF(){
+  if(!currentId){alert('Open a book first to export its PDF.');return;}
+  const b=book();const all=entries();
+  const stars=b.rating?'⭐'.repeat(+b.rating):'Not rated';
+  const chars=all.filter(e=>CT.includes(e.type));
+  const typeGroups={};
+  all.forEach(e=>{if(!typeGroups[e.type])typeGroups[e.type]=[];typeGroups[e.type].push(e);});
+  const pg=e=>[e.chapNum?`Ch.${e.chapNum}`:'',e.pageNum?`p.${e.pageNum}`:''].filter(Boolean).join(', ');
+  let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${b.title} — Annotations</title>
+  <style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;color:#1a1410;line-height:1.6;}
+  h1{font-size:24px;margin-bottom:4px;}h2{font-size:18px;margin:28px 0 10px;border-bottom:1px solid #ddd;padding-bottom:4px;}h3{font-size:15px;margin:16px 0 6px;color:#534AB7;}
+  .meta{font-size:13px;color:#666;margin-bottom:20px;}.entry{margin-bottom:12px;padding:8px 12px;border-left:3px solid #ccc;background:#fafafa;}
+  .entry-type{font-size:11px;font-weight:700;text-transform:uppercase;color:#888;letter-spacing:0.04em;}.entry-pg{font-size:11px;color:#aaa;}
+  .entry-content{font-size:14px;margin-top:3px;}.entry-note{font-size:12px;color:#666;font-style:italic;margin-top:3px;}
+  .char-section{margin-bottom:16px;padding:10px 14px;border:1px solid #eee;border-radius:6px;}
+  @media print{.no-print{display:none;}}</style></head><body>
+  <h1>${b.title}</h1>
+  <div class="meta">${b.author?`by ${b.author} · `:''}${GL[b.genre]||b.genre} · ${SL[b.status]} · Rating: ${stars}${b.ds?` · Started ${fmt(b.ds)}`:''}${b.de?` · Finished ${fmt(b.de)}`:''}${b.pub?`<br>${b.pub}${b.year?' ('+b.year+')':''}`:''}${b.isbn?` · ISBN ${b.isbn}`:''}</div>`;
+
+  if(chars.length){
+    html+=`<h2>Characters (${chars.length})</h2>`;
+    chars.forEach(c=>{
+      const name=c.cn||c.content;
+      const cTraits=all.filter(e=>e.type==='Characteristic'&&e.involved?.includes(name));
+      const cQuotes=all.filter(e=>['Quote','Narrator quote'].includes(e.type)&&(e.speaker===name||e.involved?.includes(name)));
+      const cRels=all.filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
+      html+=`<div class="char-section"><h3>${c.charStatus==='deceased'?'✝ ':''}${name}${c.nickname?' ('+c.nickname+')':''}</h3>`;
+      if(c.charRole)html+=`<div style="font-size:12px;color:#666;">${c.charRole}${c.charIntro?' · Introduced: '+c.charIntro:''}</div>`;
+      if(c.charDesc)html+=`<div style="font-size:13px;font-style:italic;margin-top:4px;">${c.charDesc}</div>`;
+      if(cTraits.length){html+=`<div style="font-size:12px;font-weight:700;margin-top:8px;">Traits:</div>`;cTraits.forEach(t=>html+=`<div style="font-size:13px;margin-left:12px;">• ${t.content}${t.sq?` — "${t.sq}"`:''}</div>`);}
+      if(cRels.length){html+=`<div style="font-size:12px;font-weight:700;margin-top:8px;">Relationships:</div>`;cRels.forEach(r=>{const other=r.relA===name?r.relB:r.relA;html+=`<div style="font-size:13px;margin-left:12px;">• ${r.relType?r.relType+': ':''}${other}</div>`;});}
+      if(cQuotes.length){html+=`<div style="font-size:12px;font-weight:700;margin-top:8px;">Quotes:</div>`;cQuotes.forEach(q=>html+=`<div style="font-size:13px;margin-left:12px;font-style:italic;">"${q.content.slice(0,120)}${q.content.length>120?'…':''}" ${pg(q)?'('+pg(q)+')':''}</div>`);}
+      html+=`</div>`;
+    });
+  }
+
+  const showTypes=['Quote','Characteristic','Theme','Symbol','Setting','Chapter','Major event','Timeline','Clue','Evidence','Argument','Question','Word / Vocabulary'];
+  showTypes.forEach(type=>{
+    const group=(typeGroups[type]||[]);if(!group.length)return;
+    html+=`<h2>${type} (${group.length})</h2>`;
+    group.forEach(e=>{
+      html+=`<div class="entry"><div class="entry-type">${e.type}${pg(e)?' <span class="entry-pg">'+pg(e)+'</span>':''}</div>`;
+      html+=`<div class="entry-content">${e.content}`;
+      if(e.type==='Word / Vocabulary'&&e.definition)html+=`<br><em>${e.definition}</em>`;
+      if(e.sq)html+=`<br><em>"${e.sq}"</em>`;
+      html+=`</div>`;
+      if(e.note)html+=`<div class="entry-note">${e.note}</div>`;
+      html+=`</div>`;
+    });
+  });
+
+  const vocab=typeGroups['Word / Vocabulary']||[];
+  if(vocab.length){html+=`<h2>Vocabulary (${vocab.length})</h2>`;vocab.sort((a,b)=>a.content.localeCompare(b.content)).forEach(e=>html+=`<div class="entry"><strong>${e.content}</strong>${e.definition?` — ${e.definition}`:''}</div>`);}
+
+  html+=`<p style="font-size:11px;color:#aaa;margin-top:40px;text-align:center;">Generated from Book Annotator · ${new Date().toLocaleDateString()}</p></body></html>`;
+  const win=window.open('','_blank');if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),400);}
+  else{const blob=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=b.title.replace(/[^a-z0-9]/gi,'-')+'-annotations.html';a.click();}
+}
 
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 load();renderLibrary();
