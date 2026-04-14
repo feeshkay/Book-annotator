@@ -287,7 +287,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="todo-panel" class="panel" style="padding:10px 11px 85px;">
-      <div id="todo-progress" style="margin-bottom:12px;"></div>
+      <div id="todo-progress" style="margin-bottom:10px;"></div>
+      <div style="margin-bottom:10px;">
+        <button class="btn btn-sm" onclick="scanMissingFields()" style="width:100%;padding:9px;font-size:12px;touch-action:manipulation;">🔍 Scan entries for missing fields</button>
+        <div id="scan-results" style="display:none;margin-top:8px;background:var(--bg2);border-radius:var(--r);padding:10px 12px;font-size:12px;"></div>
+      </div>
       <div id="todo-list"></div>
     </div>
 
@@ -1393,15 +1397,16 @@ function onTypeChange(){
   if(isQ&&chars.length){document.getElementById('ae-speaker').innerHTML=`<option value="">— Narrator / Author —</option>`+chars.map(c=>`<option>${c}</option>`).join('');}
   if(isRel&&chars.length){
     const o=chars.map(c=>`<option>${c}</option>`).join('');
-    document.getElementById('ae-rela').innerHTML=o;document.getElementById('ae-relb').innerHTML=o;
+    // Set innerHTML FIRST, then attach onchange so it doesn't get detached
+    document.getElementById('ae-relb').innerHTML=`<option value="">+ Quick-add new character</option>`+o;
+    document.getElementById('ae-rela').innerHTML=o;
     if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;
     document.getElementById('ae-quick-add-b').style.display='none';
     document.getElementById('ae-relb').onchange=()=>{
       const v=document.getElementById('ae-relb').value;
       document.getElementById('ae-quick-add-b').style.display=v===''?'':'none';
+      if(v==='')setTimeout(()=>document.getElementById('qa-name')?.focus(),50);
     };
-    // Add "New character" option
-    document.getElementById('ae-relb').innerHTML=`<option value="">+ Quick-add new character</option>`+o;
   }
   if(!isChar&&!isRel&&chars.length)buildCPick(chars);
   if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
@@ -1666,11 +1671,11 @@ function renderAll(){
 }
 
 function buildFilterBar(){
-  const types=[...new Set(entries().filter(e=>e.type!=='Reference').map(e=>e.type))];
+  const types=[...new Set(entries().filter(e=>e.type!=='Reference').map(e=>e.type))].sort((a,b)=>a.localeCompare(b));
   const chaps=[...new Set(entries().filter(e=>e.chapNum&&!e.chapNum.includes(',')).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
-  let html=`<button class="chip${activeFilter==='all'?' active':''}" onclick="setFilter('all')">All</button>`;
-  html+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter(${JSON.stringify(t)})">${t}</button>`).join('');
-  if(chaps.length)html+=`<span style="font-size:9px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;">Ch:</span>`+chaps.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')">Ch.${c}</button>`).join('');
+  let html=`<button class="chip${activeFilter==='all'?' active':''}" onclick="setFilter('all')" style="touch-action:manipulation;">All</button>`;
+  html+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter(${JSON.stringify(t)})" style="touch-action:manipulation;">${t}</button>`).join('');
+  if(chaps.length)html+=`<span style="font-size:9px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;">Ch:</span>`+chaps.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')" style="touch-action:manipulation;">Ch.${c}</button>`).join('');
   document.getElementById('filter-bar').innerHTML=html;
 }
 function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
@@ -1931,17 +1936,33 @@ function renderWeb(){
   const wrap=document.getElementById('web-wrap');
   const svg=document.getElementById('web-svg');const empty=document.getElementById('web-empty');
   svg.innerHTML='';
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||''}));
-  if(!chars.length){svg.style.display='none';empty.style.display='';return;}
+  document.getElementById('web-no-filter')?.remove();
+  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||'',role:e.charRole||''}));
+  if(!allChars.length){svg.style.display='none';empty.style.display='';return;}
   svg.style.display='';empty.style.display='none';
 
-  let rels=entries().filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
-  const REL_CATS={all:null,family:[...PARENT_TYPES,...CHILD_TYPES,'Sibling','Half-sibling','Step-sibling','Cousin','Second cousin','Aunt','Uncle','Nephew','Niece','In-law','Spouse','Guardian','Ward'],romantic:['Partner','Spouse','Ex-partner','Love interest','Admirer','Estranged spouse','Betrothed'],social:['Friend','Close friend','Best friend','Acquaintance','Neighbour','Rival','Enemy','Ally','Mentor','Protégé','Confidant','Stranger'],professional:['Teacher','Student','Employer','Employee','Master','Servant','Commander','Subordinate','Colleague','Business partner'],other:['Unknown','Complicated']};
+  let allRels=entries().filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
+  const REL_CATS={
+    family:[...PARENT_TYPES,...CHILD_TYPES,'Sibling','Half-sibling','Step-sibling','Cousin','Second cousin','Aunt','Uncle','Nephew','Niece','In-law','Spouse','Guardian','Ward'],
+    romantic:['Partner','Spouse','Ex-partner','Love interest','Admirer','Estranged spouse','Betrothed'],
+    social:['Friend','Close friend','Best friend','Acquaintance','Neighbour','Rival','Enemy','Ally','Mentor','Protégé','Confidant','Stranger'],
+    professional:['Teacher','Student','Employer','Employee','Master','Servant','Commander','Subordinate','Colleague','Business partner'],
+    other:['Unknown','Complicated'],
+  };
+  const mainChars=allChars.filter(c=>c.role==='main').map(c=>c.name);
   const wbar=document.getElementById('web-filter-bar');
-  wbar.innerHTML=['all','family','romantic','social','professional','other'].map(c=>`<button class="chip${activeWebFilter===c?' active':''}" onclick="setWebFilter('${c}')">${c.charAt(0).toUpperCase()+c.slice(1)}</button>`).join('');
-  if(activeWebFilter!=='all'&&REL_CATS[activeWebFilter])rels=rels.filter(r=>REL_CATS[activeWebFilter].includes(r.relType));
+  const filterKeys=['all','main','family','romantic','social','professional','other'];
+  const filterLabels={all:'All',main:'Main char',family:'Family',romantic:'Romantic',social:'Social',professional:'Professional',other:'Other'};
+  wbar.innerHTML=filterKeys.map(f=>`<button class="chip${activeWebFilter===f?' active':''}" onclick="setWebFilter('${f}')" style="touch-action:manipulation;">${filterLabels[f]}</button>`).join('');
 
-  // DEDUPLICATE edges: keep only one edge per character pair (prefer the one where relA is the "senior" role)
+  let rels=allRels;
+  if(activeWebFilter==='main'){
+    rels=rels.filter(r=>mainChars.includes(r.relA)||mainChars.includes(r.relB));
+  } else if(activeWebFilter!=='all'&&REL_CATS[activeWebFilter]){
+    rels=rels.filter(r=>REL_CATS[activeWebFilter].includes(r.relType));
+  }
+
+  // Deduplicate: one edge per character pair
   const seenPairs=new Set();
   const dedupedRels=[];
   rels.forEach(r=>{
@@ -1949,84 +1970,87 @@ function renderWeb(){
     if(!seenPairs.has(key)){seenPairs.add(key);dedupedRels.push(r);}
   });
 
+  // Only show characters that appear in visible relationships (except for 'all')
+  let chars;
+  if(activeWebFilter==='all'){
+    chars=allChars;
+  } else if(activeWebFilter==='main'){
+    const connected=new Set(mainChars);
+    dedupedRels.forEach(r=>{connected.add(r.relA);connected.add(r.relB);});
+    chars=allChars.filter(c=>connected.has(c.name));
+  } else {
+    const related=new Set();
+    dedupedRels.forEach(r=>{related.add(r.relA);related.add(r.relB);});
+    chars=allChars.filter(c=>related.has(c.name));
+    if(!chars.length){
+      svg.style.display='none';
+      svg.insertAdjacentHTML('afterend',`<div id="web-no-filter" style="text-align:center;padding:24px;font-size:13px;color:var(--t2);">No ${activeWebFilter} relationships logged yet.</div>`);
+      return;
+    }
+  }
+
   // Generation layout
   const genMap={};chars.forEach(c=>genMap[c.name]=4);
   dedupedRels.forEach(r=>{
+    if(!genMap.hasOwnProperty(r.relA)||!genMap.hasOwnProperty(r.relB))return;
     if(PARENT_TYPES.includes(r.relType)){genMap[r.relA]=Math.min(genMap[r.relA]??4,GEN_ORDER[r.relType]??3);genMap[r.relB]=Math.max(genMap[r.relB]??4,(GEN_ORDER[r.relType]??3)+1);}
     if(CHILD_TYPES.includes(r.relType)){genMap[r.relA]=Math.min(genMap[r.relA]??4,(GEN_ORDER[r.relType]??5)-1);genMap[r.relB]=Math.max(genMap[r.relB]??4,GEN_ORDER[r.relType]??5);}
   });
   const gens={};chars.forEach(c=>{const g=genMap[c.name]??4;if(!gens[g])gens[g]=[];gens[g].push(c);});
   const gks=Object.keys(gens).map(Number).sort((a,b)=>a-b);
-  const W=Math.max(360,chars.length*80);
-  const NR=26,rowH=110;
+  const W=Math.max(360,chars.length*80);const NR=26,rowH=110;
   const H=Math.max(gks.length*rowH+90,300);
 
-  // Build name→position map FIRST before drawing anything
+  // Build name→position map FIRST
   const nm={};
   gks.forEach((g,gi)=>{
-    const row=gens[g];
-    const y=50+gi*rowH;
-    const step=W/(row.length+1);
+    const row=gens[g];const y=50+gi*rowH;const step=W/(row.length+1);
     row.forEach((c,ci)=>{c.x=step*(ci+1);c.y=y;nm[c.name]=c;});
   });
 
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  svg.setAttribute('height',H);
-  svg.style.width='100%';
-  svg.style.minWidth=W+'px';
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('height',H);svg.style.width='100%';svg.style.minWidth=W+'px';
 
-  // Draw edges AFTER all positions assigned
+  // Edges
   dedupedRels.forEach(r=>{
     const A=nm[r.relA],B=nm[r.relB];if(!A||!B)return;
     const line=document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',A.x);line.setAttribute('y1',A.y);line.setAttribute('x2',B.x);line.setAttribute('y2',B.y);
-    line.setAttribute('stroke',A.col.stroke+'55');line.setAttribute('stroke-width','2');
-    svg.appendChild(line);
+    line.setAttribute('stroke',A.col.stroke+'55');line.setAttribute('stroke-width','2');svg.appendChild(line);
     if(r.relType){
       const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
       const label=r.relType.length>14?r.relType.slice(0,13)+'…':r.relType;
       const tw=Math.min(label.length*5+12,100);
-      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);
-      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','7');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');
-      lt.textContent=label;svg.appendChild(lt);
+      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.92');svg.appendChild(bg);
+      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','7');lt.setAttribute('fill',A.col.text);lt.setAttribute('font-family','-apple-system,sans-serif');lt.setAttribute('font-weight','600');lt.textContent=label;svg.appendChild(lt);
     }
   });
 
-  // Draw nodes on top of edges
+  // Nodes
   chars.forEach(n=>{
     const pos=nm[n.name];if(!pos)return;
+    const isMain=n.role==='main';const nodeR=isMain?NR+4:NR;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor='pointer';
-    g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\\'")}',true)`);
+    g.style.cursor='pointer';g.setAttribute('onclick',`openCharDetail('${n.name.replace(/'/g,"\'")}',true)`);
     if(n.photo){
       const cid='cl'+n.name.replace(/[^a-z0-9]/gi,'_');
       const clip=document.createElementNS('http://www.w3.org/2000/svg','clipPath');clip.setAttribute('id',cid);
-      const cc=document.createElementNS('http://www.w3.org/2000/svg','circle');cc.setAttribute('cx',pos.x);cc.setAttribute('cy',pos.y);cc.setAttribute('r',NR);clip.appendChild(cc);svg.appendChild(clip);
-      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',pos.x);ci.setAttribute('cy',pos.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2');g.appendChild(ci);
-      const im=document.createElementNS('http://www.w3.org/2000/svg','image');im.setAttribute('href',n.photo);im.setAttribute('x',pos.x-NR);im.setAttribute('y',pos.y-NR);im.setAttribute('width',NR*2);im.setAttribute('height',NR*2);im.setAttribute('clip-path',`url(#${cid})`);im.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(im);
+      const cc=document.createElementNS('http://www.w3.org/2000/svg','circle');cc.setAttribute('cx',pos.x);cc.setAttribute('cy',pos.y);cc.setAttribute('r',nodeR);clip.appendChild(cc);svg.appendChild(clip);
+      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',pos.x);ci.setAttribute('cy',pos.y);ci.setAttribute('r',nodeR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width',isMain?'3':'2');g.appendChild(ci);
+      const im=document.createElementNS('http://www.w3.org/2000/svg','image');im.setAttribute('href',n.photo);im.setAttribute('x',pos.x-nodeR);im.setAttribute('y',pos.y-nodeR);im.setAttribute('width',nodeR*2);im.setAttribute('height',nodeR*2);im.setAttribute('clip-path',`url(#${cid})`);im.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(im);
     } else {
-      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',pos.x);ci.setAttribute('cy',pos.y);ci.setAttribute('r',NR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width','2');g.appendChild(ci);
+      const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('cx',pos.x);ci.setAttribute('cy',pos.y);ci.setAttribute('r',nodeR);ci.setAttribute('fill',n.col.bg);ci.setAttribute('stroke',n.col.stroke);ci.setAttribute('stroke-width',isMain?'3':'2');g.appendChild(ci);
       const ini=n.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const ti=document.createElementNS('http://www.w3.org/2000/svg','text');ti.setAttribute('x',pos.x);ti.setAttribute('y',pos.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size','12');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
+      const ti=document.createElementNS('http://www.w3.org/2000/svg','text');ti.setAttribute('x',pos.x);ti.setAttribute('y',pos.y);ti.setAttribute('text-anchor','middle');ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size',isMain?'13':'12');ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
     }
-    if(n.status==='deceased'){const x=document.createElementNS('http://www.w3.org/2000/svg','text');x.setAttribute('x',pos.x+NR-5);x.setAttribute('y',pos.y-NR+5);x.setAttribute('text-anchor','middle');x.setAttribute('font-size','9');x.textContent='🪦';g.appendChild(x);}
+    if(n.status==='deceased'){const x=document.createElementNS('http://www.w3.org/2000/svg','text');x.setAttribute('x',pos.x+nodeR-5);x.setAttribute('y',pos.y-nodeR+5);x.setAttribute('text-anchor','middle');x.setAttribute('font-size','9');x.textContent='🪦';g.appendChild(x);}
     const words=n.name.split(' ');
-    const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
-    tl.setAttribute('x',pos.x);tl.setAttribute('y',pos.y+NR+11);tl.setAttribute('text-anchor','middle');tl.setAttribute('font-size','9');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
-    if(words.length>1){
-      const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',pos.x);s1.setAttribute('dy','0');s1.textContent=words[0];
-      const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',pos.x);s2.setAttribute('dy','11');s2.textContent=words.slice(1).join(' ');
-      tl.appendChild(s1);tl.appendChild(s2);
-    } else tl.textContent=n.name;
+    const tl=document.createElementNS('http://www.w3.org/2000/svg','text');tl.setAttribute('x',pos.x);tl.setAttribute('y',pos.y+nodeR+11);tl.setAttribute('text-anchor','middle');tl.setAttribute('font-size','9');tl.setAttribute('fill',n.col.text);tl.setAttribute('font-weight','600');tl.setAttribute('font-family','-apple-system,sans-serif');
+    if(words.length>1){const s1=document.createElementNS('http://www.w3.org/2000/svg','tspan');s1.setAttribute('x',pos.x);s1.setAttribute('dy','0');s1.textContent=words[0];const s2=document.createElementNS('http://www.w3.org/2000/svg','tspan');s2.setAttribute('x',pos.x);s2.setAttribute('dy','11');s2.textContent=words.slice(1).join(' ');tl.appendChild(s1);tl.appendChild(s2);}
+    else tl.textContent=n.name;
     g.appendChild(tl);svg.appendChild(g);
   });
-
-  // Add pan/drag support to the web wrap div
   setupWebDrag();
 }
-
 function setupWebDrag(){
   const wrap=document.getElementById('web-wrap');
   if(!wrap||wrap._dragSetup)return;
@@ -2327,40 +2351,136 @@ function toggleRef(id){const e=entries().find(x=>x.id===id);if(!e)return;e.refDo
 function renderTodo(){
   const b=book();const all=entries();
   const todos=[];
+
   // Words without definitions
-  all.filter(e=>e.type==='Word / Vocabulary'&&!e.definition).forEach(e=>todos.push({text:`Define word: "${e.content}"`,color:'#854F0B',action:`editEntry(${e.id})`}));
+  all.filter(e=>e.type==='Word / Vocabulary'&&!e.definition).forEach(e=>{
+    todos.push({cat:'Vocabulary',text:`Define "${e.content}"`,color:'#854F0B',action:`editEntry(${e.id})`});
+  });
   // Unanswered questions
-  all.filter(e=>e.type==='Question'&&!e.answered).forEach(e=>todos.push({text:`Answer question: "${e.content.slice(0,50)}"`,color:'#534AB7',action:`editEntry(${e.id})`}));
+  all.filter(e=>e.type==='Question'&&!e.answered).forEach(e=>{
+    todos.push({cat:'Questions',text:`Answer: "${e.content.slice(0,55)}"`,color:'#534AB7',action:`editEntry(${e.id})`});
+  });
   // References not done — with time estimate
   all.filter(e=>e.type==='Reference'&&!e.refDone).forEach(e=>{
-    const verb=e.refType==='book'?'Read':e.refType==='article'?'Read':e.refType==='watch'?'Watch':e.refType==='podcast'?'Listen to':'Explore';
+    const verb=e.refType==='book'||e.refType==='article'?'Read':e.refType==='watch'?'Watch':e.refType==='podcast'?'Listen to':'Explore';
     let timeStr='';
     if(e.refLength){const n=+e.refLength;const unit=e.refLengthUnit||'pages';
       if(unit==='pages')timeStr=` · ~${n}p (~${Math.ceil(n/25)}h)`;
       else if(unit==='minutes')timeStr=` · ${n} min`;
       else if(unit==='hours')timeStr=` · ${n} hr`;}
-    todos.push({text:`${verb}: "${e.content.slice(0,45)}"${timeStr}`,color:'#2E86C1',action:`forceTab('refs')`});
+    todos.push({cat:'References',text:`${verb}: "${e.content.slice(0,45)}"${timeStr}`,color:'#2E86C1',action:`forceTab('refs')`});
   });
   // Characters without any relationships
-  all.filter(e=>CT.includes(e.type)).forEach(e=>{const name=e.cn||e.content;const hasRel=all.some(r=>r.type==='Relationship'&&(r.relA===name||r.relB===name));if(!hasRel)todos.push({text:`Add a relationship for: ${name}`,color:getCC(name).stroke,action:`openCharDetail('${esc(name)}',false)`});});
-  // Entries without page numbers (excluding chars, rels, refs)
-  all.filter(e=>!['Character','Person','Figure','Suspect','Relationship','Reference','Location'].includes(e.type)&&!e.pageNum&&!e.chapNum).forEach(e=>todos.push({text:`Add page/chapter to ${e.type}: "${(e.content||'').slice(0,40)}"`,color:'#888780',action:`editEntry(${e.id})`}));
+  all.filter(e=>CT.includes(e.type)).forEach(e=>{
+    const name=e.cn||e.content;
+    const hasRel=all.some(r=>r.type==='Relationship'&&(r.relA===name||r.relB===name));
+    if(!hasRel)todos.push({cat:'Characters',text:`Add relationship for: ${name}`,color:getCC(name).stroke,action:`openCharDetail('${esc(name)}',false)`});
+  });
+  // Characters missing intro page
+  all.filter(e=>CT.includes(e.type)&&!e.charIntroPg&&!e.charIntroCh).forEach(e=>{
+    todos.push({cat:'Characters',text:`Add intro page for: ${e.cn||e.content}`,color:getCC(e.cn||e.content).stroke,action:`editEntry(${e.id})`});
+  });
+  // Entries without page numbers
+  all.filter(e=>!CT.includes(e.type)&&!['Relationship','Reference','Location'].includes(e.type)&&!e.pageNum&&!e.chapNum&&!e.isDraft).forEach(e=>{
+    todos.push({cat:'Missing pages',text:`Add page # to ${e.type}: "${(e.content||'').slice(0,40)}"`,color:'#888780',action:`editEntry(${e.id})`});
+  });
   // Draft entries
-  all.filter(e=>e.isDraft).forEach(e=>todos.push({text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,color:'#993C1D',action:`editEntry(${e.id})`}));
+  all.filter(e=>e.isDraft).forEach(e=>{
+    todos.push({cat:'Drafts',text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,color:'#993C1D',action:`editEntry(${e.id})`});
+  });
 
-  const done=todos.length===0;
-  const pct=done?100:0;
+  const total=todos.length;
+  const possibleMax=Math.max(all.length,total+1);
+  const pct=total===0?100:Math.max(5,Math.round(((possibleMax-total)/possibleMax)*100));
+
   const prog=document.getElementById('todo-progress');
-  prog.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;font-weight:600;">Progress</span><span style="font-size:12px;color:var(--t2);">${todos.length===0?'All done! 🎉':todos.length+' items'}</span></div>
-  <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${done?'#1D9E75':'var(--accent)'};"></div></div>`;
+  prog.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+      <span style="font-size:12px;font-weight:600;">Completion</span>
+      <span style="font-size:12px;color:var(--t2);">${total===0?'All done! 🎉':total+' item'+(total>1?'s':'')+' remaining'}</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${total===0?'#1D9E75':'var(--accent)'};transition:width 0.4s;"></div></div>
+    <div style="font-size:10px;color:var(--t3);text-align:right;margin-top:2px;">${pct}% complete</div>`;
 
   const list=document.getElementById('todo-list');
-  if(!todos.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Nothing needs attention right now</div></div>`;return;}
-  list.innerHTML=todos.map(t=>`<div class="todo-item">
-    <div class="todo-dot" style="background:${t.color};"></div>
-    <div style="flex:1;font-size:12px;">${t.text}</div>
-    <button class="btn-edit" onclick="${t.action}">Go →</button>
-  </div>`).join('');
+  if(!todos.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Tap "Scan entries" above to check for missing fields</div></div>`;
+    return;
+  }
+
+  const cats={};
+  todos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
+  const catOrder=['Drafts','Characters','Missing pages','Vocabulary','Questions','References'];
+  const orderedCats=[...catOrder.filter(c=>cats[c]),...Object.keys(cats).filter(c=>!catOrder.includes(c))];
+
+  list.innerHTML=orderedCats.map(cat=>`
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:5px;">${cat} (${cats[cat].length})</div>
+      ${cats[cat].map(t=>`<div class="todo-item">
+        <div class="todo-dot" style="background:${t.color};flex-shrink:0;"></div>
+        <div style="flex:1;font-size:12px;">${t.text}</div>
+        <button class="btn-edit" onclick="${t.action}" style="touch-action:manipulation;flex-shrink:0;">Go →</button>
+      </div>`).join('')}
+    </div>`).join('');
+}
+
+function scanMissingFields(){
+  const all=entries();
+  const issues=[];
+
+  // Types where page number is NOT applicable
+  const noPageTypes=new Set(['Relationship','Reference','Location']);
+
+  // Extra important fields per type (beyond page number)
+  const extraFields={
+    'Character':     [{f:'charIntroPg',l:'intro page'},{f:'charRole',l:'role'},{f:'charDesc',l:'description'}],
+    'Quote':         [{f:'speaker',l:'speaker'}],
+    'Event':         [{f:'evdate',l:'story date'},{f:'involved',l:'characters tagged',arr:true}],
+    'Characteristic':[{f:'traitType',l:'trait type'}],
+    'Relationship':  [{f:'relType',l:'relationship type'},{f:'relA',l:'character A'},{f:'relB',l:'character B'}],
+    'Location':      [{f:'locType',l:'real/fictional'}],
+    'Word / Vocabulary':[{f:'definition',l:'definition'}],
+    'Reference':     [{f:'refType',l:'reference type'},{f:'refAuthor',l:'author/creator'}],
+    'Timeline':      [{f:'evdate',l:'story date'}],
+  };
+
+  all.forEach(e=>{
+    if(e.isDraft)return;
+    const name=(e.cn||e.content||e.type).slice(0,35);
+
+    // Page number check for all applicable types
+    if(!noPageTypes.has(e.type)&&!CT.includes(e.type)&&!e.pageNum&&!e.chapNum){
+      issues.push({text:`${e.type} "${name}" — missing page number`,id:e.id,priority:1});
+    }
+    // Character intro page specifically
+    if(CT.includes(e.type)&&!e.charIntroPg&&!e.charIntroCh){
+      issues.push({text:`Character "${name}" — missing intro page`,id:e.id,priority:1});
+    }
+
+    // Extra field checks per type
+    const extras=extraFields[e.type]||[];
+    extras.forEach(({f,l,arr})=>{
+      const val=e[f];
+      const empty=!val||(arr&&Array.isArray(val)&&val.length===0)||(typeof val==='string'&&val.trim()==='');
+      if(empty)issues.push({text:`${e.type} "${name}" — missing ${l}`,id:e.id,priority:2});
+    });
+  });
+
+  // Sort: priority 1 first, then alphabetically
+  issues.sort((a,b)=>a.priority-b.priority||a.text.localeCompare(b.text));
+
+  const box=document.getElementById('scan-results');
+  box.style.display='';
+  if(!issues.length){
+    box.innerHTML=`<div style="color:#1D9E75;font-weight:600;">✓ No missing important fields found!</div>`;
+    return;
+  }
+  box.innerHTML=`<div style="font-weight:600;margin-bottom:6px;">Found ${issues.length} missing field${issues.length>1?'s':''}:</div>`+
+    issues.slice(0,30).map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--cb);">
+      <div style="flex:1;">${i.text}</div>
+      <button class="btn-edit" onclick="editEntry(${i.id})" style="touch-action:manipulation;flex-shrink:0;">Fix →</button>
+    </div>`).join('')+
+    (issues.length>30?`<div style="font-size:11px;color:var(--t3);margin-top:5px;">…and ${issues.length-30} more. Fix some and scan again.</div>`:'');
 }
 
 // ═══════════════════════════════════════════════════════════════
