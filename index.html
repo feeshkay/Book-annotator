@@ -2170,7 +2170,7 @@ function renderTodo(){
   const pct=done?100:0;
   const prog=document.getElementById('todo-progress');
   prog.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-size:12px;font-weight:600;">Progress</span><span style="font-size:12px;color:var(--t2);">${todos.length===0?'All done! 🎉':todos.length+' items'}</span></div>
-  <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${done?'#1D9E75':'var(--accent)};"></div></div>`;
+  <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${done?'#1D9E75':'var(--accent)'};"></div></div>`;
 
   const list=document.getElementById('todo-list');
   if(!todos.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Nothing needs attention right now</div></div>`;return;}
