@@ -44,7 +44,7 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);tra
 .sheet-overlay.open{display:flex;}
 .sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:95vh;overflow-y:auto;}
 .sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 12px;}
-.sheet-x{position:absolute;right:14px;top:14px;font-size:20px;background:transparent;color:var(--t2);padding:2px 6px;}
+.sheet-x{position:absolute;right:10px;top:10px;font-size:22px;background:var(--bg3);color:var(--text);padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--cb);line-height:1;min-width:36px;text-align:center;}
 .sheet-title{font-size:16px;font-weight:600;margin-bottom:12px;}
 /* forms */
 .fg{display:flex;flex-direction:column;gap:4px;margin-bottom:11px;}
@@ -133,7 +133,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ipage{font-size:10px;color:var(--t3);margin-top:3px;}
 /* summary cards */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px;}
-.sum-card{background:var(--bg2);border-radius:var(--r);padding:9px 11px;}
+.sum-card{background:var(--bg2);border-radius:var(--r);padding:9px 11px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.sum-card:active{opacity:0.7;}
 .sum-val{font-size:18px;font-weight:600;}
 .sum-lbl{font-size:11px;color:var(--t2);}
 /* timeline */
@@ -201,6 +202,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div id="lib-screen" class="screen active">
   <div class="topbar">
     <div class="topbar-title">📚 My Books</div>
+    <button class="btn-icon" style="font-size:13px;" onclick="openSync()">☁️</button>
     <button class="btn-icon" style="font-size:13px;" onclick="openSheet('lib-stats-overlay');renderLibStats()">📊</button>
     <button class="btn-icon" onclick="openNewBookSheet()">+ New</button>
     <button class="btn-icon" style="font-size:12px;" onclick="exportAllData()">⬇</button>
@@ -433,7 +435,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- TYPE SELECTOR + HINT PINNED AT TOP -->
     <div style="position:sticky;top:0;background:var(--bg);z-index:10;padding-bottom:8px;margin-bottom:8px;border-bottom:0.5px solid var(--cb);">
       <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;">Add annotation</div>
-      <div class="fg" style="margin-bottom:8px;"><label>What is this?</label><select id="ae-type" onchange="onTypeChange()"></select></div>
+      <div class="fg" style="margin-bottom:8px;"><label>What is this?</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <select id="ae-type" onchange="onTypeChange()" style="flex:1;"></select>
+          <button type="button" onclick="showTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Show entry description">?</button>
+        </div>
+      </div>
       <div id="ae-type-hint" class="type-hint" style="display:none;"></div>
     </div>
     <input type="hidden" id="ae-edit-id"/>
@@ -476,7 +483,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="slabel">Quick relationships <span style="font-size:10px;font-weight:400;color:var(--t3);">— "This character" is [type] of [another character]</span></div>
       <div style="font-size:11px;color:var(--t2);margin-bottom:7px;">Slot 1 = THIS character · Slot 2 = THE OTHER character. E.g. "This character is the <em>Teacher</em> of [Character B]"</div>
       <div id="ae-quick-rels-list"></div>
-      <button class="btn btn-sm" onclick="addQuickRelRow()" style="margin-bottom:8px;">+ Add relationship</button>
+      <button class="btn" onclick="addQuickRelRow()" style="margin-bottom:8px;width:100%;background:var(--al);color:var(--accent);border-color:var(--am);font-size:13px;padding:9px;touch-action:manipulation;">+ Add relationship</button>
       <div id="ae-sug-box" style="display:none" class="sug-box">
         <strong>Suggested connections</strong>
         <div id="ae-sug-content"></div>
@@ -496,7 +503,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- QUOTE EXTRAS -->
     <div id="ae-quote-ex" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Speaker</label><select id="ae-speaker"></select></div>
+        <div class="fg"><label>Speaker</label><select id="ae-speaker" onchange="autoTagSpeaker()"></select></div>
         <div class="fg"><label>Emotion / tone</label><select id="ae-emotion">
           <option value="">— none —</option>
           <optgroup label="Positive"><option data-tone="positive">Admiring</option><option data-tone="positive">Caring</option><option data-tone="positive">Cheerful</option><option data-tone="positive">Compassionate</option><option data-tone="positive">Confident</option><option data-tone="positive">Excited</option><option data-tone="positive">Grateful</option><option data-tone="positive">Hopeful</option><option data-tone="positive">Joyful</option><option data-tone="positive">Kind</option><option data-tone="positive">Loving</option><option data-tone="positive">Optimistic</option><option data-tone="positive">Playful</option><option data-tone="positive">Proud</option><option data-tone="positive">Reassuring</option><option data-tone="positive">Relieved</option><option data-tone="positive">Sweet</option><option data-tone="positive">Tender</option><option data-tone="positive">Warm</option></optgroup>
@@ -573,7 +580,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="fg"><label>When <span style="font-weight:400;">(chapter, page, or narrative time — feeds into Timeline)</span></label><input type="text" id="ae-medate" placeholder="e.g. Ch.7 · p.134 · Year 1823"/></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <input type="checkbox" id="ae-event-to-tl" style="width:auto;min-width:0;flex-shrink:0;"/>
+        <input type="checkbox" id="ae-event-to-tl" style="width:auto;min-width:0;flex-shrink:0;" checked/>
         <label for="ae-event-to-tl" style="font-size:12px;text-transform:none;letter-spacing:0;">Also add to Timeline</label>
       </div>
     </div>
@@ -660,7 +667,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Building / Place name</label><input type="text" id="ae-loc-building" placeholder="e.g. Hogwarts, 10 Downing St"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>City / Region</label><input type="text" id="ae-loc-city" placeholder="e.g. London"/></div>
+        <div class="fg"><label>City / Region</label><input type="text" id="ae-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-loc-city','ae-loc-country')"/></div>
         <div class="fg"><label>Country</label><input type="text" id="ae-loc-country" placeholder="e.g. England"/></div>
       </div>
       <div class="fg"><label>Era / Time period at book</label><input type="text" id="ae-loc-era" placeholder="e.g. 1940s wartime London"/></div>
@@ -690,7 +697,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <div class="fg"><label>Building / place</label><input type="text" id="ae-new-loc-building" placeholder="e.g. 10 Downing St"/></div>
           </div>
           <div class="r2">
-            <div class="fg"><label>City / region</label><input type="text" id="ae-new-loc-city" placeholder="e.g. London"/></div>
+            <div class="fg"><label>City / region</label><input type="text" id="ae-new-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-new-loc-city','ae-new-loc-country')"/></div>
             <div class="fg"><label>Country</label><input type="text" id="ae-new-loc-country" placeholder="e.g. England"/></div>
           </div>
           <div class="fg"><label>Era / time period</label><input type="text" id="ae-new-loc-era" placeholder="e.g. 1940s wartime, medieval, present day"/></div>
@@ -768,6 +775,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
     </div>
     <div class="fa">
       <button class="btn" style="color:#A32D2D;" onclick="deleteBook()">Delete this book</button>
@@ -1017,25 +1025,47 @@ function saveQuickLoc(){
 // BOOK LOOKUP (Open Library API)
 // ═══════════════════════════════════════════════════════════════
 async function lookupBook(title){
-  if(!title||title.length<4)return;
+  if(!title||title.length<3)return;
   try{
-    const r=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`);
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher`);
     const d=await r.json();
     const hint=document.getElementById('nb-lookup-hint');
-    if(d.docs&&d.docs.length){
-      const b=d.docs[0];
-      hint.style.display='';
-      hint.innerHTML=`📚 Found: <strong>${b.title}</strong>${b.author_name?` by ${b.author_name[0]}`:''} ${b.first_publish_year?`(${b.first_publish_year})`:''}
-        <br><button class="btn btn-sm" onclick="applyLookup(${JSON.stringify(b.title)},${JSON.stringify(b.author_name?.[0]||'')},${JSON.stringify(b.first_publish_year||'')},${JSON.stringify(b.isbn?b.isbn[0]||'':'')})">Use this info</button>`;
-    }
-  }catch(e){}
+    if(!d.docs||!d.docs.length){hint.style.display='';hint.innerHTML='No results found.';return;}
+    // Store results for use by applyLookup
+    window._bookLookupResults=d.docs;
+    hint.style.display='';
+    hint.innerHTML=d.docs.map((b,i)=>`<div style="padding:5px 0;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="flex:1;font-size:12px;"><strong>${b.title}</strong>${b.author_name?` · ${b.author_name[0]}`:''} ${b.first_publish_year?`(${b.first_publish_year})`:''}
+      </div>
+      <button class="btn btn-sm" onclick="applyLookup(${i})" style="touch-action:manipulation;flex-shrink:0;">Use</button>
+    </div>`).join('');
+  }catch(e){console.error('Book lookup error:',e);}
 }
-function applyLookup(title,author,year,isbn){
-  if(title)document.getElementById('nb-title').value=title;
-  if(author)document.getElementById('nb-author').value=author;
-  if(year)document.getElementById('nb-year').value=year;
-  if(isbn)document.getElementById('nb-isbn').value=isbn;
+function applyLookup(idx){
+  const results=window._bookLookupResults;
+  if(!results||!results[idx])return;
+  const b=results[idx];
+  if(b.title)document.getElementById('nb-title').value=b.title;
+  if(b.author_name?.[0])document.getElementById('nb-author').value=b.author_name[0];
+  if(b.first_publish_year)document.getElementById('nb-year').value=b.first_publish_year;
+  if(b.isbn?.[0])document.getElementById('nb-isbn').value=b.isbn[0];
+  if(b.publisher?.[0])document.getElementById('nb-pub').value=b.publisher[0];
   document.getElementById('nb-lookup-hint').style.display='none';
+}
+
+async function geocodeCity(cityId,countryId){
+  const city=document.getElementById(cityId)?.value.trim();
+  const countryEl=document.getElementById(countryId);
+  if(!city||!countryEl||countryEl.value.trim())return; // don't overwrite existing country
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const d=await r.json();
+    if(d&&d[0]?.address){
+      const a=d[0].address;
+      const country=a.country||'';
+      if(country)countryEl.value=country;
+    }
+  }catch(e){} // silent fail — geocoding is best-effort
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1351,6 +1381,17 @@ function buildTypeSelect(){
   const cfg=GENRES[book().genre]||GENRES.fiction;
   document.getElementById('ae-type').innerHTML=cfg.types.map(t=>`<option>${t}</option>`).join('');
 }
+function showTypeHint(){
+  const type=document.getElementById('ae-type').value;
+  const hint=TYPE_HINTS[type];
+  const hintEl=document.getElementById('ae-type-hint');
+  if(!hint){hintEl.style.display='none';return;}
+  hintEl.style.display='';
+  hintEl.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+    <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${hint.desc}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
+    <button onclick="document.getElementById('ae-type-hint').style.display='none'" style="background:transparent;border:none;color:var(--accent);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;cursor:pointer;touch-action:manipulation;">×</button>
+  </div>`;
+}
 function onTypeChange(){
   if(!currentId)return;
   const type=document.getElementById('ae-type').value;
@@ -1363,16 +1404,9 @@ function onTypeChange(){
   const isTrans=type==='Translation';
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
 
-  // Type hint
-  const hint=TYPE_HINTS[type];
-  const hintEl=document.getElementById('ae-type-hint');
-  if(hint&&!isChar){
-    hintEl.style.display='';
-    hintEl.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
-      <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${hint.desc}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
-      <button onclick="document.getElementById('ae-type-hint').style.display='none'" style="background:transparent;border:none;color:var(--accent);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;cursor:pointer;">×</button>
-    </div>`;
-  } else hintEl.style.display='none';
+  // Type hint — show unless it's a Character entry
+  if(!isChar)showTypeHint();
+  else document.getElementById('ae-type-hint').style.display='none';
 
   document.getElementById('ae-char-section').style.display=isChar?'':'none';
   document.getElementById('ae-content-section').style.display=(isChar||isTrans)?'none':'';
@@ -1394,12 +1428,14 @@ function onTypeChange(){
   const lbl={Quote:'Quote / passage','Line/stanza':'Line or stanza',Chapter:'Chapter title or number',Timeline:'Event description',Event:'What happened?',Dialogue:'Conversation title / description','Word / Vocabulary':'Word',Location:'Location name',Translation:'Original text','Narrator quote':'Quote / passage'};
   document.getElementById('ae-clabel').textContent=lbl[type]||'Content';
 
-  if(isQ&&chars.length){document.getElementById('ae-speaker').innerHTML=`<option value="">— Narrator / Author —</option>`+chars.map(c=>`<option>${c}</option>`).join('');}
+  if(isQ&&chars.length){buildCharSelect('ae-speaker','— Narrator / Author —');}
   if(isRel&&chars.length){
-    const o=chars.map(c=>`<option>${c}</option>`).join('');
-    // Set innerHTML FIRST, then attach onchange so it doesn't get detached
-    document.getElementById('ae-relb').innerHTML=`<option value="">+ Quick-add new character</option>`+o;
-    document.getElementById('ae-rela').innerHTML=o;
+    // Set innerHTML FIRST using sorted chars, then attach onchange
+    buildCharSelect('ae-relb','+ Quick-add new character');
+    buildCharSelect('ae-rela','');
+    // Remove blank option from relA
+    const ra=document.getElementById('ae-rela');
+    if(ra.options[0]&&ra.options[0].value==='')ra.remove(0);
     if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;
     document.getElementById('ae-quick-add-b').style.display='none';
     document.getElementById('ae-relb').onchange=()=>{
@@ -1408,13 +1444,52 @@ function onTypeChange(){
       if(v==='')setTimeout(()=>document.getElementById('qa-name')?.focus(),50);
     };
   }
-  if(!isChar&&!isRel&&chars.length)buildCPick(chars);
+  if(!isChar&&!isRel&&chars.length){
+    buildCPick(chars);
+    // For Characteristic: if only one main char exists, auto-select them
+    if(isTrait){
+      setTimeout(()=>{
+        const mainChips=[...document.querySelectorAll('.cpick')].filter(c=>{
+          const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===c.dataset.name);
+          return e?.charRole==='main';
+        });
+        if(mainChips.length===1&&!document.querySelector('.cpick.sel'))mainChips[0].classList.add('sel');
+      },30);
+    }
+  }
   if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
   if(isDial&&!document.getElementById('ae-dial-lines').children.length)addDialogueLine();
   buildLocSelect();
 }
+function sortedChars(){
+  // Returns [{name, role, label}] — main chars first (★), then side/antagonist (◆), then others
+  const all=entries().filter(e=>CT.includes(e.type));
+  const roleOrder={main:0,antagonist:1,side:1,narrator:1,minor:2,stranger:2,'':3};
+  const roleSymbol={main:'★ ',antagonist:'◆ ',side:'◆ '};
+  return all
+    .map(e=>({name:e.cn||e.content,role:e.charRole||''}))
+    .sort((a,b)=>(roleOrder[a.role]??3)-(roleOrder[b.role]??3)||a.name.localeCompare(b.name))
+    .map(c=>({name:c.name,role:c.role,label:(roleSymbol[c.role]||'')+c.name}));
+}
 function buildCPick(chars){
-  document.getElementById('cpick-row').innerHTML=chars.map(c=>{const cc=getCC(c);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c}" onclick="this.classList.toggle('sel')">${c}</span>`;}).join('');
+  // chars is an array of names; use sortedChars order if possible
+  const sorted=sortedChars().filter(c=>chars.includes(c.name));
+  const unsorted=chars.filter(n=>!sorted.find(s=>s.name===n)).map(n=>({name:n,label:n}));
+  const all=[...sorted,...unsorted];
+  document.getElementById('cpick-row').innerHTML=all.map(c=>{const cc=getCC(c.name);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c.name}" onclick="this.classList.toggle('sel')">${c.label}</span>`;}).join('');
+}
+function autoTagSpeaker(){
+  const spk=document.getElementById('ae-speaker').value;
+  if(!spk)return;
+  const chip=document.querySelector(`.cpick[data-name="${CSS.escape(spk)}"]`);
+  if(chip&&!chip.classList.contains('sel'))chip.classList.add('sel');
+}
+function buildCharSelect(selectId,addBlankOption){
+  const el=document.getElementById(selectId);if(!el)return;
+  const sorted=sortedChars();
+  let html=addBlankOption?`<option value="">${addBlankOption}</option>`:'';
+  html+=sorted.map(c=>`<option value="${c.name}">${c.label}</option>`).join('');
+  el.innerHTML=html;
 }
 function getPicked(){return[...document.querySelectorAll('.cpick.sel')].map(e=>e.dataset.name);}
 function toggleGoodreads(){const t=document.getElementById('ae-ref-type').value;document.getElementById('ae-goodreads-hint').style.display=t==='book'?'':'none';}
@@ -1483,7 +1558,7 @@ function clearAEForm(){
   document.getElementById('ae-event-sig').value='significant';
   document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';
   document.getElementById('ae-loc-type').value='real';
-  document.getElementById('ae-event-to-tl').checked=false;
+  document.getElementById('ae-event-to-tl').checked=true;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
 }
@@ -1541,6 +1616,45 @@ function submitEntry(){
   let chapNum=isChar||isRel||isRef||isLoc?'':document.getElementById('ae-ch').value;
   const pgVal=isChar||isRel||isRef||isLoc?'':document.getElementById('ae-pg').value.trim();
   if(pgVal&&!chapNum){const chaps=pageToChapters(pgVal);if(chaps.length)chapNum=chaps.length>1?chaps.join(','):String(chaps[0]);}
+
+  // Required field validation — highlight red and return if missing
+  function reqFail(id,msg){
+    const el=document.getElementById(id);if(!el)return true;
+    el.style.borderColor='#E24B4A';
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    if(msg)el.placeholder=msg;
+    return true;
+  }
+  let validationFail=false;
+  if(['Quote','Line/stanza','Narrator quote'].includes(type)){
+    const spk=document.getElementById('ae-speaker').value;
+    if(!spk){reqFail('ae-speaker');validationFail=true;}
+  }
+  if(isChar){
+    if(!document.getElementById('ae-crole').value){reqFail('ae-crole');validationFail=true;}
+    if(!document.getElementById('ae-cstatus').value||document.getElementById('ae-cstatus').value==='unknown'){/* status unknown is ok */}
+  }
+  if(type==='Characteristic'){
+    if(!getPicked().length){
+      const row=document.getElementById('cpick-row');
+      if(row){row.style.outline='2px solid #E24B4A';row.style.borderRadius='var(--r)';}
+      validationFail=true;
+    }
+  }
+  if(isRef&&!document.getElementById('ae-ref-url').value.trim()){
+    reqFail('ae-ref-url','URL is recommended');// warning not block
+  }
+  if(isLoc){
+    if(!document.getElementById('ae-loc-city').value.trim())reqFail('ae-loc-city','City required');
+    if(!document.getElementById('ae-loc-country').value.trim())reqFail('ae-loc-country','Country required');
+    if(!document.getElementById('ae-loc-city').value.trim()||!document.getElementById('ae-loc-country').value.trim())validationFail=true;
+  }
+  // Clear red borders after a delay on any input
+  setTimeout(()=>{
+    document.querySelectorAll('#ae-overlay input,#ae-overlay select,#ae-overlay textarea').forEach(el=>el.style.borderColor='');
+    const row=document.getElementById('cpick-row');if(row)row.style.outline='';
+  },3000);
+  if(validationFail)return;
 
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
@@ -1673,10 +1787,27 @@ function renderAll(){
 function buildFilterBar(){
   const types=[...new Set(entries().filter(e=>e.type!=='Reference').map(e=>e.type))].sort((a,b)=>a.localeCompare(b));
   const chaps=[...new Set(entries().filter(e=>e.chapNum&&!e.chapNum.includes(',')).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
-  let html=`<button class="chip${activeFilter==='all'?' active':''}" onclick="setFilter('all')" style="touch-action:manipulation;">All</button>`;
-  html+=types.map(t=>`<button class="chip${activeFilter===t?' active':''}" onclick="setFilter(${JSON.stringify(t)})" style="touch-action:manipulation;">${t}</button>`).join('');
-  if(chaps.length)html+=`<span style="font-size:9px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;">Ch:</span>`+chaps.map(c=>`<button class="chip${activeFilter==='ch:'+c?' active':''}" onclick="setFilter('ch:${c}')" style="touch-action:manipulation;">Ch.${c}</button>`).join('');
-  document.getElementById('filter-bar').innerHTML=html;
+  const bar=document.getElementById('filter-bar');
+  bar.innerHTML='';
+
+  function makeChip(label,filterVal,active){
+    const btn=document.createElement('button');
+    btn.className='chip'+(active?' active':'');
+    btn.textContent=label;
+    btn.style.touchAction='manipulation';
+    btn.addEventListener('touchend',function(e){e.preventDefault();setFilter(filterVal);},{passive:false});
+    btn.addEventListener('click',function(){setFilter(filterVal);});
+    return btn;
+  }
+
+  bar.appendChild(makeChip('All','all',activeFilter==='all'));
+  types.forEach(t=>bar.appendChild(makeChip(t,t,activeFilter===t)));
+  if(chaps.length){
+    const lbl=document.createElement('span');
+    lbl.style.cssText='font-size:9px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;';
+    lbl.textContent='Ch:';bar.appendChild(lbl);
+    chaps.forEach(c=>bar.appendChild(makeChip('Ch.'+c,'ch:'+c,activeFilter==='ch:'+c)));
+  }
 }
 function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
 function filterEntries(){
@@ -2547,10 +2678,10 @@ function renderStats(){
   const content=document.getElementById('stats-content');
   content.innerHTML=`
   <div class="sum-grid">
-    <div class="sum-card"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries</div></div>
-    <div class="sum-card"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters</div></div>
-    <div class="sum-card"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes</div></div>
-    <div class="sum-card"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events</div></div>
+    <div class="sum-card" onclick="forceTab('log')" title="Go to Log"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
+    <div class="sum-card" onclick="forceTab('chars')" title="Go to Characters"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
+    <div class="sum-card" onclick="forceTab('quotes')" title="Go to Quotes"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes ›</div></div>
+    <div class="sum-card" onclick="forceTab('timeline')" title="Go to Timeline"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events ›</div></div>
     <div class="sum-card"><div class="sum-val">${sessions.length}</div><div class="sum-lbl">Sessions</div></div>
     <div class="sum-card"><div class="sum-val">${totalMin>=60?Math.floor(totalMin/60)+'h '+(totalMin%60)+'m':totalMin+' min'}</div><div class="sum-lbl">Total reading time</div></div>
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
@@ -2636,6 +2767,70 @@ function deleteSession(idx){
 // ═══════════════════════════════════════════════════════════════
 // EXPORT / IMPORT / PDF
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// GITHUB GIST SYNC
+// ═══════════════════════════════════════════════════════════════
+function openSync(){
+  const token=localStorage.getItem('sync-token')||'';
+  const gistId=localStorage.getItem('sync-gist-id')||'';
+  document.getElementById('sync-token').value=token;
+  document.getElementById('sync-gist-id').value=gistId;
+  document.getElementById('sync-status').textContent='';
+  openSheet('sync-overlay');
+}
+function setSyncStatus(msg,color){
+  const el=document.getElementById('sync-status');
+  if(el){el.textContent=msg;el.style.color=color||'var(--t2)';}
+}
+async function syncPush(){
+  const token=document.getElementById('sync-token').value.trim();
+  const gistId=document.getElementById('sync-gist-id').value.trim();
+  if(!token){setSyncStatus('⚠ Please enter your GitHub token','#E24B4A');return;}
+  setSyncStatus('Pushing…','var(--t2)');
+  localStorage.setItem('sync-token',token);
+  const data=JSON.stringify(library);
+  const payload={description:'Book Annotator Sync',public:false,files:{'book-annotator-data.json':{content:data}}};
+  try{
+    let url='https://api.github.com/gists';let method='POST';
+    if(gistId){url=`https://api.github.com/gists/${gistId}`;method='PATCH';}
+    const res=await fetch(url,{method,headers:{'Authorization':`token ${token}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},body:JSON.stringify(payload)});
+    if(!res.ok){const err=await res.json();setSyncStatus('✗ Error: '+(err.message||res.status),'#E24B4A');return;}
+    const json=await res.json();
+    localStorage.setItem('sync-gist-id',json.id);
+    document.getElementById('sync-gist-id').value=json.id;
+    setSyncStatus(`✓ Pushed at ${new Date().toLocaleTimeString()} · Gist ID saved`,'#1D9E75');
+  }catch(e){setSyncStatus('✗ Network error: '+e.message,'#E24B4A');}
+}
+async function syncPull(){
+  const token=document.getElementById('sync-token').value.trim();
+  const gistId=document.getElementById('sync-gist-id').value.trim();
+  if(!token||!gistId){setSyncStatus('⚠ Token and Gist ID required to pull','#E24B4A');return;}
+  setSyncStatus('Pulling…','var(--t2)');
+  localStorage.setItem('sync-token',token);
+  localStorage.setItem('sync-gist-id',gistId);
+  try{
+    const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!res.ok){const err=await res.json();setSyncStatus('✗ Error: '+(err.message||res.status),'#E24B4A');return;}
+    const json=await res.json();
+    const fileContent=json.files?.['book-annotator-data.json']?.content;
+    if(!fileContent){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
+    const incoming=JSON.parse(fileContent);
+    // Merge: incoming books win for their own entries, but we never lose local-only books
+    let added=0,merged=0;
+    Object.values(incoming).forEach(b=>{
+      if(!library[b.id]){library[b.id]=b;added++;}
+      else{
+        const ids=new Set(library[b.id].entries.map(e=>e.id));
+        const newEntries=(b.entries||[]).filter(e=>!ids.has(e.id));
+        library[b.id].entries=[...library[b.id].entries,...newEntries];
+        merged+=newEntries.length;
+      }
+    });
+    save();renderLibrary();
+    setSyncStatus(`✓ Pulled at ${new Date().toLocaleTimeString()} · ${added} new book(s), ${merged} new entries`,'#1D9E75');
+  }catch(e){setSyncStatus('✗ '+e.message,'#E24B4A');}
+}
+
 function exportData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 function exportAllData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='all-books-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 function importDataMerge(){
@@ -3128,7 +3323,7 @@ load();renderLibrary();
         <div class="fg"><label>Building / place</label><input type="text" id="eloc-building" placeholder="e.g. 10 Downing St"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>City / region</label><input type="text" id="eloc-city" placeholder="e.g. London"/></div>
+        <div class="fg"><label>City / region</label><input type="text" id="eloc-city" placeholder="e.g. London" onblur="geocodeCity('eloc-city','eloc-country')"/></div>
         <div class="fg"><label>Country</label><input type="text" id="eloc-country" placeholder="e.g. England"/></div>
       </div>
       <div class="fg"><label>Era / time period</label><input type="text" id="eloc-era" placeholder="e.g. 1940s wartime"/></div>
@@ -3154,6 +3349,35 @@ load();renderLibrary();
       <div class="fa" style="margin-top:12px;">
         <button class="btn" onclick="closeSheet('fam-suggestions-overlay')">Done</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SYNC SHEET ══ -->
+<div class="sheet-overlay" id="sync-overlay" onclick="mc('sync-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">☁️ Sync across devices</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6;">Uses a private GitHub Gist to sync your data between iPhone, iPad, and any other device. Your data stays private — only accessible with your personal token.</div>
+    <div class="fg">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="sync-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"/>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px;">
+        Get one free at <span style="color:var(--accent);cursor:pointer;" onclick="openLink('https://github.com/settings/tokens/new?scopes=gist&description=BookAnnotatorSync')">github.com/settings/tokens</span> — select <strong>gist</strong> scope only.
+      </div>
+    </div>
+    <div class="fg">
+      <label>Gist ID <span style="font-weight:400;">(auto-filled after first push)</span></label>
+      <input type="text" id="sync-gist-id" placeholder="Leave blank to create a new Gist"/>
+    </div>
+    <div id="sync-status" style="font-size:12px;margin-bottom:10px;min-height:18px;"></div>
+    <div class="fa">
+      <button class="btn" onclick="closeSheet('sync-overlay')">Cancel</button>
+      <button class="btn" onclick="syncPull()" style="background:var(--bg2);">⬇ Pull</button>
+      <button class="btn btn-primary" onclick="syncPush()">⬆ Push</button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-top:12px;line-height:1.6;padding:8px;background:var(--bg2);border-radius:var(--r);">
+      <strong>How it works:</strong> Push sends your data to GitHub. Pull fetches it on another device. Always Push from the device you just used, then Pull on the other device. Your token is stored locally on each device — never sent anywhere except GitHub.
     </div>
   </div>
 </div>
