@@ -127,7 +127,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .csec{margin-bottom:14px;}
 .csec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;padding:6px 0;min-height:36px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .csec-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;}
-.csec-toggle{font-size:16px;color:var(--accent);min-width:28px;text-align:center;line-height:1;padding:4px;}
+.csec-toggle{font-size:20px;color:var(--accent);min-width:36px;height:36px;text-align:center;line-height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
 .citem{background:var(--card);border:0.5px solid var(--cb);border-radius:var(--r);padding:8px 10px;margin-bottom:5px;font-size:13px;line-height:1.5;}
 .ilabel{font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px;}
 .ipage{font-size:10px;color:var(--t3);margin-top:3px;}
@@ -450,7 +450,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)"/></div>
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="if(!document.getElementById('ae-edit-id').value)checkDuplicateChar(this.value.trim())"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
       <div class="r3">
@@ -485,7 +485,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Introduced — p.</label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
-      <div class="fg"><label>Personality description</label><textarea id="ae-cdesc" placeholder="Personality, mannerisms, backstory…" style="min-height:50px;"></textarea></div>
+      <div class="fg">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+          <label>Personality description</label>
+          <button type="button" class="btn btn-sm" onclick="buildCharDescFromTraits()" style="font-size:10px;padding:2px 7px;">🔍 Build from traits</button>
+        </div>
+        <textarea id="ae-cdesc" placeholder="Personality, mannerisms, backstory…" style="min-height:50px;"></textarea>
+      </div>
       <div class="fg"><label>Photo</label>
         <div class="photo-box" id="ae-char-photo-box" onclick="triggerPhoto('ae-char-photo-input','ae-char-photo-box','ae-char-photo-data')">
           <span style="font-size:18px;">📷</span><span>Tap to upload photo</span>
@@ -507,6 +513,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
       <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+    </div>
+
+    <!-- THEME QUOTES -->
+    <div id="ae-theme-ex" style="display:none">
+      <div class="slabel" style="margin-bottom:6px;">Supporting quotes</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px;">Add quotes that illustrate this theme — include page number and speaker.</div>
+      <div id="ae-theme-quotes-list"></div>
+      <button type="button" class="btn btn-sm" onclick="addThemeQuote()" style="width:100%;margin-bottom:4px;">+ Add quote</button>
     </div>
 
     <!-- QUESTION ANSWER -->
@@ -559,8 +573,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-mw-result" style="display:none;background:var(--gl);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:12px;color:var(--green);"></div>
       <div class="fg"><label>Definition</label><textarea id="ae-def" style="min-height:50px;" placeholder="What does it mean?"></textarea></div>
       <div class="fg"><label>Context in book</label><input type="text" id="ae-word-context" placeholder="How it was used in the text…"/></div>
+      <div class="fg"><label>Who said it / narrator</label><select id="ae-word-speaker"></select></div>
       <div class="fg"><label>Translation <span style="font-weight:400;">(if foreign word)</span></label><input type="text" id="ae-word-trans" placeholder="Translation in your language…"/></div>
       <div class="fg"><label>Source</label><input type="text" id="ae-wsrc" placeholder="e.g. Merriam-Webster"/></div>
+      <button type="button" id="ae-word-trans-btn" onclick="toggleWordTrans()" style="width:100%;background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:8px;font-size:12px;color:var(--accent);margin-bottom:8px;cursor:pointer;touch-action:manipulation;">＋ Add full translation details</button>
+      <div id="ae-word-trans-ex" style="display:none">
+        <div class="r2">
+          <div class="fg"><label>Original language</label><input type="text" id="ae-word-trans-from" placeholder="e.g. Spanish"/></div>
+          <div class="fg"><label>Translated into</label><input type="text" id="ae-word-trans-to" placeholder="e.g. English"/></div>
+        </div>
+        <div class="fg"><label>Original text</label><textarea id="ae-word-trans-original" placeholder="The word/phrase as it appears in the source…" style="min-height:40px;"></textarea></div>
+        <div class="fg"><label>Full translation / rendering</label><textarea id="ae-word-trans-rendered" placeholder="The translated version…" style="min-height:40px;"></textarea></div>
+        <div class="fg"><label>Translator <span style="font-weight:400;">(optional)</span></label><input type="text" id="ae-word-trans-translator" placeholder="e.g. Gregory Rabassa, Google Translate"/></div>
+        <div class="fg"><label>Why it matters <span style="font-weight:400;">(optional)</span></label><textarea id="ae-word-trans-why" placeholder="What nuance stands out? What's lost in translation?" style="min-height:40px;"></textarea></div>
+        <button type="button" onclick="openGoogleTranslateWord()" style="width:100%;background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:8px;font-size:12px;color:var(--accent);margin-bottom:8px;cursor:pointer;touch-action:manipulation;">🌐 Open in Google Translate</button>
+      </div>
     </div>
 
     <!-- TIMELINE EXTRAS -->
@@ -576,10 +603,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div class="fg"><label>Relative offset from prior event <span style="font-weight:400;">(optional)</span></label>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
           <select id="ae-offset-dir" style="width:60px;flex-shrink:0;"><option value="+">+</option><option value="-">−</option></select>
           <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;"/>
           <select id="ae-offset-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">From which event? <span style="font-weight:400;">(most recent first)</span></label>
+          <select id="ae-offset-event" style="font-size:13px;"><option value="">— free text / unspecified —</option></select>
         </div>
       </div>
     </div>
@@ -658,6 +688,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label><select id="ae-rela"></select></div>
         <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label><select id="ae-relb"></select></div>
       </div>
+      <div id="ae-rel-existing-warn" style="display:none;font-size:12px;color:#7F4F24;background:#FEF0D4;border-radius:var(--r);padding:8px 10px;margin-bottom:8px;border:0.5px solid #E8853C;"></div>
       <div id="ae-quick-add-b" style="display:none">
         <div class="quick-add-char">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">Quick-add new character for B:</div>
@@ -700,6 +731,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
       <div class="fg"><label>Location in story</label>
+        <input type="text" id="ae-loc-search" placeholder="Filter locations…" oninput="filterLocSelect(this.value)" style="font-size:13px;padding:6px 10px;margin-bottom:4px;"/>
         <div style="display:flex;gap:6px;">
           <select id="ae-loc-sel" style="flex:1;" onchange="onLocSelChange()"></select>
           <button class="btn btn-sm" onclick="showQuickAddLoc()" style="flex-shrink:0;">+ New</button>
@@ -733,6 +765,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="fg-label">Characters involved</div>
           <button type="button" class="btn btn-sm" onclick="quickAddInvolvedChar()" style="font-size:10px;padding:2px 7px;">+ New char</button>
         </div>
+        <input type="text" id="ae-inv-search" placeholder="Filter characters…" oninput="filterCPick(this.value)" style="font-size:13px;padding:6px 10px;margin-bottom:6px;"/>
         <div class="cpick-row" id="cpick-row"></div>
       </div>
     </div>
@@ -740,9 +773,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="divider"></div>
     <div class="fg"><label>Your note</label><input type="text" id="ae-note" placeholder="Your thoughts…"/></div>
     <div class="fg" id="ae-draft-row">
-      <label style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--t2);cursor:pointer;">
-        <input type="checkbox" id="ae-is-draft" style="width:auto;min-width:0;"/> Save as draft (come back later)
-      </label>
+      <button type="button" id="ae-draft-btn" onclick="toggleDraft()" style="display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;font-size:14px;color:var(--t2);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;text-align:left;">
+        <span id="ae-draft-icon" style="font-size:18px;flex-shrink:0;">☐</span>
+        <span>Save as draft (come back later)</span>
+      </button>
+      <input type="hidden" id="ae-is-draft" value="false"/>
     </div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('ae-overlay')">Cancel</button>
@@ -795,9 +830,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="closeSheet('settings-overlay');openGallery()">🖼 Photo gallery</button>
-      <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recently deleted</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
+      <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
     </div>
     <div class="fa">
@@ -980,9 +1016,8 @@ function getChapSetup(){
 }
 function renderChapSetup(s){document.getElementById('chap-setup-list').innerHTML='';(s||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end,c.title));}
 function pageToChapters(pageStr){
-  // Returns array of chapter numbers that overlap with a page range "47" or "47–52"
   const setup=book()?.chapSetup||[];if(!setup.length)return[];
-  const parts=pageStr.replace('–','-').split('-');
+  const parts=pageStr.replace('–','-').replace('—','-').split('-');
   const pStart=parseInt(parts[0]);
   const pEnd=parseInt(parts[1]||parts[0]);
   if(isNaN(pStart))return[];
@@ -996,15 +1031,16 @@ function pageToChapters(pageStr){
 function autoChapFromPage(){
   const pgVal=document.getElementById('ae-pg').value.trim();
   const chEl=document.getElementById('ae-ch');
-  if(!pgVal||chEl.value)return;
+  if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  if(chaps.length)chEl.value=chaps[0];
+  if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
 }
 function autoChapFromPageLive(pgVal){
   const chEl=document.getElementById('ae-ch');
-  if(!pgVal){return;}
+  if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  if(chaps.length&&!chEl.value)chEl.value=chaps[0];
+  // Always update — overwrite even if already filled, so multi-chapter ranges show correctly
+  if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1467,15 +1503,14 @@ function onTypeChange(){
   const isWord=type==='Word / Vocabulary';const isTL=type==='Timeline';
   const isEvent=type==='Event';const isRef=type==='Reference';
   const isDial=type==='Dialogue';const isLoc=type==='Location';
-  const isTrans=type==='Translation';
+  const isTrans=type==='Translation';const isTheme=type==='Theme';
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
 
   // Type hint — only show on explicit ? tap (not auto on type change)
   document.getElementById('ae-type-hint').style.display='none';
-
   document.getElementById('ae-char-section').style.display=isChar?'':'none';
   document.getElementById('ae-content-section').style.display=(isChar||isTrans)?'none':'';
-  document.getElementById('ae-quote-ex').style.display=isQ?'':'none';
+  document.getElementById('ae-theme-ex').style.display=isTheme?'':'none';  document.getElementById('ae-quote-ex').style.display=isQ?'':'none';
   document.getElementById('ae-char-ex').style.display=isTrait?'':'none';
   const qex=document.getElementById('ae-q-ex');if(qex)qex.style.display=isQuestion?'':'none';
   document.getElementById('ae-word-ex').style.display=isWord?'':'none';
@@ -1499,19 +1534,44 @@ function onTypeChange(){
   document.getElementById('ae-clabel').textContent=lbl[type]||'Content';
 
   if(isQ&&chars.length){buildCharSelect('ae-speaker','— Narrator / Author —');const spkEl=document.getElementById('ae-speaker');if(spkEl)spkEl.onchange=autoTagSpeaker;}
+  if(isWord&&chars.length){buildCharSelect('ae-word-speaker','— Narrator / Author —');}
+  // Reset word translation toggle when switching types
+  if(!isWord){const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='none';const wtb=document.getElementById('ae-word-trans-btn');if(wtb)wtb.textContent='＋ Add full translation details';}
+  // Populate timeline event picker from existing timeline/event entries (most recent first)
+  if(isTL){
+    const evSel=document.getElementById('ae-offset-event');
+    if(evSel){
+      const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
+      evSel.innerHTML=`<option value="">— free text / unspecified —</option>`+evEntries.map(e=>`<option value="${esc(e.content)}">${e.evdate?e.evdate+' — ':''}${(e.content||'').slice(0,50)}</option>`).join('');
+    }
+  }
   if(isRel&&chars.length){
-    // Set innerHTML FIRST using sorted chars, then attach onchange
     buildCharSelect('ae-relb','+ Quick-add new character');
     buildCharSelect('ae-rela','');
-    // Remove blank option from relA
     const ra=document.getElementById('ae-rela');
     if(ra.options[0]&&ra.options[0].value==='')ra.remove(0);
     if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;
     document.getElementById('ae-quick-add-b').style.display='none';
+
+    function checkExistingRel(){
+      const a=document.getElementById('ae-rela').value;
+      const b=document.getElementById('ae-relb').value;
+      const warn=document.getElementById('ae-rel-existing-warn');
+      if(!warn)return;
+      if(!a||!b||b===''){warn.style.display='none';return;}
+      const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===a&&e.relB===b)||(e.relA===b&&e.relB===a)));
+      if(existing.length){
+        warn.style.display='';
+        warn.innerHTML=`⚠️ ${a} & ${b} already have: <strong>${existing.map(e=>e.relType||'(unnamed)').join(', ')}</strong>. You can still add another relationship below.`;
+      } else {warn.style.display='none';}
+    }
+
+    document.getElementById('ae-rela').onchange=checkExistingRel;
     document.getElementById('ae-relb').onchange=()=>{
       const v=document.getElementById('ae-relb').value;
       document.getElementById('ae-quick-add-b').style.display=v===''?'':'none';
       if(v==='')setTimeout(()=>document.getElementById('qa-name')?.focus(),50);
+      checkExistingRel();
     };
   }
   if(!isChar&&!isRel&&chars.length){
@@ -1561,8 +1621,35 @@ function buildCharSelect(selectId,addBlankOption){
   html+=sorted.map(c=>`<option value="${c.name}">${c.label}</option>`).join('');
   el.innerHTML=html;
 }
-function getPicked(){return[...document.querySelectorAll('.cpick.sel')].map(e=>e.dataset.name).filter(n=>n!=null&&n!=='undefined'&&n!=='');}
-function updateTranslateLink(){}
+function filterCPick(q){
+  const term=q.toLowerCase();
+  document.querySelectorAll('#cpick-row .cpick').forEach(chip=>{
+    const name=(chip.dataset.name||'').toLowerCase();
+    chip.style.display=name.includes(term)?'':'none';
+  });
+}
+function filterLocSelect(q){
+  const term=q.toLowerCase();
+  const sel=document.getElementById('ae-loc-sel');if(!sel)return;
+  [...sel.options].forEach(o=>{
+    o.style.display=(o.value===''||o.text.toLowerCase().includes(term))?'':'none';
+  });
+}
+
+function toggleWordTrans(){
+  const d=document.getElementById('ae-word-trans-ex');
+  const b=document.getElementById('ae-word-trans-btn');
+  const open=d.style.display==='none';
+  d.style.display=open?'':'none';
+  b.textContent=open?'− Hide translation details':'＋ Add full translation details';
+}
+function openGoogleTranslateWord(){
+  const text=document.getElementById('ae-word-trans-original')?.value.trim()||document.getElementById('ae-content')?.value.trim()||'';
+  const from=document.getElementById('ae-word-trans-from')?.value.trim()||'auto';
+  const to=document.getElementById('ae-word-trans-to')?.value.trim()||'en';
+  const langCode=l=>{const m={'spanish':'es','french':'fr','german':'de','italian':'it','portuguese':'pt','russian':'ru','chinese':'zh-CN','japanese':'ja','arabic':'ar','latin':'la','greek':'el','korean':'ko','dutch':'nl','polish':'pl','swedish':'sv','turkish':'tr','hindi':'hi','english':'en'};return m[(l||'').toLowerCase()]||((l||'').toLowerCase().slice(0,2)||'auto');};
+  openLink(`https://translate.google.com/?sl=${langCode(from)}&tl=${langCode(to)}&text=${encodeURIComponent(text)}&op=translate`);
+}
 function openGoogleTranslate(){
   const text=document.getElementById('ae-trans-original')?.value.trim()||'';
   const from=document.getElementById('ae-trans-from')?.value.trim()||'auto';
@@ -1571,6 +1658,7 @@ function openGoogleTranslate(){
   const url=`https://translate.google.com/?sl=${langCode(from)}&tl=${langCode(to)}&text=${encodeURIComponent(text)}&op=translate`;
   openLink(url);
 }
+function updateTranslateLink(){}
 function quickAddInvolvedChar(){
   const name=prompt('New character name:');if(!name||!name.trim())return;
   const n=name.trim();
@@ -1642,7 +1730,7 @@ function openAddSheet(preType){
   openSheet('ae-overlay');onTypeChange();
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-word-context','ae-word-trans','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-word-context','ae-word-trans','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
@@ -1652,6 +1740,9 @@ function clearAEForm(){
   document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
   document.getElementById('ae-mw-result').style.display='none';
   document.getElementById('ae-dial-lines').innerHTML='';document.getElementById('ae-goodreads-hint').style.display='none';
+  const tql=document.getElementById('ae-theme-quotes-list');if(tql)tql.innerHTML='';
+  const invSearch=document.getElementById('ae-inv-search');if(invSearch)invSearch.value='';
+  const locSearch=document.getElementById('ae-loc-search');if(locSearch)locSearch.value='';
   document.getElementById('ae-trans-from').value='';document.getElementById('ae-trans-to').value='';document.getElementById('ae-trans-original').value='';document.getElementById('ae-trans-rendered').value='';document.getElementById('ae-trans-translator').value='';document.getElementById('ae-trans-why').value='';
   ['ae-qt-from','ae-qt-to','ae-qt-orig','ae-qt-rendered','ae-qt-translator'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const qtd=document.getElementById('ae-quote-trans');if(qtd)qtd.style.display='none';const qtb=document.getElementById('ae-qt-btn');if(qtb)qtb.textContent='＋ Add translation';
@@ -1664,6 +1755,75 @@ function clearAEForm(){
   document.getElementById('ae-event-to-tl').checked=true;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
+  // Reset draft toggle
+  const di=document.getElementById('ae-is-draft');if(di)di.value='false';
+  const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent='☐';
+  const dbtn=document.getElementById('ae-draft-btn');if(dbtn){dbtn.style.borderColor='';dbtn.style.color='';}
+}
+
+function addThemeQuote(){
+  const list=document.getElementById('ae-theme-quotes-list');
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const div=document.createElement('div');
+  div.style.cssText='background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);padding:8px;margin-bottom:7px;';
+  div.innerHTML=`
+    <div class="r2" style="margin-bottom:5px;">
+      <input type="text" placeholder="Page #" style="font-size:13px;" class="tq-page"/>
+      <select class="tq-speaker" style="font-size:13px;">
+        <option value="">Narrator / Author</option>
+        ${chars.map(c=>`<option>${c}</option>`).join('')}
+      </select>
+    </div>
+    <textarea class="tq-text" placeholder="Quote text…" style="min-height:44px;font-size:13px;width:100%;font-style:italic;"></textarea>
+    <button onclick="this.closest('div').remove()" style="background:transparent;color:var(--t3);font-size:12px;padding:2px;float:right;">× Remove</button>`;
+  list.appendChild(div);
+}
+function getThemeQuotes(){
+  return[...document.querySelectorAll('#ae-theme-quotes-list > div')].map(d=>({
+    page:d.querySelector('.tq-page').value.trim(),
+    speaker:d.querySelector('.tq-speaker').value,
+    text:d.querySelector('.tq-text').value.trim()
+  })).filter(q=>q.text);
+}
+function renderThemeQuotes(quotes,listEl){
+  if(!listEl)return;
+  listEl.innerHTML='';
+  (quotes||[]).forEach(q=>{
+    addThemeQuote();
+    const last=listEl.lastChild;
+    if(last){last.querySelector('.tq-page').value=q.page||'';last.querySelector('.tq-speaker').value=q.speaker||'';last.querySelector('.tq-text').value=q.text||'';}
+  });
+}
+// Fix #20: Build character description from logged characteristics
+function buildCharDescFromTraits(){
+  const nameEl=document.getElementById('ae-cn');
+  if(!nameEl||!nameEl.value.trim())return;
+  const name=nameEl.value.trim();
+  const traits=entries().filter(e=>e.type==='Characteristic'&&e.involved?.includes(name));
+  if(!traits.length){alert('No characteristics logged for '+name+' yet. Add some Characteristic entries first.');return;}
+  const personality=traits.filter(t=>t.traitType!=='physical').map(t=>t.content).join(', ');
+  const physical=traits.filter(t=>t.traitType==='physical').map(t=>t.content).join(', ');
+  const descEl=document.getElementById('ae-cdesc');
+  const physEl=document.getElementById('ae-cphys');
+  if(descEl&&personality){
+    const existing=descEl.value.trim();
+    descEl.value=(existing?existing+'\n\n':'')+personality+'.';
+  }
+  if(physEl&&physical){
+    const existing=physEl.value.trim();
+    physEl.value=(existing?existing+'\n\n':'')+physical+'.';
+  }
+}
+
+function toggleDraft(){
+  const di=document.getElementById('ae-is-draft');
+  const dicon=document.getElementById('ae-draft-icon');
+  const dbtn=document.getElementById('ae-draft-btn');
+  const isNowDraft=di.value!=='true';
+  di.value=isNowDraft?'true':'false';
+  dicon.textContent=isNowDraft?'☑':'☐';
+  dbtn.style.borderColor=isNowDraft?'var(--accent)':'';
+  dbtn.style.color=isNowDraft?'var(--accent)':'';
 }
 
 function toggleQuoteTrans(){
@@ -1764,7 +1924,7 @@ function submitEntry(){
 
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
-  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value,isDraft:document.getElementById('ae-is-draft')?.checked||false};
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:document.getElementById('ae-photo-data').value,isDraft:document.getElementById('ae-is-draft')?.value==='true'};
 
   if(isChar){
     entry.nickname=document.getElementById('ae-nick').value.trim();
@@ -1782,9 +1942,21 @@ function submitEntry(){
   }
   if(['Quote','Narrator quote','Line/stanza'].includes(type)){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
   if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.sq=document.getElementById('ae-sq').value.trim();entry.sqp=document.getElementById('ae-sqp').value.trim();entry.sqc=document.getElementById('ae-sqc').value;}
-  if(type==='Word / Vocabulary'){entry.definition=document.getElementById('ae-def').value.trim();entry.wordContext=document.getElementById('ae-word-context').value.trim();entry.wordTrans=document.getElementById('ae-word-trans').value.trim();entry.wsrc=document.getElementById('ae-wsrc').value.trim();}
+  if(type==='Word / Vocabulary'){
+    entry.definition=document.getElementById('ae-def').value.trim();
+    entry.wordContext=document.getElementById('ae-word-context').value.trim();
+    entry.wordSpeaker=document.getElementById('ae-word-speaker').value;
+    entry.wordTrans=document.getElementById('ae-word-trans').value.trim();
+    entry.wsrc=document.getElementById('ae-wsrc').value.trim();
+    entry.wordTransFrom=document.getElementById('ae-word-trans-from').value.trim();
+    entry.wordTransTo=document.getElementById('ae-word-trans-to').value.trim();
+    entry.wordTransOriginal=document.getElementById('ae-word-trans-original').value.trim();
+    entry.wordTransRendered=document.getElementById('ae-word-trans-rendered').value.trim();
+    entry.wordTransTranslator=document.getElementById('ae-word-trans-translator').value.trim();
+    entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
+  }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
-  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;if(on)entry.timeOffset=`${od}${on} ${ou}`;}
+  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}}
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
     entry.eventTypes=getPickedEventTypes();
@@ -1805,6 +1977,7 @@ function submitEntry(){
     }
   }
   if(isDial){entry.dialogueLines=getDialogueLines();}
+  if(isTheme){entry.themeQuotes=getThemeQuotes();}
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
   if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
     // Save to locations list
@@ -1853,13 +2026,81 @@ function submitEntry(){
   }
 }
 
+// ── Recycle bin ───────────────────────────────────────────────
+function getRecycleBin(){if(!book().recycleBin)book().recycleBin=[];return book().recycleBin;}
 function deleteEntry(id){
-  if(!confirm('Delete this entry?'))return;
-  book().entries=book().entries.filter(e=>e.id!==id);
+  const e=entries().find(x=>x.id===id);if(!e)return;
+  // Extra warning for characters with relationships
+  if(CT.includes(e.type)){
+    const name=e.cn||e.content;
+    const rels=entries().filter(r=>r.type==='Relationship'&&(r.relA===name||r.relB===name));
+    if(rels.length){
+      const choice=confirm(`"${name}" has ${rels.length} relationship${rels.length>1?'s':''}.\n\nOK = delete character AND their relationships\nCancel = keep`);
+      if(!choice)return;
+      // Move relationships to recycle bin too
+      rels.forEach(r=>{getRecycleBin().unshift({...r,deletedAt:Date.now()});});
+      book().entries=book().entries.filter(e=>!rels.some(r=>r.id===e.id));
+    } else {
+      if(!confirm(`Delete "${name}"?`))return;
+    }
+  } else {
+    if(!confirm('Delete this entry?'))return;
+  }
+  getRecycleBin().unshift({...e,deletedAt:Date.now()});
+  // Keep bin to last 50 items
+  book().recycleBin=getRecycleBin().slice(0,50);
+  book().entries=book().entries.filter(x=>x.id!==id);
   save();renderAll();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
   if(currentLocName&&document.getElementById('loc-screen').classList.contains('active'))renderLocDetail(currentLocName);
 }
+function deleteLocCard(name){
+  if(!confirm(`Delete location "${name}"? This removes the location record but not entries tagged to it.`))return;
+  book().locations=(book().locations||[]).filter(l=>l.name!==name);
+  save();renderMap();
+}
+// ── Duplicate character detection ─────────────────────────────
+function checkDuplicateChar(name){
+  if(!name||!currentId)return false;
+  const existing=entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  if(existing.length){
+    const choice=confirm(`A character named "${existing[0].cn||existing[0].content}" already exists.\n\nOK = open existing character\nCancel = continue adding new`);
+    if(choice){closeSheet('ae-overlay');openCharDetail(existing[0].cn||existing[0].content,false);return true;}
+  }
+  return false;
+}
+// ── Recycle bin rendering ─────────────────────────────────────
+function renderRecycleBin(){
+  const bin=getRecycleBin();
+  const body=document.getElementById('recycle-bin-body');
+  if(!body)return;
+  if(!bin.length){body.innerHTML=`<div style="text-align:center;padding:20px;font-size:13px;color:var(--t2);">Recycle bin is empty.</div>`;return;}
+  body.innerHTML=bin.map((e,idx)=>{
+    const ago=Math.round((Date.now()-e.deletedAt)/60000);
+    const agoStr=ago<60?ago+'m ago':ago<1440?Math.round(ago/60)+'h ago':Math.round(ago/1440)+'d ago';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid var(--cb);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;">${e.cn||e.content||'(unnamed)'}</div>
+        <div style="font-size:10px;color:var(--t3);">${e.type} · Deleted ${agoStr}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="restoreEntry(${idx})" style="flex-shrink:0;">Restore</button>
+      <button class="btn btn-sm" onclick="permanentDelete(${idx})" style="flex-shrink:0;color:var(--red);">Delete forever</button>
+    </div>`;
+  }).join('');
+}
+function restoreEntry(i){
+  const bin=getRecycleBin();const e=bin[i];if(!e)return;
+  delete e.deletedAt;
+  book().entries.unshift(e);
+  book().recycleBin.splice(i,1);
+  save();renderAll();renderRecycleBin();
+}
+function permanentDelete(i){
+  if(!confirm('Permanently delete? This cannot be undone.'))return;
+  book().recycleBin.splice(i,1);
+  save();renderRecycleBin();
+}
+function openRecycleBin(){renderRecycleBin();openSheet('recycle-bin-overlay');}
 function editEntry(id){
   const e=entries().find(x=>x.id===id);if(!e)return;
   buildTypeSelect();populateEventTypePicks();
@@ -1878,6 +2119,17 @@ function editEntry(id){
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     if(e.sq)document.getElementById('ae-sq').value=e.sq;if(e.sqp)document.getElementById('ae-sqp').value=e.sqp;if(e.sqc)document.getElementById('ae-sqc').value=e.sqc;
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;if(e.wordTrans)document.getElementById('ae-word-trans').value=e.wordTrans;if(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
+    if(e.wordSpeaker){const ws=document.getElementById('ae-word-speaker');if(ws)ws.value=e.wordSpeaker;}
+    if(e.wordTransFrom||e.wordTransOriginal){
+      const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='';
+      const wtb=document.getElementById('ae-word-trans-btn');if(wtb)wtb.textContent='− Hide translation details';
+      if(e.wordTransFrom)document.getElementById('ae-word-trans-from').value=e.wordTransFrom;
+      if(e.wordTransTo)document.getElementById('ae-word-trans-to').value=e.wordTransTo;
+      if(e.wordTransOriginal)document.getElementById('ae-word-trans-original').value=e.wordTransOriginal;
+      if(e.wordTransRendered)document.getElementById('ae-word-trans-rendered').value=e.wordTransRendered;
+      if(e.wordTransTranslator)document.getElementById('ae-word-trans-translator').value=e.wordTransTranslator;
+      if(e.wordTransWhy)document.getElementById('ae-word-trans-why').value=e.wordTransWhy;
+    }
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}}
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
@@ -1888,7 +2140,8 @@ function editEntry(id){
     if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;
     if(e.locType)document.getElementById('ae-loc-type').value=e.locType;if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
-    if(e.involved?.length)setTimeout(()=>e.involved.forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),80);
+    if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
+    if(e.involved?.length)setTimeout(()=>e.involved.filter(c=>c).forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),80);
   },40);
   openSheet('ae-overlay');
 }
@@ -1982,6 +2235,9 @@ function ecHTML(e,compact,fromTab){
     const icons=(e.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌';
     const sigLabel={minor:'Minor',significant:'Significant',major:'Major',lifechanging:'Life-changing'}[e.eventSig]||'';
     body=`<div class="econtent">${icons} ${sigLabel?`<span class="tag" style="background:var(--rl);color:var(--red);">${sigLabel}</span> `:''}${e.content}</div>`;
+  } else if(e.type==='Theme'){
+    const tqs=e.themeQuotes||[];
+    body=`<div class="econtent"><strong>${e.content}</strong>${e.note?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.note}</div>`:''}${tqs.length?`<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">${tqs.slice(0,2).map(q=>`<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.page?' · p.'+q.page:''}</span><div style="font-size:12px;font-style:italic;">"${q.text}"</div></div>`).join('')}${tqs.length>2?`<div style="font-size:10px;color:var(--t3);">…${tqs.length-2} more quote${tqs.length-2>1?'s':''}</div>`:''}</div>`:''}`;
   } else if(e.type==='Translation'){
     const langPair=e.transFrom&&e.transTo?`<span class="pbadge" style="margin-bottom:4px;">${e.transFrom} → ${e.transTo}</span>`:(e.transFrom||e.transTo)?`<span class="pbadge">${e.transFrom||e.transTo}</span>`:'';
     body=`<div class="econtent">
@@ -2276,94 +2532,132 @@ function renderWeb(){
     }
   }
 
-  // ── Force-directed layout ──────────────────────────────────────
-  const N=chars.length;
-  const NR=26; // node radius
-  const LABEL_H=24; // space below node for name label
-  const PAD=NR+LABEL_H+10;
-
-  // Use viewport width (capped) for canvas size
-  const viewW=Math.min(wrap.clientWidth||360,520);
-  const viewH=Math.max(320,Math.ceil(N/3)*110+80);
-
-  // Initial positions: main chars in centre ring, others on outer ring
-  const cx=viewW/2,cy=viewH/2;
-  const mainNodes=chars.filter(c=>c.role==='main');
-  const otherNodes=chars.filter(c=>c.role!=='main');
-
-  chars.forEach((c,i)=>{
-    if(mainNodes.includes(c)){
-      const idx=mainNodes.indexOf(c);
-      const r=mainNodes.length===1?0:Math.min(80,viewW*0.18);
-      const angle=(2*Math.PI*idx/mainNodes.length)-Math.PI/2;
-      c.x=cx+r*Math.cos(angle);c.y=cy+r*Math.sin(angle);
-    } else {
-      const idx=otherNodes.indexOf(c);
-      const r=Math.min(viewW*0.38,viewH*0.38,150);
-      const angle=(2*Math.PI*idx/otherNodes.length)-Math.PI/2;
-      c.x=cx+r*Math.cos(angle);c.y=cy+r*Math.sin(angle);
-    }
-    c.vx=0;c.vy=0;
-  });
-
-  // Build adjacency for force sim
+  // ── Generational layout with force-based horizontal spacing ───
+  const NR=26;
+  const LABEL_H=26;
+  const PAD=NR+LABEL_H+12;
   const nameToChar={};chars.forEach(c=>nameToChar[c.name]=c);
 
-  // Run force simulation iterations
-  const IDEAL=Math.min(120,Math.max(70,(viewW*0.28)));
-  const REPULSE=NR*NR*120;
-  const ATTRACT=0.04;
-  const DAMP=0.7;
-  const ITERS=180;
+  // 1. Assign generation (row) to each character using relationship hierarchy
+  const genMap={};
+  chars.forEach(c=>genMap[c.name]=4); // default: mid-level
 
-  for(let iter=0;iter<ITERS;iter++){
-    // Reset forces
-    chars.forEach(c=>{c.fx=0;c.fy=0;});
+  // Extended hierarchy — maps relType to [parentGen offset, childGen offset]
+  // relA is "higher" (lower gen number), relB is "lower" (higher gen number)
+  const HIER_TYPES={
+    // Direct parent/child
+    ...Object.fromEntries(PARENT_TYPES.map(t=>[t,{aUp:true}])),
+    ...Object.fromEntries(CHILD_TYPES.map(t=>[t,{bUp:true}])),
+    // Grandparent
+    'Grandparent':{aUp:true,extra:1},'Grandfather':{aUp:true,extra:1},'Grandmother':{aUp:true,extra:1},
+    'Grandchild':{bUp:true,extra:1},
+    // Great-grandparent
+    'Great-grandfather':{aUp:true,extra:2},'Great-grandmother':{aUp:true,extra:2},
+    'Great-grandchild':{bUp:true,extra:2},
+    // Aunt/Uncle — one level above sibling
+    'Aunt':{aUp:true},'Uncle':{aUp:true},'Uncle or Aunt':{aUp:true},
+    'Niece':{bUp:true},'Nephew':{bUp:true},'Niece or Nephew':{bUp:true},
+    // Professional hierarchy
+    'Teacher':{aUp:true},'Mentor':{aUp:true},'Employer':{aUp:true},'Master':{aUp:true},'Commander':{aUp:true},
+    'Student':{bUp:true},'Protégé':{bUp:true},'Employee':{bUp:true},'Servant':{bUp:true},'Subordinate':{bUp:true},
+  };
 
-    // Repulsion between all pairs
-    for(let i=0;i<chars.length;i++){
-      for(let j=i+1;j<chars.length;j++){
-        const a=chars[i],b=chars[j];
-        const dx=b.x-a.x,dy=b.y-a.y;
-        const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
-        const f=REPULSE/(d*d);
-        const nx=dx/d,ny=dy/d;
-        a.fx-=f*nx;a.fy-=f*ny;
-        b.fx+=f*nx;b.fy+=f*ny;
-      }
-    }
-
-    // Attraction along edges
+  // Propagate generations — multiple passes until stable
+  let changed=true;
+  for(let pass=0;pass<12&&changed;pass++){
+    changed=false;
     dedupedRels.forEach(r=>{
-      const a=nameToChar[r.relA],b=nameToChar[r.relB];
-      if(!a||!b)return;
-      const dx=b.x-a.x,dy=b.y-a.y;
-      const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
-      const f=ATTRACT*(d-IDEAL);
-      a.fx+=f*(dx/d);a.fy+=f*(dy/d);
-      b.fx-=f*(dx/d);b.fy-=f*(dy/d);
-    });
-
-    // Gravity toward centre (weak)
-    chars.forEach(c=>{c.fx+=(cx-c.x)*0.01;c.fy+=(cy-c.y)*0.01;});
-
-    // Integrate
-    chars.forEach(c=>{
-      c.vx=(c.vx+c.fx)*DAMP;c.vy=(c.vy+c.fy)*DAMP;
-      c.x+=c.vx;c.y+=c.vy;
-      // Clamp to canvas
-      c.x=Math.max(PAD,Math.min(viewW-PAD,c.x));
-      c.y=Math.max(PAD,Math.min(viewH-PAD,c.y));
+      if(!nameToChar[r.relA]||!nameToChar[r.relB])return;
+      const h=HIER_TYPES[r.relType];
+      if(!h)return;
+      const gap=1+(h.extra||0);
+      if(h.aUp){
+        // relA should be ABOVE relB (lower gen number)
+        const wantA=genMap[r.relB]-gap;
+        if(genMap[r.relA]>wantA){genMap[r.relA]=wantA;changed=true;}
+      }
+      if(h.bUp){
+        // relB should be ABOVE relA
+        const wantB=genMap[r.relA]-gap;
+        if(genMap[r.relB]>wantB){genMap[r.relB]=wantB;changed=true;}
+      }
     });
   }
 
-  // Compute final bounding box and add padding
-  const xs=chars.map(c=>c.x),ys=chars.map(c=>c.y);
+  // 2. Normalise so lowest gen = 0
+  const minGen=Math.min(...chars.map(c=>genMap[c.name]));
+  chars.forEach(c=>genMap[c.name]-=minGen);
+  const maxGen=Math.max(...chars.map(c=>genMap[c.name]));
+
+  // 3. Group into rows
+  const rows={};
+  chars.forEach(c=>{const g=genMap[c.name];if(!rows[g])rows[g]=[];rows[g].push(c);});
+  const rowKeys=Object.keys(rows).map(Number).sort((a,b)=>a-b);
+
+  // 4. Canvas size
+  const maxPerRow=Math.max(...rowKeys.map(g=>rows[g].length),1);
+  const minSpacing=NR*2+56;
+  const viewW=Math.max(320,maxPerRow*minSpacing+PAD*2);
+  const rowH=Math.max(110,Math.floor(420/Math.max(rowKeys.length,1)));
+  const viewH=Math.max(280,rowKeys.length*rowH+PAD*2);
+
+  // 5. Set initial positions — evenly spaced within each row
+  rowKeys.forEach((g,gi)=>{
+    const row=rows[g];
+    const y=PAD+gi*rowH;
+    const step=viewW/(row.length+1);
+    row.forEach((c,ci)=>{c.x=step*(ci+1);c.y=y;c.vx=0;c.vy=0;});
+  });
+
+  // 6. Force simulation — horizontal only within each row to spread nodes
+  //    Y position is LOCKED to generational row
+  const REPULSE=NR*NR*90;
+  const ATTRACT=0.025;
+  const IDEAL=Math.min(130,Math.max(70,viewW/(maxPerRow+1)));
+  const DAMP=0.65;
+  const ITERS=120;
+
+  for(let iter=0;iter<ITERS;iter++){
+    chars.forEach(c=>{c.fx=0;}); // horizontal force only
+
+    // Horizontal repulsion between nodes in the same row
+    rowKeys.forEach(g=>{
+      const row=rows[g];
+      for(let i=0;i<row.length;i++){
+        for(let j=i+1;j<row.length;j++){
+          const a=row[i],b=row[j];
+          const dx=b.x-a.x;
+          const d=Math.max(Math.abs(dx),1);
+          const f=REPULSE/(d*d);
+          a.fx-=f*(dx/d);b.fx+=f*(dx/d);
+        }
+      }
+    });
+
+    // Horizontal attraction along edges (pull connected nodes closer horizontally)
+    dedupedRels.forEach(r=>{
+      const a=nameToChar[r.relA],b=nameToChar[r.relB];
+      if(!a||!b)return;
+      const dx=b.x-a.x;
+      const d=Math.max(Math.abs(dx),1);
+      const f=ATTRACT*(d-IDEAL);
+      a.fx+=f*(dx/d);b.fx-=f*(dx/d);
+    });
+
+    // Integrate X only — Y stays fixed
+    chars.forEach(c=>{
+      c.vx=(c.vx+c.fx)*DAMP;
+      c.x+=c.vx;
+      c.x=Math.max(PAD,Math.min(viewW-PAD,c.x));
+    });
+  }
+
+  // 7. Compute final bounding box
+  const xs=chars.map(c=>c.x);
   const minX=Math.min(...xs)-PAD,maxX=Math.max(...xs)+PAD;
-  const minY=Math.min(...ys)-PAD,maxY=Math.max(...ys)+PAD;
-  const W=Math.max(maxX-minX,200),H=Math.max(maxY-minY,200);
-  // Translate so everything fits
-  chars.forEach(c=>{c.x-=minX;c.y-=minY;});
+  const W=Math.max(maxX-minX,200);
+  const H=viewH;
+  chars.forEach(c=>c.x-=minX);
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.setAttribute('width',W);svg.setAttribute('height',H);
@@ -2495,7 +2789,7 @@ function renderTimeline(){
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?` (${item.timeOffset} from prev.)`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?` (${item.timeOffset}${item.timeOffsetFrom?' from "'+item.timeOffsetFrom.slice(0,30)+'"':' from prev.'})`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
@@ -2549,8 +2843,11 @@ function renderMap(){
           ${locData.era?`<div style="font-size:10px;color:var(--t3);">${locData.era}</div>`:''}
         </div>
         <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
-          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${locData.city?', '+esc(locData.city):''}${locData.country?', '+esc(locData.country):''}'))" style="font-size:11px;padding:3px 7px;">🗺️</button>`:''}
+          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(loc)}'))" style="font-size:11px;padding:3px 7px;" title="Wikipedia">📖</button>`:''}
+          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(loc)} history ${esc(locData.era||'')}'))" style="font-size:11px;padding:3px 7px;" title="Search history">🔍</button>`:''}
+          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${locData.city?', '+esc(locData.city):''}${locData.country?', '+esc(locData.country):''}'))" style="font-size:11px;padding:3px 7px;" title="Maps">🗺️</button>`:''}
           <button class="btn btn-sm" onclick="event.stopPropagation();openEditLocSheet('${esc(loc)}')" style="font-size:11px;padding:3px 7px;">Edit</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();deleteLocCard('${esc(loc)}')" style="font-size:11px;padding:3px 7px;color:var(--red);">Delete</button>
           <span style="color:var(--t3);font-size:16px;">›</span>
         </div>
       </div>
@@ -2801,11 +3098,11 @@ function renderTodo(){
 
   // Words without definitions
   all.filter(e=>e.type==='Word / Vocabulary'&&!e.definition).forEach(e=>{
-    todos.push({cat:'Vocabulary',text:`Define "${e.content}"`,color:'#854F0B',action:`editEntry(${e.id})`});
+    todos.push({cat:'Vocabulary',text:`Define "${e.content}"`,color:'#854F0B',action:`editEntry(${e.id})`,id:e.id});
   });
   // Unanswered questions
   all.filter(e=>e.type==='Question'&&!e.answered).forEach(e=>{
-    todos.push({cat:'Questions',text:`Answer: "${e.content.slice(0,55)}"`,color:'#534AB7',action:`editEntry(${e.id})`});
+    todos.push({cat:'Questions',text:`Answer: "${e.content.slice(0,55)}"`,color:'#534AB7',action:`editEntry(${e.id})`,id:e.id});
   });
   // References not done — with time estimate
   all.filter(e=>e.type==='Reference'&&!e.refDone).forEach(e=>{
@@ -2825,16 +3122,16 @@ function renderTodo(){
   });
   // Characters missing intro page/chapter
   all.filter(e=>CT.includes(e.type)&&!e.charIntroPg&&!e.charIntroCh).forEach(e=>{
-    todos.push({cat:'Characters',text:`Add intro page/chapter for: ${e.cn||e.content}`,color:getCC(e.cn||e.content).stroke,action:`editEntry(${e.id})`});
+    todos.push({cat:'Characters',text:`Add intro page/chapter for: ${e.cn||e.content}`,color:getCC(e.cn||e.content).stroke,action:`editEntry(${e.id})`,id:e.id});
   });
   // ALL entry types missing page numbers (except types where it doesn't apply)
   const noPageNeeded=new Set([...CT,'Relationship','Reference','Location']);
   all.filter(e=>!noPageNeeded.has(e.type)&&!e.pageNum&&!e.chapNum&&!e.isDraft).forEach(e=>{
-    todos.push({cat:'Missing pages',text:`Add page # to ${e.type}: "${(e.content||'').slice(0,40)}"`,color:'#888780',action:`editEntry(${e.id})`});
+    todos.push({cat:'Missing pages',text:`Add page # to ${e.type}: "${(e.content||'').slice(0,40)}"`,color:'#888780',action:`editEntry(${e.id})`,id:e.id});
   });
   // Draft entries
   all.filter(e=>e.isDraft).forEach(e=>{
-    todos.push({cat:'Drafts',text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,color:'#993C1D',action:`editEntry(${e.id})`});
+    todos.push({cat:'Drafts',text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,color:'#993C1D',action:`editEntry(${e.id})`,id:e.id});
   });
 
   const total=todos.length;
@@ -2864,10 +3161,14 @@ function renderTodo(){
   list.innerHTML=orderedCats.map(cat=>`
     <div style="margin-bottom:14px;">
       <div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:5px;">${cat} (${cats[cat].length})</div>
-      ${cats[cat].map(t=>`<div class="todo-item">
+      ${cats[cat].map((t,ti)=>`<div class="todo-item" id="todo-item-${cat.replace(/\s/g,'')}-${ti}">
         <div class="todo-dot" style="background:${t.color};flex-shrink:0;"></div>
         <div style="flex:1;font-size:12px;">${t.text}</div>
-        <button class="btn-edit" onclick="${t.action}" style="touch-action:manipulation;flex-shrink:0;">Go →</button>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button class="btn-edit" onclick="${t.action}" style="touch-action:manipulation;">Fix →</button>
+          <button class="btn-edit" onclick="this.closest('.todo-item').style.display='none'" style="touch-action:manipulation;color:var(--t3);">Ignore</button>
+          ${t.id!=null?`<button class="btn-del" onclick="deleteEntry(${t.id});this.closest('.todo-item').remove()" style="touch-action:manipulation;">Delete</button>`:''}
+        </div>
       </div>`).join('')}
     </div>`).join('');
 }
@@ -2942,55 +3243,62 @@ function renderStats(){
   const synthSessions=sessions.filter(s=>s.synthesized==='yes').length;
   const partialSessions=sessions.filter(s=>s.synthesized==='partial').length;
 
-  // Build pages-per-day map
-  const dayMap={};
+  // Build pages-per-day map — separate reading, synth, and both
+  const dayMap={};const dayTypes={};
   sessions.forEach(s=>{
     const pg=+s.pEnd-(+s.pStart||0);
-    if(pg>0){dayMap[s.date]=(dayMap[s.date]||0)+pg;}
+    const isSynthOnly=s.mode==='synth';
+    if(pg>0||isSynthOnly){
+      const d=s.date;
+      dayMap[d]=(dayMap[d]||0)+(isSynthOnly?0:pg);
+      dayTypes[d]=dayTypes[d]||s.mode||'read';
+    }
   });
   const days=Object.keys(dayMap).sort();
   const vals=days.map(d=>dayMap[d]);
-  const maxVal=vals.length?Math.max(...vals):0;
+  const maxVal=vals.length?Math.max(...vals,1):1;
 
   // SVG line chart
   let chartHTML='';
-  if(days.length>=2){
+  if(days.length>=1){
     const W=320,H=100,PAD={t:10,r:10,b:28,l:36};
     const cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
-    const xStep=cW/(days.length-1);
     const pts=vals.map((v,i)=>{
-      const x=PAD.l+i*xStep;
-      const y=PAD.t+cH-(v/maxVal)*cH;
-      return{x,y,v,d:days[i]};
+      const x=days.length===1?PAD.l+cW/2:PAD.l+i*(cW/(days.length-1));
+      const y=PAD.t+cH-((v||0)/maxVal)*cH;
+      return{x,y,v,d:days[i],type:dayTypes[days[i]]};
     });
     const polyline=pts.map(p=>`${p.x},${p.y}`).join(' ');
-    // Area fill path
     const areaPath=`M${pts[0].x},${PAD.t+cH} `+pts.map(p=>`L${p.x},${p.y}`).join(' ')+` L${pts[pts.length-1].x},${PAD.t+cH} Z`;
-    // Y gridlines
     const yTicks=[0,Math.round(maxVal/2),maxVal];
     const gridLines=yTicks.map(v=>{
-      const y=PAD.t+cH-(v/maxVal)*cH;
+      const y=PAD.t+cH-((v||0)/maxVal)*cH;
       return`<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="var(--cb)" stroke-width="1"/>
              <text x="${PAD.l-3}" y="${y+3}" text-anchor="end" font-size="8" fill="var(--t3)">${v}</text>`;
     }).join('');
-    // X labels — show first, last, and every ~3rd
-    const xLabels=pts.filter((_,i)=>i===0||i===pts.length-1||(pts.length<=10)||i%Math.ceil(pts.length/5)===0)
+    const xLabels=pts.filter((_,i)=>i===0||i===pts.length-1||i%Math.ceil(pts.length/5)===0)
       .map(p=>{const d=p.d.slice(5).replace('-','/');return`<text x="${p.x}" y="${H-6}" text-anchor="middle" font-size="8" fill="var(--t3)">${d}</text>`;}).join('');
-    // Dots
-    const dots=pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"><title>${p.d}: ${p.v} pages</title></circle>`).join('');
+    // Colour dots by session type: reading=accent, synth=green, both=gold
+    const dots=pts.map(p=>{
+      const col=p.type==='synth'?'#1D9E75':p.type==='both'?'#BA7517':'var(--accent)';
+      const label=p.type==='synth'?'✏️ Synthesize':'📖 '+p.v+'p';
+      return`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${col}" stroke="var(--bg)" stroke-width="1.5"><title>${p.d}: ${label}</title></circle>`;
+    }).join('');
     chartHTML=`<div style="margin:12px 0 6px;">
-      <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Pages per reading day</div>
+      <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">Pages per day</div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:6px;">
+        <span style="color:var(--accent);">● Reading</span> &nbsp;
+        <span style="color:#1D9E75;">● Synthesizing</span> &nbsp;
+        <span style="color:#BA7517;">● Both</span>
+      </div>
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;overflow:visible;">
         ${gridLines}
-        <path d="${areaPath}" fill="var(--accent)" opacity="0.1"/>
-        <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${days.length>1?`<path d="${areaPath}" fill="var(--accent)" opacity="0.08"/>
+        <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`:''}
         ${dots}
         ${xLabels}
       </svg>
     </div>`;
-  } else if(days.length===1){
-    chartHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 12px;margin:12px 0;font-size:12px;color:var(--t2);">Log at least 2 sessions to see the chart.</div>`;
-  }
 
   const content=document.getElementById('stats-content');
   content.innerHTML=`
@@ -3731,7 +4039,7 @@ function renderLibStats(){
   </div>
   ${chartHTML}
   ${monthChartHTML}
-  ${topGenres.length?`<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Top genres</div>${topGenres.map(([g,n])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px;"><span style="flex:1;">${g}</span><div style="height:8px;background:var(--accent);border-radius:4px;opacity:0.7;width:${Math.round((n/books.length)*120)}px;"></div><span style="color:var(--t2);width:20px;text-align:right;">${n}</span></div>`).join('')}</div>`:''}
+  ${topGenres.length?`<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Top genres</div>${topGenres.map(([g,n])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px;"><span style="flex:1;">'+g+'</span><div style="height:8px;background:var(--accent);border-radius:4px;opacity:0.7;width:'+Math.round((n/books.length)*120)+'px;"></div><span style="color:var(--t2);width:20px;text-align:right;">'+n+'</span></div>').join('')}</div>`:''}
   `;
 }
 
@@ -3741,6 +4049,20 @@ function renderLibStats(){
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
 load();renderLibrary();
 </script>
+
+<!-- ══ RECYCLE BIN SHEET ══ -->
+<div class="sheet-overlay" id="recycle-bin-overlay" onclick="mc('recycle-bin-overlay',event)">
+  <div class="sheet" style="max-height:88vh;">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">🗑 Recently deleted</div>
+      <button class="sheet-x" onclick="closeSheet('recycle-bin-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Entries are kept for up to 50 deletes. Restore to bring them back, or delete forever.</div>
+      <div id="recycle-bin-body"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ GALLERY SHEET ══ -->
 <div class="sheet-overlay" id="gallery-overlay" onclick="mc('gallery-overlay',event)">
