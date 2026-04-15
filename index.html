@@ -3456,72 +3456,21 @@ function renderGuide(){
 // ═══════════════════════════════════════════════════════════════
 // FAMILY AUTO-PROPAGATION
 // ═══════════════════════════════════════════════════════════════
-function suggestFamilyConnectionsForChar(charName){
-  // Temporarily set a filter so suggestFamilyConnections only surfaces this character's connections
-  const all=entries();const rels=all.filter(e=>e.type==='Relationship');
-  const suggestions=[];
-
-  function parentsOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===n).map(r=>r.relA);}
-  function childrenOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===n).map(r=>r.relB);}
-  function hasRel(a,b){return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));}
-  const chars=all.filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-
-  const myParents=parentsOf(charName);
-  const mySiblings=rels.filter(r=>['Sibling','Half-sibling','Step-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===charName||r.relB===charName)).map(r=>r.relA===charName?r.relB:r.relA);
-
-  chars.forEach(other=>{
-    if(other===charName)return;
-    // Shared parent → siblings
-    const otherParents=parentsOf(other);
-    const shared=myParents.filter(p=>otherParents.includes(p));
-    if(shared.length&&!mySiblings.includes(other)&&!hasRel(charName,other))
-      suggestions.push({label:`${charName} and ${other} share parent ${shared[0]} → Siblings?`,a:charName,b:other,type:'Sibling'});
-  });
-  myParents.forEach(parent=>{
-    const parentSiblings=rels.filter(r=>['Sibling','Half-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
-    parentSiblings.forEach(au=>{if(!hasRel(charName,au))suggestions.push({label:`${parent}'s sibling ${au} → ${au} is ${charName}'s Aunt/Uncle`,a:au,b:charName,type:'Aunt or Uncle'});});
-    parentsOf(parent).forEach(gp=>{if(!hasRel(charName,gp))suggestions.push({label:`${parent}'s parent ${gp} → ${gp} is ${charName}'s Grandparent`,a:gp,b:charName,type:'Grandparent→Grandchild'});});
-  });
-  mySiblings.forEach(sib=>{childrenOf(sib).forEach(nib=>{if(!hasRel(charName,nib))suggestions.push({label:`${sib}'s child ${nib} → ${nib} is ${charName}'s Niece/Nephew`,a:charName,b:nib,type:'Nibling (Niece/Nephew)'});});});
-
-  const seen=new Set();
-  const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
-
-  if(!unique.length){alert(`No new family connections found for ${charName} based on existing relationships.`);return;}
-  const body=document.getElementById('fam-suggestions-body');
-  body.innerHTML=unique.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--cb);">
-    <div style="flex:1;font-size:12px;">${s.label}</div>
-    <button class="btn btn-sm btn-primary" onclick="acceptFamSuggestion(${i})">Add</button>
-    <button class="btn btn-sm" onclick="this.closest('div').style.display='none'">Skip</button>
-  </div>`).join('');
-  body._suggestions=unique;
-  openSheet('fam-suggestions-overlay');
-}
-
-
+function suggestFamilyConnections(){
   if(!currentId)return;
   const all=entries();
   const rels=all.filter(e=>e.type==='Relationship');
   const suggestions=[];
 
-  // Helper: get all known parents of a character
-  function parentsOf(name){
-    return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===name).map(r=>r.relA);
-  }
-  // Helper: get all known children of a character
-  function childrenOf(name){
-    return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===name).map(r=>r.relB);
-  }
-  // Helper: already have a rel between A and B?
-  function hasRel(a,b){
-    return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));
-  }
+  function parentsOf(name){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===name).map(r=>r.relA);}
+  function childrenOf(name){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===name).map(r=>r.relB);}
+  function hasRel(a,b){return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));}
 
   const chars=all.filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
 
   chars.forEach(name=>{
     const myParents=parentsOf(name);
-    const mySiblings=rels.filter(r=>['Sibling','Half-sibling','Step-sibling'].includes(r.relType)&&(r.relA===name||r.relB===name)).map(r=>r.relA===name?r.relB:r.relA);
+    const mySiblings=rels.filter(r=>['Sibling','Half-sibling','Step-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===name||r.relB===name)).map(r=>r.relA===name?r.relB:r.relA);
 
     // Rule 1: shared parent → siblings
     chars.forEach(other=>{
@@ -3534,9 +3483,9 @@ function suggestFamilyConnectionsForChar(charName){
       }
     });
 
-    // Rule 2: my parent's sibling → my Aunt/Uncle (and reciprocal Niece/Nephew)
+    // Rule 2: my parent's sibling → my Aunt/Uncle
     myParents.forEach(parent=>{
-      const parentSiblings=rels.filter(r=>['Sibling','Half-sibling'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+      const parentSiblings=rels.filter(r=>['Sibling','Half-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
       parentSiblings.forEach(auntOrUncle=>{
         if(!hasRel(name,auntOrUncle)){
           suggestions.push({label:`${parent}'s sibling ${auntOrUncle} → ${auntOrUncle} is ${name}'s Aunt/Uncle`,a:auntOrUncle,b:name,type:'Aunt or Uncle'});
@@ -3593,7 +3542,6 @@ function suggestFamilyConnectionsForChar(charName){
 
   if(!unique.length){alert('No new family connections found based on existing relationships. Add more parent/sibling relationships first!');return;}
 
-  // Show in a sheet
   const body=document.getElementById('fam-suggestions-body');
   body.innerHTML=unique.map((s,i)=>{
     if(s.isSameName){
@@ -3615,6 +3563,50 @@ function suggestFamilyConnectionsForChar(charName){
   body._suggestions=unique;
   openSheet('fam-suggestions-overlay');
 }
+
+function suggestFamilyConnectionsForChar(charName){
+  // Temporarily set a filter so suggestFamilyConnections only surfaces this character's connections
+  const all=entries();const rels=all.filter(e=>e.type==='Relationship');
+  const suggestions=[];
+
+  function parentsOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===n).map(r=>r.relA);}
+  function childrenOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===n).map(r=>r.relB);}
+  function hasRel(a,b){return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));}
+  const chars=all.filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+
+  const myParents=parentsOf(charName);
+  const mySiblings=rels.filter(r=>['Sibling','Half-sibling','Step-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===charName||r.relB===charName)).map(r=>r.relA===charName?r.relB:r.relA);
+
+  chars.forEach(other=>{
+    if(other===charName)return;
+    // Shared parent → siblings
+    const otherParents=parentsOf(other);
+    const shared=myParents.filter(p=>otherParents.includes(p));
+    if(shared.length&&!mySiblings.includes(other)&&!hasRel(charName,other))
+      suggestions.push({label:`${charName} and ${other} share parent ${shared[0]} → Siblings?`,a:charName,b:other,type:'Sibling'});
+  });
+  myParents.forEach(parent=>{
+    const parentSiblings=rels.filter(r=>['Sibling','Half-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+    parentSiblings.forEach(au=>{if(!hasRel(charName,au))suggestions.push({label:`${parent}'s sibling ${au} → ${au} is ${charName}'s Aunt/Uncle`,a:au,b:charName,type:'Aunt or Uncle'});});
+    parentsOf(parent).forEach(gp=>{if(!hasRel(charName,gp))suggestions.push({label:`${parent}'s parent ${gp} → ${gp} is ${charName}'s Grandparent`,a:gp,b:charName,type:'Grandparent→Grandchild'});});
+  });
+  mySiblings.forEach(sib=>{childrenOf(sib).forEach(nib=>{if(!hasRel(charName,nib))suggestions.push({label:`${sib}'s child ${nib} → ${nib} is ${charName}'s Niece/Nephew`,a:charName,b:nib,type:'Nibling (Niece/Nephew)'});});});
+
+  const seen=new Set();
+  const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
+
+  if(!unique.length){alert(`No new family connections found for ${charName} based on existing relationships.`);return;}
+  const body=document.getElementById('fam-suggestions-body');
+  body.innerHTML=unique.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--cb);">
+    <div style="flex:1;font-size:12px;">${s.label}</div>
+    <button class="btn btn-sm btn-primary" onclick="acceptFamSuggestion(${i})">Add</button>
+    <button class="btn btn-sm" onclick="this.closest('div').style.display='none'">Skip</button>
+  </div>`).join('');
+  body._suggestions=unique;
+  openSheet('fam-suggestions-overlay');
+}
+
+
 function acceptSameNameSuggestion(i){
   const sug=document.getElementById('fam-suggestions-body')._suggestions[i];if(!sug)return;
   // Open relationship form pre-filled with these two characters
