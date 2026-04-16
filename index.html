@@ -1839,6 +1839,7 @@ function submitEntry(){
   const isEvent=type==='Event';const isRef=type==='Reference';
   const isDial=type==='Dialogue';const isLoc=type==='Location';
   const isTrans=type==='Translation';const isTheme=type==='Theme';
+  let content='',cn='';
   if(isChar){
     cn=document.getElementById('ae-cn').value.trim();
     if(!cn){
