@@ -791,27 +791,36 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="sheet-handle"></div>
     <div id="timer-sheet-title" class="sheet-title">Reading session</div>
     <input type="hidden" id="timer-edit-idx" value=""/>
-    <div class="fg" style="margin-bottom:10px;"><label>Session type</label>
-      <select id="timer-mode" onchange="onTimerModeChange()">
-        <option value="read">📖 Reading (with timer)</option>
-        <option value="synth">✏️ Synthesize only (already read, just adding notes)</option>
-        <option value="both">📖 + ✏️ Reading &amp; synthesizing</option>
-      </select>
-    </div>
-    <div id="timer-clock-section" style="text-align:center;padding:10px 0;">
-      <div id="timer-display" style="font-size:40px;font-weight:600;font-variant-numeric:tabular-nums;">00:00</div>
-      <div style="font-size:12px;color:var(--t2);margin-top:4px;">Session time</div>
-    </div>
     <div class="fg" style="margin-bottom:10px;"><label>Date</label><input type="date" id="timer-date"/></div>
     <div class="r2" style="margin-bottom:10px;">
       <div class="fg"><label>Start page</label><input type="number" id="timer-pg-start" inputmode="numeric" placeholder="p."/></div>
       <div class="fg"><label>End page</label><input type="number" id="timer-pg-end" inputmode="numeric" placeholder="p."/></div>
     </div>
-    <div class="fg" id="timer-min-row" style="display:none;"><label>Minutes spent (manual)</label><input type="number" id="timer-manual-min" inputmode="numeric" placeholder="e.g. 45" min="1"/></div>
+    <!-- READING TIMER -->
+    <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">📖 Reading time</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div id="timer-read-display" style="font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;min-width:80px;">00:00</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="timer-read-btn" onclick="toggleReadTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
+        </div>
+      </div>
+      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-read-min" inputmode="numeric" placeholder="e.g. 30" min="0" style="font-size:14px;" oninput="onReadMinInput()"/></div>
+    </div>
+    <!-- SYNTH TIMER -->
+    <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
+      <div style="font-size:11px;font-weight:700;color:#1D9E75;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">✏️ Synthesizing time</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div id="timer-synth-display" style="font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;min-width:80px;">00:00</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="timer-synth-btn" onclick="toggleSynthTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
+        </div>
+      </div>
+      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-synth-min" inputmode="numeric" placeholder="e.g. 15" min="0" style="font-size:14px;" oninput="onSynthMinInput()"/></div>
+    </div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('timer-overlay')">Cancel</button>
-      <button class="btn" id="timer-save-btn" onclick="saveSession()">Save session</button>
-      <button class="btn btn-primary" id="timer-btn" onclick="toggleTimer()">▶ Start</button>
+      <button class="btn btn-primary" id="timer-save-btn" onclick="saveSession()">Save session</button>
     </div>
   </div>
 </div>
@@ -3262,6 +3271,59 @@ function renderStats(){
   const vals=days.map(d=>dayMap[d]);
   const maxVal=vals.length?Math.max(...vals,1):1;
 
+  // ── Pie chart: reading vs synth vs untracked ──────────────────
+  let pieHTML='';
+  {
+    let totalRead=0,totalSynth=0,totalUntracked=0;
+    sessions.forEach(s=>{
+      if(s.readMinutes!=null||s.synthMinutes!=null){
+        totalRead+=(s.readMinutes||0);
+        totalSynth+=(s.synthMinutes||0);
+      } else {
+        // Old session — no split data
+        totalUntracked+=(s.minutes||0);
+      }
+    });
+    const grandTotal=totalRead+totalSynth+totalUntracked;
+    if(grandTotal>0){
+      const fmt2=m=>m>=60?Math.floor(m/60)+'h '+(m%60)+'m':m+'m';
+      // SVG donut
+      const R=54,r=32,cx=70,cy=70;
+      function slice(start,val,total,color){
+        if(val===0)return'';
+        const pct=val/total;
+        if(pct>=0.9999)return`<circle cx="${cx}" cy="${cy}" r="${(R+r)/2}" fill="none" stroke="${color}" stroke-width="${R-r}"/>`;
+        const a0=start*2*Math.PI-Math.PI/2;
+        const a1=(start+pct)*2*Math.PI-Math.PI/2;
+        const x0R=cx+R*Math.cos(a0),y0R=cy+R*Math.sin(a0);
+        const x1R=cx+R*Math.cos(a1),y1R=cy+R*Math.sin(a1);
+        const x0r=cx+r*Math.cos(a0),y0r=cy+r*Math.sin(a0);
+        const x1r=cx+r*Math.cos(a1),y1r=cy+r*Math.sin(a1);
+        const large=pct>0.5?1:0;
+        return`<path d="M${x0R},${y0R} A${R},${R} 0 ${large},1 ${x1R},${y1R} L${x1r},${y1r} A${r},${r} 0 ${large},0 ${x0r},${y0r} Z" fill="${color}"/>`;
+      }
+      let offset=0;
+      const readSlice=slice(offset,totalRead,grandTotal,'var(--accent)');offset+=totalRead/grandTotal;
+      const synthSlice=slice(offset,totalSynth,grandTotal,'#1D9E75');offset+=totalSynth/grandTotal;
+      const untrackedSlice=slice(offset,totalUntracked,grandTotal,'var(--t3)');
+      pieHTML=`<div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:10px;">Time breakdown</div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <svg viewBox="0 0 140 140" style="width:110px;flex-shrink:0;">
+            ${readSlice}${synthSlice}${untrackedSlice}
+            <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">${fmt2(grandTotal)}</text>
+            <text x="${cx}" y="${cy+9}" text-anchor="middle" font-size="8" fill="var(--t2)">total</text>
+          </svg>
+          <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
+            ${totalRead>0?`<div><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;">📖 Reading</div><div style="font-size:15px;font-weight:600;">${fmt2(totalRead)}</div><div style="font-size:10px;color:var(--t2);">${Math.round(totalRead/grandTotal*100)}% of total</div></div>`:''}
+            ${totalSynth>0?`<div><div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.04em;">✏️ Synthesizing</div><div style="font-size:15px;font-weight:600;">${fmt2(totalSynth)}</div><div style="font-size:10px;color:var(--t2);">${Math.round(totalSynth/grandTotal*100)}% of total</div></div>`:''}
+            ${totalUntracked>0?`<div><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.04em;">⬜ Untracked</div><div style="font-size:15px;font-weight:600;">${fmt2(totalUntracked)}</div><div style="font-size:10px;color:var(--t3);">No read/synth split</div></div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
   // SVG line chart
   let chartHTML='';
   if(days.length>=1){
@@ -3282,19 +3344,9 @@ function renderStats(){
     }).join('');
     const xLabels=pts.filter((_,i)=>i===0||i===pts.length-1||i%Math.ceil(pts.length/5)===0)
       .map(p=>{const d=p.d.slice(5).replace('-','/');return`<text x="${p.x}" y="${H-6}" text-anchor="middle" font-size="8" fill="var(--t3)">${d}</text>`;}).join('');
-    // Colour dots by session type: reading=accent, synth=green, both=gold
-    const dots=pts.map(p=>{
-      const col=p.type==='synth'?'#1D9E75':p.type==='both'?'#BA7517':'var(--accent)';
-      const label=p.type==='synth'?'✏️ Synthesize':'📖 '+p.v+'p';
-      return`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${col}" stroke="var(--bg)" stroke-width="1.5"><title>${p.d}: ${label}</title></circle>`;
-    }).join('');
+    const dots=pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"><title>${p.d}: ${p.v}p</title></circle>`).join('');
     chartHTML=`<div style="margin:12px 0 6px;">
       <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">Pages per day</div>
-      <div style="font-size:10px;color:var(--t3);margin-bottom:6px;">
-        <span style="color:var(--accent);">● Reading</span> &nbsp;
-        <span style="color:#1D9E75;">● Synthesizing</span> &nbsp;
-        <span style="color:#BA7517;">● Both</span>
-      </div>
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;overflow:visible;">
         ${gridLines}
         ${days.length>1?`<path d="${areaPath}" fill="var(--accent)" opacity="0.08"/>
@@ -3317,21 +3369,21 @@ function renderStats(){
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
     <div class="sum-card"><div class="sum-val">${avgMin} min</div><div class="sum-lbl">Avg session</div></div>
   </div>
-  ${sessions.length?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 12px;margin:10px 0 4px;font-size:12px;display:flex;gap:12px;flex-wrap:wrap;">
-    <span>✅ Fully synthesized: <strong>${synthSessions}</strong></span>
-    <span>🟡 Partial: <strong>${partialSessions}</strong></span>
-    <span>📖 Reading only: <strong>${sessions.length-synthSessions-partialSessions}</strong></span>
-  </div>`:''}
+  ${pieHTML}
   ${chartHTML}
   <div class="slabel" style="margin-top:14px;">Reading sessions</div>
   ${sessions.length?sessions.map((s,realIdx)=>({s,realIdx})).reverse().map(({s,realIdx})=>{
     const pg=+s.pEnd-(+s.pStart||0);
-    const modeLabel=s.mode==='synth'?'✏️ Synthesize only':s.synthesized==='yes'?'✅ Synthesized':s.synthesized==='partial'?'🟡 Partial':'📖 Reading only';
+    const hasSplit=s.readMinutes!=null||s.synthMinutes!=null;
+    const timeStr=hasSplit
+      ? [s.readMinutes?`📖 ${s.readMinutes}m`:'',s.synthMinutes?`✏️ ${s.synthMinutes}m`:''].filter(Boolean).join(' · ')
+      : s.minutes?`${s.minutes} min`:'';
+    const modeLabel=hasSplit?(+s.readMinutes>0&&+s.synthMinutes>0?'📖 + ✏️ Both':(+s.synthMinutes>0?'✏️ Synthesizing':'📖 Reading')):(s.mode==='synth'?'✏️ Synthesize only':s.mode==='both'?'📖 + ✏️ Both':'📖 Reading');
     return`<div class="session-card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;font-weight:600;">${fmt(s.date)}</span>
         <div style="display:flex;gap:6px;align-items:center;">
-          ${s.minutes?`<span class="pbadge">${s.minutes} min</span>`:''}
+          ${timeStr?`<span class="pbadge">${timeStr}</span>`:''}
           <button class="btn-edit" onclick="editSession(${realIdx})" style="font-size:11px;padding:2px 6px;">✏️</button>
           <button class="btn-del" onclick="deleteSession(${realIdx})" style="font-size:11px;padding:2px 6px;">🗑</button>
         </div>
@@ -3347,79 +3399,127 @@ function renderStats(){
 // ═══════════════════════════════════════════════════════════════
 // READING TIMER
 // ═══════════════════════════════════════════════════════════════
-function onTimerModeChange(){
-  const mode=document.getElementById('timer-mode').value;
-  const isSynthOnly=mode==='synth';
-  const editIdx=document.getElementById('timer-edit-idx').value;
-  if(isSynthOnly||editIdx!==''){
-    document.getElementById('timer-clock-section').style.display='none';
-    document.getElementById('timer-btn').style.display='none';
-  } else {
-    document.getElementById('timer-clock-section').style.display='';
-    document.getElementById('timer-btn').style.display='';
+let readTimerSeconds=0,readTimerRunning=false,readTimerInterval=null,readTimerStart=null;
+let synthTimerSeconds=0,synthTimerRunning=false,synthTimerInterval=null,synthTimerStart=null;
+
+function fmtTimer(s){const m=String(Math.floor(s/60)).padStart(2,'0');const sc=String(s%60).padStart(2,'0');return`${m}:${sc}`;}
+
+function toggleReadTimer(){
+  // Pause synth if running
+  if(synthTimerRunning){
+    clearInterval(synthTimerInterval);synthTimerRunning=false;
+    document.getElementById('timer-synth-btn').textContent='▶ Resume';
   }
-  // Minutes field always visible
-  document.getElementById('timer-min-row').style.display='';
-  if(isSynthOnly){clearInterval(timerInterval);timerRunning=false;}
+  if(readTimerRunning){
+    clearInterval(readTimerInterval);readTimerRunning=false;
+    document.getElementById('timer-read-btn').textContent='▶ Resume';
+  } else {
+    readTimerStart=Date.now()-readTimerSeconds*1000;
+    readTimerInterval=setInterval(()=>{
+      readTimerSeconds=Math.floor((Date.now()-readTimerStart)/1000);
+      document.getElementById('timer-read-display').textContent=fmtTimer(readTimerSeconds);
+    },1000);
+    readTimerRunning=true;
+    document.getElementById('timer-read-btn').textContent='⏸ Pause';
+    // Clear manual field while timer is running
+    document.getElementById('timer-read-min').value='';
+  }
 }
+
+function toggleSynthTimer(){
+  // Pause read if running
+  if(readTimerRunning){
+    clearInterval(readTimerInterval);readTimerRunning=false;
+    document.getElementById('timer-read-btn').textContent='▶ Resume';
+  }
+  if(synthTimerRunning){
+    clearInterval(synthTimerInterval);synthTimerRunning=false;
+    document.getElementById('timer-synth-btn').textContent='▶ Resume';
+  } else {
+    synthTimerStart=Date.now()-synthTimerSeconds*1000;
+    synthTimerInterval=setInterval(()=>{
+      synthTimerSeconds=Math.floor((Date.now()-synthTimerStart)/1000);
+      document.getElementById('timer-synth-display').textContent=fmtTimer(synthTimerSeconds);
+    },1000);
+    synthTimerRunning=true;
+    document.getElementById('timer-synth-btn').textContent='⏸ Pause';
+    // Clear manual field while timer is running
+    document.getElementById('timer-synth-min').value='';
+  }
+}
+
+function onReadMinInput(){
+  // If typing manually, stop and reset the read timer
+  clearInterval(readTimerInterval);readTimerRunning=false;readTimerSeconds=0;
+  document.getElementById('timer-read-display').textContent='00:00';
+  document.getElementById('timer-read-btn').textContent='▶ Start';
+}
+function onSynthMinInput(){
+  clearInterval(synthTimerInterval);synthTimerRunning=false;synthTimerSeconds=0;
+  document.getElementById('timer-synth-display').textContent='00:00';
+  document.getElementById('timer-synth-btn').textContent='▶ Start';
+}
+
+function resetTimers(){
+  clearInterval(readTimerInterval);clearInterval(synthTimerInterval);
+  readTimerSeconds=0;readTimerRunning=false;readTimerInterval=null;
+  synthTimerSeconds=0;synthTimerRunning=false;synthTimerInterval=null;
+  document.getElementById('timer-read-display').textContent='00:00';
+  document.getElementById('timer-synth-display').textContent='00:00';
+  document.getElementById('timer-read-btn').textContent='▶ Start';
+  document.getElementById('timer-synth-btn').textContent='▶ Start';
+  document.getElementById('timer-read-min').value='';
+  document.getElementById('timer-synth-min').value='';
+}
+
 function openReadingTimer(){
+  resetTimers();
   document.getElementById('timer-edit-idx').value='';
   document.getElementById('timer-sheet-title').textContent='Reading session';
   document.getElementById('timer-save-btn').textContent='Save session';
   document.getElementById('timer-pg-start').value=book()?.progressPage||'';
   document.getElementById('timer-pg-end').value='';
   document.getElementById('timer-date').value=localDate();
-  document.getElementById('timer-display').textContent='00:00';
-  document.getElementById('timer-mode').value='read';
-  document.getElementById('timer-clock-section').style.display='';
-  document.getElementById('timer-btn').style.display='';
-  document.getElementById('timer-min-row').style.display='';
-  const manEl=document.getElementById('timer-manual-min');if(manEl)manEl.value='';
-  timerSeconds=0;timerRunning=false;document.getElementById('timer-btn').textContent='▶ Start';
   openSheet('timer-overlay');
 }
+
 function editSession(idx){
   const s=book().sessions[idx];if(!s)return;
+  resetTimers();
   document.getElementById('timer-edit-idx').value=idx;
   document.getElementById('timer-sheet-title').textContent='Edit session';
   document.getElementById('timer-save-btn').textContent='Update session';
-  document.getElementById('timer-mode').value=s.mode||'read';
   document.getElementById('timer-date').value=s.date||localDate();
   document.getElementById('timer-pg-start').value=s.pStart||'';
   document.getElementById('timer-pg-end').value=s.pEnd||'';
-  document.getElementById('timer-manual-min').value=s.minutes||'';
-  document.getElementById('timer-clock-section').style.display='none';
-  document.getElementById('timer-btn').style.display='none';
-  document.getElementById('timer-min-row').style.display='';
+  document.getElementById('timer-read-min').value=s.readMinutes!=null?s.readMinutes:(s.mode==='synth'?0:s.minutes)||'';
+  document.getElementById('timer-synth-min').value=s.synthMinutes!=null?s.synthMinutes:(s.mode==='synth'?s.minutes:0)||'';
   openSheet('timer-overlay');
 }
-function toggleTimer(){
-  if(timerRunning){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-btn').textContent='▶ Resume';}
-  else{timerStart=Date.now()-timerSeconds*1000;timerInterval=setInterval(()=>{timerSeconds=Math.floor((Date.now()-timerStart)/1000);const m=String(Math.floor(timerSeconds/60)).padStart(2,'0');const s=String(timerSeconds%60).padStart(2,'0');document.getElementById('timer-display').textContent=`${m}:${s}`;},1000);timerRunning=true;document.getElementById('timer-btn').textContent='⏸ Pause';}
-}
+
 function saveSession(){
-  clearInterval(timerInterval);timerRunning=false;
+  clearInterval(readTimerInterval);clearInterval(synthTimerInterval);
+  readTimerRunning=false;synthTimerRunning=false;
   const editIdx=document.getElementById('timer-edit-idx').value;
-  const mode=document.getElementById('timer-mode').value;
   const pStart=document.getElementById('timer-pg-start').value;
   const pEnd=document.getElementById('timer-pg-end').value;
   const date=document.getElementById('timer-date').value||localDate();
-  let minutes;
-  const manMin=document.getElementById('timer-manual-min')?.value;
-  if(editIdx!==''){
-    // Edit mode — always use manual minutes field
-    minutes=manMin?+manMin:0;
-  } else if(manMin){
-    // Manual entry takes priority over timer
-    minutes=+manMin;
-  } else if(mode==='synth'){
-    minutes=0;
-  } else {
-    minutes=Math.round(timerSeconds/60)||0;
-  }
-  const synth=mode==='synth'?'yes':mode==='both'?'yes':'no';
+
+  // Reading minutes: manual field wins, else timer
+  const readManual=document.getElementById('timer-read-min').value;
+  const readMinutes=readManual!==''?+readManual:Math.round(readTimerSeconds/60);
+
+  // Synth minutes: manual field wins, else timer
+  const synthManual=document.getElementById('timer-synth-min').value;
+  const synthMinutes=synthManual!==''?+synthManual:Math.round(synthTimerSeconds/60);
+
+  const totalMinutes=readMinutes+synthMinutes;
+  // Derive mode for backward compat
+  const mode=readMinutes>0&&synthMinutes>0?'both':synthMinutes>0?'synth':'read';
+  const synthesized=synthMinutes>0?'yes':'no';
+
   if(!book().sessions)book().sessions=[];
-  const sessionData={date,pStart,pEnd,minutes,synthesized:synth,mode};
+  const sessionData={date,pStart,pEnd,minutes:totalMinutes,readMinutes,synthMinutes,synthesized,mode};
   if(editIdx!==''){
     book().sessions[+editIdx]=sessionData;
   } else {
@@ -3428,6 +3528,7 @@ function saveSession(){
   if(pEnd)book().progressPage=pEnd;
   save();closeSheet('timer-overlay');renderStats();renderLibrary();
 }
+
 function deleteSession(idx){
   if(!confirm('Delete this reading session?'))return;
   book().sessions.splice(idx,1);
