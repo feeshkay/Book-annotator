@@ -2279,9 +2279,26 @@ function renderRecycleBin(){
 }
 function restoreEntry(i){
   const bin=getRecycleBin();const e=bin[i];if(!e)return;
-  delete e.deletedAt;
-  book().entries.unshift(e);
-  book().recycleBin.splice(i,1);
+  const isChar=CT.includes(e.type);
+  const charName=isChar?(e.cn||e.content):null;
+  const deletedAt=e.deletedAt;
+  // Collect everything we plan to restore — the item itself plus cascade if it's a character
+  const toRestore=[e];
+  if(isChar&&charName){
+    // Find associated items still in the bin: rels with this char on either side,
+    // characteristics involving this char, deleted within ±5s of the main deletion.
+    bin.forEach(b=>{
+      if(b===e)return;
+      if(Math.abs((b.deletedAt||0)-deletedAt)>5000)return;
+      const assocRel=b.type==='Relationship'&&(b.relA===charName||b.relB===charName);
+      const assocTrait=b.type==='Characteristic'&&b.involved?.includes(charName);
+      if(assocRel||assocTrait)toRestore.push(b);
+    });
+  }
+  // Restore each (delete deletedAt, unshift into entries)
+  toRestore.forEach(item=>{delete item.deletedAt;book().entries.unshift(item);});
+  // Remove them from the bin (do by reference identity)
+  book().recycleBin=book().recycleBin.filter(b=>!toRestore.includes(b));
   save();renderAll();renderRecycleBin();
 }
 function permanentDelete(i){
@@ -2428,7 +2445,7 @@ function ecHTML(e,compact,fromTab){
     body=`<div class="econtent">${icons} ${sigLabel?`<span class="tag" style="background:var(--rl);color:var(--red);">${sigLabel}</span> `:''}${e.content}</div>`;
   } else if(e.type==='Theme'){
     const tqs=e.themeQuotes||[];
-    body=`<div class="econtent"><strong>${e.content}</strong>${e.note?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.note}</div>`:''}${tqs.length?`<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">${tqs.slice(0,2).map(q=>`<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.page?' · p.'+q.page:''}</span><div style="font-size:12px;font-style:italic;">"${q.text}"</div></div>`).join('')}${tqs.length>2?`<div style="font-size:10px;color:var(--t3);">…${tqs.length-2} more quote${tqs.length-2>1?'s':''}</div>`:''}</div>`:''}`;
+    body=`<div class="econtent"><strong>${e.content}</strong>${e.note?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.note}</div>`:''}${tqs.length?`<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">${tqs.slice(0,2).map(q=>`<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.page?' · p.'+q.page:''}</span><div style="font-size:12px;font-style:italic;">"${q.text}"</div></div>`).join('')}${tqs.length>2?`<div style="font-size:10px;color:var(--t3);">…${tqs.length-2} more quote${tqs.length-2>1?'s':''}</div>`:''}</div>`:''}</div>`;
   } else if(e.type==='Translation'){
     const langPair=e.transFrom&&e.transTo?`<span class="pbadge" style="margin-bottom:4px;">${e.transFrom} → ${e.transTo}</span>`:(e.transFrom||e.transTo)?`<span class="pbadge">${e.transFrom||e.transTo}</span>`:'';
     body=`<div class="econtent">
@@ -2453,6 +2470,9 @@ function ecHTML(e,compact,fromTab){
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}</span>`;}).join('')}</div>`:'';
+  // Multi-photo strip — shown for non-character entries that have additional photos beyond the inline one
+  const allPhotos=e.photos&&e.photos.length?e.photos:(e.photo?[e.photo]:[]);
+  const photosStrip=(!isChar&&allPhotos.length>1)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${allPhotos.map(p=>`<img src="${p}" style="width:56px;height:56px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:'';
   const qtrans=['Quote','Line/stanza','Narrator quote'].includes(e.type)&&e.qtOrig?`<div style="margin-top:6px;border-left:2px solid var(--t3);padding-left:8px;">
     ${e.qtFrom||e.qtTo?`<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">${[e.qtFrom,e.qtTo].filter(Boolean).join(' → ')}</div>`:''}
     <div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:2px;">"${e.qtOrig}"</div>
@@ -2460,7 +2480,7 @@ function ecHTML(e,compact,fromTab){
     ${e.qtTranslator?`<div style="font-size:10px;color:var(--t3);">Translator: ${e.qtTranslator}</div>`:''}
   </div>`:'';
   return `<div class="ec ${k}" ${clickAttr}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}</div>${body}${qtrans}${invB}
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
@@ -2477,7 +2497,7 @@ function renderQuotes(){
   // Build filter
   const qbar=document.getElementById('quote-filter');
   qbar.innerHTML=`<button class="chip${qFilter==='all'?' active':''}" onclick="setQuoteFilter('all')">All</button>`
-    +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
+    +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">👤 ${c}</button>`).join('')
     +`<button class="chip${qFilter==='narrator'?' active':''}" onclick="setQuoteFilter('narrator')">Narrator</button>`;
   let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type));
   if(qFilter!=='all'&&qFilter!=='narrator'){
@@ -2509,12 +2529,21 @@ function renderChars(){
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const ph=c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
     const roleLabel={main:'Main',side:'Side',minor:'Minor/Unnamed',stranger:'Stranger',antagonist:'Antagonist',narrator:'Narrator'}[c.charRole||'']||'';
-    const relCount=entries().filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name)).length;
+    const charRels=entries().filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
+    const relCount=charRels.length;
+    // Relationship emoji summary — show up to 5 distinct emojis for this character's relationships
+    const relEmojis=[...new Set(charRels.map(r=>{
+      // From this character's perspective: if they're A, use relType; if B, use reciprocal
+      const t=(r.relA===name)?r.relType:(RECIPROCAL[r.relType]||r.relType);
+      return relEmoji(t);
+    }))].slice(0,5);
+    const relEmojiRow=relEmojis.length?`<div style="margin-top:3px;font-size:14px;line-height:1;">${relEmojis.join(' ')}</div>`:'';
     return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${esc(name)}',false)">
       <div class="avatar" style="width:42px;height:42px;font-size:13px;background:${col.stroke}28;color:${col.text};">${ph||ini}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${name}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${c.nickname})</span>`:''}</div>
         <div style="font-size:10px;color:var(--t2);">${roleLabel}${c.gender?' · '+c.gender:''}${c.charIntro?' · intro '+c.charIntro:''}${relCount?' · '+relCount+' rel'+( relCount!==1?'s':''):''}</div>
+        ${relEmojiRow}
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;" onclick="event.stopPropagation()">
         <button class="btn-edit" onclick="editEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Edit</button>
@@ -3328,27 +3357,31 @@ function renderTodo(){
     todos.push({cat:'Drafts',text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,color:'#993C1D',action:`editEntry(${e.id})`,id:e.id});
   });
 
-  const total=todos.length;
-  const possibleMax=Math.max(all.length,total+1);
-  const pct=total===0?100:Math.max(5,Math.round(((possibleMax-total)/possibleMax)*100));
+  // Filter out any items that the user has already ignored for this book
+  const ignored=getIgnoredTodos();
+  const ignoredSet=new Set(ignored.map(i=>i.cat+'|'+i.text));
+  const visibleTodos=todos.filter(t=>!ignoredSet.has(t.cat+'|'+t.text));
+  const visibleTotal=visibleTodos.length;
+  const possibleMax=Math.max(all.length,visibleTotal+1);
+  const pct=visibleTotal===0?100:Math.max(5,Math.round(((possibleMax-visibleTotal)/possibleMax)*100));
 
   const prog=document.getElementById('todo-progress');
   prog.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
       <span style="font-size:12px;font-weight:600;">Completion</span>
-      <span style="font-size:12px;color:var(--t2);">${total===0?'All done! 🎉':total+' item'+(total>1?'s':'')+' remaining'}</span>
+      <span style="font-size:12px;color:var(--t2);">${visibleTotal===0?'All done! 🎉':visibleTotal+' item'+(visibleTotal>1?'s':'')+' remaining'}</span>
     </div>
-    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${total===0?'#1D9E75':'var(--accent)'};transition:width 0.4s;"></div></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${visibleTotal===0?'#1D9E75':'var(--accent)'};transition:width 0.4s;"></div></div>
     <div style="font-size:10px;color:var(--t3);text-align:right;margin-top:2px;">${pct}% complete</div>`;
 
   const list=document.getElementById('todo-list');
-  if(!todos.length){
+  if(!visibleTodos.length){
     list.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Tap "Scan entries" above to check for missing fields</div></div>`;
     return;
   }
 
   const cats={};
-  todos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
+  visibleTodos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
   const catOrder=['Drafts','Characters','Missing pages','Vocabulary','Questions','References'];
   const orderedCats=[...catOrder.filter(c=>cats[c]),...Object.keys(cats).filter(c=>!catOrder.includes(c))];
 
@@ -3360,7 +3393,7 @@ function renderTodo(){
         <div style="flex:1;font-size:12px;">${t.text}</div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
           <button class="btn-edit" onclick="${t.action}" style="touch-action:manipulation;">Fix →</button>
-          <button class="btn-edit" onclick="ignoreTodoItem(this,todos[${todos.indexOf(t)}])" style="touch-action:manipulation;color:var(--t3);">Ignore</button>
+          <button class="btn-edit" onclick="ignoreTodoItem(this,'${esc(t.cat)}','${esc(t.text)}')" style="touch-action:manipulation;color:var(--t3);">Ignore</button>
           ${t.id!=null?`<button class="btn-del" onclick="deleteEntry(${t.id});this.closest('.todo-item').remove()" style="touch-action:manipulation;">Delete</button>`:''}
         </div>
       </div>`).join('')}
@@ -3369,11 +3402,14 @@ function renderTodo(){
 
 function getIgnoredTodos(){try{return JSON.parse(localStorage.getItem('ignored-todos-'+currentId)||'[]');}catch(e){return[];}}
 function saveIgnoredTodos(arr){localStorage.setItem('ignored-todos-'+currentId,JSON.stringify(arr));}
-function ignoreTodoItem(btn,t){
+function ignoreTodoItem(btn,cat,text){
   btn.closest('.todo-item').style.display='none';
   const arr=getIgnoredTodos();
-  arr.unshift({cat:t.cat,text:t.text,ignoredAt:Date.now()});
+  arr.unshift({cat,text,ignoredAt:Date.now()});
   saveIgnoredTodos(arr.slice(0,100));
+  // If the ignored list is currently open, refresh it
+  const ignList=document.getElementById('ignored-todos-list');
+  if(ignList&&ignList.style.display!=='none')renderIgnoredTodos();
 }
 function toggleIgnoredTodos(){
   const list=document.getElementById('ignored-todos-list');
