@@ -3251,11 +3251,12 @@ function renderStats(){
   sessions.forEach(s=>{
     const pg=+s.pEnd-(+s.pStart||0);
     const isSynthOnly=s.mode==='synth';
-    if(pg>0||isSynthOnly){
-      const d=s.date;
-      dayMap[d]=(dayMap[d]||0)+(isSynthOnly?0:pg);
-      dayTypes[d]=dayTypes[d]||s.mode||'read';
-    }
+    const d=s.date;
+    dayMap[d]=(dayMap[d]||0)+(isSynthOnly?0:pg);
+    // Track type: if day already has a different type, mark as 'both'
+    const newType=s.mode||'read';
+    if(!dayTypes[d]){dayTypes[d]=newType;}
+    else if(dayTypes[d]!==newType){dayTypes[d]='both';}
   });
   const days=Object.keys(dayMap).sort();
   const vals=days.map(d=>dayMap[d]);
