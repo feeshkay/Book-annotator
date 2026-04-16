@@ -1621,6 +1621,7 @@ function buildCPick(chars){
   const all=[...sorted,...unsorted];
   document.getElementById('cpick-row').innerHTML=all.map(c=>{const cc=getCC(c.name);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c.name}" onclick="this.classList.toggle('sel')">${c.label}</span>`;}).join('');
 }
+function getPicked(){return[...document.querySelectorAll('#cpick-row .cpick.sel')].map(c=>c.dataset.name).filter(Boolean);}
 function autoTagSpeaker(){
   const spk=document.getElementById('ae-speaker').value;
   if(!spk)return;
