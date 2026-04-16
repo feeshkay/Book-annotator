@@ -1049,7 +1049,6 @@ function autoChapFromPageLive(pgVal){
   const chEl=document.getElementById('ae-ch');
   if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  // Always update — overwrite even if already filled, so multi-chapter ranges show correctly
   if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
 }
 
