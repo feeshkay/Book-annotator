@@ -789,7 +789,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div class="sheet-overlay" id="timer-overlay" onclick="mc('timer-overlay',event)">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">Reading session</div>
+    <div id="timer-sheet-title" class="sheet-title">Reading session</div>
+    <input type="hidden" id="timer-edit-idx" value=""/>
     <div class="fg" style="margin-bottom:10px;"><label>Session type</label>
       <select id="timer-mode" onchange="onTimerModeChange()">
         <option value="read">📖 Reading (with timer)</option>
@@ -801,6 +802,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="timer-display" style="font-size:40px;font-weight:600;font-variant-numeric:tabular-nums;">00:00</div>
       <div style="font-size:12px;color:var(--t2);margin-top:4px;">Session time</div>
     </div>
+    <div class="fg" style="margin-bottom:10px;"><label>Date</label><input type="date" id="timer-date"/></div>
     <div class="r2" style="margin-bottom:10px;">
       <div class="fg"><label>Start page</label><input type="number" id="timer-pg-start" inputmode="numeric" placeholder="p."/></div>
       <div class="fg"><label>End page</label><input type="number" id="timer-pg-end" inputmode="numeric" placeholder="p."/></div>
@@ -808,7 +810,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fg" id="timer-min-row" style="display:none;"><label>Minutes spent (manual)</label><input type="number" id="timer-manual-min" inputmode="numeric" placeholder="e.g. 45" min="1"/></div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('timer-overlay')">Cancel</button>
-      <button class="btn" onclick="saveSession()">Save session</button>
+      <button class="btn" id="timer-save-btn" onclick="saveSession()">Save session</button>
       <button class="btn btn-primary" id="timer-btn" onclick="toggleTimer()">▶ Start</button>
     </div>
   </div>
@@ -3329,6 +3331,7 @@ function renderStats(){
         <span style="font-size:12px;font-weight:600;">${fmt(s.date)}</span>
         <div style="display:flex;gap:6px;align-items:center;">
           ${s.minutes?`<span class="pbadge">${s.minutes} min</span>`:''}
+          <button class="btn-edit" onclick="editSession(${realIdx})" style="font-size:11px;padding:2px 6px;">✏️</button>
           <button class="btn-del" onclick="deleteSession(${realIdx})" style="font-size:11px;padding:2px 6px;">🗑</button>
         </div>
       </div>
@@ -3352,8 +3355,12 @@ function onTimerModeChange(){
   if(isSynthOnly){clearInterval(timerInterval);timerRunning=false;}
 }
 function openReadingTimer(){
+  document.getElementById('timer-edit-idx').value='';
+  document.getElementById('timer-sheet-title').textContent='Reading session';
+  document.getElementById('timer-save-btn').textContent='Save session';
   document.getElementById('timer-pg-start').value=book()?.progressPage||'';
   document.getElementById('timer-pg-end').value='';
+  document.getElementById('timer-date').value=localDate();
   document.getElementById('timer-display').textContent='00:00';
   document.getElementById('timer-mode').value='read';
   document.getElementById('timer-clock-section').style.display='';
@@ -3363,25 +3370,50 @@ function openReadingTimer(){
   timerSeconds=0;timerRunning=false;document.getElementById('timer-btn').textContent='▶ Start';
   openSheet('timer-overlay');
 }
+function editSession(idx){
+  const s=book().sessions[idx];if(!s)return;
+  document.getElementById('timer-edit-idx').value=idx;
+  document.getElementById('timer-sheet-title').textContent='Edit session';
+  document.getElementById('timer-save-btn').textContent='Update session';
+  document.getElementById('timer-mode').value=s.mode||'read';
+  document.getElementById('timer-date').value=s.date||localDate();
+  document.getElementById('timer-pg-start').value=s.pStart||'';
+  document.getElementById('timer-pg-end').value=s.pEnd||'';
+  document.getElementById('timer-manual-min').value=s.minutes||'';
+  document.getElementById('timer-clock-section').style.display='none';
+  document.getElementById('timer-btn').style.display='none';
+  document.getElementById('timer-min-row').style.display='';
+  openSheet('timer-overlay');
+}
 function toggleTimer(){
   if(timerRunning){clearInterval(timerInterval);timerRunning=false;document.getElementById('timer-btn').textContent='▶ Resume';}
   else{timerStart=Date.now()-timerSeconds*1000;timerInterval=setInterval(()=>{timerSeconds=Math.floor((Date.now()-timerStart)/1000);const m=String(Math.floor(timerSeconds/60)).padStart(2,'0');const s=String(timerSeconds%60).padStart(2,'0');document.getElementById('timer-display').textContent=`${m}:${s}`;},1000);timerRunning=true;document.getElementById('timer-btn').textContent='⏸ Pause';}
 }
 function saveSession(){
   clearInterval(timerInterval);timerRunning=false;
+  const editIdx=document.getElementById('timer-edit-idx').value;
   const mode=document.getElementById('timer-mode').value;
   const pStart=document.getElementById('timer-pg-start').value;
   const pEnd=document.getElementById('timer-pg-end').value;
+  const date=document.getElementById('timer-date').value||localDate();
   let minutes;
-  if(mode==='synth'){
-    const manMin=document.getElementById('timer-manual-min')?.value;
+  const manMin=document.getElementById('timer-manual-min')?.value;
+  if(editIdx!==''){
+    // Edit mode — always use manual minutes field
+    minutes=manMin?+manMin:0;
+  } else if(mode==='synth'){
     minutes=manMin?+manMin:0;
   } else {
     minutes=Math.round(timerSeconds/60)||1;
   }
   const synth=mode==='synth'?'yes':mode==='both'?'yes':'no';
   if(!book().sessions)book().sessions=[];
-  book().sessions.push({date:localDate(),pStart,pEnd,minutes,synthesized:synth,mode});
+  const sessionData={date,pStart,pEnd,minutes,synthesized:synth,mode};
+  if(editIdx!==''){
+    book().sessions[+editIdx]=sessionData;
+  } else {
+    book().sessions.push(sessionData);
+  }
   if(pEnd)book().progressPage=pEnd;
   save();closeSheet('timer-overlay');renderStats();renderLibrary();
 }
