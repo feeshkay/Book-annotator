@@ -7,7 +7,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Annotator"/>
 <meta name="theme-color" content="#1a1412"/>
-<link rel="manifest" href="./manifest.json"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <title>Book Annotator</title>
 <style>
@@ -1839,9 +1838,7 @@ function submitEntry(){
   const isChar=CT.includes(type);const isRel=type==='Relationship';
   const isEvent=type==='Event';const isRef=type==='Reference';
   const isDial=type==='Dialogue';const isLoc=type==='Location';
-  const isTrans=type==='Translation';
-
-  let content='',cn='';
+  const isTrans=type==='Translation';const isTheme=type==='Theme';
   if(isChar){
     cn=document.getElementById('ae-cn').value.trim();
     if(!cn){
@@ -4047,7 +4044,7 @@ function renderLibStats(){
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}
+// serviceWorker registration removed for preview
 load();renderLibrary();
 </script>
 
