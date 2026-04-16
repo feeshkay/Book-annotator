@@ -3349,9 +3349,16 @@ function renderStats(){
 function onTimerModeChange(){
   const mode=document.getElementById('timer-mode').value;
   const isSynthOnly=mode==='synth';
-  document.getElementById('timer-clock-section').style.display=isSynthOnly?'none':'';
-  document.getElementById('timer-btn').style.display=isSynthOnly?'none':'';
-  document.getElementById('timer-min-row').style.display=isSynthOnly?'':'none';
+  const editIdx=document.getElementById('timer-edit-idx').value;
+  if(isSynthOnly||editIdx!==''){
+    document.getElementById('timer-clock-section').style.display='none';
+    document.getElementById('timer-btn').style.display='none';
+  } else {
+    document.getElementById('timer-clock-section').style.display='';
+    document.getElementById('timer-btn').style.display='';
+  }
+  // Minutes field always visible
+  document.getElementById('timer-min-row').style.display='';
   if(isSynthOnly){clearInterval(timerInterval);timerRunning=false;}
 }
 function openReadingTimer(){
@@ -3365,7 +3372,7 @@ function openReadingTimer(){
   document.getElementById('timer-mode').value='read';
   document.getElementById('timer-clock-section').style.display='';
   document.getElementById('timer-btn').style.display='';
-  document.getElementById('timer-min-row').style.display='none';
+  document.getElementById('timer-min-row').style.display='';
   const manEl=document.getElementById('timer-manual-min');if(manEl)manEl.value='';
   timerSeconds=0;timerRunning=false;document.getElementById('timer-btn').textContent='▶ Start';
   openSheet('timer-overlay');
@@ -3401,10 +3408,13 @@ function saveSession(){
   if(editIdx!==''){
     // Edit mode — always use manual minutes field
     minutes=manMin?+manMin:0;
+  } else if(manMin){
+    // Manual entry takes priority over timer
+    minutes=+manMin;
   } else if(mode==='synth'){
-    minutes=manMin?+manMin:0;
+    minutes=0;
   } else {
-    minutes=Math.round(timerSeconds/60)||1;
+    minutes=Math.round(timerSeconds/60)||0;
   }
   const synth=mode==='synth'?'yes':mode==='both'?'yes':'no';
   if(!book().sessions)book().sessions=[];
