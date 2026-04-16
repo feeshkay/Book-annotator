@@ -495,11 +495,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <textarea id="ae-cdesc" placeholder="Personality, mannerisms, backstory…" style="min-height:50px;"></textarea>
       </div>
-      <div class="fg"><label>Photo</label>
-        <div class="photo-box" id="ae-char-photo-box" onclick="triggerPhoto('ae-char-photo-input','ae-char-photo-box','ae-char-photo-data')">
-          <span style="font-size:18px;">📷</span><span>Tap to upload photo</span>
-        </div>
-        <input type="file" id="ae-char-photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this,'ae-char-photo-box','ae-char-photo-data')"/>
+      <div class="fg"><label>Photos (optional) <span style="font-weight:400;color:var(--t3);">— first photo becomes the avatar</span></label>
+        <div id="ae-char-photos-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;"></div>
+        <input type="file" id="ae-char-photo-input" accept="image/*" style="display:none" onchange="handleCharPhoto(this)"/>
         <input type="hidden" id="ae-char-photo-data"/>
       </div>
       <div class="divider"></div>
@@ -1041,54 +1039,50 @@ function handlePhoto(input,bid,did){
   reader.readAsDataURL(file);
 }
 function addEntryPhoto(){document.getElementById('ae-photo-input').click();}
-function renderAddPhotoTile(){
-  const strip=document.getElementById('ae-photos-strip');
+function addCharPhoto(){document.getElementById('ae-char-photo-input').click();}
+// Generic strip helpers — all three args are DOM element IDs
+function _renderAddPhotoTile(stripId,inputId){
+  const strip=document.getElementById(stripId);
   if(!strip||strip.querySelector('.photo-add-tile'))return;
   const tile=document.createElement('div');
   tile.className='photo-add-tile';
   tile.style.cssText='width:72px;height:72px;flex-shrink:0;border:1.5px dashed var(--am);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);background:var(--al);touch-action:manipulation;';
-  tile.onclick=addEntryPhoto;
+  tile.onclick=()=>document.getElementById(inputId).click();
   tile.innerHTML=`<span style="font-size:22px;line-height:1;">＋</span><span style="font-size:10px;margin-top:2px;">Add photo</span>`;
   strip.appendChild(tile);
 }
-function handleEntryPhoto(input){
+function _handlePhotoInput(input,stripId,inputId,legacyId){
   const file=input.files[0];if(!file)return;
   input.value='';
   const reader=new FileReader();
   reader.onload=e=>{
     compressImage(e.target.result,600,800,0.72,compressed=>{
-      const strip=document.getElementById('ae-photos-strip');
-      // Remove the add tile temporarily so the new photo appends before it
+      const strip=document.getElementById(stripId);
       const addTile=strip.querySelector('.photo-add-tile');
       if(addTile)addTile.remove();
-      const idx=strip.children.length;
+      const idx=strip.querySelectorAll('.photo-data-val').length;
       const div=document.createElement('div');
       div.style.cssText='position:relative;width:72px;height:72px;flex-shrink:0;';
       div.innerHTML=`<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
-        <button onclick="removeEntryPhoto(this)" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+        <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
         <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
       strip.appendChild(div);
-      renderAddPhotoTile();
-      // Keep legacy single photo field in sync (first photo)
-      if(idx===0)document.getElementById('ae-photo-data').value=compressed;
+      _renderAddPhotoTile(stripId,inputId);
+      if(idx===0)document.getElementById(legacyId).value=compressed;
     });
   };
   reader.readAsDataURL(file);
 }
-function removeEntryPhoto(btn){
+function _removePhotoTile(btn,stripId,inputId,legacyId){
   const div=btn.closest('div');div.remove();
-  // Update legacy field to first remaining photo
-  const strip=document.getElementById('ae-photos-strip');
+  const strip=document.getElementById(stripId);
   const first=strip.querySelector('.photo-data-val');
-  document.getElementById('ae-photo-data').value=first?first.value:'';
-  // Ensure the add tile is still there (it should be, but belt-and-braces)
-  renderAddPhotoTile();
+  document.getElementById(legacyId).value=first?first.value:'';
+  _renderAddPhotoTile(stripId,inputId);
 }
-function getEntryPhotos(){
-  return[...document.querySelectorAll('#ae-photos-strip .photo-data-val')].map(i=>i.value).filter(Boolean);
-}
-function setEntryPhotos(photos){
-  const strip=document.getElementById('ae-photos-strip');
+function _getPhotos(stripId){return[...document.querySelectorAll('#'+stripId+' .photo-data-val')].map(i=>i.value).filter(Boolean);}
+function _setPhotos(stripId,inputId,legacyId,photos){
+  const strip=document.getElementById(stripId);
   if(!strip)return;
   strip.innerHTML='';
   (photos||[]).forEach(compressed=>{
@@ -1096,13 +1090,22 @@ function setEntryPhotos(photos){
     const div=document.createElement('div');
     div.style.cssText='position:relative;width:72px;height:72px;flex-shrink:0;';
     div.innerHTML=`<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
-      <button onclick="removeEntryPhoto(this)" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+      <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
       <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
     strip.appendChild(div);
   });
-  renderAddPhotoTile();
-  document.getElementById('ae-photo-data').value=photos?.[0]||'';
+  _renderAddPhotoTile(stripId,inputId);
+  document.getElementById(legacyId).value=photos?.[0]||'';
 }
+// Entry strip (non-character entries)
+function handleEntryPhoto(input){_handlePhotoInput(input,'ae-photos-strip','ae-photo-input','ae-photo-data');}
+function removeEntryPhoto(btn){_removePhotoTile(btn,'ae-photos-strip','ae-photo-input','ae-photo-data');}
+function getEntryPhotos(){return _getPhotos('ae-photos-strip');}
+function setEntryPhotos(photos){_setPhotos('ae-photos-strip','ae-photo-input','ae-photo-data',photos);}
+// Character strip
+function handleCharPhoto(input){_handlePhotoInput(input,'ae-char-photos-strip','ae-char-photo-input','ae-char-photo-data');}
+function getCharPhotos(){return _getPhotos('ae-char-photos-strip');}
+function setCharPhotos(photos){_setPhotos('ae-char-photos-strip','ae-char-photo-input','ae-char-photo-data',photos);}
 function setPhotoBox(bid,data,ph,size){
   const box=document.getElementById(bid);if(!box)return;
   if(data)box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
@@ -1903,7 +1906,7 @@ function clearAEForm(){
   document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
   document.getElementById('ae-gender').value='';
-  document.getElementById('ae-char-photo-data').value='';setPhotoBox('ae-char-photo-box','','Tap to upload photo','18');
+  document.getElementById('ae-char-photo-data').value='';setCharPhotos([]);
   document.getElementById('ae-photo-data').value='';setEntryPhotos([]);
   document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
   document.getElementById('ae-mw-result').style.display='none';
@@ -2104,7 +2107,7 @@ function submitEntry(){
 
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
-  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?document.getElementById('ae-char-photo-data').value:(getEntryPhotos()[0]||''),photos:isChar?undefined:getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?(getCharPhotos()[0]||document.getElementById('ae-char-photo-data').value||''):(getEntryPhotos()[0]||''),photos:isChar?getCharPhotos():getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
 
   if(isChar){
     entry.nickname=document.getElementById('ae-nick').value.trim();
@@ -2332,7 +2335,7 @@ function editEntry(id){
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
-    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';document.getElementById('ae-char-photo-data').value=e.photo||'';setPhotoBox('ae-char-photo-box',e.photo||'','Tap to upload photo','18');}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)document.getElementById('ae-rela').value=e.relA;if(e.relB)document.getElementById('ae-relb').value=e.relB;}
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
@@ -2491,7 +2494,12 @@ function ecHTML(e,compact,fromTab){
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}</span>`;}).join('')}</div>`:'';
   // Multi-photo strip — shown for non-character entries that have additional photos beyond the inline one
   const allPhotos=e.photos&&e.photos.length?e.photos:(e.photo?[e.photo]:[]);
-  const photosStrip=(!isChar&&allPhotos.length>1)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${allPhotos.map(p=>`<img src="${p}" style="width:56px;height:56px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:'';
+  // For non-character entries with >1 photo: show all as a strip.
+  // For character entries with >1 photo: show photos 2..N (the 1st is the avatar).
+  let stripPhotos=[];
+  if(!isChar&&allPhotos.length>1)stripPhotos=allPhotos;
+  else if(isChar&&allPhotos.length>1)stripPhotos=allPhotos.slice(1);
+  const photosStrip=stripPhotos.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${stripPhotos.map(p=>`<img src="${p}" style="width:56px;height:56px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:'';
   const qtrans=['Quote','Line/stanza','Narrator quote'].includes(e.type)&&e.qtOrig?`<div style="margin-top:6px;border-left:2px solid var(--t3);padding-left:8px;">
     ${e.qtFrom||e.qtTo?`<div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">${[e.qtFrom,e.qtTo].filter(Boolean).join(' → ')}</div>`:''}
     <div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:2px;">"${e.qtOrig}"</div>
@@ -2610,6 +2618,7 @@ function renderCharDetail(name){
   const events=all.filter(e=>e.type==='Event'&&e.involved?.includes(name));
   const chapsMentioned=[...new Set(all.filter(e=>e.chapNum&&(e.involved?.includes(name)||(e.speaker===name)||(e.relA===name||e.relB===name))).flatMap(e=>e.chapNum.split(',')))].filter(Boolean).sort((a,b)=>+a-+b);
 
+  const charExtraPhotos=(ce?.photos?.length>1)?ce.photos.slice(1):[];
   document.getElementById('char-hero').innerHTML=`
     <div class="avatar" style="width:52px;height:52px;font-size:18px;background:${col.stroke}28;color:${col.text};flex-shrink:0;overflow:hidden;">${ph||ini}</div>
     <div style="flex:1;">
@@ -2618,6 +2627,7 @@ function renderCharDetail(name){
       ${ce?.charIntro?`<div style="font-size:10px;color:var(--t3);">Introduced: ${ce.charIntro}</div>`:''}
       ${chapsMentioned.length?`<div style="font-size:10px;color:var(--t3);">Chapters: ${chapsMentioned.map(c=>`<span onclick="setFilter('ch:${c}');forceTab('log')" style="color:var(--accent);cursor:pointer;">Ch.${c}</span>`).join(', ')}</div>`:''}
       ${ce?.lang?`<div style="font-size:10px;color:var(--t3);">Languages: ${ce.lang}</div>`:''}
+      ${charExtraPhotos.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${charExtraPhotos.map(p=>`<img src="${p}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:''}
     </div>`;
 
   const pg=e=>[e.chapNum?'Ch.'+e.chapNum:'',e.pageNum?'p.'+e.pageNum:''].filter(Boolean).join(', ');
