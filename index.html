@@ -2504,32 +2504,49 @@ function deleteEntry(id){
   if(CT.includes(e.type)){
     const name=e.cn||e.content;
     const all=entries();
+    const ts=Date.now();
+    // Entries OWNED by this character — go to recycle bin
     const rels=all.filter(r=>r.type==='Relationship'&&(r.relA===name||r.relB===name));
     const chars2=all.filter(r=>r.type==='Characteristic'&&r.involved?.includes(name));
-    const quotes=all.filter(r=>['Quote','Line/stanza','Narrator quote'].includes(r.type)&&(r.speaker===name||r.involved?.includes(name)));
-    const dials=all.filter(r=>r.type==='Dialogue'&&(r.involved?.includes(name)||(r.dialogueLines||[]).some(l=>l.speaker===name)));
-    const others=all.filter(r=>!CT.includes(r.type)&&r.type!=='Relationship'&&!chars2.includes(r)&&!quotes.includes(r)&&!dials.includes(r)&&r.involved?.includes(name));
-    const toDelete=[...rels,...chars2];
+    // Entries where this char is the sole/primary actor → also move to bin
+    const quotesOwned=all.filter(r=>['Quote','Line/stanza','Narrator quote'].includes(r.type)&&r.speaker===name&&(r.involved||[]).filter(c=>c&&c!==name).length===0);
+    const dialsOwned=all.filter(r=>r.type==='Dialogue'&&(r.dialogueLines||[]).length>0&&(r.dialogueLines||[]).every(l=>l.speaker===name||!l.speaker));
+    const toDelete=[...rels,...chars2,...quotesOwned,...dialsOwned];
+    // Entries where this char is tagged alongside others — keep but mark ⚠️
+    const taggedOnly=all.filter(r=>{
+      if(CT.includes(r.type)||r.type==='Relationship'||toDelete.includes(r))return false;
+      const inInvolved=(r.involved||[]).includes(name);
+      const isSpeaker=['Quote','Line/stanza','Narrator quote'].includes(r.type)&&r.speaker===name&&!toDelete.includes(r);
+      const inDial=r.type==='Dialogue'&&((r.dialogueLines||[]).some(l=>l.speaker===name));
+      return inInvolved||isSpeaker||inDial;
+    });
     let msg=`Delete "${name}"?`;
     const lines=[];
-    if(rels.length)lines.push(`• ${rels.length} relationship${rels.length>1?'s':''}`);
-    if(chars2.length)lines.push(`• ${chars2.length} characteristic${chars2.length>1?'s':''}`);
-    if(quotes.length)lines.push(`• ${quotes.length} quote/line${quotes.length>1?'s':''} (tagged only — not deleted)`);
-    if(dials.length)lines.push(`• ${dials.length} dialogue${dials.length>1?'s':''} (tagged only — not deleted)`);
-    if(others.length)lines.push(`• ${others.length} other entr${others.length>1?'ies':'y'} tagged (not deleted)`);
-    if(lines.length)msg+='\n\nThis will also remove:\n'+lines.join('\n');
-    if(toDelete.length)msg+='\n\nRelationships and characteristics will be permanently removed.';
+    if(rels.length)lines.push(`• ${rels.length} relationship${rels.length>1?'s':''} → recycle bin`);
+    if(chars2.length)lines.push(`• ${chars2.length} characteristic${chars2.length>1?'s':''} → recycle bin`);
+    if(quotesOwned.length)lines.push(`• ${quotesOwned.length} solo quote${quotesOwned.length>1?'s':''} → recycle bin`);
+    if(dialsOwned.length)lines.push(`• ${dialsOwned.length} solo dialogue${dialsOwned.length>1?'s':''} → recycle bin`);
+    if(taggedOnly.length)lines.push(`• ${taggedOnly.length} entr${taggedOnly.length>1?'ies':'y'} where they're tagged → kept with ⚠️ marker`);
+    if(lines.length)msg+='\n\nThis will also affect:\n'+lines.join('\n');
     if(!confirm(msg))return;
-    toDelete.forEach(r=>{getRecycleBin().unshift({...r,deletedAt:Date.now()});});
+    // Move all owned entries to recycle bin
+    toDelete.forEach(r=>{getRecycleBin().unshift({...r,deletedAt:ts});});
     book().entries=book().entries.filter(x=>!toDelete.some(r=>r.id===x.id));
+    // Mark ⚠️ on taggedOnly entries (stored in book().deletedChars)
+    if(!book().deletedChars)book().deletedChars={};
+    book().deletedChars[name]=ts;
   } else {
     if(!confirm('Delete this entry?'))return;
   }
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
-  book().recycleBin=getRecycleBin().slice(0,50);
+  book().recycleBin=getRecycleBin().slice(0,200);
   book().entries=book().entries.filter(x=>x.id!==id);
   save();renderAll();
-  if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
+  if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
+    // If we just deleted the character we're looking at, go back
+    if(CT.includes(e.type)&&(e.cn||e.content)===currentCharName){show('book-screen','char-screen');}
+    else renderCharDetail(currentCharName);
+  }
   if(currentLocName&&document.getElementById('loc-screen').classList.contains('active'))renderLocDetail(currentLocName);
 }
 function deleteLocCard(name){
@@ -2604,15 +2621,21 @@ function restoreEntry(i){
   // Collect everything we plan to restore — the item itself plus cascade if it's a character
   const toRestore=[e];
   if(isChar&&charName){
-    // Find associated items still in the bin: rels with this char on either side,
-    // characteristics involving this char, deleted within ±5s of the main deletion.
+    // Find ALL associated items still in the bin deleted within ±5s of the main deletion
     bin.forEach(b=>{
       if(b===e)return;
       if(Math.abs((b.deletedAt||0)-deletedAt)>5000)return;
       const assocRel=b.type==='Relationship'&&(b.relA===charName||b.relB===charName);
       const assocTrait=b.type==='Characteristic'&&b.involved?.includes(charName);
-      if(assocRel||assocTrait)toRestore.push(b);
+      const assocQuote=['Quote','Line/stanza','Narrator quote'].includes(b.type)&&(b.speaker===charName||b.involved?.includes(charName));
+      const assocDial=b.type==='Dialogue'&&(b.involved?.includes(charName)||(b.dialogueLines||[]).some(l=>l.speaker===charName));
+      const assocOther=b.involved?.includes(charName);
+      if(assocRel||assocTrait||assocQuote||assocDial||assocOther)toRestore.push(b);
     });
+    // Clear the ⚠️ marker for this character
+    if(book().deletedChars&&book().deletedChars[charName]){
+      delete book().deletedChars[charName];
+    }
   }
   // Restore each (delete deletedAt, unshift into entries)
   toRestore.forEach(item=>{delete item.deletedAt;book().entries.unshift(item);});
@@ -2742,8 +2765,10 @@ function ecHTML(e,compact,fromTab){
   if(e.date)pg.push(`<span class="pbadge">${fmt(e.date)}</span>`);
   const emo=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
   const locBadge=e.location?`<span class="pbadge" onclick="openLocDetail('${esc(e.location)}')" style="cursor:pointer;">📍 ${e.location}</span>`:'';
+  const _dc=book()?.deletedChars||{};
+  const _dcBadge=(name)=>_dc[name]?'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:2px;">⚠️</span>':'';
   const isNarrator=e.speaker==='Narrator / Author';
-  const spk=e.speaker?(isNarrator?`<span class="pbadge" style="font-weight:600;">🎙 Narrator / Author</span>`:`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};" onclick="event.stopPropagation();openCharDetail('${esc(e.speaker)}',false)">${e.speaker}</span>`):'';
+  const spk=e.speaker?(isNarrator?`<span class="pbadge" style="font-weight:600;">🎙 Narrator / Author</span>`:`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};" onclick="event.stopPropagation();openCharDetail('${esc(e.speaker)}',false)">${e.speaker}${_dcBadge(e.speaker)}</span>`):'';
 
   let body='';
   if(isChar){
@@ -2789,7 +2814,7 @@ function ecHTML(e,compact,fromTab){
     body=`<div class="econtent">${ph}${e.content}</div>`;
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
-  const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}</span>`;}).join('')}</div>`:'';
+  const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:'';
   // Multi-photo strip — shown for non-character entries that have additional photos beyond the inline one
   const allPhotos=e.photos&&e.photos.length?e.photos:(e.photo?[e.photo]:[]);
   // For non-character entries with >1 photo: show all as a strip.
@@ -3006,6 +3031,10 @@ function renderCharDetail(name){
   if(clues.length)html+=csecBlock(col,'Clues & red herrings',clues,pgT,nT,act,'char-clues',sortByPage);
   if(otherEntries.length)html+=csecBlock(col,'Other entries',otherEntries,pgT,nT,act,'char-other',sortByPage);
   if(!html.includes('citem'))html+=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add entries and select ${name} as involved</div></div>`;
+  // Delete character button at bottom of profile (#213-C)
+  if(ce){html+=`<div style="margin-top:20px;padding-top:12px;border-top:0.5px solid var(--cb);">
+    <button class="btn" onclick="deleteEntry(${ce.id})" style="width:100%;color:var(--red);border-color:var(--red);background:var(--rl);font-size:13px;padding:10px;">🗑 Delete character</button>
+  </div>`;}
   document.getElementById('char-body').innerHTML=html;
 }
 function csecBlock(col,label,arr,pgT,nT,act,id,sortFn){
