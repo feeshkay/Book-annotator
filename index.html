@@ -154,6 +154,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cpick-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
 .cpick{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;opacity:0.4;transition:opacity 0.15s;}
 .cpick.sel{opacity:1;}
+/* searchable char dropdown (replaces cpick-row for character selection) */
+.cdd-wrap{position:relative;}
+.cdd-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;min-height:0;}
+.cdd-chip{font-size:11px;font-weight:600;padding:3px 6px 3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;}
+.cdd-chip-x{background:transparent;border:none;color:inherit;font-size:13px;line-height:1;cursor:pointer;opacity:0.7;padding:0 2px;}
+.cdd-chip-x:active{opacity:1;}
+.cdd-input-row{display:flex;gap:6px;align-items:stretch;}
+.cdd-input{flex:1;font-size:14px;padding:9px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);color:var(--text);outline:none;-webkit-appearance:none;appearance:none;min-width:0;}
+.cdd-input:focus{border-color:var(--am);}
+.cdd-list{display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;}
+.cdd-list.open{display:block;}
+.cdd-option{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:7px;}
+.cdd-option:last-child{border-bottom:none;}
+.cdd-option:active,.cdd-option.hover{background:var(--al);}
+.cdd-option-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.cdd-empty{padding:10px 12px;font-size:12px;color:var(--t3);font-style:italic;}
 /* photo */
 .photo-box{width:100%;height:80px;border:1px dashed var(--cb);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;position:relative;overflow:hidden;}
 .photo-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
@@ -532,7 +548,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- QUOTE EXTRAS -->
     <div id="ae-quote-ex" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Speaker</label><select id="ae-speaker" onchange="autoTagSpeaker()"></select></div>
+        <div class="fg"><label>Speaker</label>
+          <div class="cdd-wrap" id="ae-speaker-cdd-wrap">
+            <div class="cdd-input-row">
+              <input type="text" class="cdd-input" id="ae-speaker-search" placeholder="Search or add speaker…" autocomplete="off" oninput="cddFilter('ae-speaker')" onfocus="cddOpen('ae-speaker')"/>
+              <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-speaker')" style="flex-shrink:0;">+ New</button>
+            </div>
+            <input type="hidden" id="ae-speaker"/>
+            <div class="cdd-list" id="ae-speaker-list"></div>
+          </div>
+        </div>
         <div class="fg"><label>Emotion / tone</label><select id="ae-emotion">
           <option value="">— none —</option>
           <optgroup label="Positive"><option data-tone="positive">Admiring</option><option data-tone="positive">Caring</option><option data-tone="positive">Cheerful</option><option data-tone="positive">Compassionate</option><option data-tone="positive">Confident</option><option data-tone="positive">Excited</option><option data-tone="positive">Grateful</option><option data-tone="positive">Hopeful</option><option data-tone="positive">Joyful</option><option data-tone="positive">Kind</option><option data-tone="positive">Loving</option><option data-tone="positive">Optimistic</option><option data-tone="positive">Playful</option><option data-tone="positive">Proud</option><option data-tone="positive">Reassuring</option><option data-tone="positive">Relieved</option><option data-tone="positive">Sweet</option><option data-tone="positive">Tender</option><option data-tone="positive">Warm</option></optgroup>
@@ -582,7 +607,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-mw-result" style="display:none;background:var(--gl);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:12px;color:var(--green);"></div>
       <div class="fg"><label>Definition</label><textarea id="ae-def" style="min-height:50px;" placeholder="What does it mean?"></textarea></div>
       <div class="fg"><label>Context in book</label><input type="text" id="ae-word-context" placeholder="How it was used in the text…"/></div>
-      <div class="fg"><label>Who said it / narrator</label><select id="ae-word-speaker" onchange="autoTagWordSpeaker()"></select></div>
+      <div class="fg"><label>Who said it / narrator</label>
+        <div class="cdd-wrap" id="ae-word-speaker-cdd-wrap">
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-word-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddFilter('ae-word-speaker')" onfocus="cddOpen('ae-word-speaker')"/>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-word-speaker')" style="flex-shrink:0;">+ New</button>
+          </div>
+          <input type="hidden" id="ae-word-speaker"/>
+          <div class="cdd-list" id="ae-word-speaker-list"></div>
+        </div>
+      </div>
       <div class="fg"><label>Source</label><input type="text" id="ae-wsrc" placeholder="e.g. Merriam-Webster"/></div>
       <button type="button" id="ae-word-trans-btn" onclick="toggleWordTrans()" style="width:100%;background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:8px;font-size:12px;color:var(--accent);margin-bottom:8px;cursor:pointer;touch-action:manipulation;">＋ Add full translation details</button>
       <div id="ae-word-trans-ex" style="display:none">
@@ -686,18 +720,35 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- RELATIONSHIP EXTRAS -->
     <div id="ae-rel-ex" style="display:none">
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:9px;"><strong>Who goes where?</strong><br>Character A = the one <em>being described</em>. Character B = the other person.<br>The label shows: "A is [type] of B." On B's profile it auto-reverses.<br>e.g. A=Elizabeth, type=Student, B=Professor → Elizabeth's profile: "Professor — Teacher." Professor's profile: "Elizabeth — Student."</div>
-      <div class="fg"><label>Relationship type</label><select id="ae-reltype">
+      <div class="fg"><label>Relationship type</label><select id="ae-reltype" onchange="inferRelGender()">
         <option value="">— select —</option>
         <optgroup label="Distant Family"><option>Distant ancestor</option><option>Distant descendant</option><option>Distant relative (unknown degree)</option><option>Great-great-grandchild</option><option>Great-great-grandparent</option><option>Great-great-grandfather</option><option>Great-great-grandmother</option></optgroup>
         <optgroup label="Family"><option>Adopted child</option><option>Adoptive parent</option><option>Aunt</option><option>Child</option><option>Cousin</option><option>Father</option><option>Grandchild</option><option>Grandfather</option><option>Grandmother</option><option>Great-grandchild</option><option>Great-grandfather</option><option>Great-grandmother</option><option>Guardian</option><option>Half-sibling</option><option>In-law</option><option>Mother</option><option>Nephew</option><option>Niece</option><option>Second cousin</option><option>Sibling</option><option>Step-child</option><option>Step-parent</option><option>Step-sibling</option><option>Uncle</option><option>Ward</option></optgroup>
-        <optgroup label="Romantic"><option>Admirer</option><option>Betrothed</option><option>Estranged spouse</option><option>Ex-partner</option><option>Love interest</option><option>Partner</option><option>Spouse</option></optgroup>
+        <optgroup label="Romantic"><option>Admirer</option><option>Betrothed</option><option>Estranged spouse</option><option>Ex-partner</option><option>Husband</option><option>Love interest</option><option>Partner</option><option>Spouse</option><option>Wife</option></optgroup>
         <optgroup label="Social"><option>Acquaintance</option><option>Ally</option><option>Best friend</option><option>Close friend</option><option>Confidant</option><option>Enemy</option><option>Friend</option><option>Mentor</option><option>Neighbour</option><option>Protégé</option><option>Rival</option><option>Stranger</option></optgroup>
         <optgroup label="Professional"><option>Business partner</option><option>Colleague</option><option>Commander</option><option>Employee</option><option>Employer</option><option>Master</option><option>Servant</option><option>Student</option><option>Subordinate</option><option>Teacher</option></optgroup>
         <optgroup label="Other"><option>Complicated</option><option>Unknown</option></optgroup>
       </select></div>
       <div class="r2">
-        <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label><select id="ae-rela"></select></div>
-        <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label><select id="ae-relb"></select></div>
+        <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
+          <div class="cdd-wrap" id="ae-rela-cdd-wrap">
+            <div class="cdd-input-row">
+              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search…" autocomplete="off" oninput="cddFilter('ae-rela')" onfocus="cddOpen('ae-rela')"/>
+            </div>
+            <input type="hidden" id="ae-rela"/>
+            <div class="cdd-list" id="ae-rela-list"></div>
+          </div>
+        </div>
+        <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label>
+          <div class="cdd-wrap" id="ae-relb-cdd-wrap">
+            <div class="cdd-input-row">
+              <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddFilter('ae-relb')" onfocus="cddOpen('ae-relb')"/>
+              <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-relb')" style="flex-shrink:0;">+ New</button>
+            </div>
+            <input type="hidden" id="ae-relb"/>
+            <div class="cdd-list" id="ae-relb-list"></div>
+          </div>
+        </div>
       </div>
       <div id="ae-rel-existing-warn" style="display:none;font-size:12px;color:#7F4F24;background:#FEF0D4;border-radius:var(--r);padding:8px 10px;margin-bottom:8px;border:0.5px solid #E8853C;"></div>
       <div id="ae-quick-add-b" style="display:none">
@@ -779,10 +830,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-inv-group" style="margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
           <div class="fg-label">Characters involved</div>
-          <button type="button" class="btn btn-sm" onclick="quickAddInvolvedChar()" style="font-size:10px;padding:2px 7px;">+ New char</button>
         </div>
-        <input type="text" id="ae-inv-search" placeholder="Filter characters…" oninput="filterCPick(this.value)" style="font-size:13px;padding:6px 10px;margin-bottom:6px;"/>
-        <div class="cpick-row" id="cpick-row"></div>
+        <div class="cdd-wrap" id="ae-inv-cdd-wrap">
+          <div class="cdd-chips" id="ae-inv-chips"></div>
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-inv-search" placeholder="Search or add character…" autocomplete="off" oninput="cddFilter('ae-inv')" onfocus="cddOpen('ae-inv')"/>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-inv')" style="flex-shrink:0;">+ New</button>
+          </div>
+          <div class="cdd-list" id="ae-inv-list"></div>
+        </div>
       </div>
     </div>
 
@@ -909,7 +965,7 @@ const REL_EMOJI={
   'Half-sibling':'👫','Step-parent':'👪','Step-child':'🧒','Step-sibling':'👫',
   'Adopted child':'🧒','Adoptive parent':'👪','Guardian':'🛡️','Ward':'🧒',
   'Distant ancestor':'🌳','Distant descendant':'🌱','Distant relative (unknown degree)':'🌿',
-  'Spouse':'💍','Partner':'💑','Betrothed':'💍','Love interest':'❤️',
+  'Spouse':'💍','Partner':'💑','Betrothed':'💍','Love interest':'❤️','Husband':'🤵','Wife':'👰',
   'Admirer':'💌','Ex-partner':'💔','Estranged spouse':'💔',
   'Best friend':'⭐','Close friend':'😊','Friend':'🙂','Acquaintance':'👋',
   'Ally':'🤝','Enemy':'⚔️','Rival':'🏆','Stranger':'❓','Neighbour':'🏠',
@@ -920,7 +976,32 @@ const REL_EMOJI={
   'Complicated':'🌀','Unknown':'❓',
 };
 function relEmoji(type){return REL_EMOJI[type]||'🔗';}
-const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling'};
+const REL_GENDER_MAP={
+  'Husband':'Male','Wife':'Female',
+  'Father':'Male','Mother':'Female',
+  'Son':'Male','Daughter':'Female',
+  'Brother':'Male','Sister':'Female',
+  'Grandfather':'Male','Grandmother':'Female',
+  'Grandson':'Male','Granddaughter':'Female',
+  'Uncle':'Male','Aunt':'Female',
+  'Nephew':'Male','Niece':'Female',
+  'King':'Male','Queen':'Female',
+};
+function inferRelGender(){
+  // When a gendered relationship type is picked, auto-set Character A's gender
+  // if it isn't already set. Character A is defined as the one being described.
+  const rt=document.getElementById('ae-reltype')?.value;
+  const inferredGender=REL_GENDER_MAP[rt];
+  if(!inferredGender)return;
+  const aName=cddGet('ae-rela');
+  if(!aName)return;
+  const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===aName);
+  if(!aEntry)return;
+  if(aEntry.gender&&aEntry.gender!=='')return; // don't overwrite existing gender
+  aEntry.gender=inferredGender;
+  save();
+}
+const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
@@ -1051,6 +1132,41 @@ function _renderAddPhotoTile(stripId,inputId){
   tile.innerHTML=`<span style="font-size:22px;line-height:1;">＋</span><span style="font-size:10px;margin-top:2px;">Add photo</span>`;
   strip.appendChild(tile);
 }
+function _photoTileHTML(compressed,stripId,inputId,legacyId){
+  // Shared builder for a single photo tile. The first tile in the strip is visually
+  // marked as the avatar via _refreshAvatarBadge — no class/data needed here.
+  return `<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
+    <button class="avatar-pick-btn" title="Set as avatar" onclick="_makeAvatar(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">★</button>
+    <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+    <span class="avatar-badge" style="display:none;position:absolute;bottom:2px;left:2px;right:2px;background:rgba(83,74,183,0.9);color:#fff;font-size:9px;font-weight:700;letter-spacing:0.04em;text-align:center;padding:1px 0;border-radius:3px;">AVATAR</span>
+    <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
+}
+function _refreshAvatarBadge(stripId){
+  // Show the AVATAR badge on the first photo tile, hide on others. Also hide the star on the avatar itself.
+  const strip=document.getElementById(stripId);
+  if(!strip)return;
+  const tiles=[...strip.children].filter(c=>!c.classList.contains('photo-add-tile'));
+  tiles.forEach((tile,i)=>{
+    const badge=tile.querySelector('.avatar-badge');
+    const starBtn=tile.querySelector('.avatar-pick-btn');
+    if(badge)badge.style.display=(i===0)?'':'none';
+    if(starBtn)starBtn.style.display=(i===0)?'none':'';
+    // Give the avatar tile a subtle accent border to reinforce it's special
+    const img=tile.querySelector('img');
+    if(img)img.style.border=(i===0)?'2px solid var(--accent)':'0.5px solid var(--cb)';
+  });
+}
+function _makeAvatar(btn,stripId,inputId,legacyId){
+  const tile=btn.closest('div');
+  const strip=document.getElementById(stripId);
+  if(!tile||!strip)return;
+  // Move tile to the front of the strip (before all other photo tiles and the + tile)
+  strip.insertBefore(tile,strip.firstChild);
+  // Update legacy single-photo field to the new first photo
+  const first=strip.querySelector('.photo-data-val');
+  document.getElementById(legacyId).value=first?first.value:'';
+  _refreshAvatarBadge(stripId);
+}
 function _handlePhotoInput(input,stripId,inputId,legacyId){
   const file=input.files[0];if(!file)return;
   input.value='';
@@ -1063,11 +1179,10 @@ function _handlePhotoInput(input,stripId,inputId,legacyId){
       const idx=strip.querySelectorAll('.photo-data-val').length;
       const div=document.createElement('div');
       div.style.cssText='position:relative;width:72px;height:72px;flex-shrink:0;';
-      div.innerHTML=`<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
-        <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-        <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
+      div.innerHTML=_photoTileHTML(compressed,stripId,inputId,legacyId);
       strip.appendChild(div);
       _renderAddPhotoTile(stripId,inputId);
+      _refreshAvatarBadge(stripId);
       if(idx===0)document.getElementById(legacyId).value=compressed;
     });
   };
@@ -1079,6 +1194,7 @@ function _removePhotoTile(btn,stripId,inputId,legacyId){
   const first=strip.querySelector('.photo-data-val');
   document.getElementById(legacyId).value=first?first.value:'';
   _renderAddPhotoTile(stripId,inputId);
+  _refreshAvatarBadge(stripId);
 }
 function _getPhotos(stripId){return[...document.querySelectorAll('#'+stripId+' .photo-data-val')].map(i=>i.value).filter(Boolean);}
 function _setPhotos(stripId,inputId,legacyId,photos){
@@ -1089,12 +1205,11 @@ function _setPhotos(stripId,inputId,legacyId,photos){
     if(!compressed)return;
     const div=document.createElement('div');
     div.style.cssText='position:relative;width:72px;height:72px;flex-shrink:0;';
-    div.innerHTML=`<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
-      <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-      <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
+    div.innerHTML=_photoTileHTML(compressed,stripId,inputId,legacyId);
     strip.appendChild(div);
   });
   _renderAddPhotoTile(stripId,inputId);
+  _refreshAvatarBadge(stripId);
   document.getElementById(legacyId).value=photos?.[0]||'';
 }
 // Entry strip (non-character entries)
@@ -1110,6 +1225,155 @@ function setPhotoBox(bid,data,ph,size){
   const box=document.getElementById(bid);if(!box)return;
   if(data)box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
   else box.innerHTML=`<span style="font-size:${size||'18'}px;">📷</span><span>${ph}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCHABLE CHARACTER DROPDOWNS (replaces cpick-row + <select>s)
+// ═══════════════════════════════════════════════════════════════
+// Each dropdown is identified by a prefix. DOM IDs used:
+//   {prefix}           — hidden input holding the selected value (single) or not used (multi)
+//   {prefix}-search    — visible text input for filtering
+//   {prefix}-list      — popup <div class="cdd-list">
+//   {prefix}-chips     — selected chips container (multi only)
+//   {prefix}-cdd-wrap  — wrapper div (for outside-click detection)
+// Config:
+//   cddConfig[prefix] = { multi:bool, includeNarrator:bool, onChange:fn, onQuickAdd:fn }
+const cddConfig={};
+const cddMultiValues={}; // for multi pickers: prefix -> [names]
+function _cddGetChars(){
+  return sortedChars().map(c=>({value:c.name,label:c.label,color:getCC(c.name)}));
+}
+function cddRegister(prefix,opts){
+  cddConfig[prefix]=Object.assign({multi:false,includeNarrator:false,onChange:null,onQuickAdd:null,placeholder:'Search…'},opts||{});
+  if(cddConfig[prefix].multi)cddMultiValues[prefix]=[];
+}
+function cddOpen(prefix){
+  cddFilter(prefix);
+  const list=document.getElementById(prefix+'-list');
+  if(list)list.classList.add('open');
+  // Close on outside click
+  setTimeout(()=>{document.addEventListener('click',e=>cddOutsideClick(e,prefix),{once:true});},50);
+}
+function cddOutsideClick(e,prefix){
+  const wrap=document.getElementById(prefix+'-cdd-wrap');
+  if(!wrap)return;
+  if(!wrap.contains(e.target)){
+    const list=document.getElementById(prefix+'-list');
+    if(list)list.classList.remove('open');
+  }else{
+    // Still inside the wrapper, keep listening
+    setTimeout(()=>{document.addEventListener('click',ev=>cddOutsideClick(ev,prefix),{once:true});},50);
+  }
+}
+function cddClose(prefix){
+  const list=document.getElementById(prefix+'-list');
+  if(list)list.classList.remove('open');
+}
+function cddFilter(prefix){
+  const cfg=cddConfig[prefix]||{};
+  const q=(document.getElementById(prefix+'-search')?.value||'').toLowerCase();
+  const chars=_cddGetChars();
+  const alreadyPicked=cfg.multi?(cddMultiValues[prefix]||[]):[];
+  let items=chars.filter(c=>!alreadyPicked.includes(c.value));
+  if(cfg.includeNarrator){
+    items=[{value:'Narrator / Author',label:'🎙 Narrator / Author',color:null},...items];
+  }
+  if(q)items=items.filter(i=>i.label.toLowerCase().includes(q)||i.value.toLowerCase().includes(q));
+  const list=document.getElementById(prefix+'-list');
+  if(!list)return;
+  if(!items.length){
+    list.innerHTML=`<div class="cdd-empty">${q?'No match. Tap + New to create.':'No characters yet. Tap + New to create.'}</div>`;
+  }else{
+    list.innerHTML=items.map(i=>{
+      const dot=i.color?`<span class="cdd-option-dot" style="background:${i.color.stroke};"></span>`:`<span class="cdd-option-dot" style="background:var(--t3);"></span>`;
+      return `<div class="cdd-option" onclick="cddChoose('${prefix}','${esc(i.value)}')">${dot}<span>${i.label}</span></div>`;
+    }).join('');
+  }
+  list.classList.add('open');
+}
+function cddChoose(prefix,value){
+  const cfg=cddConfig[prefix]||{};
+  if(cfg.multi){
+    if(!cddMultiValues[prefix])cddMultiValues[prefix]=[];
+    if(!cddMultiValues[prefix].includes(value))cddMultiValues[prefix].push(value);
+    cddRenderChips(prefix);
+    const searchEl=document.getElementById(prefix+'-search');
+    if(searchEl)searchEl.value='';
+    cddFilter(prefix);
+  }else{
+    document.getElementById(prefix).value=value;
+    const searchEl=document.getElementById(prefix+'-search');
+    if(searchEl)searchEl.value=value==='Narrator / Author'?'🎙 Narrator / Author':value;
+    cddClose(prefix);
+  }
+  if(cfg.onChange)cfg.onChange(value);
+}
+function cddRenderChips(prefix){
+  const chipsEl=document.getElementById(prefix+'-chips');
+  if(!chipsEl)return;
+  const values=cddMultiValues[prefix]||[];
+  chipsEl.innerHTML=values.map(v=>{
+    const cc=getCC(v);
+    return `<span class="cdd-chip" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};">${v}<button type="button" class="cdd-chip-x" onclick="cddRemoveChip('${prefix}','${esc(v)}')">×</button></span>`;
+  }).join('');
+}
+function cddRemoveChip(prefix,value){
+  if(!cddMultiValues[prefix])return;
+  cddMultiValues[prefix]=cddMultiValues[prefix].filter(v=>v!==value);
+  cddRenderChips(prefix);
+  cddFilter(prefix);
+}
+function cddSet(prefix,valueOrValues){
+  const cfg=cddConfig[prefix]||{};
+  if(cfg.multi){
+    cddMultiValues[prefix]=[...(valueOrValues||[])].filter(Boolean);
+    cddRenderChips(prefix);
+    const searchEl=document.getElementById(prefix+'-search');
+    if(searchEl)searchEl.value='';
+  }else{
+    const v=valueOrValues||'';
+    document.getElementById(prefix).value=v;
+    const searchEl=document.getElementById(prefix+'-search');
+    if(searchEl)searchEl.value=v==='Narrator / Author'?'🎙 Narrator / Author':v;
+  }
+}
+function cddGet(prefix){
+  const cfg=cddConfig[prefix]||{};
+  if(cfg.multi)return [...(cddMultiValues[prefix]||[])];
+  return document.getElementById(prefix)?.value||'';
+}
+function cddClear(prefix){cddSet(prefix,cddConfig[prefix]?.multi?[]:'');}
+function cddQuickAdd(prefix){
+  const cfg=cddConfig[prefix]||{};
+  // Use search input value as the new name; if empty, prompt.
+  let name=(document.getElementById(prefix+'-search')?.value||'').trim();
+  if(!name){name=prompt('New character name:');if(!name||!name.trim())return;name=name.trim();}
+  if(!currentId)return;
+  // Don't duplicate
+  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    book().entries.unshift(entry);
+    getCC(name);save();
+  } else {
+    // Match the canonical capitalisation if it already exists
+    const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+    if(existing)name=existing.cn||existing.content;
+  }
+  cddChoose(prefix,name);
+  if(cfg.onQuickAdd)cfg.onQuickAdd(name);
+}
+// Register dropdowns once at startup. Called from onTypeChange before each use.
+function _cddEnsureRegistered(){
+  if(!cddConfig['ae-inv'])cddRegister('ae-inv',{multi:true});
+  if(!cddConfig['ae-speaker'])cddRegister('ae-speaker',{includeNarrator:true,onChange:autoTagSpeaker});
+  if(!cddConfig['ae-word-speaker'])cddRegister('ae-word-speaker',{includeNarrator:true,onChange:autoTagWordSpeaker});
+  if(!cddConfig['ae-rela'])cddRegister('ae-rela',{onChange:_cddRelChanged});
+  if(!cddConfig['ae-relb'])cddRegister('ae-relb',{onChange:_cddRelChanged});
+}
+function _cddRelChanged(){
+  // Fire the existing checkExistingRel logic via the rel form handler (defined in onTypeChange)
+  const fn=window._cddRelChangeHook;
+  if(typeof fn==='function')fn();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1613,15 +1877,10 @@ function saveQuickAddChar(){
   const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:role,charStatus:'unknown',charIntroCh:ch,charIntroPg:pg,charIntro:[ch?'Ch.'+ch:'',pg?'p.'+pg:''].filter(Boolean).join(', '),nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:ch,location:'',involved:[]};
   book().entries.unshift(entry);
   getCC(name);save();
-  // Refresh rel A and B options, preserving A's current selection
-  const prevA=document.getElementById('ae-rela').value;
-  const o=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content).map(c=>`<option>${c}</option>`).join('');
-  document.getElementById('ae-rela').innerHTML=o;
-  document.getElementById('ae-relb').innerHTML='<option value="">+ Quick-add new character</option>'+o;
-  document.getElementById('ae-rela').value=prevA;
-  document.getElementById('ae-relb').value=name;
+  cddSet('ae-relb',name);
   document.getElementById('ae-quick-add-b').style.display='none';
   document.getElementById('qa-name').value='';
+  if(window._cddRelChangeHook)window._cddRelChangeHook();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1691,9 +1950,11 @@ function onTypeChange(){
   const lbl={Quote:'Quote / passage','Line/stanza':'Line or stanza',Chapter:'Chapter title or number',Timeline:'Event description',Event:'What happened?',Dialogue:'Conversation title / description','Word / Vocabulary':'Word',Location:'Location name',Translation:'Original text','Narrator quote':'Quote / passage'};
   document.getElementById('ae-clabel').textContent=lbl[type]||'Content';
 
-  if(isQ&&chars.length){buildCharSelect('ae-speaker','— Select speaker —','🎙 Narrator / Author');const spkEl=document.getElementById('ae-speaker');if(spkEl)spkEl.onchange=autoTagSpeaker;}
+  _cddEnsureRegistered();
+
+  if(isQ&&chars.length){cddFilter('ae-speaker');}
   if(isQ)populateQuoteThemeSelect('');
-  if(isWord&&chars.length){buildCharSelect('ae-word-speaker','— Select who said it —','🎙 Narrator / Author');}
+  if(isWord&&chars.length){cddFilter('ae-word-speaker');}
   // Reset word translation toggle when switching types
   if(!isWord){const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='none';const wtb=document.getElementById('ae-word-trans-btn');if(wtb)wtb.textContent='＋ Add full translation details';}
   // Populate timeline event picker from existing timeline/event entries (most recent first)
@@ -1705,44 +1966,31 @@ function onTypeChange(){
     }
   }
   if(isRel&&chars.length){
-    buildCharSelect('ae-relb','+ Quick-add new character');
-    buildCharSelect('ae-rela','');
-    const ra=document.getElementById('ae-rela');
-    if(ra.options[0]&&ra.options[0].value==='')ra.remove(0);
-    if(chars.length>1)document.getElementById('ae-relb').selectedIndex=1;
+    // Pre-populate Character A with first char; B blank (user picks)
+    if(!document.getElementById('ae-edit-id').value){
+      cddSet('ae-rela',chars[0]||'');
+      cddSet('ae-relb','');
+    }
     document.getElementById('ae-quick-add-b').style.display='none';
-
-    function checkExistingRel(){
-      const a=document.getElementById('ae-rela').value;
-      const b=document.getElementById('ae-relb').value;
+    window._cddRelChangeHook=function(){
+      const a=cddGet('ae-rela');const b=cddGet('ae-relb');
       const warn=document.getElementById('ae-rel-existing-warn');
       if(!warn)return;
-      if(!a||!b||b===''){warn.style.display='none';return;}
+      if(!a||!b){warn.style.display='none';return;}
       const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===a&&e.relB===b)||(e.relA===b&&e.relB===a)));
-      if(existing.length){
-        warn.style.display='';
-        warn.innerHTML=`⚠️ ${a} & ${b} already have: <strong>${existing.map(e=>e.relType||'(unnamed)').join(', ')}</strong>. You can still add another relationship below.`;
-      } else {warn.style.display='none';}
-    }
-
-    document.getElementById('ae-rela').onchange=checkExistingRel;
-    document.getElementById('ae-relb').onchange=()=>{
-      const v=document.getElementById('ae-relb').value;
-      document.getElementById('ae-quick-add-b').style.display=v===''?'':'none';
-      if(v==='')setTimeout(()=>document.getElementById('qa-name')?.focus(),50);
-      checkExistingRel();
+      if(existing.length){warn.style.display='';warn.innerHTML=`⚠️ ${a} & ${b} already have: <strong>${existing.map(e=>e.relType||'(unnamed)').join(', ')}</strong>. You can still add another relationship below.`;}
+      else warn.style.display='none';
     };
   }
   if(!isChar&&!isRel&&chars.length){
-    buildCPick(chars);
-    // For Characteristic: if only one main char exists, auto-select them
+    // Reset Characters Involved to empty for new entries
+    if(!document.getElementById('ae-edit-id').value)cddSet('ae-inv',[]);
+    cddFilter('ae-inv');
     if(isTrait){
+      // Auto-select sole main char if present
       setTimeout(()=>{
-        const mainChips=[...document.querySelectorAll('.cpick')].filter(c=>{
-          const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===c.dataset.name);
-          return e?.charRole==='main';
-        });
-        if(mainChips.length===1&&!document.querySelector('.cpick.sel'))mainChips[0].classList.add('sel');
+        const mains=entries().filter(e=>CT.includes(e.type)&&e.charRole==='main').map(e=>e.cn||e.content);
+        if(mains.length===1&&!cddGet('ae-inv').length){cddSet('ae-inv',[mains[0]]);}
       },30);
     }
   }
@@ -1760,30 +2008,24 @@ function sortedChars(){
     .sort((a,b)=>(roleOrder[a.role]??3)-(roleOrder[b.role]??3)||a.name.localeCompare(b.name))
     .map(c=>({name:c.name,role:c.role,label:(roleSymbol[c.role]||'')+c.name}));
 }
-function buildCPick(chars){
-  // chars is an array of names; use sortedChars order if possible
-  const sorted=sortedChars().filter(c=>chars.includes(c.name));
-  const unsorted=chars.filter(n=>!sorted.find(s=>s.name===n)).map(n=>({name:n,label:n}));
-  const all=[...sorted,...unsorted];
-  document.getElementById('cpick-row').innerHTML=all.map(c=>{const cc=getCC(c.name);return`<span class="cpick" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};" data-name="${c.name}" onclick="this.classList.toggle('sel')">${c.label}</span>`;}).join('');
-}
-function getPicked(){return[...document.querySelectorAll('#cpick-row .cpick.sel')].map(c=>c.dataset.name).filter(Boolean);}
+function buildCPick(chars){/* deprecated — replaced by cdd dropdowns */}
+function filterCPick(q){/* deprecated */}
+function getPicked(){return cddGet('ae-inv');}
 function autoTagSpeaker(){
-  const spk=document.getElementById('ae-speaker').value;
-  if(!spk)return;
-  // Show inv-group if hidden so chip is accessible
+  const spk=cddGet('ae-speaker');
+  if(!spk||spk==='Narrator / Author')return;
   const invGroup=document.getElementById('ae-inv-group');
-  if(invGroup&&invGroup.style.display==='none'){invGroup.style.display='';}
-  const chip=document.querySelector(`#cpick-row .cpick[data-name="${CSS.escape(spk)}"]`);
-  if(chip&&!chip.classList.contains('sel'))chip.classList.add('sel');
+  if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
+  const current=cddGet('ae-inv');
+  if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
 }
 function autoTagWordSpeaker(){
-  const spk=document.getElementById('ae-word-speaker')?.value;
-  if(!spk)return;
+  const spk=cddGet('ae-word-speaker');
+  if(!spk||spk==='Narrator / Author')return;
   const invGroup=document.getElementById('ae-inv-group');
-  if(invGroup&&invGroup.style.display==='none'){invGroup.style.display='';}
-  const chip=document.querySelector(`#cpick-row .cpick[data-name="${CSS.escape(spk)}"]`);
-  if(chip&&!chip.classList.contains('sel'))chip.classList.add('sel');
+  if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
+  const current=cddGet('ae-inv');
+  if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
 }
 function buildCharSelect(selectId,addBlankOption,narratorLabel){
   const el=document.getElementById(selectId);if(!el)return;
@@ -1792,13 +2034,6 @@ function buildCharSelect(selectId,addBlankOption,narratorLabel){
   if(narratorLabel)html+=`<option value="Narrator / Author">${narratorLabel}</option>`;
   html+=sorted.map(c=>`<option value="${c.name}">${c.label}</option>`).join('');
   el.innerHTML=html;
-}
-function filterCPick(q){
-  const term=q.toLowerCase();
-  document.querySelectorAll('#cpick-row .cpick').forEach(chip=>{
-    const name=(chip.dataset.name||'').toLowerCase();
-    chip.style.display=name.includes(term)?'':'none';
-  });
 }
 function toggleWordTrans(){
   const d=document.getElementById('ae-word-trans-ex');
@@ -1823,20 +2058,7 @@ function openGoogleTranslate(){
   openLink(url);
 }
 function updateTranslateLink(){}
-function quickAddInvolvedChar(){
-  const name=prompt('New character name:');if(!name||!name.trim())return;
-  const n=name.trim();
-  if(!book().entries)book().entries=[];
-  // Don't add if already exists
-  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content)===n)){
-    book().entries.unshift({id:Date.now(),type:'Character',content:n,cn:n,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true});
-    getCC(n);save();
-  }
-  // Rebuild cpick and auto-select the new char
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  buildCPick(chars);
-  setTimeout(()=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(n)}"]`);if(chip)chip.classList.add('sel');},30);
-}
+function quickAddInvolvedChar(){cddQuickAdd('ae-inv');}
 
 
 
@@ -1865,12 +2087,11 @@ function updateDialLineColor(sel){
   const name=sel.value;const line=sel.closest('.dial-line');
   if(name){const cc=getCC(name);line.style.borderColor=cc.stroke;line.style.borderLeftWidth='3px';}
   else{line.style.borderColor='var(--cb)';line.style.borderLeftWidth='0.5px';}
-  // Auto-tag in characters involved
   if(name){
     const invGroup=document.getElementById('ae-inv-group');
     if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
-    const chip=document.querySelector(`#cpick-row .cpick[data-name="${CSS.escape(name)}"]`);
-    if(chip&&!chip.classList.contains('sel'))chip.classList.add('sel');
+    const current=cddGet('ae-inv');
+    if(!current.includes(name))cddSet('ae-inv',[...current,name]);
   }
 }
 function renumberDialLines(){
@@ -1903,6 +2124,10 @@ function openAddSheet(preType){
 function clearAEForm(){
   ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
+  // Clear all searchable character dropdowns
+  _cddEnsureRegistered();
+  ['ae-inv','ae-speaker','ae-word-speaker','ae-rela','ae-relb'].forEach(p=>cddClear(p));
+  ['ae-speaker-search','ae-word-speaker-search','ae-rela-search','ae-relb-search','ae-inv-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
   document.getElementById('ae-gender').value='';
@@ -2073,8 +2298,8 @@ function submitEntry(){
   }
   let validationFail=false;
   if(['Quote','Line/stanza','Narrator quote'].includes(type)){
-    const spk=document.getElementById('ae-speaker').value;
-    if(!spk){reqFail('ae-speaker');validationFail=true;}
+    const spk=cddGet('ae-speaker');
+    if(!spk){reqFail('ae-speaker-search','Please select a speaker');validationFail=true;}
   }
   if(isChar){
     if(!document.getElementById('ae-crole').value){reqFail('ae-crole');validationFail=true;}
@@ -2082,7 +2307,7 @@ function submitEntry(){
   }
   if(type==='Characteristic'){
     if(!getPicked().length){
-      const row=document.getElementById('cpick-row');
+      const row=document.getElementById('ae-inv-cdd-wrap');
       if(row){row.style.outline='2px solid #E24B4A';row.style.borderRadius='var(--r)';}
       validationFail=true;
     }
@@ -2101,7 +2326,7 @@ function submitEntry(){
   // Clear red borders after a delay on any input
   setTimeout(()=>{
     document.querySelectorAll('#ae-overlay input,#ae-overlay select,#ae-overlay textarea').forEach(el=>el.style.borderColor='');
-    const row=document.getElementById('cpick-row');if(row)row.style.outline='';
+    const row=document.getElementById('ae-inv-cdd-wrap');if(row)row.style.outline='';
   },3000);
   if(validationFail)return;
 
@@ -2154,6 +2379,12 @@ function submitEntry(){
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
     entry.relB=document.getElementById('ae-relb').value;
+    // Feature 4: gender inference from relationship type
+    const inferredGender=REL_GENDER_MAP[entry.relType];
+    if(inferredGender&&entry.relA){
+      const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relA);
+      if(aEntry&&!aEntry.gender)aEntry.gender=inferredGender;
+    }
     if(!editId&&entry.relA&&entry.relB){
       const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===entry.relA&&e.relB===entry.relB)||(e.relA===entry.relB&&e.relB===entry.relA)));
       if(existing.length){const desc=existing.map(e=>e.relType||e.content).join(', ');const ok=confirm(`${entry.relA} and ${entry.relB} already have: "${desc}".\n\nAdd another relationship?`);if(!ok)return;}
@@ -2203,10 +2434,40 @@ function submitEntry(){
   }
 
   save();closeSheet('ae-overlay');renderAll();buildTypeSelect();
+  // Feature 3: Navigate to the view that best fits the saved entry type
+  postSaveNavigate(entry,type);
   } catch(err) {
     console.error('submitEntry error:', err);
     alert('Error saving entry: ' + err.message + '\n\nCheck the browser console for details.');
   }
+}
+
+function postSaveNavigate(entry,type){
+  if(!entry)return;
+  // Skip navigation when editing — keep the user where they were
+  const wasEdit=document.getElementById('ae-edit-id')?.value!=='';
+  // (The edit-id is already cleared by close, so detect via a flag we set before close — fall back to entry.id comparison)
+  // Simpler: always navigate on save. If user was editing a character, opening the character profile is still a sensible result.
+  if(CT.includes(type)){
+    // Character → open their profile
+    setTimeout(()=>openCharDetail(entry.cn||entry.content,false),60);
+    return;
+  }
+  if(type==='Relationship'){forceTab('web');return;}
+  if(type==='Characteristic'){
+    const target=(entry.involved||[])[0];
+    if(target)setTimeout(()=>openCharDetail(target,false),60);
+    return;
+  }
+  if(type==='Theme'){activeFilter='Theme';forceTab('log');return;}
+  if(['Quote','Line/stanza','Narrator quote'].includes(type)){forceTab('quotes');return;}
+  if(type==='Chapter'){activeFilter='Chapter';forceTab('log');return;}
+  if(type==='Word / Vocabulary'){forceTab('words');return;}
+  if(type==='Location'){forceTab('map');return;}
+  if(['Event','Timeline'].includes(type)){forceTab('timeline');return;}
+  if(type==='Reference'){forceTab('refs');return;}
+  if(type==='Question'){forceTab('questions');return;}
+  // All other types: stay on current tab
 }
 
 // ── Recycle bin ───────────────────────────────────────────────
@@ -2281,8 +2542,11 @@ function renderRecycleBin(){
   });
   body.innerHTML=cats.map(cat=>{
     const items=grouped[cat];
+    const safeCat=cat.replace(/[^a-zA-Z0-9]/g,'_');
+    const collapsed=recycleBinCollapsed[cat]===true;
     return`<div style="margin-bottom:14px;">
-      <div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:0.5px solid var(--cb);">${cat} (${items.length})</div>
+      <div onclick="toggleRecycleBinCat('${esc(cat)}')" style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:0.5px solid var(--cb);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:var(--accent);min-width:10px;">${collapsed?'▶':'▼'}</span><span style="flex:1;">${cat} (${items.length})</span></div>
+      <div id="rb-items-${safeCat}" style="${collapsed?'display:none;':''}">
       ${items.map(({e,idx})=>{
         const ago=Math.round((Date.now()-e.deletedAt)/60000);
         const agoStr=ago<60?ago+'m ago':ago<1440?Math.round(ago/60)+'h ago':Math.round(ago/1440)+'d ago';
@@ -2295,8 +2559,15 @@ function renderRecycleBin(){
           <button class="btn btn-sm" onclick="permanentDelete(${idx})" style="flex-shrink:0;color:var(--red);">✕</button>
         </div>`;
       }).join('')}
+      </div>
     </div>`;
   }).join('');
+}
+// Collapsed-state map kept in memory (resets each open of the bin — fine per spec)
+const recycleBinCollapsed={};
+function toggleRecycleBinCat(cat){
+  recycleBinCollapsed[cat]=!recycleBinCollapsed[cat];
+  renderRecycleBin();
 }
 function restoreEntry(i){
   const bin=getRecycleBin();const e=bin[i];if(!e)return;
@@ -2336,19 +2607,19 @@ function editEntry(id){
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
-    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)document.getElementById('ae-rela').value=e.relA;if(e.relB)document.getElementById('ae-relb').value=e.relB;}
+    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
     document.getElementById('ae-loc-sel').value=e.location||'';
     const locSearchEl=document.getElementById('ae-loc-search');if(locSearchEl)locSearchEl.value=e.location||'';
     setEntryPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));
-    if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;if(e.speaker)document.getElementById('ae-speaker').value=e.speaker;
+    if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;if(e.speaker)cddSet('ae-speaker',e.speaker);
     if(e.qtOrig){document.getElementById('ae-qt-orig').value=e.qtOrig;document.getElementById('ae-qt-from').value=e.qtFrom||'';document.getElementById('ae-qt-to').value=e.qtTo||'';document.getElementById('ae-qt-rendered').value=e.qtRendered||'';document.getElementById('ae-qt-translator').value=e.qtTranslator||'';document.getElementById('ae-quote-trans').style.display='';document.getElementById('ae-qt-btn').textContent='− Hide translation';}
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){setTimeout(()=>{populateQuoteThemeSelect(e.attachedTheme||'');},40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     if(e.sq)document.getElementById('ae-sq').value=e.sq;if(e.sqp)document.getElementById('ae-sqp').value=e.sqp;if(e.sqc)document.getElementById('ae-sqc').value=e.sqc;
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
-    if(e.wordSpeaker){const ws=document.getElementById('ae-word-speaker');if(ws)ws.value=e.wordSpeaker;}
+    if(e.wordSpeaker)cddSet('ae-word-speaker',e.wordSpeaker);
     if(e.wordTransFrom||e.wordTransOriginal){
       const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='';
       const wtb=document.getElementById('ae-word-trans-btn');if(wtb)wtb.textContent='− Hide translation details';
@@ -2370,7 +2641,7 @@ function editEntry(id){
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
-    if(e.involved?.length)setTimeout(()=>e.involved.filter(c=>c).forEach(c=>{const chip=document.querySelector(`.cpick[data-name="${CSS.escape(c)}"]`);if(chip)chip.classList.add('sel');}),80);
+    if(e.involved?.length)setTimeout(()=>{cddSet('ae-inv',e.involved.filter(Boolean));cddFilter('ae-inv');const list=document.getElementById('ae-inv-list');if(list)list.classList.remove('open');},80);
   },40);
   openSheet('ae-overlay');
 }
@@ -2591,7 +2862,7 @@ function openCharDetail(name,fromWeb){
     buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
     document.getElementById('ae-sheet-title').textContent='Add relationship for '+name;
     document.getElementById('ae-type').value='Relationship';onTypeChange();
-    setTimeout(()=>{const ra=document.getElementById('ae-rela');if(ra)ra.value=name;},60);
+    setTimeout(()=>cddSet('ae-rela',name),60);
     openSheet('ae-overlay');
   };
   renderCharDetail(name);show('char-screen','book-screen');
@@ -3921,6 +4192,39 @@ function exportMyMaps(){
   a.href=URL.createObjectURL(blob);
   a.download=(b.title||'book').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'-locations.kml';
   a.click();
+  // Feature 9: show import instructions after the file downloads
+  setTimeout(()=>showMyMapsInstructions(a.download),250);
+}
+function showMyMapsInstructions(filename){
+  // Create overlay on demand if it doesn't exist yet (avoids bloating the base markup)
+  let ov=document.getElementById('mymaps-instr-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.className='sheet-overlay';
+    ov.id='mymaps-instr-overlay';
+    ov.onclick=e=>{if(e.target===ov)ov.classList.remove('open');};
+    ov.innerHTML=`<div class="sheet" style="position:relative;">
+      <div class="sheet-handle"></div>
+      <button class="sheet-x" onclick="document.getElementById('mymaps-instr-overlay').classList.remove('open')">×</button>
+      <div class="sheet-title">🗺️ Import into Google My Maps</div>
+      <div id="mymaps-instr-body" style="font-size:13px;line-height:1.6;color:var(--text);"></div>
+      <div class="fa" style="margin-top:14px;">
+        <button class="btn" onclick="document.getElementById('mymaps-instr-overlay').classList.remove('open')">Close</button>
+        <button class="btn btn-primary" onclick="openLink('https://www.google.com/mymaps')">Open My Maps</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+  }
+  document.getElementById('mymaps-instr-body').innerHTML=`
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Your file <strong>${filename||'locations.kml'}</strong> has been downloaded. To see your book's locations on a real map:</div>
+    <ol style="padding-left:20px;margin:0;">
+      <li style="margin-bottom:8px;">Go to <span style="color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="openLink('https://www.google.com/mymaps')">mymaps.google.com</span> and sign in.</li>
+      <li style="margin-bottom:8px;">Click <strong>"+ Create a new map"</strong>.</li>
+      <li style="margin-bottom:8px;">Under the first layer, click <strong>"Import"</strong>.</li>
+      <li style="margin-bottom:8px;">Upload the <strong>.kml</strong> file you just downloaded.</li>
+      <li>Your locations will appear as pins on the map — you can rename the map, change pin colors, and share it.</li>
+    </ol>`;
+  ov.classList.add('open');
 }
 function exportData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='book-annotations-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 function exportAllData(){const blob=new Blob([JSON.stringify(library,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='all-books-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
@@ -4389,10 +4693,7 @@ function acceptSameNameSuggestion(i){
   document.getElementById('ae-edit-id').value='';
   document.getElementById('ae-sheet-title').textContent=`Relationship: ${sug.a} & ${sug.b}`;
   document.getElementById('ae-type').value='Relationship';onTypeChange();
-  setTimeout(()=>{
-    const ra=document.getElementById('ae-rela');const rb=document.getElementById('ae-relb');
-    if(ra)ra.value=sug.a;if(rb)rb.value=sug.b;
-  },60);
+  setTimeout(()=>{cddSet('ae-rela',sug.a);cddSet('ae-relb',sug.b);},60);
   closeSheet('fam-suggestions-overlay');openSheet('ae-overlay');
 }
 function snoozeSameNameSuggestion(i,btn){
