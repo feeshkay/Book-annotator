@@ -221,6 +221,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" style="font-size:13px;" onclick="openSheet('lib-stats-overlay');renderLibStats()">📊</button>
     <button class="btn-icon" onclick="openNewBookSheet()">+ New</button>
     <button class="btn-icon" style="font-size:12px;" onclick="exportAllData()">⬇</button>
+    <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
     <div style="font-size:10px;color:var(--t3);text-align:center;padding:6px 0 4px;">Data lives on this device only · Private to you</div>
@@ -246,6 +247,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button id="timer-pill" onclick="openReadingTimer()" style="display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;flex-shrink:0;"></button>
     <button class="btn-icon" onclick="forceTab('stats')" title="Stats">📊</button>
     <button class="btn-icon" onclick="openReadingTimer()" title="Reading timer">⏱</button>
+    <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
     <button class="btn-icon" onclick="openBookSettings()" style="font-size:16px;">⚙</button>
   </div>
   <div class="tab-bar" id="tab-bar"></div>
@@ -333,6 +335,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="topbar-title" id="char-screen-title"></div>
     <button class="btn-icon" id="char-edit-btn" style="font-size:12px;">Edit</button>
     <button class="btn-icon" id="char-add-rel-btn" style="font-size:12px;">+ Rel</button>
+    <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div class="char-hero" id="char-hero"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="char-body"></div>
@@ -344,6 +347,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-back" id="loc-back-btn"></button>
     <div class="topbar-title" id="loc-screen-title"></div>
     <button class="btn-icon" style="font-size:12px;" onclick="if(currentLocName)openEditLocSheet(currentLocName)">Edit</button>
+    <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="loc-body"></div>
 </div>
@@ -353,6 +357,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="topbar">
     <button class="btn-back" onclick="show('lib-screen','guide-screen')"></button>
     <div class="topbar-title">How to Use This App</div>
+    <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div class="scroll-body" id="guide-body"></div>
 </div>
@@ -454,9 +459,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="sheet" style="position:relative;">
     <div class="sheet-handle"></div>
     <button class="sheet-x" onclick="closeSheet('ae-overlay')">×</button>
+    <button onclick="openReportIssue()" title="Report issue" style="position:absolute;left:10px;top:10px;background:transparent;border:none;font-size:16px;cursor:pointer;z-index:21;padding:4px;">🐛</button>
     <!-- TYPE SELECTOR + HINT PINNED AT TOP -->
     <div style="position:sticky;top:0;background:var(--bg);z-index:10;padding-bottom:8px;margin-bottom:8px;border-bottom:0.5px solid var(--cb);">
-      <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;padding-right:48px;">Add annotation</div>
+      <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;padding-right:48px;padding-left:32px;">Add annotation</div>
       <div class="fg" style="margin-bottom:8px;"><label>What is this?</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <select id="ae-type" onchange="onTypeChange()" style="flex:1;"></select>
@@ -2038,21 +2044,34 @@ function sortedChars(){
 function buildCPick(chars){/* deprecated — replaced by cdd dropdowns */}
 function filterCPick(q){/* deprecated */}
 function getPicked(){return cddGet('ae-inv');}
+let _lastAutoTaggedSpeaker='';
 function autoTagSpeaker(){
   const spk=cddGet('ae-speaker');
-  if(!spk||spk==='Narrator / Author')return;
   const invGroup=document.getElementById('ae-inv-group');
+  // Remove the previously auto-tagged speaker from involved (if it's still there)
+  if(_lastAutoTaggedSpeaker&&_lastAutoTaggedSpeaker!==spk){
+    const current=cddGet('ae-inv');
+    cddSet('ae-inv',current.filter(c=>c!==_lastAutoTaggedSpeaker));
+  }
+  if(!spk||spk==='Narrator / Author'){_lastAutoTaggedSpeaker='';return;}
   if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
   const current=cddGet('ae-inv');
   if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
+  _lastAutoTaggedSpeaker=spk;
 }
+let _lastAutoTaggedWordSpeaker='';
 function autoTagWordSpeaker(){
   const spk=cddGet('ae-word-speaker');
-  if(!spk||spk==='Narrator / Author')return;
+  if(_lastAutoTaggedWordSpeaker&&_lastAutoTaggedWordSpeaker!==spk){
+    const current=cddGet('ae-inv');
+    cddSet('ae-inv',current.filter(c=>c!==_lastAutoTaggedWordSpeaker));
+  }
+  if(!spk||spk==='Narrator / Author'){_lastAutoTaggedWordSpeaker='';return;}
   const invGroup=document.getElementById('ae-inv-group');
   if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
   const current=cddGet('ae-inv');
   if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
+  _lastAutoTaggedWordSpeaker=spk;
 }
 function buildCharSelect(selectId,addBlankOption,narratorLabel){
   const el=document.getElementById(selectId);if(!el)return;
@@ -2182,6 +2201,7 @@ function clearAEForm(){
   const di=document.getElementById('ae-is-draft');if(di)di.value='false';
   const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent='☐';
   const dbtn=document.getElementById('ae-draft-btn');if(dbtn){dbtn.style.borderColor='';dbtn.style.color='';}
+  _lastAutoTaggedSpeaker='';_lastAutoTaggedWordSpeaker='';
 }
 
 function addThemeQuote(){
@@ -4143,8 +4163,13 @@ function editSession(idx){
   document.getElementById('timer-date').value=s.date||localDate();
   document.getElementById('timer-pg-start').value=s.pStart||'';
   document.getElementById('timer-pg-end').value=s.pEnd||'';
-  document.getElementById('timer-read-min').value=s.readMinutes!=null?s.readMinutes:(s.mode==='synth'?0:s.minutes)||'';
-  document.getElementById('timer-synth-min').value=s.synthMinutes!=null?s.synthMinutes:(s.mode==='synth'?s.minutes:0)||'';
+  const rMin=s.readMinutes!=null?s.readMinutes:(s.mode==='synth'?0:s.minutes)||0;
+  const sMin=s.synthMinutes!=null?s.synthMinutes:(s.mode==='synth'?s.minutes:0)||0;
+  document.getElementById('timer-read-min').value=rMin||'';
+  document.getElementById('timer-synth-min').value=sMin||'';
+  // Show saved times in the display so user can see what's already logged
+  const rd=document.getElementById('timer-read-display');if(rd)rd.textContent=fmtTimer(rMin*60);
+  const sd=document.getElementById('timer-synth-display');if(sd)sd.textContent=fmtTimer(sMin*60);
   openSheet('timer-overlay');
 }
 
