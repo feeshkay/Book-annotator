@@ -43,7 +43,7 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);tra
 .sheet-overlay.open{display:flex;}
 .sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:95vh;overflow-y:auto;}
 .sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 12px;}
-.sheet-x{position:absolute;right:10px;top:10px;font-size:22px;background:var(--bg3);color:var(--text);padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--cb);line-height:1;min-width:36px;text-align:center;}
+.sheet-x{position:absolute;right:10px;top:10px;font-size:22px;background:var(--bg3);color:var(--text);padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--cb);line-height:1;min-width:36px;text-align:center;z-index:20;}
 .sheet-title{font-size:16px;font-weight:600;margin-bottom:12px;}
 /* forms */
 .fg{display:flex;flex-direction:column;gap:4px;margin-bottom:11px;}
@@ -243,6 +243,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="topbar">
     <button class="btn-back" onclick="goLib()"></button>
     <div class="topbar-title" id="bs-title"></div>
+    <button id="timer-pill" onclick="openReadingTimer()" style="display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;flex-shrink:0;"></button>
     <button class="btn-icon" onclick="forceTab('stats')" title="Stats">📊</button>
     <button class="btn-icon" onclick="openReadingTimer()" title="Reading timer">⏱</button>
     <button class="btn-icon" onclick="openBookSettings()" style="font-size:16px;">⚙</button>
@@ -455,7 +456,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="sheet-x" onclick="closeSheet('ae-overlay')">×</button>
     <!-- TYPE SELECTOR + HINT PINNED AT TOP -->
     <div style="position:sticky;top:0;background:var(--bg);z-index:10;padding-bottom:8px;margin-bottom:8px;border-bottom:0.5px solid var(--cb);">
-      <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;">Add annotation</div>
+      <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;padding-right:48px;">Add annotation</div>
       <div class="fg" style="margin-bottom:8px;"><label>What is this?</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <select id="ae-type" onchange="onTypeChange()" style="flex:1;"></select>
@@ -477,7 +478,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-gender"><option value="">Unknown</option><option>Male</option><option>Female</option><option>Nonbinary</option><option>Transgender male</option><option>Transgender female</option><option>Genderfluid</option><option>Agender</option><option>Other</option></select>
         </div>
         <div class="fg"><label>Pronouns</label>
-          <select id="ae-pronouns" style="-webkit-appearance:auto;appearance:auto;">
+          <select id="ae-pronouns" style="-webkit-appearance:auto;appearance:auto;" onchange="autoSetGenderFromPronouns()">
             <option value="">Unknown</option>
             <option value="she/her">she/her</option>
             <option value="he/him">he/him</option>
@@ -547,11 +548,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- QUOTE EXTRAS -->
     <div id="ae-quote-ex" style="display:none">
-      <div class="r2">
+      <div class="r2" style="grid-template-columns:1.6fr 1fr;">
         <div class="fg"><label>Speaker</label>
           <div class="cdd-wrap" id="ae-speaker-cdd-wrap">
             <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-speaker-search" placeholder="Search or add speaker…" autocomplete="off" oninput="cddFilter('ae-speaker')" onfocus="cddOpen('ae-speaker')"/>
+              <input type="text" class="cdd-input" id="ae-speaker-search" placeholder="Search or add speaker…" autocomplete="off" oninput="cddOpen('ae-speaker')" onclick="cddOpen('ae-speaker')"/>
               <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-speaker')" style="flex-shrink:0;">+ New</button>
             </div>
             <input type="hidden" id="ae-speaker"/>
@@ -610,7 +611,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>Who said it / narrator</label>
         <div class="cdd-wrap" id="ae-word-speaker-cdd-wrap">
           <div class="cdd-input-row">
-            <input type="text" class="cdd-input" id="ae-word-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddFilter('ae-word-speaker')" onfocus="cddOpen('ae-word-speaker')"/>
+            <input type="text" class="cdd-input" id="ae-word-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-word-speaker')" onclick="cddOpen('ae-word-speaker')"/>
             <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-word-speaker')" style="flex-shrink:0;">+ New</button>
           </div>
           <input type="hidden" id="ae-word-speaker"/>
@@ -733,7 +734,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
           <div class="cdd-wrap" id="ae-rela-cdd-wrap">
             <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search…" autocomplete="off" oninput="cddFilter('ae-rela')" onfocus="cddOpen('ae-rela')"/>
+              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
             </div>
             <input type="hidden" id="ae-rela"/>
             <div class="cdd-list" id="ae-rela-list"></div>
@@ -742,7 +743,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label>
           <div class="cdd-wrap" id="ae-relb-cdd-wrap">
             <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddFilter('ae-relb')" onfocus="cddOpen('ae-relb')"/>
+              <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-relb')" onclick="cddOpen('ae-relb')"/>
               <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-relb')" style="flex-shrink:0;">+ New</button>
             </div>
             <input type="hidden" id="ae-relb"/>
@@ -834,7 +835,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="cdd-wrap" id="ae-inv-cdd-wrap">
           <div class="cdd-chips" id="ae-inv-chips"></div>
           <div class="cdd-input-row">
-            <input type="text" class="cdd-input" id="ae-inv-search" placeholder="Search or add character…" autocomplete="off" oninput="cddFilter('ae-inv')" onfocus="cddOpen('ae-inv')"/>
+            <input type="text" class="cdd-input" id="ae-inv-search" placeholder="Search or add character…" autocomplete="off" oninput="cddOpen('ae-inv')" onclick="cddOpen('ae-inv')"/>
             <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-inv')" style="flex-shrink:0;">+ New</button>
           </div>
           <div class="cdd-list" id="ae-inv-list"></div>
@@ -917,6 +918,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recently deleted</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
+      <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
+    </div>
+    <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
     </div>
@@ -987,9 +991,17 @@ const REL_GENDER_MAP={
   'Nephew':'Male','Niece':'Female',
   'King':'Male','Queen':'Female',
 };
+// Auto-set gender from pronouns: she/her→Female, he/him→Male, neutral pronouns leave gender alone
+const PRONOUN_GENDER={'she/her':'Female','he/him':'Male'};
+function autoSetGenderFromPronouns(){
+  const pron=document.getElementById('ae-pronouns')?.value||'';
+  const inferred=PRONOUN_GENDER[pron];
+  if(!inferred)return; // they/them, she/they, he/they, etc. — don't auto-flip
+  const gEl=document.getElementById('ae-gender');
+  if(!gEl)return;
+  if(!gEl.value)gEl.value=inferred; // only set if blank — never overwrite
+}
 function inferRelGender(){
-  // When a gendered relationship type is picked, auto-set Character A's gender
-  // if it isn't already set. Character A is defined as the one being described.
   const rt=document.getElementById('ae-reltype')?.value;
   const inferredGender=REL_GENDER_MAP[rt];
   if(!inferredGender)return;
@@ -1074,7 +1086,13 @@ function getCC(name){
 }
 function initCC(){if(!currentId)return;ccMap[currentId]={};entries().filter(e=>CT.includes(e.type)).forEach(e=>getCC(e.cn||e.content));}
 function show(on,...off){off.forEach(s=>{const el=document.getElementById(s);if(el)el.classList.remove('active');});const el=document.getElementById(on);if(el)el.classList.add('active');}
-function openSheet(id){document.getElementById(id).classList.add('open');}
+function openSheet(id){
+  const ov=document.getElementById(id);
+  ov.classList.add('open');
+  // #211: Reset scroll to top whenever a sheet opens
+  const sheet=ov.querySelector('.sheet');
+  if(sheet)sheet.scrollTop=0;
+}
 function closeSheet(id){document.getElementById(id).classList.remove('open');}
 function mc(id,e){if(e.target===document.getElementById(id))closeSheet(id);}
 function localDate(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -1251,23 +1269,31 @@ function cddOpen(prefix){
   cddFilter(prefix);
   const list=document.getElementById(prefix+'-list');
   if(list)list.classList.add('open');
-  // Close on outside click
-  setTimeout(()=>{document.addEventListener('click',e=>cddOutsideClick(e,prefix),{once:true});},50);
 }
-function cddOutsideClick(e,prefix){
-  const wrap=document.getElementById(prefix+'-cdd-wrap');
-  if(!wrap)return;
-  if(!wrap.contains(e.target)){
+function _cddGlobalCloseHandler(e){
+  // Single permanent listener — closes any open cdd-list when click is outside its wrap
+  Object.keys(cddConfig).forEach(prefix=>{
+    const wrap=document.getElementById(prefix+'-cdd-wrap');
     const list=document.getElementById(prefix+'-list');
-    if(list)list.classList.remove('open');
-  }else{
-    // Still inside the wrapper, keep listening
-    setTimeout(()=>{document.addEventListener('click',ev=>cddOutsideClick(ev,prefix),{once:true});},50);
-  }
+    if(!wrap||!list||!list.classList.contains('open'))return;
+    if(!wrap.contains(e.target))list.classList.remove('open');
+  });
 }
+// Register once on load
+if(typeof window!=='undefined'&&!window._cddGlobalHandlerAttached){
+  document.addEventListener('click',_cddGlobalCloseHandler,true);
+  window._cddGlobalHandlerAttached=true;
+}
+function cddOutsideClick(){/* deprecated — replaced by global handler */}
 function cddClose(prefix){
   const list=document.getElementById(prefix+'-list');
   if(list)list.classList.remove('open');
+}
+function cddCloseAll(){
+  Object.keys(cddConfig).forEach(prefix=>{
+    const list=document.getElementById(prefix+'-list');
+    if(list)list.classList.remove('open');
+  });
 }
 function cddFilter(prefix){
   const cfg=cddConfig[prefix]||{};
@@ -1289,7 +1315,8 @@ function cddFilter(prefix){
       return `<div class="cdd-option" onclick="cddChoose('${prefix}','${esc(i.value)}')">${dot}<span>${i.label}</span></div>`;
     }).join('');
   }
-  list.classList.add('open');
+  // Note: do NOT auto-add .open here — only cddOpen does that.
+  // Keeps lists closed when populated programmatically (e.g. on form open / type change).
 }
 function cddChoose(prefix,value){
   const cfg=cddConfig[prefix]||{};
@@ -1299,7 +1326,7 @@ function cddChoose(prefix,value){
     cddRenderChips(prefix);
     const searchEl=document.getElementById(prefix+'-search');
     if(searchEl)searchEl.value='';
-    cddFilter(prefix);
+    cddOpen(prefix); // multi: re-open so user can pick more
   }else{
     document.getElementById(prefix).value=value;
     const searchEl=document.getElementById(prefix+'-search');
@@ -2543,7 +2570,7 @@ function renderRecycleBin(){
   body.innerHTML=cats.map(cat=>{
     const items=grouped[cat];
     const safeCat=cat.replace(/[^a-zA-Z0-9]/g,'_');
-    const collapsed=recycleBinCollapsed[cat]===true;
+    const collapsed=recycleBinCollapsed[cat]!==false;
     return`<div style="margin-bottom:14px;">
       <div onclick="toggleRecycleBinCat('${esc(cat)}')" style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:0.5px solid var(--cb);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:var(--accent);min-width:10px;">${collapsed?'▶':'▼'}</span><span style="flex:1;">${cat} (${items.length})</span></div>
       <div id="rb-items-${safeCat}" style="${collapsed?'display:none;':''}">
@@ -2795,7 +2822,7 @@ function renderQuotes(){
   // Build filter
   const qbar=document.getElementById('quote-filter');
   qbar.innerHTML=`<button class="chip${qFilter==='all'?' active':''}" onclick="setQuoteFilter('all')">All</button>`
-    +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">👤 ${c}</button>`).join('')
+    +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
     +`<button class="chip${qFilter==='narrator'?' active':''}" onclick="setQuoteFilter('narrator')">Narrator</button>`;
   let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type));
   if(qFilter!=='all'&&qFilter!=='narrator'){
@@ -3962,82 +3989,119 @@ let synthTimerSeconds=0,synthTimerRunning=false,synthTimerInterval=null,synthTim
 
 function fmtTimer(s){const m=String(Math.floor(s/60)).padStart(2,'0');const sc=String(s%60).padStart(2,'0');return`${m}:${sc}`;}
 
+// Persistent pill in topbar — visible whenever any timer is running, even if timer sheet is closed
+function updateTimerPill(){
+  const pill=document.getElementById('timer-pill');
+  if(!pill)return;
+  if(readTimerRunning){
+    pill.style.display='';pill.textContent='📖 '+fmtTimer(readTimerSeconds);
+    pill.style.background='var(--al)';pill.style.color='var(--accent)';pill.style.borderColor='var(--am)';
+  }else if(synthTimerRunning){
+    pill.style.display='';pill.textContent='✏️ '+fmtTimer(synthTimerSeconds);
+    pill.style.background='#E1F5EE';pill.style.color='#0F6E56';pill.style.borderColor='#0F6E56';
+  }else if(readTimerSeconds>0||synthTimerSeconds>0){
+    // Paused but has time accumulated
+    pill.style.display='';
+    if(readTimerSeconds>0&&synthTimerSeconds>0)pill.textContent='⏸ '+fmtTimer(readTimerSeconds+synthTimerSeconds);
+    else pill.textContent='⏸ '+fmtTimer(readTimerSeconds||synthTimerSeconds);
+    pill.style.background='var(--bg2)';pill.style.color='var(--t2)';pill.style.borderColor='var(--cb)';
+  }else{
+    pill.style.display='none';
+  }
+}
+// Independent global tick — keeps seconds counter accurate even when timer sheet is closed
+setInterval(()=>{
+  if(readTimerRunning&&readTimerStart){
+    readTimerSeconds=Math.floor((Date.now()-readTimerStart)/1000);
+    const d=document.getElementById('timer-read-display');if(d)d.textContent=fmtTimer(readTimerSeconds);
+  }
+  if(synthTimerRunning&&synthTimerStart){
+    synthTimerSeconds=Math.floor((Date.now()-synthTimerStart)/1000);
+    const d=document.getElementById('timer-synth-display');if(d)d.textContent=fmtTimer(synthTimerSeconds);
+  }
+  updateTimerPill();
+},1000);
+
 function toggleReadTimer(){
-  // Pause synth if running
   if(synthTimerRunning){
-    clearInterval(synthTimerInterval);synthTimerRunning=false;
-    document.getElementById('timer-synth-btn').textContent='▶ Resume';
+    synthTimerRunning=false;
+    const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent='▶ Resume';
   }
   if(readTimerRunning){
-    clearInterval(readTimerInterval);readTimerRunning=false;
-    document.getElementById('timer-read-btn').textContent='▶ Resume';
+    readTimerRunning=false;
+    const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent='▶ Resume';
   } else {
     readTimerStart=Date.now()-readTimerSeconds*1000;
-    readTimerInterval=setInterval(()=>{
-      readTimerSeconds=Math.floor((Date.now()-readTimerStart)/1000);
-      document.getElementById('timer-read-display').textContent=fmtTimer(readTimerSeconds);
-    },1000);
     readTimerRunning=true;
-    document.getElementById('timer-read-btn').textContent='⏸ Pause';
-    // Clear manual field while timer is running
-    document.getElementById('timer-read-min').value='';
+    const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent='⏸ Pause';
+    const m=document.getElementById('timer-read-min');if(m)m.value='';
   }
+  updateTimerPill();
 }
 
 function toggleSynthTimer(){
-  // Pause read if running
   if(readTimerRunning){
-    clearInterval(readTimerInterval);readTimerRunning=false;
-    document.getElementById('timer-read-btn').textContent='▶ Resume';
+    readTimerRunning=false;
+    const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent='▶ Resume';
   }
   if(synthTimerRunning){
-    clearInterval(synthTimerInterval);synthTimerRunning=false;
-    document.getElementById('timer-synth-btn').textContent='▶ Resume';
+    synthTimerRunning=false;
+    const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent='▶ Resume';
   } else {
     synthTimerStart=Date.now()-synthTimerSeconds*1000;
-    synthTimerInterval=setInterval(()=>{
-      synthTimerSeconds=Math.floor((Date.now()-synthTimerStart)/1000);
-      document.getElementById('timer-synth-display').textContent=fmtTimer(synthTimerSeconds);
-    },1000);
     synthTimerRunning=true;
-    document.getElementById('timer-synth-btn').textContent='⏸ Pause';
-    // Clear manual field while timer is running
-    document.getElementById('timer-synth-min').value='';
+    const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent='⏸ Pause';
+    const m=document.getElementById('timer-synth-min');if(m)m.value='';
   }
+  updateTimerPill();
 }
 
 function onReadMinInput(){
-  // If typing manually, stop and reset the read timer
-  clearInterval(readTimerInterval);readTimerRunning=false;readTimerSeconds=0;
-  document.getElementById('timer-read-display').textContent='00:00';
-  document.getElementById('timer-read-btn').textContent='▶ Start';
+  readTimerRunning=false;readTimerSeconds=0;
+  const d=document.getElementById('timer-read-display');if(d)d.textContent='00:00';
+  const b=document.getElementById('timer-read-btn');if(b)b.textContent='▶ Start';
+  updateTimerPill();
 }
 function onSynthMinInput(){
-  clearInterval(synthTimerInterval);synthTimerRunning=false;synthTimerSeconds=0;
-  document.getElementById('timer-synth-display').textContent='00:00';
-  document.getElementById('timer-synth-btn').textContent='▶ Start';
+  synthTimerRunning=false;synthTimerSeconds=0;
+  const d=document.getElementById('timer-synth-display');if(d)d.textContent='00:00';
+  const b=document.getElementById('timer-synth-btn');if(b)b.textContent='▶ Start';
+  updateTimerPill();
 }
 
 function resetTimers(){
-  clearInterval(readTimerInterval);clearInterval(synthTimerInterval);
-  readTimerSeconds=0;readTimerRunning=false;readTimerInterval=null;
-  synthTimerSeconds=0;synthTimerRunning=false;synthTimerInterval=null;
-  document.getElementById('timer-read-display').textContent='00:00';
-  document.getElementById('timer-synth-display').textContent='00:00';
-  document.getElementById('timer-read-btn').textContent='▶ Start';
-  document.getElementById('timer-synth-btn').textContent='▶ Start';
-  document.getElementById('timer-read-min').value='';
-  document.getElementById('timer-synth-min').value='';
+  readTimerSeconds=0;readTimerRunning=false;
+  synthTimerSeconds=0;synthTimerRunning=false;
+  const rd=document.getElementById('timer-read-display');if(rd)rd.textContent='00:00';
+  const sd=document.getElementById('timer-synth-display');if(sd)sd.textContent='00:00';
+  const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent='▶ Start';
+  const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent='▶ Start';
+  const rm=document.getElementById('timer-read-min');if(rm)rm.value='';
+  const sm=document.getElementById('timer-synth-min');if(sm)sm.value='';
+  updateTimerPill();
+}
+
+function syncTimerSheetUI(){
+  const rd=document.getElementById('timer-read-display');if(rd)rd.textContent=fmtTimer(readTimerSeconds);
+  const sd=document.getElementById('timer-synth-display');if(sd)sd.textContent=fmtTimer(synthTimerSeconds);
+  const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent=readTimerRunning?'⏸ Pause':(readTimerSeconds>0?'▶ Resume':'▶ Start');
+  const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent=synthTimerRunning?'⏸ Pause':(synthTimerSeconds>0?'▶ Resume':'▶ Start');
 }
 
 function openReadingTimer(){
-  resetTimers();
-  document.getElementById('timer-edit-idx').value='';
+  // Preserve any running/paused timer state — only reset if both are at zero
+  const hasState=readTimerSeconds>0||synthTimerSeconds>0||readTimerRunning||synthTimerRunning;
+  if(!hasState){
+    resetTimers();
+    document.getElementById('timer-edit-idx').value='';
+    document.getElementById('timer-pg-start').value=book()?.progressPage||'';
+    document.getElementById('timer-pg-end').value='';
+    document.getElementById('timer-date').value=localDate();
+  }else{
+    syncTimerSheetUI();
+  }
   document.getElementById('timer-sheet-title').textContent='Reading session';
   document.getElementById('timer-save-btn').textContent='Save session';
-  document.getElementById('timer-pg-start').value=book()?.progressPage||'';
-  document.getElementById('timer-pg-end').value='';
-  document.getElementById('timer-date').value=localDate();
   openSheet('timer-overlay');
 }
 
@@ -4056,7 +4120,6 @@ function editSession(idx){
 }
 
 function saveSession(){
-  clearInterval(readTimerInterval);clearInterval(synthTimerInterval);
   readTimerRunning=false;synthTimerRunning=false;
   const editIdx=document.getElementById('timer-edit-idx').value;
   const pStart=document.getElementById('timer-pg-start').value;
@@ -4811,6 +4874,128 @@ function renderLibStats(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// REPORT ISSUE SYSTEM — captures bugs/requests with auto-context
+// Stored in localStorage under 'reports' (cross-book). Copy-pasteable for tracker.
+// ═══════════════════════════════════════════════════════════════
+function getReports(){try{return JSON.parse(localStorage.getItem('reports')||'[]');}catch(e){return[];}}
+function saveReports(r){localStorage.setItem('reports',JSON.stringify(r));}
+function captureReportContext(){
+  const ctx={};
+  // Active screen
+  const activeScreen=document.querySelector('.screen.active');
+  ctx.screen=activeScreen?activeScreen.id:'unknown';
+  // Active book
+  if(currentId){
+    const b=book();
+    ctx.book=b?(b.title||'(untitled)'):null;
+    ctx.bookId=currentId;
+  }
+  // Active tab (within book screen)
+  if(typeof activeTab!=='undefined'&&activeTab)ctx.tab=activeTab;
+  // If on character/location profile
+  if(typeof currentCharName!=='undefined'&&currentCharName&&document.getElementById('char-screen')?.classList.contains('active'))ctx.character=currentCharName;
+  if(typeof currentLocName!=='undefined'&&currentLocName&&document.getElementById('loc-screen')?.classList.contains('active'))ctx.location=currentLocName;
+  return ctx;
+}
+function openReportIssue(){
+  document.getElementById('report-type').value='bug';
+  document.getElementById('report-title').value='';
+  document.getElementById('report-body').value='';
+  document.getElementById('report-priority').value='normal';
+  const ctx=captureReportContext();
+  const ctxLines=Object.entries(ctx).map(([k,v])=>`${k}: ${v}`).join('  ·  ');
+  document.getElementById('report-context-preview').textContent='Auto-captured: '+ctxLines;
+  renderReportList();
+  openSheet('report-overlay');
+}
+function _nextReportNum(){
+  const reports=getReports();
+  if(!reports.length)return 1;
+  const maxN=Math.max(...reports.map(r=>r.num||0));
+  return maxN+1;
+}
+function saveReport(){
+  const title=document.getElementById('report-title').value.trim();
+  const body=document.getElementById('report-body').value.trim();
+  if(!title&&!body){alert('Please add a title or description.');return;}
+  const reports=getReports();
+  reports.push({
+    num:_nextReportNum(),
+    type:document.getElementById('report-type').value,
+    priority:document.getElementById('report-priority').value,
+    title:title||'(untitled)',
+    body:body,
+    context:captureReportContext(),
+    timestamp:Date.now(),
+    dateStr:new Date().toLocaleString()
+  });
+  saveReports(reports);
+  document.getElementById('report-title').value='';
+  document.getElementById('report-body').value='';
+  document.getElementById('report-priority').value='normal';
+  renderReportList();
+}
+function renderReportList(){
+  const reports=getReports();
+  const list=document.getElementById('report-list');
+  if(!list)return;
+  if(!reports.length){list.innerHTML='<div style="color:var(--t3);font-style:italic;padding:8px 0;">No reports yet.</div>';return;}
+  const typeIcon={bug:'🐛',feature:'💡',change:'🔧',question:'❓'};
+  const priIcon={top:'🔥 ',normal:'',low:'· '};
+  list.innerHTML=reports.slice().reverse().map(r=>{
+    const ctx=r.context||{};
+    const ctxBits=[ctx.screen,ctx.tab,ctx.book,ctx.character,ctx.location].filter(Boolean).join(' › ');
+    return`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:6px;border-left:3px solid ${r.priority==='top'?'var(--red)':'var(--am)'};">
+      <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:12px;">${priIcon[r.priority]||''}${typeIcon[r.type]||''} #${r.num} — ${r.title}</div>
+          ${r.body?`<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.5;">${r.body.replace(/</g,'&lt;')}</div>`:''}
+          <div style="font-size:9px;color:var(--t3);margin-top:3px;">${ctxBits} · ${r.dateStr}</div>
+        </div>
+        <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;flex-shrink:0;">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function deleteReport(num){
+  if(!confirm('Delete this report?'))return;
+  const reports=getReports().filter(r=>r.num!==num);
+  saveReports(reports);
+  renderReportList();
+}
+function copyAllReports(){
+  const reports=getReports();
+  if(!reports.length){alert('No reports to copy.');return;}
+  const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION'};
+  const priLabel={top:'🔥 TOP PRIORITY',normal:'',low:'low priority'};
+  let out=`This is a batch of ${reports.length} update${reports.length===1?'':'s'}. I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below. Use this to draft something I can copy and paste into my next session that will include adding these to my tracker, my new requests/changes, the suggested order of operations, and the most recent files I should submit so we can pick up exactly where we left off — making the most bang for my buck energy-wise per session.\n\n`;
+  out+='═══ REPORTS ═══\n\n';
+  reports.forEach(r=>{
+    const ctx=r.context||{};
+    const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
+    out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' — ':''}${r.title}\n`;
+    if(r.body)out+=`   ${r.body}\n`;
+    if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
+    out+=`   🕐 ${r.dateStr}\n\n`;
+  });
+  out+='═══ FILES TO UPLOAD ═══\n- Latest index.html (from /mnt/user-data/outputs/ of last session)\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
+  // Try modern Clipboard API
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(out).then(
+      ()=>alert('Copied! '+reports.length+' report'+(reports.length===1?'':'s')+' on clipboard. Paste into next Claude session.'),
+      ()=>{_fallbackCopy(out);}
+    );
+  }else{_fallbackCopy(out);}
+}
+function _fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');alert('Copied! Paste into next Claude session.');}
+  catch(e){alert('Copy failed. Long-press to copy manually:\n\n'+text.slice(0,500)+'…');}
+  document.body.removeChild(ta);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
 // serviceWorker registration removed for preview
@@ -4831,7 +5016,54 @@ load();renderLibrary();
   </div>
 </div>
 
-<!-- ══ GALLERY SHEET ══ -->
+<!-- ══ REPORT ISSUE SHEET ══ -->
+<div class="sheet-overlay" id="report-overlay" onclick="mc('report-overlay',event)">
+  <div class="sheet" style="position:relative;max-height:90vh;">
+    <div class="sheet-handle"></div>
+    <button class="sheet-x" onclick="closeSheet('report-overlay')">×</button>
+    <div class="sheet-title" style="padding-right:48px;">🐛 Report issue / request feature</div>
+    <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;line-height:1.55;">
+      Capture bugs and feature requests as you go. Each one gets a tracker number and your context (current screen, book, last entry) auto-attached. At session end, copy the whole batch into your next Claude session.
+    </div>
+    <div class="fg">
+      <label>Type</label>
+      <select id="report-type">
+        <option value="bug">🐛 Bug — something is broken</option>
+        <option value="feature">💡 Feature — I want this added</option>
+        <option value="change">🔧 Change — adjust existing behaviour</option>
+        <option value="question">❓ Question — clarify how something works</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Title <span style="font-weight:400;color:var(--t3);">(short — what is it?)</span></label>
+      <input type="text" id="report-title" placeholder="e.g. Theme filter not applied after save"/>
+    </div>
+    <div class="fg">
+      <label>What happened / what you want</label>
+      <textarea id="report-body" placeholder="Describe what you saw, what you expected, or what you'd like to be able to do…" style="min-height:90px;"></textarea>
+    </div>
+    <div class="fg">
+      <label>Priority</label>
+      <select id="report-priority">
+        <option value="normal">Normal</option>
+        <option value="top">🔥 Top priority</option>
+        <option value="low">Low / nice-to-have</option>
+      </select>
+    </div>
+    <div id="report-context-preview" style="font-size:10px;color:var(--t3);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:10px;font-family:monospace;line-height:1.5;"></div>
+    <div class="fa">
+      <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReport()">Save report</button>
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div class="slabel" style="margin:0;">Pending reports</div>
+      <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
+    </div>
+    <div id="report-list" style="font-size:12px;"></div>
+  </div>
+</div>
+
 <div class="sheet-overlay" id="gallery-overlay" onclick="mc('gallery-overlay',event)">
   <div class="sheet" style="max-height:92vh;">
     <div class="sheet-topbar">
