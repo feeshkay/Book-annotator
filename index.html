@@ -267,7 +267,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <div id="chars-panel" class="panel" style="padding:10px 11px 85px;">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;">🧬 Suggest family connections</button>
+        <button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;">🧬 Suggest relationships</button>
       </div>
       <div id="chars-list"></div>
       <div id="chars-empty" class="empty" style="display:none"><div class="empty-icon">👤</div><div class="empty-text">No characters yet</div></div>
@@ -598,7 +598,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CHARACTERISTIC EXTRAS -->
     <div id="ae-char-ex" style="display:none">
-      <div class="fg"><label>Trait type</label>
+      <div class="fg"><label>Trait type <button type="button" onclick="showTraitTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:50%;width:18px;height:18px;font-size:11px;color:var(--accent);padding:0;margin-left:4px;cursor:pointer;line-height:1;">?</button></label>
         <select id="ae-trait-type"><option value="personality">Personality</option><option value="physical">Physical</option><option value="behavioral">Behavioral</option><option value="emotional">Emotional</option><option value="intellectual">Intellectual</option></select>
       </div>
       <div class="fg"><label>Supporting quote <span style="font-weight:400;">(proves this trait)</span></label><input type="text" id="ae-sq" placeholder="Quote from the book that shows this trait…"/></div>
@@ -654,13 +654,29 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-imp"><option value="normal">Normal</option><option value="major">Major</option><option value="minor">Minor</option></select>
         </div>
       </div>
-      <div class="fg"><label>Relative offset from prior event <span style="font-weight:400;">(optional)</span></label>
+      <!-- #270 — manual sort key when no date is available -->
+      <div class="fg"><label>Sequence # <span style="font-weight:400;">(optional — for ordering when date is unknown; lower = earlier)</span></label>
+        <input type="number" id="ae-sortkey" inputmode="numeric" placeholder="e.g. 1, 2, 3…"/>
+      </div>
+      <!-- #218-A — collapsed by default; #218-B — renamed -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="document.getElementById('ae-offset-block').style.display=this.checked?'':'none';"/>
+        <label for="ae-offset-toggle" style="font-size:12px;text-transform:none;letter-spacing:0;cursor:pointer;">Related to another event?</label>
+      </div>
+      <div id="ae-offset-block" style="display:none;">
+        <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:8px;">
+          <strong>+</strong> = AFTER (this event happens BELOW the other on the timeline)<br>
+          <strong>−</strong> = BEFORE (this event happens ABOVE the other on the timeline)
+        </div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <select id="ae-offset-dir" style="width:60px;flex-shrink:0;"><option value="+">+</option><option value="-">−</option></select>
+          <select id="ae-offset-dir" style="width:130px;flex-shrink:0;font-size:13px;">
+            <option value="+">+ later (below)</option>
+            <option value="-">− earlier (above)</option>
+          </select>
           <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;"/>
           <select id="ae-offset-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
-        <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">From which event? <span style="font-weight:400;">(most recent first)</span></label>
+        <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(most recent first)</span></label>
           <select id="ae-offset-event" style="font-size:13px;"><option value="">— free text / unspecified —</option></select>
         </div>
       </div>
@@ -743,8 +759,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
           <div class="cdd-wrap" id="ae-rela-cdd-wrap">
             <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
+              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
               <button type="button" class="btn btn-sm" onclick="cddClear('ae-rela')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+              <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-rela')" style="flex-shrink:0;">+ New</button>
             </div>
             <input type="hidden" id="ae-rela"/>
             <div class="cdd-list" id="ae-rela-list"></div>
@@ -927,7 +944,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="closeSheet('settings-overlay');openGallery()">🖼 Photo gallery</button>
-      <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recently deleted</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
@@ -1828,6 +1845,8 @@ function forceTab(t){
   document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.toggle('active',b.textContent===(lbl[t]||t)));
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
+  // #187-A — when forced to Log tab, re-apply the current activeFilter (chip + list)
+  if(t==='log'){if(typeof buildFilterBar==='function')buildFilterBar();if(typeof renderEntries==='function')renderEntries();}
   if(t==='web')renderWeb();if(t==='timeline')renderTimeline();if(t==='quotes')renderQuotes();
   if(t==='map')renderMap();if(t==='words')renderWords();if(t==='questions')renderQuestions();
   if(t==='refs')renderRefs();if(t==='todo')renderTodo();if(t==='stats')renderStats();
@@ -1843,10 +1862,31 @@ function addQuickRelRow(relType,charName){
   row.innerHTML=`<div class="fg" style="margin-bottom:0"><select class="qr-type">${buildRelTypeOpts(relType||'')}</select></div>
     <div style="display:flex;gap:5px;align-items:center;">
       <div class="fg" style="flex:1;margin-bottom:0"><select class="qr-char"><option value="">— select char —</option>${chars.map(c=>`<option${charName&&c===charName?' selected':''}>${c}</option>`).join('')}</select></div>
+      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="flex-shrink:0;padding:0 8px;font-size:11px;">+ New</button>
       <button onclick="this.closest('.r2').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 4px;">×</button>
     </div>`;
   list.appendChild(row);
   row.querySelectorAll('select').forEach(s=>s.addEventListener('change',checkSuggestions));
+}
+function quickRelNewChar(btn){
+  const row=btn.closest('.r2');if(!row||!currentId)return;
+  const name=(prompt('New character name:')||'').trim();if(!name)return;
+  // Create if not exists
+  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    book().entries.unshift(entry);getCC(name);save();
+  }
+  // Refresh ALL quick-rel rows so the new char appears in every dropdown
+  const allRows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
+  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  allRows.forEach(r=>{
+    const sel=r.querySelector('.qr-char');
+    const cur=sel.value;
+    sel.innerHTML=`<option value="">— select char —</option>`+allChars.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+  });
+  // Select new name in THIS row
+  row.querySelector('.qr-char').value=name;
+  checkSuggestions();
 }
 function buildRelTypeOpts(sel){
   const groups=[
@@ -1939,6 +1979,26 @@ function buildTypeSelect(){
   const cfg=GENRES[book().genre]||GENRES.fiction;
   document.getElementById('ae-type').innerHTML=cfg.types.map(t=>`<option>${t}</option>`).join('');
 }
+function showTraitTypeHint(){
+  alert(`Trait types — what each one means:
+
+🧠 PERSONALITY — core character traits, how they generally are.
+   e.g. kind, ambitious, suspicious, generous, stubborn
+
+👤 PHYSICAL — body, appearance, voice, dress.
+   e.g. tall, scarred left cheek, raspy voice, always wears red
+
+🎬 BEHAVIORAL — habits, patterns of action.
+   e.g. paces when nervous, never makes eye contact, always early
+
+❤️ EMOTIONAL — emotional state, tendencies, reactions.
+   e.g. quick to anger, melancholic, emotionally guarded, optimistic
+
+🎓 INTELLECTUAL — mind, intelligence, knowledge, mental skill.
+   e.g. brilliant strategist, illiterate, fluent in 4 languages, naive
+
+Tip: pick the closest match — these are mostly for grouping on the character profile.`);
+}
 function showTypeHint(){
   const type=document.getElementById('ae-type').value;
   const hint=TYPE_HINTS[type];
@@ -2005,9 +2065,9 @@ function onTypeChange(){
     }
   }
   if(isRel&&chars.length){
-    // Pre-populate Character A with first char; B blank (user picks)
+    // #217 — Both blank, user picks A and B explicitly
     if(!document.getElementById('ae-edit-id').value){
-      cddSet('ae-rela',chars[0]||'');
+      cddSet('ae-rela','');
       cddSet('ae-relb','');
     }
     document.getElementById('ae-quick-add-b').style.display='none';
@@ -2117,34 +2177,106 @@ function quickAddInvolvedChar(){cddQuickAdd('ae-inv');}
 // Dialogue helpers
 function addDialogueLine(){
   const container=document.getElementById('ae-dial-lines');
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
   const lineNum=container.children.length+1;
+  const lid='dl-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   const div=document.createElement('div');div.className='dial-line';
+  div.dataset.lid=lid;
+  div.dataset.speaker='';
   div.style.cssText='display:flex;gap:6px;align-items:flex-start;margin-bottom:8px;padding:8px;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);';
   div.innerHTML=`
     <div style="font-size:10px;font-weight:700;color:var(--t3);min-width:20px;text-align:right;padding-top:10px;">${lineNum}</div>
-    <div style="flex:1;">
-      <select class="dial-speaker" style="width:100%;font-size:12px;margin-bottom:4px;" onchange="updateDialLineColor(this)">
-        <option value="">Narrator / stage direction</option>
-        ${chars.map(c=>`<option>${c}</option>`).join('')}
-      </select>
+    <div style="flex:1;min-width:0;">
+      <div class="dial-speaker-wrap" style="position:relative;margin-bottom:4px;">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input type="text" class="dial-speaker-input" placeholder="Search speaker… (or leave blank for narrator)" autocomplete="off"
+            style="flex:1;font-size:12px;padding:6px 8px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);"
+            oninput="dialSpeakerOpen(this)" onclick="dialSpeakerOpen(this)" onfocus="dialSpeakerOpen(this)"/>
+          <button type="button" class="btn btn-sm" onclick="dialSpeakerClear(this)" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear speaker">×</button>
+        </div>
+        <div class="dial-speaker-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:0.5px solid var(--cb);border-radius:var(--r);max-height:160px;overflow-y:auto;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-top:2px;"></div>
+      </div>
       <textarea placeholder="What they said…" style="width:100%;min-height:48px;font-size:13px;line-height:1.5;font-style:italic;"></textarea>
     </div>
-    <button onclick="this.closest('.dial-line').remove();renumberDialLines()" style="background:transparent;color:var(--t3);font-size:18px;padding:0 3px;flex-shrink:0;">×</button>`;
+    <button onclick="removeDialLine(this)" style="background:transparent;color:var(--t3);font-size:11px;padding:2px 6px;flex-shrink:0;border:0.5px solid var(--cb);border-radius:var(--r);" title="Remove this line">× Remove line</button>`;
   container.appendChild(div);
-  // Color the border based on speaker
-  div.querySelector('.dial-speaker').dispatchEvent(new Event('change'));
+  applyDialLineStyle(div);
 }
-function updateDialLineColor(sel){
-  const name=sel.value;const line=sel.closest('.dial-line');
+function dialSpeakerOpen(input){
+  const line=input.closest('.dial-line');
+  const list=line.querySelector('.dial-speaker-list');
+  const q=input.value.trim().toLowerCase();
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const matches=chars.filter(c=>!q||c.toLowerCase().includes(q));
+  let html='';
+  if(input.value.trim()){
+    html+=`<div style="padding:7px 10px;font-size:12px;color:var(--t3);font-style:italic;cursor:pointer;border-bottom:0.5px solid var(--cb);" onmousedown="event.preventDefault();" onclick="dialSpeakerPick(this,'')">Narrator / stage direction (clear)</div>`;
+  } else {
+    html+=`<div style="padding:7px 10px;font-size:12px;color:var(--t3);font-style:italic;cursor:pointer;border-bottom:0.5px solid var(--cb);" onmousedown="event.preventDefault();" onclick="dialSpeakerPick(this,'')">— Narrator / stage direction —</div>`;
+  }
+  matches.forEach(c=>{
+    const cc=getCC(c);
+    html+=`<div style="padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:6px;" onmousedown="event.preventDefault();" onclick="dialSpeakerPick(this,'${esc(c)}')"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cc.stroke};flex-shrink:0;"></span>${c}</div>`;
+  });
+  if(!matches.length&&q){
+    html+=`<div style="padding:7px 10px;font-size:12px;color:var(--t3);">No matching characters. Add new in the main Add screen.</div>`;
+  }
+  list.innerHTML=html;
+  list.style.display='';
+  // Close on outside click
+  setTimeout(()=>{
+    const off=(e)=>{if(!line.contains(e.target)){list.style.display='none';document.removeEventListener('click',off);}};
+    document.addEventListener('click',off);
+  },10);
+}
+function dialSpeakerPick(el,name){
+  const line=el.closest('.dial-line');
+  const input=line.querySelector('.dial-speaker-input');
+  const list=line.querySelector('.dial-speaker-list');
+  const oldSpeaker=line.dataset.speaker||'';
+  input.value=name;
+  line.dataset.speaker=name;
+  list.style.display='none';
+  applyDialLineStyle(line);
+  syncDialInvolved(oldSpeaker,name);
+}
+function dialSpeakerClear(btn){
+  const line=btn.closest('.dial-line');
+  const input=line.querySelector('.dial-speaker-input');
+  const oldSpeaker=line.dataset.speaker||'';
+  input.value='';
+  line.dataset.speaker='';
+  applyDialLineStyle(line);
+  syncDialInvolved(oldSpeaker,'');
+}
+function applyDialLineStyle(line){
+  const name=line.dataset.speaker||'';
   if(name){const cc=getCC(name);line.style.borderColor=cc.stroke;line.style.borderLeftWidth='3px';}
   else{line.style.borderColor='var(--cb)';line.style.borderLeftWidth='0.5px';}
-  if(name){
-    const invGroup=document.getElementById('ae-inv-group');
-    if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
-    const current=cddGet('ae-inv');
-    if(!current.includes(name))cddSet('ae-inv',[...current,name]);
+}
+// Sync the Characters Involved field when a dialogue speaker changes (#262)
+// - Add new speaker (if any)
+// - Remove old speaker IF no other line still uses them
+function syncDialInvolved(oldSpeaker,newSpeaker){
+  const invGroup=document.getElementById('ae-inv-group');
+  if(invGroup&&invGroup.style.display==='none')invGroup.style.display='';
+  const current=cddGet('ae-inv');
+  let next=[...current];
+  // Add new speaker
+  if(newSpeaker&&!next.includes(newSpeaker))next.push(newSpeaker);
+  // Remove old speaker if no remaining line uses them
+  if(oldSpeaker&&oldSpeaker!==newSpeaker){
+    const stillUsed=[...document.querySelectorAll('.dial-line')].some(l=>l.dataset.speaker===oldSpeaker);
+    if(!stillUsed)next=next.filter(c=>c!==oldSpeaker);
   }
+  cddSet('ae-inv',next);
+}
+function removeDialLine(btn){
+  const line=btn.closest('.dial-line');
+  const oldSpeaker=line.dataset.speaker||'';
+  line.remove();
+  renumberDialLines();
+  // After removing the line, also remove its speaker from involved if no other line uses them
+  syncDialInvolved(oldSpeaker,'');
 }
 function renumberDialLines(){
   document.querySelectorAll('.dial-line').forEach((l,i)=>{
@@ -2152,7 +2284,7 @@ function renumberDialLines(){
   });
 }
 function getDialogueLines(){
-  return[...document.querySelectorAll('.dial-line')].map(l=>({speaker:l.querySelector('select').value,text:l.querySelector('textarea').value.trim()})).filter(l=>l.text);
+  return[...document.querySelectorAll('.dial-line')].map(l=>({speaker:l.dataset.speaker||'',text:l.querySelector('textarea').value.trim()})).filter(l=>l.text);
 }
 
 function openAddSheet(preType){
@@ -2199,6 +2331,8 @@ function clearAEForm(){
   document.getElementById('ae-trait-type').value='personality';
   document.getElementById('ae-event-sig').value='significant';
   document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';
+  const skEl=document.getElementById('ae-sortkey');if(skEl)skEl.value='';
+  const offTog=document.getElementById('ae-offset-toggle');if(offTog){offTog.checked=false;document.getElementById('ae-offset-block').style.display='none';}
   document.getElementById('ae-loc-type').value='real';onLocTypeChange();
   document.getElementById('ae-event-to-tl').checked=true;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
@@ -2417,7 +2551,7 @@ function submitEntry(){
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
-  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}}
+  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}}
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
     entry.eventTypes=getPickedEventTypes();
@@ -2455,7 +2589,13 @@ function submitEntry(){
     }
   }
   if(isDial){entry.dialogueLines=getDialogueLines();}
-  if(isTheme){entry.themeQuotes=getThemeQuotes();}
+  if(isTheme){
+    entry.themeQuotes=getThemeQuotes();
+    // #191-A — auto-tag every quote's speaker into the theme's "Characters Involved"
+    const inv=new Set(entry.involved||[]);
+    entry.themeQuotes.forEach(q=>{if(q.speaker&&q.speaker.trim())inv.add(q.speaker.trim());});
+    entry.involved=[...inv];
+  }
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
   if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
     // Save to locations list
@@ -2626,12 +2766,42 @@ function checkDuplicateChar(name){
   return false;
 }
 // ── Recycle bin rendering ─────────────────────────────────────
+let recycleBinSort='category';
+function setRecycleBinSort(mode){recycleBinSort=mode;renderRecycleBin();}
 function renderRecycleBin(){
   const bin=getRecycleBin();
   const body=document.getElementById('recycle-bin-body');
+  // Update sort toggle active state
+  const btnCat=document.getElementById('rb-sort-cat');
+  const btnRec=document.getElementById('rb-sort-recent');
+  if(btnCat&&btnRec){
+    const activeStyle='background:var(--accent);color:#fff;border-color:var(--accent);';
+    btnCat.setAttribute('style','font-size:11px;padding:4px 10px;'+(recycleBinSort==='category'?activeStyle:''));
+    btnRec.setAttribute('style','font-size:11px;padding:4px 10px;'+(recycleBinSort==='recent'?activeStyle:''));
+  }
   if(!body)return;
   if(!bin.length){body.innerHTML=`<div style="text-align:center;padding:20px;font-size:13px;color:var(--t2);">Recycle bin is empty.</div>`;return;}
-  // Group by category
+  if(recycleBinSort==='recent'){
+    // Flat list, most recently deleted first
+    const items=bin.map((e,idx)=>({e,idx})).sort((a,b)=>(b.e.deletedAt||0)-(a.e.deletedAt||0));
+    const CAT_LABEL={'Character':'🧑','Person':'🧑','Suspect':'🧑','Relationship':'🔗','Quote':'💬','Line/stanza':'💬','Narrator quote':'💬','Dialogue':'🗣️','Theme':'🌊','Word / Vocabulary':'📖','Location':'📍','Event':'📅','Timeline':'📅','Chapter':'📑','Characteristic':'✨','Reference':'🔖','Question':'❓'};
+    body.innerHTML=items.map(({e,idx})=>{
+      const ago=Math.round((Date.now()-e.deletedAt)/60000);
+      const agoStr=ago<60?ago+'m ago':ago<1440?Math.round(ago/60)+'h ago':Math.round(ago/1440)+'d ago';
+      const ico=CAT_LABEL[e.type]||'📝';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--cb);">
+        <div style="font-size:16px;flex-shrink:0;">${ico}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.cn||e.content||'(unnamed)'}</div>
+          <div style="font-size:10px;color:var(--t3);">${e.type} · Deleted ${agoStr}</div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="restoreEntry(${idx})" style="flex-shrink:0;">Restore</button>
+        <button class="btn btn-sm" onclick="permanentDelete(${idx})" style="flex-shrink:0;color:var(--red);">✕</button>
+      </div>`;
+    }).join('');
+    return;
+  }
+  // Group by category (default)
   const CAT_ORDER=['Character','Person','Suspect','Relationship','Quote','Line/stanza','Narrator quote','Dialogue','Theme','Word / Vocabulary','Location','Event','Timeline','Chapter','Characteristic','Reference','Question','Symbol','Argument','Red flag','Concept','Key idea','Evidence','Translation'];
   const CAT_LABEL={'Character':'🧑 Characters','Person':'🧑 Characters','Suspect':'🧑 Characters','Relationship':'🔗 Relationships','Quote':'💬 Quotes','Line/stanza':'💬 Quotes','Narrator quote':'💬 Quotes','Dialogue':'🗣️ Dialogue','Theme':'🌊 Themes','Word / Vocabulary':'📖 Vocabulary','Location':'📍 Locations','Event':'📅 Events','Timeline':'📅 Events','Chapter':'📑 Chapters','Characteristic':'✨ Characteristics','Reference':'🔖 References','Question':'❓ Questions'};
   const grouped={};
@@ -2745,6 +2915,25 @@ function editEntry(id){
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}}
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
     if(e.importance)document.getElementById('ae-imp').value=e.importance;
+    if(e.sortKey!=null){const sk=document.getElementById('ae-sortkey');if(sk)sk.value=e.sortKey;}
+    // #218 — restore offset state when editing a Timeline entry with a stored offset
+    if(e.timeOffset){
+      const m=e.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);
+      if(m){
+        document.getElementById('ae-offset-dir').value=m[1];
+        document.getElementById('ae-offset-num').value=m[2];
+        document.getElementById('ae-offset-unit').value=m[3];
+      }
+      if(e.timeOffsetFrom){
+        const evSel=document.getElementById('ae-offset-event');
+        // Add option if not present, then select
+        if(evSel&&![...evSel.options].some(o=>o.value===e.timeOffsetFrom)){
+          const opt=document.createElement('option');opt.value=e.timeOffsetFrom;opt.textContent=e.timeOffsetFrom;evSel.appendChild(opt);
+        }
+        if(evSel)evSel.value=e.timeOffsetFrom;
+      }
+      const t=document.getElementById('ae-offset-toggle');if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
+    }
     if(e.eventSig)document.getElementById('ae-event-sig').value=e.eventSig;
     if(e.eventTypes?.length){setTimeout(()=>e.eventTypes.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${t}"]`);if(chip)chip.classList.add('sel');}),60);}
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
@@ -2752,7 +2941,33 @@ function editEntry(id){
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
+    if(e.type==='Dialogue'&&e.dialogueLines?.length)setTimeout(()=>{
+      const cont=document.getElementById('ae-dial-lines');cont.innerHTML='';
+      e.dialogueLines.forEach(l=>{
+        addDialogueLine();
+        const last=cont.lastChild;
+        if(last){
+          last.dataset.speaker=l.speaker||'';
+          const inp=last.querySelector('.dial-speaker-input');if(inp)inp.value=l.speaker||'';
+          const ta=last.querySelector('textarea');if(ta)ta.value=l.text||'';
+          applyDialLineStyle(last);
+        }
+      });
+    },50);
     if(e.involved?.length)setTimeout(()=>{cddSet('ae-inv',e.involved.filter(Boolean));cddFilter('ae-inv');const list=document.getElementById('ae-inv-list');if(list)list.classList.remove('open');},80);
+    if(e.type==='Dialogue'&&e.dialogueLines?.length){
+      setTimeout(()=>{
+        const c=document.getElementById('ae-dial-lines');c.innerHTML='';
+        e.dialogueLines.forEach(dl=>{
+          addDialogueLine();
+          const last=c.lastChild;if(!last)return;
+          last.dataset.speaker=dl.speaker||'';
+          last.querySelector('.dial-speaker-input').value=dl.speaker||'';
+          last.querySelector('textarea').value=dl.text||'';
+          applyDialLineStyle(last);
+        });
+      },90);
+    }
   },40);
   openSheet('ae-overlay');
 }
@@ -2838,7 +3053,9 @@ function ecHTML(e,compact,fromTab){
     body=`<div style="display:flex;align-items:center;gap:9px;"><div class="avatar" style="width:36px;height:36px;font-size:12px;background:${col.bg};color:${col.text};overflow:hidden;">${ph}</div><div><div style="font-weight:600;color:${col.text};">${e.charStatus==='deceased'?'🪦 ':''}${e.cn||e.content}${e.nickname?` <span style="font-size:10px;font-weight:400;">(${e.nickname})</span>`:''}</div>${e.charRole||e.charIntro?`<div style="font-size:10px;color:var(--t3);">${e.charRole||''}${e.charIntro?' · intro '+e.charIntro:''}</div>`:''}</div></div>`;
   } else if(isRel){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
-    body=`<div class="econtent"><strong class="cbadge" style="background:${ac?.bg||'transparent'};color:${ac?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relA||'')}',false)">${e.relA||'?'}</strong> <span style="font-size:11px;color:var(--t2);">${e.relType?relEmoji(e.relType)+' '+e.relType:''}</span> <strong class="cbadge" style="background:${bc?.bg||'transparent'};color:${bc?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relB||'')}',false)">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}</div>`;
+    // #244 — Format as "A is [relType] of B" so direction is unambiguous
+    const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong> of</span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
+    body=`<div class="econtent"><strong class="cbadge" style="background:${ac?.bg||'transparent'};color:${ac?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relA||'')}',false)">${e.relA||'?'}</strong> ${relPhrase} <strong class="cbadge" style="background:${bc?.bg||'transparent'};color:${bc?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relB||'')}',false)">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}</div>`;
   } else if(e.type==='Word / Vocabulary'){
     body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.definition}</div>`:''}</div>`;
   } else if(e.type==='Characteristic'){
@@ -3041,7 +3258,7 @@ function renderCharDetail(name){
       ${ce?.charPhys?`<div style="font-size:12px;margin-bottom:6px;"><strong>Physical:</strong> ${ce.charPhys}</div>`:''}
       ${ce?.charDesc?`<div style="font-size:12px;font-style:italic;color:var(--t2);">${ce.charDesc}</div>`:''}
       <div style="margin-top:8px;">
-        <button class="btn btn-sm" onclick="suggestFamilyConnectionsForChar('${esc(name)}')" style="width:100%;padding:7px;font-size:12px;">🧬 Suggest family connections for ${esc(name)}</button>
+        <button class="btn btn-sm" onclick="suggestFamilyConnectionsForChar('${esc(name)}')" style="width:100%;padding:7px;font-size:12px;">🧬 Suggest relationships for ${esc(name)}</button>
       </div>
     </div>
   </div>`;
@@ -3098,10 +3315,30 @@ function renderCharDetail(name){
     }).join('')+`</div></div>`;
   }
   if(events.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-events')"><div class="csec-label" style="color:${col.stroke};">Events (${events.length})</div><span class="csec-toggle" id="char-events-tog">▾</span></div><div id="char-events">`
-    +sortByPage(events).map(e=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${(e.eventTypes||[]).join(', ')||'Event'}${e.evdate?' — '+e.evdate:''}</div>${e.content}${pgT(e)}${act(e)}</div>`).join('')+`</div></div>`;
+    // #267 + #269 — combine Event + Timeline entries for this character into one chronologically-sorted section
+    const tlForChar=all.filter(e=>['Timeline','Date/Period'].includes(e.type)&&(e.involved?.includes(name)||e.speaker===name));
+    // Dedupe by content match (Event auto-creates Timeline entries with same content) — keep Event over Timeline
+    const seen=new Map();
+    [...events,...tlForChar].forEach(e=>{
+      const key=(e.content||'').trim().toLowerCase();
+      if(!key)return;
+      const ex=seen.get(key);
+      if(!ex||(e.type==='Event'&&ex.type!=='Event'))seen.set(key,e);
+    });
+    const combined=[...seen.values()].sort((a,b)=>{
+      // Sort by sortKey > evdate > chap > page
+      const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+      if(sa!==sb)return sa-sb;
+      const da=a.evdate||'',db=b.evdate||'';if(da&&db&&da!==db)return da.localeCompare(db);
+      return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+    });
+    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-events')"><div class="csec-label" style="color:${col.stroke};">Character timeline (${combined.length})</div><span class="csec-toggle" id="char-events-tog">▾</span></div><div id="char-events">`
+    +combined.map(e=>{
+      const labelType=e.type==='Event'?(e.eventTypes||[]).join(', ')||'Event':e.type;
+      return`<div class="citem"><div class="ilabel" style="color:${col.text};">${labelType}${e.evdate?' — '+e.evdate:''}</div>${e.content}${pgT(e)}${act(e)}</div>`;
+    }).join('')+`</div></div>`;
   }
-  const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Clue','Red herring','Question',...CT].includes(e.type)&&e.involved?.includes(name));
+  const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Timeline','Date/Period','Clue','Red herring','Question',...CT].includes(e.type)&&e.involved?.includes(name));
   const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
   const clues=all.filter(e=>['Clue','Red herring'].includes(e.type)&&e.involved?.includes(name));
   if(questions.length)html+=csecBlock(col,'Questions',questions,pgT,nT,act,'char-qq',sortByPage);
@@ -3330,10 +3567,12 @@ function renderWeb(){
     line.setAttribute('stroke',A.col.stroke+'66');line.setAttribute('stroke-width','1.5');
     svg.appendChild(line);
 
-    // Relation label at midpoint
+    // #216 — Show both perspectives: "A's-label | B's-label"
     if(r.relType){
       const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
-      const label=r.relType.length>16?r.relType.slice(0,15)+'…':r.relType;
+      const recip=RECIPROCAL[r.relType];
+      const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
+      const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
       const tw=label.length*5+14;
       const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
       bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);
@@ -3428,7 +3667,12 @@ function setWebFilter(f){activeWebFilter=f;renderWeb();}
 // ═══════════════════════════════════════════════════════════════
 function renderTimeline(){
   const list=document.getElementById('timeline-list');const empty=document.getElementById('tl-empty');
-  const items=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0));
+  const items=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
+    // #270 — sortKey first, then date, then chapter, then page
+    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+    if(sa!==sb)return sa-sb;
+    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  });
   if(!items.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780',significant:'#378ADD',lifechanging:'#D4537E'};
@@ -3438,6 +3682,8 @@ function renderTimeline(){
     const isEvent=item.type==='Event';
     const meIcons={Death:'🪦',Birth:'👶',Marriage:'💍','Move / Relocation':'📦',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔','Life-changing moment':'⭐'};
     const icons=isEvent?(item.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌':'';
+    // #218-C — inline "+" between entries to insert
+    const plusBtn=i<items.length-1?`<div style="text-align:center;margin:-2px 0 -2px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.evdate||'')}','${esc(items[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
     return`<div class="titem">
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
@@ -3449,8 +3695,26 @@ function renderTimeline(){
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
-    </div>`;
+    </div>${plusBtn}`;
   }).join('')+'</div>';
+}
+// #218-C — open Timeline form pre-filled with offset toggle on, between two known events
+function insertTimelineBetween(beforeDate,afterDate){
+  buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+  document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
+  document.getElementById('ae-type').value='Timeline';onTypeChange();
+  setTimeout(()=>{
+    const t=document.getElementById('ae-offset-toggle');
+    if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
+    const evSel=document.getElementById('ae-offset-event');
+    if(evSel&&beforeDate){
+      // Match by evdate substring
+      const opt=[...evSel.options].find(o=>o.value.includes(beforeDate)||o.text.includes(beforeDate));
+      if(opt)evSel.value=opt.value;
+    }
+    document.getElementById('ae-offset-dir').value='+';
+  },80);
+  openSheet('ae-overlay');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4612,7 +4876,7 @@ function renderGuide(){
     <strong>Characteristic</strong> — A trait of a character. Select <strong>Personality</strong> or <strong>Physical</strong> (or Habit/Skill/Flaw). These display in separate sections on the character profile. Add a supporting quote as evidence — the Chapter/Page fields here are for where you noticed the trait; the Quote Ch./Page fields are for where the supporting quote comes from (often different).
   </div>
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #378ADD;">
-    <strong>Relationship</strong> — A connection between two characters. Slot A holds the role; Slot B receives it (e.g. Teacher→Student, Mother→Child). The reciprocal auto-saves on the other character. After adding several family relationships, tap <strong>🧬 Suggest family connections</strong> on the Characters tab to find cousins, grandparents, nieces/nephews you haven't logged yet.
+    <strong>Relationship</strong> — A connection between two characters. Slot A holds the role; Slot B receives it (e.g. Teacher→Student, Mother→Child). The reciprocal auto-saves on the other character. After adding several relationships, tap <strong>🧬 Suggest relationships</strong> on the Characters tab to find missing connections — family (cousins, grandparents, nieces/nephews), colleagues (shared employer), fellow students (shared mentor), and in-laws.
   </div>
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #D4537E;">
     <strong>Event</strong> — A significant story moment (death, betrayal, revelation, accident, etc.). Select event type(s) and significance level. Use <strong>Story date/when</strong> for story-internal time (e.g. "Summer 1923," "Day 12") — not the page number. Tag ALL affected characters so the event appears on each of their profiles.
@@ -4652,7 +4916,7 @@ function renderGuide(){
 
   <div style="margin-bottom:8px;"><strong>Log</strong> — All your entries. Filter by type (tap the chips at top) or by chapter. Tap any character badge to go to their profile. Tap any location badge to go to the Locations tab.</div>
   <div style="margin-bottom:8px;"><strong>Quotes</strong> — All quotes and dialogues, filterable by speaker or Narrator. Each card shows speaker (clickable), tone, page, and translation if added.</div>
-  <div style="margin-bottom:8px;"><strong>Characters</strong> — All character cards. Tap any to open their full profile: summary stats, collapsible sections for relationships/traits/quotes/events sorted by page. The <strong>🧬 Suggest family connections</strong> button analyzes your existing relationships and suggests missing family links.</div>
+  <div style="margin-bottom:8px;"><strong>Characters</strong> — All character cards. Tap any to open their full profile: summary stats, collapsible sections for relationships/traits/quotes/events sorted by page. The <strong>🧬 Suggest relationships</strong> button analyzes your existing relationships and suggests missing connections — family, colleagues, fellow students, in-laws.</div>
   <div style="margin-bottom:8px;"><strong>Rel. Web</strong> — Visual relationship diagram. Tap a node to open that character's profile. Filter by All / Family / Romantic / Social / Professional / Other. Deceased characters show 🪦.</div>
   <div style="margin-bottom:8px;"><strong>Timeline</strong> — Chronological view. Combines Timeline entries + Events, sorted by story date then chapter/page. Shows relative time offsets and color-coded significance.</div>
   <div style="margin-bottom:8px;"><strong>Locations</strong> — All logged places grouped as cards. Tap any location card to open its full profile: summary with map/research links, chapters mentioned, characters who appear there, and all entries grouped by type in collapsible sections.</div>
@@ -4778,16 +5042,59 @@ function suggestFamilyConnections(){
         });
       });
     });
+
+    // #245 — Rule 7: shared employer → colleagues
+    const myEmployers=rels.filter(r=>r.relType==='Employer'&&r.relB===name).map(r=>r.relA)
+      .concat(rels.filter(r=>r.relType==='Employee'&&r.relA===name).map(r=>r.relB));
+    chars.forEach(other=>{
+      if(other===name||hasRel(name,other))return;
+      const otherEmployers=rels.filter(r=>r.relType==='Employer'&&r.relB===other).map(r=>r.relA)
+        .concat(rels.filter(r=>r.relType==='Employee'&&r.relA===other).map(r=>r.relB));
+      const shared=myEmployers.filter(e=>otherEmployers.includes(e));
+      if(shared.length&&!suggestions.find(s=>s.type==='Colleague'&&((s.a===name&&s.b===other)||(s.a===other&&s.b===name)))){
+        suggestions.push({label:`${name} and ${other} both work for ${shared[0]} → Colleagues?`,a:name,b:other,type:'Colleague'});
+      }
+    });
+
+    // #245 — Rule 8: shared teacher/mentor → fellow students
+    const myTeachers=rels.filter(r=>(r.relType==='Teacher'||r.relType==='Mentor')&&r.relB===name).map(r=>r.relA)
+      .concat(rels.filter(r=>(r.relType==='Student'||r.relType==='Protégé')&&r.relA===name).map(r=>r.relB));
+    chars.forEach(other=>{
+      if(other===name||hasRel(name,other))return;
+      const otherTeachers=rels.filter(r=>(r.relType==='Teacher'||r.relType==='Mentor')&&r.relB===other).map(r=>r.relA)
+        .concat(rels.filter(r=>(r.relType==='Student'||r.relType==='Protégé')&&r.relA===other).map(r=>r.relB));
+      const shared=myTeachers.filter(t=>otherTeachers.includes(t));
+      if(shared.length&&!suggestions.find(s=>s.type==='Fellow student'&&((s.a===name&&s.b===other)||(s.a===other&&s.b===name)))){
+        suggestions.push({label:`${name} and ${other} share teacher/mentor ${shared[0]} → Fellow students?`,a:name,b:other,type:'Fellow student'});
+      }
+    });
+
+    // #245 — Rule 9: my sibling's spouse → my sibling-in-law
+    mySiblings.forEach(sib=>{
+      const sibSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===sib||r.relB===sib)).map(r=>r.relA===sib?r.relB:r.relA);
+      sibSpouses.forEach(sil=>{
+        if(sil!==name&&!hasRel(name,sil)){
+          suggestions.push({label:`${sib}'s spouse ${sil} → ${sil} is ${name}'s sibling-in-law?`,a:name,b:sil,type:'In-law'});
+        }
+      });
+    });
   });
 
-  // Rule 6: same last name → possibly related
+  // #268 — Rule 6 (refined): same last name + a shared connection → possibly related
+  // Only suggest when there's actual evidence beyond the surname coincidence.
   for(let i=0;i<chars.length;i++){
     for(let j=i+1;j<chars.length;j++){
       const a=chars[i],b=chars[j];
       if(hasRel(a,b))continue;
       const aLast=a.split(' ').slice(-1)[0];const bLast=b.split(' ').slice(-1)[0];
-      if(aLast.length>2&&aLast.toLowerCase()===bLast.toLowerCase()&&!suggestions.find(s=>(s.a===a&&s.b===b)||(s.a===b&&s.b===a))){
-        suggestions.push({label:`${a} and ${b} share the last name "${aLast}" — are they related?`,a,b,type:'sameName',isSameName:true});
+      if(aLast.length>2&&aLast.toLowerCase()===bLast.toLowerCase()){
+        // Require a shared 3rd-party connection (any relationship to a common character)
+        const aConnects=new Set(rels.filter(r=>r.relA===a||r.relB===a).map(r=>r.relA===a?r.relB:r.relA));
+        const bConnects=new Set(rels.filter(r=>r.relA===b||r.relB===b).map(r=>r.relA===b?r.relB:r.relA));
+        const sharedConnects=[...aConnects].filter(c=>bConnects.has(c));
+        if(sharedConnects.length&&!suggestions.find(s=>(s.a===a&&s.b===b)||(s.a===b&&s.b===a))){
+          suggestions.push({label:`${a} and ${b} share the last name "${aLast}" and both connect to ${sharedConnects[0]} — are they related?`,a,b,type:'sameName',isSameName:true});
+        }
       }
     }
   }
@@ -4796,7 +5103,7 @@ function suggestFamilyConnections(){
   const seen=new Set();
   const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
 
-  if(!unique.length){alert('No new family connections found based on existing relationships. Add more parent/sibling relationships first!');return;}
+  if(!unique.length){alert('No new connections found based on existing relationships. Add more parent/sibling/employer/teacher relationships first!');return;}
 
   const body=document.getElementById('fam-suggestions-body');
   body.innerHTML=unique.map((s,i)=>{
@@ -4848,10 +5155,40 @@ function suggestFamilyConnectionsForChar(charName){
   });
   mySiblings.forEach(sib=>{childrenOf(sib).forEach(nib=>{if(!hasRel(charName,nib))suggestions.push({label:`${sib}'s child ${nib} → ${nib} is ${charName}'s Niece/Nephew`,a:charName,b:nib,type:'Nibling (Niece/Nephew)'});});});
 
+  // #245 — shared employer → colleagues
+  const myEmployers=rels.filter(r=>r.relType==='Employer'&&r.relB===charName).map(r=>r.relA)
+    .concat(rels.filter(r=>r.relType==='Employee'&&r.relA===charName).map(r=>r.relB));
+  chars.forEach(other=>{
+    if(other===charName||hasRel(charName,other))return;
+    const otherEmployers=rels.filter(r=>r.relType==='Employer'&&r.relB===other).map(r=>r.relA)
+      .concat(rels.filter(r=>r.relType==='Employee'&&r.relA===other).map(r=>r.relB));
+    const shared=myEmployers.filter(e=>otherEmployers.includes(e));
+    if(shared.length)suggestions.push({label:`${charName} and ${other} both work for ${shared[0]} → Colleagues?`,a:charName,b:other,type:'Colleague'});
+  });
+
+  // #245 — shared teacher/mentor → fellow students
+  const myTeachers=rels.filter(r=>(r.relType==='Teacher'||r.relType==='Mentor')&&r.relB===charName).map(r=>r.relA)
+    .concat(rels.filter(r=>(r.relType==='Student'||r.relType==='Protégé')&&r.relA===charName).map(r=>r.relB));
+  chars.forEach(other=>{
+    if(other===charName||hasRel(charName,other))return;
+    const otherTeachers=rels.filter(r=>(r.relType==='Teacher'||r.relType==='Mentor')&&r.relB===other).map(r=>r.relA)
+      .concat(rels.filter(r=>(r.relType==='Student'||r.relType==='Protégé')&&r.relA===other).map(r=>r.relB));
+    const shared=myTeachers.filter(t=>otherTeachers.includes(t));
+    if(shared.length)suggestions.push({label:`${charName} and ${other} share teacher/mentor ${shared[0]} → Fellow students?`,a:charName,b:other,type:'Fellow student'});
+  });
+
+  // #245 — sibling's spouse → sibling-in-law
+  mySiblings.forEach(sib=>{
+    const sibSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===sib||r.relB===sib)).map(r=>r.relA===sib?r.relB:r.relA);
+    sibSpouses.forEach(sil=>{
+      if(sil!==charName&&!hasRel(charName,sil))suggestions.push({label:`${sib}'s spouse ${sil} → ${sil} is ${charName}'s sibling-in-law?`,a:charName,b:sil,type:'In-law'});
+    });
+  });
+
   const seen=new Set();
   const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
 
-  if(!unique.length){alert(`No new family connections found for ${charName} based on existing relationships.`);return;}
+  if(!unique.length){alert(`No new connections found for ${charName} based on existing relationships.`);return;}
   const body=document.getElementById('fam-suggestions-body');
   body.innerHTML=unique.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--cb);">
     <div style="flex:1;font-size:12px;">${s.label}</div>
@@ -5120,11 +5457,16 @@ load();renderLibrary();
 <div class="sheet-overlay" id="recycle-bin-overlay" onclick="mc('recycle-bin-overlay',event)">
   <div class="sheet" style="max-height:88vh;">
     <div class="sheet-topbar">
-      <div class="sheet-topbar-title">🗑 Recently deleted</div>
+      <div class="sheet-topbar-title">🗑 Recycle Bin</div>
       <button class="sheet-x" onclick="closeSheet('recycle-bin-overlay')">×</button>
     </div>
     <div class="sheet-inner" style="padding-bottom:24px;">
       <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Entries are kept for up to 50 deletes. Restore to bring them back, or delete forever.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
+        <span style="font-size:11px;color:var(--t2);font-weight:600;">Sort by:</span>
+        <button id="rb-sort-cat" class="btn btn-sm" onclick="setRecycleBinSort('category')" style="font-size:11px;padding:4px 10px;">Category</button>
+        <button id="rb-sort-recent" class="btn btn-sm" onclick="setRecycleBinSort('recent')" style="font-size:11px;padding:4px 10px;">Most recent</button>
+      </div>
       <div id="recycle-bin-body"></div>
     </div>
   </div>
@@ -5232,7 +5574,7 @@ load();renderLibrary();
 <div class="sheet-overlay" id="fam-suggestions-overlay" onclick="mc('fam-suggestions-overlay',event)">
   <div class="sheet">
     <div class="sheet-topbar">
-      <div class="sheet-topbar-title">🧬 Suggested family connections</div>
+      <div class="sheet-topbar-title">🧬 Suggested relationships</div>
       <button class="sheet-x" onclick="closeSheet('fam-suggestions-overlay')">×</button>
     </div>
     <div class="sheet-inner">
