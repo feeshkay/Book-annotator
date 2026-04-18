@@ -334,6 +334,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-back" id="char-back-btn"></button>
     <div class="topbar-title" id="char-screen-title"></div>
     <button class="btn-icon" id="char-edit-btn" style="font-size:12px;">Edit</button>
+    <button class="btn-icon" id="char-add-trait-btn" style="font-size:12px;">+ Trait</button>
     <button class="btn-icon" id="char-add-rel-btn" style="font-size:12px;">+ Rel</button>
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
@@ -559,6 +560,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="cdd-wrap" id="ae-speaker-cdd-wrap">
             <div class="cdd-input-row">
               <input type="text" class="cdd-input" id="ae-speaker-search" placeholder="Search or add speaker…" autocomplete="off" oninput="cddOpen('ae-speaker')" onclick="cddOpen('ae-speaker')"/>
+              <button type="button" class="btn btn-sm" onclick="cddClear('ae-speaker')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
               <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-speaker')" style="flex-shrink:0;">+ New</button>
             </div>
             <input type="hidden" id="ae-speaker"/>
@@ -618,6 +620,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="cdd-wrap" id="ae-word-speaker-cdd-wrap">
           <div class="cdd-input-row">
             <input type="text" class="cdd-input" id="ae-word-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-word-speaker')" onclick="cddOpen('ae-word-speaker')"/>
+            <button type="button" class="btn btn-sm" onclick="cddClear('ae-word-speaker')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
             <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-word-speaker')" style="flex-shrink:0;">+ New</button>
           </div>
           <input type="hidden" id="ae-word-speaker"/>
@@ -741,6 +744,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="cdd-wrap" id="ae-rela-cdd-wrap">
             <div class="cdd-input-row">
               <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
+              <button type="button" class="btn btn-sm" onclick="cddClear('ae-rela')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
             </div>
             <input type="hidden" id="ae-rela"/>
             <div class="cdd-list" id="ae-rela-list"></div>
@@ -750,6 +754,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="cdd-wrap" id="ae-relb-cdd-wrap">
             <div class="cdd-input-row">
               <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-relb')" onclick="cddOpen('ae-relb')"/>
+              <button type="button" class="btn btn-sm" onclick="cddClear('ae-relb')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
               <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-relb')" style="flex-shrink:0;">+ New</button>
             </div>
             <input type="hidden" id="ae-relb"/>
@@ -810,6 +815,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <div id="ae-loc-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
             <input type="hidden" id="ae-loc-sel"/>
           </div>
+          <button class="btn btn-sm" onclick="document.getElementById('ae-loc-sel').value='';document.getElementById('ae-loc-search').value='';" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
           <button class="btn btn-sm" onclick="showQuickAddLoc()" style="flex-shrink:0;">+ New</button>
         </div>
         <div id="ae-quick-loc" style="display:none;margin-top:6px;background:var(--bg2);border-radius:var(--r);padding:10px;border:0.5px solid var(--am);">
@@ -889,7 +895,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <!-- SYNTH TIMER -->
     <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
-      <div style="font-size:11px;font-weight:700;color:#1D9E75;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">✏️ Synthesizing time</div>
+      <div style="font-size:11px;font-weight:700;color:#1D9E75;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">📝 Synthesizing time</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <div id="timer-synth-display" style="font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;min-width:80px;">00:00</div>
         <div style="display:flex;gap:6px;">
@@ -1331,8 +1337,8 @@ function cddChoose(prefix,value){
     if(!cddMultiValues[prefix].includes(value))cddMultiValues[prefix].push(value);
     cddRenderChips(prefix);
     const searchEl=document.getElementById(prefix+'-search');
-    if(searchEl)searchEl.value='';
-    cddOpen(prefix); // multi: re-open so user can pick more
+    if(searchEl){searchEl.value='';searchEl.placeholder='＋ Add another character…';}
+    cddClose(prefix); // close after pick — user taps again to add more
   }else{
     document.getElementById(prefix).value=value;
     const searchEl=document.getElementById(prefix+'-search');
@@ -1362,7 +1368,7 @@ function cddSet(prefix,valueOrValues){
     cddMultiValues[prefix]=[...(valueOrValues||[])].filter(Boolean);
     cddRenderChips(prefix);
     const searchEl=document.getElementById(prefix+'-search');
-    if(searchEl)searchEl.value='';
+    if(searchEl){searchEl.value='';searchEl.placeholder=cddMultiValues[prefix].length?'＋ Add another character…':'Search or add character…';}
   }else{
     const v=valueOrValues||'';
     document.getElementById(prefix).value=v;
@@ -2426,11 +2432,22 @@ function submitEntry(){
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
     entry.relB=document.getElementById('ae-relb').value;
-    // Feature 4: gender inference from relationship type
+    // Gender inference from relationship type — Char A only (no auto-flip for B)
     const inferredGender=REL_GENDER_MAP[entry.relType];
     if(inferredGender&&entry.relA){
       const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relA);
       if(aEntry&&!aEntry.gender)aEntry.gender=inferredGender;
+    }
+    // Char B: offer reciprocal gender with a confirmation so same-sex/non-binary couples work
+    if(entry.relB){
+      const bEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relB);
+      if(bEntry&&!bEntry.gender){
+        const recipType=RECIPROCAL[entry.relType];
+        const recipGender=recipType?REL_GENDER_MAP[recipType]:null;
+        if(recipGender){
+          if(confirm(`Set ${entry.relB}'s gender to ${recipGender}?\n(Tap Cancel for same-sex or non-binary couples.)`))bEntry.gender=recipGender;
+        }
+      }
     }
     if(!editId&&entry.relA&&entry.relB){
       const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===entry.relA&&e.relB===entry.relB)||(e.relA===entry.relB&&e.relB===entry.relA)));
@@ -2456,16 +2473,31 @@ function submitEntry(){
   // Gender-aware: rename gender-neutral relationship labels when gender is known
   if(isChar&&entry.gender){
     const gMap={
-      'Male':{'Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew','Parent':'Father','Grandparent':'Grandfather','Sibling':'Brother'},
-      'Female':{'Uncle or Aunt':'Aunt','Niece or Nephew':'Niece','Parent':'Mother','Grandparent':'Grandmother','Sibling':'Sister'},
-      'Transgender male':{'Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew','Parent':'Father','Grandparent':'Grandfather'},
-      'Transgender female':{'Uncle or Aunt':'Aunt','Niece or Nephew':'Niece','Parent':'Mother','Grandparent':'Grandmother'},
+      'Male':{'Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew','Parent':'Father','Grandparent':'Grandfather','Sibling':'Brother','Child':'Son','Spouse':'Husband'},
+      'Female':{'Uncle or Aunt':'Aunt','Niece or Nephew':'Niece','Parent':'Mother','Grandparent':'Grandmother','Sibling':'Sister','Child':'Daughter','Spouse':'Wife'},
+      'Transgender male':{'Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew','Parent':'Father','Grandparent':'Grandfather','Child':'Son'},
+      'Transgender female':{'Uncle or Aunt':'Aunt','Niece or Nephew':'Niece','Parent':'Mother','Grandparent':'Grandmother','Child':'Daughter'},
     };
     const renames=gMap[entry.gender];
     if(renames){
-      entries().filter(e=>e.type==='Relationship'&&e.relA===cn).forEach(rel=>{
-        if(renames[rel.relType])rel.relType=renames[rel.relType];
-      });
+      // Auto-rename on new character saves
+      if(!editId){
+        entries().filter(e=>e.type==='Relationship'&&e.relA===cn).forEach(rel=>{
+          if(renames[rel.relType])rel.relType=renames[rel.relType];
+        });
+      } else {
+        // Editing existing character: check if gender changed, offer to upgrade ungendered terms
+        const upgradeable=entries().filter(e=>e.type==='Relationship'&&(e.relA===cn||e.relB===cn)&&(renames[e.relType]||(e.relA===cn?false:renames[RECIPROCAL[e.relType]])));
+        if(upgradeable.length){
+          const examples=upgradeable.slice(0,3).map(e=>e.relType).join(', ');
+          if(confirm(`Update ${upgradeable.length} relationship label${upgradeable.length>1?'s':''} to gendered terms? (e.g. "${examples}")`)){
+            upgradeable.forEach(rel=>{
+              if(rel.relA===cn&&renames[rel.relType])rel.relType=renames[rel.relType];
+              else{const recip=RECIPROCAL[rel.relType];if(recip&&renames[recip]){/* relB perspective label shown via RECIPROCAL — relType stays as-is from A's view */}}
+            });
+          }
+        }
+      }
     }
   }
 
@@ -2549,12 +2581,22 @@ function deleteEntry(id){
     if(taggedOnly.length)lines.push(`• ${taggedOnly.length} entr${taggedOnly.length>1?'ies':'y'} where they're tagged → kept with ⚠️ marker`);
     if(lines.length)msg+='\n\nThis will also affect:\n'+lines.join('\n');
     if(!confirm(msg))return;
-    // Move all owned entries to recycle bin
+    // Move all owned entries to recycle bin (all share same ts so cascade restore works)
     toDelete.forEach(r=>{getRecycleBin().unshift({...r,deletedAt:ts});});
     book().entries=book().entries.filter(x=>!toDelete.some(r=>r.id===x.id));
+    // Move character itself to bin with same ts before the outer unshift runs
+    getRecycleBin().unshift({...e,deletedAt:ts});
+    book().recycleBin=getRecycleBin().slice(0,200);
+    book().entries=book().entries.filter(x=>x.id!==e.id);
     // Mark ⚠️ on taggedOnly entries (stored in book().deletedChars)
     if(!book().deletedChars)book().deletedChars={};
     book().deletedChars[name]=ts;
+    save();renderAll();
+    if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
+      if((e.cn||e.content)===currentCharName)show('book-screen','char-screen');
+      else renderCharDetail(currentCharName);
+    }
+    return; // early return — character already in bin, don't fall through
   } else {
     if(!confirm('Delete this entry?'))return;
   }
@@ -2563,7 +2605,6 @@ function deleteEntry(id){
   book().entries=book().entries.filter(x=>x.id!==id);
   save();renderAll();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
-    // If we just deleted the character we're looking at, go back
     if(CT.includes(e.type)&&(e.cn||e.content)===currentCharName){show('book-screen','char-screen');}
     else renderCharDetail(currentCharName);
   }
@@ -2930,6 +2971,13 @@ function openCharDetail(name,fromWeb){
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
+  document.getElementById('char-add-trait-btn').onclick=()=>{
+    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+    document.getElementById('ae-sheet-title').textContent='Add trait for '+name;
+    document.getElementById('ae-type').value='Characteristic';onTypeChange();
+    setTimeout(()=>cddSet('ae-inv',[name]),80);
+    openSheet('ae-overlay');
+  };
   document.getElementById('char-add-rel-btn').onclick=()=>{
     buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
     document.getElementById('ae-sheet-title').textContent='Add relationship for '+name;
@@ -2938,6 +2986,7 @@ function openCharDetail(name,fromWeb){
     openSheet('ae-overlay');
   };
   renderCharDetail(name);show('char-screen','book-screen');
+  const cb=document.getElementById('char-body');if(cb)cb.scrollTop=0;
 }
 
 function renderCharDetail(name){
@@ -3002,8 +3051,16 @@ function renderCharDetail(name){
     +sortByPage(rels).map(r=>{
       const other=r.relA===name?r.relB:r.relA;
       const isA=r.relA===name;
-      // Show from this char's perspective: "Other's teacher" or "Other's student"
-      const relLabel=isA?r.relType:(RECIPROCAL[r.relType]||r.relType);const relEmojiStr=relEmoji(relLabel);
+      // Show from this char's perspective with gender-aware reciprocal labels (#214)
+      let relLabel=isA?r.relType:(RECIPROCAL[r.relType]||r.relType);
+      // If we're Char B, try to use current char's gender to pick gendered reciprocal
+      if(!isA){
+        const myEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);
+        const myGender=myEntry?.gender;
+        const gRecip={'Male':{'Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew','Parent':'Father','Grandparent':'Grandfather','Sibling':'Brother','Child':'Son','Spouse':'Husband'},'Female':{'Uncle or Aunt':'Aunt','Niece or Nephew':'Niece','Parent':'Mother','Grandparent':'Grandmother','Sibling':'Sister','Child':'Daughter','Spouse':'Wife'}};
+        if(myGender&&gRecip[myGender]&&gRecip[myGender][relLabel])relLabel=gRecip[myGender][relLabel];
+      }
+      const relEmojiStr=relEmoji(relLabel);
       const oc=getCC(other);
       // Format as "Other's [relationship]" for clarity
       const relDisplay=relLabel?`${relEmojiStr} ${other}'s <strong>${relLabel.toLowerCase()}</strong>`:'';
@@ -4010,9 +4067,9 @@ function renderStats(){
     const pg=+s.pEnd-(+s.pStart||0);
     const hasSplit=s.readMinutes!=null||s.synthMinutes!=null;
     const timeStr=hasSplit
-      ? [s.readMinutes?`📖 ${s.readMinutes}m`:'',s.synthMinutes?`✏️ ${s.synthMinutes}m`:''].filter(Boolean).join(' · ')
+      ? [s.readMinutes?`📖 ${s.readMinutes}m`:'',s.synthMinutes?`📝 ${s.synthMinutes}m`:''].filter(Boolean).join(' · ')
       : s.minutes?`${s.minutes} min`:'';
-    const modeLabel=hasSplit?(+s.readMinutes>0&&+s.synthMinutes>0?'📖 + ✏️ Both':(+s.synthMinutes>0?'✏️ Synthesizing':'📖 Reading')):(s.mode==='synth'?'✏️ Synthesize only':s.mode==='both'?'📖 + ✏️ Both':'📖 Reading');
+    const modeLabel=hasSplit?(+s.readMinutes>0&&+s.synthMinutes>0?'📖 + 📝 Both':(+s.synthMinutes>0?'📝 Synthesizing':'📖 Reading')):(s.mode==='synth'?'📝 Synthesize only':s.mode==='both'?'📖 + 📝 Both':'📖 Reading');
     return`<div class="session-card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;font-weight:600;">${fmt(s.date)}</span>
@@ -4046,7 +4103,7 @@ function updateTimerPill(){
     pill.style.display='';pill.textContent='📖 '+fmtTimer(readTimerSeconds);
     pill.style.background='var(--al)';pill.style.color='var(--accent)';pill.style.borderColor='var(--am)';
   }else if(synthTimerRunning){
-    pill.style.display='';pill.textContent='✏️ '+fmtTimer(synthTimerSeconds);
+    pill.style.display='';pill.textContent='📝 '+fmtTimer(synthTimerSeconds);
     pill.style.background='#E1F5EE';pill.style.color='#0F6E56';pill.style.borderColor='#0F6E56';
   }else if(readTimerSeconds>0||synthTimerSeconds>0){
     // Paused but has time accumulated
@@ -4167,9 +4224,11 @@ function editSession(idx){
   const sMin=s.synthMinutes!=null?s.synthMinutes:(s.mode==='synth'?s.minutes:0)||0;
   document.getElementById('timer-read-min').value=rMin||'';
   document.getElementById('timer-synth-min').value=sMin||'';
-  // Show saved times in the display so user can see what's already logged
-  const rd=document.getElementById('timer-read-display');if(rd)rd.textContent=fmtTimer(rMin*60);
-  const sd=document.getElementById('timer-synth-display');if(sd)sd.textContent=fmtTimer(sMin*60);
+  // Restore exact seconds so display shows precise saved time
+  readTimerSeconds=s.readSeconds!=null?s.readSeconds:rMin*60;
+  synthTimerSeconds=s.synthSeconds!=null?s.synthSeconds:sMin*60;
+  const rd=document.getElementById('timer-read-display');if(rd)rd.textContent=fmtTimer(readTimerSeconds);
+  const sd=document.getElementById('timer-synth-display');if(sd)sd.textContent=fmtTimer(synthTimerSeconds);
   openSheet('timer-overlay');
 }
 
@@ -4178,6 +4237,7 @@ function saveSession(){
   const editIdx=document.getElementById('timer-edit-idx').value;
   const pStart=document.getElementById('timer-pg-start').value;
   const pEnd=document.getElementById('timer-pg-end').value;
+  if(!pStart||!pEnd){alert('Please enter a start page and end page before saving.');return;}
   const date=document.getElementById('timer-date').value||localDate();
 
   // Reading minutes: manual field wins, else timer
@@ -4194,7 +4254,7 @@ function saveSession(){
   const synthesized=synthMinutes>0?'yes':'no';
 
   if(!book().sessions)book().sessions=[];
-  const sessionData={date,pStart,pEnd,minutes:totalMinutes,readMinutes,synthMinutes,synthesized,mode};
+  const sessionData={date,pStart,pEnd,minutes:totalMinutes,readMinutes,synthMinutes,readSeconds:readTimerSeconds,synthSeconds:synthTimerSeconds,synthesized,mode};
   if(editIdx!==''){
     book().sessions[+editIdx]=sessionData;
   } else {
