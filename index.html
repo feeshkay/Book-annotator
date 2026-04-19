@@ -3797,6 +3797,13 @@ function renderCharDetail(name){
     }).join('')+`</div></div>`;
   }
   // Themes — always show header (Add Theme)
+  // #191-A — DEFAULT "both": each theme card shows ALL its supporting quotes nested underneath
+  //   (speaker's quotes highlighted). Those same quotes also continue to surface in the Quotes
+  //   section above (unchanged).
+  const themesForChar=all.filter(e=>e.type==='Theme'&&(
+    (e.involved||[]).includes(name) ||
+    (e.themeQuotes||[]).some(q=>q.speaker===name)
+  ));
   html+=`<div class="csec">${secHdr('char-themes','Themes',themesForChar.length,'Theme','Theme')}<div id="char-themes">`;
   if(themesForChar.length){
     html+=sortByPage(themesForChar).map(th=>{
