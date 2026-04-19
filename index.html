@@ -118,7 +118,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .chip{white-space:nowrap;font-size:11px;font-weight:500;padding:5px 11px;border-radius:20px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--t2);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
 .chip.active{background:var(--al);color:var(--accent);border-color:var(--am);}
 /* char */
-.clcard{border-radius:var(--rl2);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:7px;cursor:pointer;display:flex;align-items:center;gap:10px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.clcard{border-radius:var(--rl2);border:0.5px solid var(--cb);padding:11px 13px;margin-bottom:7px;cursor:pointer;display:flex;align-items:center;gap:10px;}
 .clcard:active{opacity:0.7;}
 .avatar{border-radius:50%;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
 /* char detail */
@@ -3526,7 +3526,7 @@ function ecHTML(e,compact,fromTab){
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
 }
-function esc(s){return(s||'').replace(/'/g,"&#39;");}
+function esc(s){return(s||'').replace(/'/g,"\\'");}
 
 // ═══════════════════════════════════════════════════════════════
 // QUOTES TAB
@@ -3610,34 +3610,44 @@ function renderChars(){
   const chars=entries().filter(e=>CT.includes(e.type));
   if(!chars.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
+  // #304 — use data attributes + delegated click handler; avoids all string-escape pitfalls with names containing quotes/apostrophes/&
+  const escAttr=s=>(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const escText=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   list.innerHTML=chars.map(c=>{
     const name=c.cn||c.content;const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const ph=c.photo?`<img src="${c.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
+    const ph=c.photo?`<img src="${escAttr(c.photo)}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
     const roleLabel={main:'Main',side:'Side',minor:'Minor/Unnamed',stranger:'Stranger',antagonist:'Antagonist',narrator:'Narrator'}[c.charRole||'']||'';
     const charRels=entries().filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
     const relCount=charRels.length;
-    // Relationship emoji summary — show up to 5 distinct emojis for this character's relationships
     const relEmojis=[...new Set(charRels.map(r=>{
-      // From this character's perspective: if they're A, use relType; if B, use reciprocal
       const t=(r.relA===name)?r.relType:(RECIPROCAL[r.relType]||r.relType);
       return relEmoji(t);
     }))].slice(0,5);
     const relEmojiRow=relEmojis.length?`<div style="margin-top:3px;font-size:14px;line-height:1;">${relEmojis.join(' ')}</div>`:'';
-    return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;cursor:pointer;" onclick="openCharDetail('${esc(name)}',false)">
+    return `<div class="clcard char-list-card" data-char-name="${escAttr(name)}" data-char-id="${c.id}" style="background:${col.bg};border-color:${col.stroke}44;cursor:pointer;">
       <div class="avatar" style="width:42px;height:42px;font-size:13px;background:${col.stroke}28;color:${col.text};">${ph||ini}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${name}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${c.nickname})</span>`:''}</div>
-        <div style="font-size:10px;color:var(--t2);">${roleLabel}${c.gender?' · '+c.gender:''}${c.charIntro?' · intro '+c.charIntro:''}${relCount?' · '+relCount+' rel'+( relCount!==1?'s':''):''}</div>
+        <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${escText(name)}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${escText(c.nickname)})</span>`:''}</div>
+        <div style="font-size:10px;color:var(--t2);">${roleLabel}${c.gender?' · '+c.gender:''}${c.charIntro?' · intro '+escText(c.charIntro):''}${relCount?' · '+relCount+' rel'+( relCount!==1?'s':''):''}</div>
         ${relEmojiRow}
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
-        <button class="btn-edit" onclick="event.stopPropagation();editEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Edit</button>
-        <button class="btn-del" onclick="event.stopPropagation();deleteEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Delete</button>
-        <span style="color:var(--accent);font-size:18px;padding:0 6px;cursor:pointer;font-weight:700;">›</span>
+        <button class="btn-edit char-list-edit" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;">Edit</button>
+        <button class="btn-del char-list-del" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;">Delete</button>
+        <span style="color:var(--accent);font-size:18px;padding:0 6px;font-weight:700;">›</span>
       </div>
     </div>`;
   }).join('');
+  // Delegated handler — runs for any tap inside the list
+  list.onclick=function(e){
+    const editBtn=e.target.closest('.char-list-edit');
+    if(editBtn){e.stopPropagation();editEntry(+editBtn.getAttribute('data-char-id'));return;}
+    const delBtn=e.target.closest('.char-list-del');
+    if(delBtn){e.stopPropagation();deleteEntry(+delBtn.getAttribute('data-char-id'));return;}
+    const card=e.target.closest('.char-list-card');
+    if(card){const nm=card.getAttribute('data-char-name');if(nm)openCharDetail(nm,false);}
+  };
 }
 
 function openCharDetail(name,fromWeb){
@@ -3840,7 +3850,6 @@ function renderCharDetail(name){
   const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Timeline','Date/Period','Clue','Red herring','Question','Theme',...CT].includes(e.type)&&e.involved?.includes(name));
   const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
   const clues=all.filter(e=>['Clue','Red herring'].includes(e.type)&&e.involved?.includes(name));
-  const themesForChar=all.filter(e=>e.type==='Theme'&&e.involved?.includes(name));
 
   // Questions — always show header (Add Question)
   html+=`<div class="csec">${secHdr('char-qq','Questions',questions.length,'Question','Question')}<div id="char-qq">`;
