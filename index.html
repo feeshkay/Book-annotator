@@ -3624,17 +3624,17 @@ function renderChars(){
       return relEmoji(t);
     }))].slice(0,5);
     const relEmojiRow=relEmojis.length?`<div style="margin-top:3px;font-size:14px;line-height:1;">${relEmojis.join(' ')}</div>`:'';
-    return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;" onclick="openCharDetail('${esc(name)}',false)">
+    return `<div class="clcard" style="background:${col.bg};border-color:${col.stroke}44;cursor:pointer;" onclick="openCharDetail('${esc(name)}',false)">
       <div class="avatar" style="width:42px;height:42px;font-size:13px;background:${col.stroke}28;color:${col.text};">${ph||ini}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${name}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${c.nickname})</span>`:''}</div>
         <div style="font-size:10px;color:var(--t2);">${roleLabel}${c.gender?' · '+c.gender:''}${c.charIntro?' · intro '+c.charIntro:''}${relCount?' · '+relCount+' rel'+( relCount!==1?'s':''):''}</div>
         ${relEmojiRow}
       </div>
-      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;" onclick="event.stopPropagation()">
-        <button class="btn-edit" onclick="editEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Edit</button>
-        <button class="btn-del" onclick="deleteEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Delete</button>
-        <span style="color:var(--t3);font-size:14px;padding:0 2px;cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(name)}',false)">›</span>
+      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+        <button class="btn-edit" onclick="event.stopPropagation();editEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Edit</button>
+        <button class="btn-del" onclick="event.stopPropagation();deleteEntry(${c.id})" style="font-size:11px;padding:3px 8px;">Delete</button>
+        <span style="color:var(--accent);font-size:18px;padding:0 6px;cursor:pointer;font-weight:700;">›</span>
       </div>
     </div>`;
   }).join('');
