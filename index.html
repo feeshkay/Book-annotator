@@ -466,7 +466,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;padding-right:48px;padding-left:32px;">Add annotation</div>
       <div class="fg" style="margin-bottom:8px;"><label>What is this?</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <select id="ae-type" onchange="onTypeChange()" style="flex:1;"></select>
+          <select id="ae-type" onchange="onTypeChangeGuarded(this)" style="flex:1;"></select>
           <button type="button" onclick="showTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Show entry description">?</button>
         </div>
       </div>
@@ -755,28 +755,26 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <optgroup label="Professional"><option>Business partner</option><option>Colleague</option><option>Commander</option><option>Employee</option><option>Employer</option><option>Master</option><option>Servant</option><option>Student</option><option>Subordinate</option><option>Teacher</option></optgroup>
         <optgroup label="Other"><option>Complicated</option><option>Unknown</option></optgroup>
       </select></div>
-      <div class="r2">
-        <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
-          <div class="cdd-wrap" id="ae-rela-cdd-wrap">
-            <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
-              <button type="button" class="btn btn-sm" onclick="cddClear('ae-rela')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
-              <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-rela')" style="flex-shrink:0;">+ New</button>
-            </div>
-            <input type="hidden" id="ae-rela"/>
-            <div class="cdd-list" id="ae-rela-list"></div>
+      <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
+        <div class="cdd-wrap" id="ae-rela-cdd-wrap">
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-rela-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-rela')" onclick="cddOpen('ae-rela')"/>
+            <button type="button" class="btn btn-sm" onclick="cddClear('ae-rela')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-rela')" style="flex-shrink:0;">+ New</button>
           </div>
+          <input type="hidden" id="ae-rela"/>
+          <div class="cdd-list" id="ae-rela-list"></div>
         </div>
-        <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label>
-          <div class="cdd-wrap" id="ae-relb-cdd-wrap">
-            <div class="cdd-input-row">
-              <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-relb')" onclick="cddOpen('ae-relb')"/>
-              <button type="button" class="btn btn-sm" onclick="cddClear('ae-relb')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
-              <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-relb')" style="flex-shrink:0;">+ New</button>
-            </div>
-            <input type="hidden" id="ae-relb"/>
-            <div class="cdd-list" id="ae-relb-list"></div>
+      </div>
+      <div class="fg"><label>Character B <span style="font-weight:400;">(other char)</span></label>
+        <div class="cdd-wrap" id="ae-relb-cdd-wrap">
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-relb-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-relb')" onclick="cddOpen('ae-relb')"/>
+            <button type="button" class="btn btn-sm" onclick="cddClear('ae-relb')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-relb')" style="flex-shrink:0;">+ New</button>
           </div>
+          <input type="hidden" id="ae-relb"/>
+          <div class="cdd-list" id="ae-relb-list"></div>
         </div>
       </div>
       <div id="ae-rel-existing-warn" style="display:none;font-size:12px;color:#7F4F24;background:#FEF0D4;border-radius:var(--r);padding:8px 10px;margin-bottom:8px;border:0.5px solid #E8853C;"></div>
@@ -1858,34 +1856,68 @@ function forceTab(t){
 function addQuickRelRow(relType,charName){
   const list=document.getElementById('ae-quick-rels-list');
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  const row=document.createElement('div');row.className='r2';row.style.marginBottom='7px';
+  const rowId='qr-'+Date.now()+'-'+Math.floor(Math.random()*9999);
+  const row=document.createElement('div');row.className='r2';row.style.marginBottom='7px';row.dataset.qrId=rowId;
   row.innerHTML=`<div class="fg" style="margin-bottom:0"><select class="qr-type">${buildRelTypeOpts(relType||'')}</select></div>
     <div style="display:flex;gap:5px;align-items:center;">
-      <div class="fg" style="flex:1;margin-bottom:0"><select class="qr-char"><option value="">— select char —</option>${chars.map(c=>`<option${charName&&c===charName?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="fg" style="flex:1;margin-bottom:0;position:relative;">
+        <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:14px;"/>
+        <input type="hidden" class="qr-char" value="${charName||''}"/>
+        <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      </div>
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="flex-shrink:0;padding:0 8px;font-size:11px;">+ New</button>
       <button onclick="this.closest('.r2').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 4px;">×</button>
     </div>`;
   list.appendChild(row);
-  row.querySelectorAll('select').forEach(s=>s.addEventListener('change',checkSuggestions));
+  row.querySelector('.qr-type').addEventListener('change',checkSuggestions);
+}
+function qrCharFilter(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const input=row.querySelector('.qr-char-search');
+  const hidden=row.querySelector('.qr-char');
+  const list=row.querySelector('.qr-char-list');
+  const q=(input.value||'').toLowerCase().trim();
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const matches=q?chars.filter(c=>c.toLowerCase().includes(q)):chars;
+  // Keep hidden value in sync only when input matches an existing char exactly; otherwise clear
+  const exact=chars.find(c=>c.toLowerCase()===q);
+  hidden.value=exact||'';
+  if(!matches.length){list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — tap "+ New" to create.</div>`;}
+  else{list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c}</div>`).join('');}
+  list.style.display='block';
+}
+function qrCharPick(rowId,name){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  row.querySelector('.qr-char-search').value=name;
+  row.querySelector('.qr-char').value=name;
+  row.querySelector('.qr-char-list').style.display='none';
+  checkSuggestions();
+}
+// Close any open qr-char-list when clicking outside
+if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
+  document.addEventListener('click',function(ev){
+    document.querySelectorAll('.qr-char-list').forEach(l=>{
+      if(!l.parentElement.contains(ev.target))l.style.display='none';
+    });
+  },true);
+  window._qrGlobalCloseAttached=true;
 }
 function quickRelNewChar(btn){
   const row=btn.closest('.r2');if(!row||!currentId)return;
-  const name=(prompt('New character name:')||'').trim();if(!name)return;
+  const searchInput=row.querySelector('.qr-char-search');
+  const seedName=(searchInput?.value||'').trim();
+  let name=seedName;
+  if(!name){name=(prompt('New character name:')||'').trim();}
+  if(!name)return;
   // Create if not exists
   if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
     book().entries.unshift(entry);getCC(name);save();
   }
-  // Refresh ALL quick-rel rows so the new char appears in every dropdown
-  const allRows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
-  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  allRows.forEach(r=>{
-    const sel=r.querySelector('.qr-char');
-    const cur=sel.value;
-    sel.innerHTML=`<option value="">— select char —</option>`+allChars.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
-  });
-  // Select new name in THIS row
+  // Set this row's value
+  row.querySelector('.qr-char-search').value=name;
   row.querySelector('.qr-char').value=name;
+  const list=row.querySelector('.qr-char-list');if(list)list.style.display='none';
   checkSuggestions();
 }
 function buildRelTypeOpts(sel){
@@ -2009,6 +2041,21 @@ function showTypeHint(){
     <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${hint.desc}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
     <button onclick="document.getElementById('ae-type-hint').style.display='none'" style="background:transparent;border:none;color:var(--accent);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;cursor:pointer;touch-action:manipulation;">×</button>
   </div>`;
+}
+function onTypeChangeGuarded(sel){
+  // #271 — fail-safe: if user is editing an existing entry and changes the type,
+  // show a confirmation describing what's saved so they don't accidentally overwrite.
+  const editId=document.getElementById('ae-edit-id').value;
+  if(!editId){onTypeChange();return;}
+  const e=entries().find(x=>String(x.id)===String(editId));
+  if(!e){onTypeChange();return;}
+  const newType=sel.value;
+  if(e.type===newType){onTypeChange();return;}
+  // Build a brief description of what's saved
+  const lbl=e.cn||e.content||'(no title)';
+  const desc=`You're EDITING an existing ${e.type} entry:\n\n  "${lbl}"\n\nChanging the type to "${newType}" will convert this entry — many ${e.type}-specific fields will be lost.\n\nIf you meant to ADD a new entry, cancel this and tap the + button instead.\n\nContinue changing the type?`;
+  if(confirm(desc)){onTypeChange();}
+  else{sel.value=e.type;onTypeChange();}
 }
 function onTypeChange(){
   if(!currentId)return;
@@ -5103,7 +5150,7 @@ function suggestFamilyConnections(){
   const seen=new Set();
   const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
 
-  if(!unique.length){alert('No new connections found based on existing relationships. Add more parent/sibling/employer/teacher relationships first!');return;}
+  if(!unique.length){alert('No new connections found.\n\nThis feature suggests connections by inferring from existing relationships you\'ve added. To get suggestions, try adding more of these first:\n\n• Family — Mother/Father/Parent/Sibling links between characters (then it suggests cousins, grandparents, aunts/uncles, in-laws)\n• Professional — Employer/Employee or Teacher/Student links (then it suggests colleagues and fellow students)\n• Same last name — characters that share a last name AND share a 3rd-party connection are flagged as possibly related');return;}
 
   const body=document.getElementById('fam-suggestions-body');
   body.innerHTML=unique.map((s,i)=>{
@@ -5348,6 +5395,29 @@ function captureReportContext(){
   if(typeof currentLocName!=='undefined'&&currentLocName&&document.getElementById('loc-screen')?.classList.contains('active'))ctx.location=currentLocName;
   return ctx;
 }
+function logTestResult(result){
+  const numEl=document.getElementById('test-ticket-num');
+  const noteEl=document.getElementById('test-ticket-note');
+  const num=(numEl.value||'').trim();
+  if(!num){alert('Please enter a ticket # to test.');return;}
+  const note=(noteEl.value||'').trim();
+  const reports=getReports();
+  reports.push({
+    num:_nextReportNum(),
+    type:'test',
+    testTarget:num,
+    testResult:result,// 'pass' or 'fail'
+    priority:'normal',
+    title:`Test #${num} — ${result==='pass'?'✅ works':'⚠️ needs fixes'}`,
+    body:note,
+    context:captureReportContext(),
+    timestamp:Date.now(),
+    dateStr:new Date().toLocaleString()
+  });
+  saveReports(reports);
+  numEl.value='';noteEl.value='';
+  renderReportList();
+}
 function openReportIssue(){
   document.getElementById('report-type').value='bug';
   document.getElementById('report-title').value='';
@@ -5391,7 +5461,7 @@ function renderReportList(){
   const list=document.getElementById('report-list');
   if(!list)return;
   if(!reports.length){list.innerHTML='<div style="color:var(--t3);font-style:italic;padding:8px 0;">No reports yet.</div>';return;}
-  const typeIcon={bug:'🐛',feature:'💡',change:'🔧',question:'❓'};
+  const typeIcon={bug:'🐛',feature:'💡',change:'🔧',question:'❓',test:'🧪'};
   const priIcon={top:'🔥 ',normal:'',low:'· '};
   list.innerHTML=reports.slice().reverse().map(r=>{
     const ctx=r.context||{};
@@ -5417,23 +5487,37 @@ function deleteReport(num){
 function copyAllReports(){
   const reports=getReports();
   if(!reports.length){alert('No reports to copy.');return;}
-  const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION'};
+  const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
   const priLabel={top:'🔥 TOP PRIORITY',normal:'',low:'low priority'};
-  let out=`This is a batch of ${reports.length} update${reports.length===1?'':'s'}. I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below. Use this to draft something I can copy and paste into my next session that will include adding these to my tracker, my new requests/changes, the suggested order of operations, and the most recent files I should submit so we can pick up exactly where we left off — making the most bang for my buck energy-wise per session.\n\n`;
-  out+='═══ REPORTS ═══\n\n';
-  reports.forEach(r=>{
-    const ctx=r.context||{};
-    const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
-    out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' — ':''}${r.title}\n`;
-    if(r.body)out+=`   ${r.body}\n`;
-    if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
-    out+=`   🕐 ${r.dateStr}\n\n`;
-  });
+  const tests=reports.filter(r=>r.type==='test');
+  const others=reports.filter(r=>r.type!=='test');
+  let out=`This is a batch of ${reports.length} update${reports.length===1?'':'s'} (${tests.length} test result${tests.length===1?'':'s'} + ${others.length} request${others.length===1?'':'s'}). I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below. Use this to draft something I can copy and paste into my next session that will include adding these to my tracker, my new requests/changes, the suggested order of operations, and the most recent files I should submit so we can pick up exactly where we left off — making the most bang for my buck energy-wise per session.\n\n`;
+  if(tests.length){
+    out+='═══ TEST RESULTS ═══\n';
+    out+='(These are MY test results on existing tickets. The number after "Test #" is the tracker # being tested — match it to the existing tracker row, do NOT renumber these as new tickets.)\n\n';
+    tests.forEach(r=>{
+      const sym=r.testResult==='pass'?'✅':'⚠️';
+      out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
+    });
+    out+='\n';
+  }
+  if(others.length){
+    out+='═══ NEW REQUESTS / BUGS ═══\n\n';
+    others.forEach(r=>{
+      const ctx=r.context||{};
+      const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
+      out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' — ':''}${r.title}\n`;
+      if(r.body)out+=`   ${r.body}\n`;
+      if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
+      out+=`   🕐 ${r.dateStr}\n\n`;
+    });
+    out+=`\n⚠️ NOTE TO CLAUDE: The # numbers on these new requests are app-tracker numbers and likely conflict with the xlsx tracker. The xlsx numbering is the source of truth. For each new request: check if it relates to an existing xlsx ticket (slot it underneath as a child / variant), or assign the next available xlsx # if it's brand new. Add a "previously app #X" note in the xlsx so the trail is preserved.\n\n`;
+  }
   out+='═══ FILES TO UPLOAD ═══\n- Latest index.html (from /mnt/user-data/outputs/ of last session)\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
   // Try modern Clipboard API
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(out).then(
-      ()=>alert('Copied! '+reports.length+' report'+(reports.length===1?'':'s')+' on clipboard. Paste into next Claude session.'),
+      ()=>alert('Copied! '+reports.length+' item'+(reports.length===1?'':'s')+' on clipboard. Paste into next Claude session.'),
       ()=>{_fallbackCopy(out);}
     );
   }else{_fallbackCopy(out);}
@@ -5512,6 +5596,17 @@ load();renderLibrary();
       <button class="btn btn-primary" onclick="saveReport()">Save report</button>
     </div>
     <div class="divider"></div>
+    <!-- TEST a ticket # quickly -->
+    <div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:9px 11px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">🧪 Log a test result</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:7px;line-height:1.5;">Type a ticket # (from your tracker — e.g. 217, 268), tap ✅ if it works or ⚠️ if it still needs fixes. Saves as a note in the batch below so it gets passed back to Claude.</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 90px;font-size:14px;"/>
+        <input type="text" id="test-ticket-note" placeholder="optional note…" style="flex:1;font-size:13px;"/>
+        <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex-shrink:0;" onclick="logTestResult('pass')">✅</button>
+        <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex-shrink:0;" onclick="logTestResult('fail')">⚠️</button>
+      </div>
+    </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <div class="slabel" style="margin:0;">Pending reports</div>
       <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
