@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Annotator"/>
@@ -161,7 +161,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cdd-chip-x{background:transparent;border:none;color:inherit;font-size:13px;line-height:1;cursor:pointer;opacity:0.7;padding:0 2px;}
 .cdd-chip-x:active{opacity:1;}
 .cdd-input-row{display:flex;gap:6px;align-items:stretch;}
-.cdd-input{flex:1;font-size:14px;padding:9px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);color:var(--text);outline:none;-webkit-appearance:none;appearance:none;min-width:0;}
+.cdd-input{flex:1;font-size:16px;padding:9px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);color:var(--text);outline:none;-webkit-appearance:none;appearance:none;min-width:0;}
 .cdd-input:focus{border-color:var(--am);}
 .cdd-list{display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;}
 .cdd-list.open{display:block;}
@@ -340,6 +340,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
   <div class="char-hero" id="char-hero"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="char-body"></div>
+  <button class="fab" onclick="openAddFromCharProfile()">+</button>
 </div>
 
 <!-- ══ LOCATION DETAIL ══ -->
@@ -351,6 +352,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="loc-body"></div>
+  <button class="fab" onclick="openAddFromLocProfile()">+</button>
 </div>
 
 <!-- ══ GUIDE SCREEN ══ -->
@@ -509,7 +511,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="r2">
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
-        <div class="fg"><label>Introduced — p.</label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1"/></div>
+        <div class="fg"><label>Introduced — p. <span style="font-weight:400;color:var(--t3);font-size:10px;" title="Auto-fills the chapter if your chapter setup covers this page">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
       <div class="fg">
@@ -518,6 +520,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button type="button" class="btn btn-sm" onclick="buildCharDescFromTraits()" style="font-size:10px;padding:2px 7px;">🔍 Build from traits</button>
         </div>
         <textarea id="ae-cdesc" placeholder="Personality, mannerisms, backstory…" style="min-height:50px;"></textarea>
+      </div>
+      <div class="fg"><label>Background / history <span style="font-weight:400;color:var(--t3);">(optional — backstory too narrative for a trait, not eventful enough for the timeline)</span></label>
+        <textarea id="ae-cbg" placeholder="e.g. one-hit-wonder playwright turned head of department; raised by aunt after parents' death; estranged from siblings…" style="min-height:55px;"></textarea>
       </div>
       <div class="fg"><label>Photos (optional) <span style="font-weight:400;color:var(--t3);">— first photo becomes the avatar</span></label>
         <div id="ae-char-photos-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;"></div>
@@ -533,6 +538,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <strong>Suggested connections</strong>
         <div id="ae-sug-content"></div>
       </div>
+      <div class="divider"></div>
+      <div class="slabel">Quick characteristics <span style="font-size:10px;font-weight:400;color:var(--t3);">— add traits inline; saved as separate Characteristic entries on Save</span></div>
+      <div id="ae-quick-traits-list"></div>
+      <button class="btn" onclick="addQuickTraitRow()" style="margin-bottom:8px;width:100%;background:var(--al);color:var(--accent);border-color:var(--am);font-size:13px;padding:9px;touch-action:manipulation;">+ Add characteristic</button>
     </div>
 
     <!-- CONTENT (non-char) -->
@@ -602,9 +611,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <select id="ae-trait-type"><option value="personality">Personality</option><option value="physical">Physical</option><option value="behavioral">Behavioral</option><option value="emotional">Emotional</option><option value="intellectual">Intellectual</option></select>
       </div>
       <div class="fg"><label>Supporting quote <span style="font-weight:400;">(proves this trait)</span></label><input type="text" id="ae-sq" placeholder="Quote from the book that shows this trait…"/></div>
+      <div class="fg"><label>Quote speaker <span style="font-weight:400;color:var(--t3);">(who said it — auto-tags into Characters Involved)</span></label>
+        <div class="cdd-wrap" id="ae-trait-speaker-cdd-wrap">
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-trait-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-trait-speaker')" onclick="cddOpen('ae-trait-speaker')"/>
+            <button type="button" class="btn btn-sm" onclick="cddClear('ae-trait-speaker')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-trait-speaker')" style="flex-shrink:0;">+ New</button>
+          </div>
+          <input type="hidden" id="ae-trait-speaker"/>
+          <div class="cdd-list" id="ae-trait-speaker-list"></div>
+        </div>
+      </div>
       <div class="r2">
-        <div class="fg"><label>Quote page range</label><input type="text" id="ae-sqp" placeholder="e.g. 47 or 47–52"/></div>
-        <div class="fg"><label>Quote chapter</label><input type="number" id="ae-sqc" inputmode="numeric" min="1" placeholder="ch."/></div>
+        <div class="fg"><label title="Page or pages where the supporting quote appears in the book">Quote pg(s) <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="text" id="ae-sqp" placeholder="e.g. 47 or 47–52" oninput="autoTraitQuoteChap()" onblur="autoTraitQuoteChap()"/></div>
+        <div class="fg"><label title="Chapter that contains the supporting quote">Quote ch <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="number" id="ae-sqc" inputmode="numeric" min="1" placeholder="ch."/></div>
       </div>
     </div>
 
@@ -669,7 +689,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <strong>−</strong> = BEFORE (this event happens ABOVE the other on the timeline)
         </div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <select id="ae-offset-dir" style="width:130px;flex-shrink:0;font-size:13px;">
+          <select id="ae-offset-dir" style="width:130px;flex-shrink:0;font-size:16px;">
             <option value="+">+ later (below)</option>
             <option value="-">− earlier (above)</option>
           </select>
@@ -677,7 +697,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-offset-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
         <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(most recent first)</span></label>
-          <select id="ae-offset-event" style="font-size:13px;"><option value="">— free text / unspecified —</option></select>
+          <select id="ae-offset-event" style="font-size:16px;"><option value="">— free text / unspecified —</option></select>
+        </div>
+      </div>
+      <!-- #253 — Supporting quote + speaker auto-tag -->
+      <div class="fg" style="margin-top:10px;"><label>Supporting quote <span style="font-weight:400;color:var(--t3);">(optional — quote from the text that anchors this event)</span></label>
+        <input type="text" id="ae-tl-sq" placeholder="Quote from the book…"/>
+      </div>
+      <div class="fg"><label>Quote speaker <span style="font-weight:400;color:var(--t3);">(auto-tags into Characters Involved)</span></label>
+        <div class="cdd-wrap" id="ae-tl-speaker-cdd-wrap">
+          <div class="cdd-input-row">
+            <input type="text" class="cdd-input" id="ae-tl-speaker-search" placeholder="Search or add…" autocomplete="off" oninput="cddOpen('ae-tl-speaker')" onclick="cddOpen('ae-tl-speaker')"/>
+            <button type="button" class="btn btn-sm" onclick="cddClear('ae-tl-speaker')" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+            <button type="button" class="btn btn-sm" onclick="cddQuickAdd('ae-tl-speaker')" style="flex-shrink:0;">+ New</button>
+          </div>
+          <input type="hidden" id="ae-tl-speaker"/>
+          <div class="cdd-list" id="ae-tl-speaker-list"></div>
         </div>
       </div>
     </div>
@@ -685,16 +720,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- EVENT EXTRAS (renamed from Major Event) -->
     <div id="ae-event-ex" style="display:none">
       <div class="fg"><label>Significance</label>
-        <select id="ae-event-sig"><option value="minor">Minor — small but notable</option><option value="significant">Significant — changes something</option><option value="major">Major — turning point</option><option value="lifechanging">Life-changing — defines the story</option></select>
+        <select id="ae-event-sig"><option value="minor">Minor — small but notable</option><option value="significant">Significant — changes something</option></select>
       </div>
       <div class="fg"><label>Event type(s) <span style="font-weight:400;">(tap to select multiple)</span></label>
         <div class="cpick-row" id="event-type-picks" style="margin-top:5px;"></div>
       </div>
       <div class="fg"><label>When <span style="font-weight:400;">(chapter, page, or narrative time — feeds into Timeline)</span></label><input type="text" id="ae-medate" placeholder="e.g. Ch.7 · p.134 · Year 1823"/></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <input type="checkbox" id="ae-event-to-tl" style="width:auto;min-width:0;flex-shrink:0;" checked/>
-        <label for="ae-event-to-tl" style="font-size:12px;text-transform:none;letter-spacing:0;">Also add to Timeline</label>
-      </div>
+      <!-- #281 — removed "Also add to Timeline" checkbox; Events already appear in Timeline view, so the duplicate Timeline twin entry was causing every Event to show twice. Hidden checkbox kept for backward-compatibility with existing form refs. -->
+      <input type="checkbox" id="ae-event-to-tl" style="display:none"/>
     </div>
 
     <!-- REFERENCE EXTRAS -->
@@ -819,14 +852,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="ae-common">
       <div class="divider"></div>
       <div class="r2" id="ae-chappage">
+        <div class="fg"><label title="Page or pages where the entry appears in the book — single page (47) or range (47–52)">pg(s) <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
-        <div class="fg"><label>Page range</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
       <div class="fg"><label>Location in story</label>
         <div style="display:flex;gap:6px;">
           <div style="flex:1;position:relative;">
-            <input type="text" id="ae-loc-search" placeholder="Search or pick a location…" oninput="filterLocSelect(this.value)" onfocus="showLocDropdown()" autocomplete="off" style="font-size:14px;width:100%;"/>
+            <input type="text" id="ae-loc-search" placeholder="Search or pick a location…" oninput="filterLocSelect(this.value)" onfocus="showLocDropdown()" autocomplete="off" style="font-size:16px;width:100%;"/>
             <div id="ae-loc-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
             <input type="hidden" id="ae-loc-sel"/>
           </div>
@@ -881,6 +914,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('ae-overlay')">Cancel</button>
+      <button class="btn" id="ae-discard-draft-btn" onclick="discardDraft()" style="display:none;color:var(--red);border-color:var(--red);background:var(--rl);">Discard draft</button>
       <button class="btn btn-primary" onclick="submitEntry()">Save</button>
     </div>
   </div>
@@ -906,7 +940,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn" id="timer-read-btn" onclick="toggleReadTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
         </div>
       </div>
-      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-read-min" inputmode="numeric" placeholder="e.g. 30" min="0" style="font-size:14px;" oninput="onReadMinInput()"/></div>
+      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-read-min" inputmode="numeric" placeholder="e.g. 30" min="0" style="font-size:16px;" oninput="onReadMinInput()"/></div>
     </div>
     <!-- SYNTH TIMER -->
     <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
@@ -917,7 +951,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn" id="timer-synth-btn" onclick="toggleSynthTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
         </div>
       </div>
-      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-synth-min" inputmode="numeric" placeholder="e.g. 15" min="0" style="font-size:14px;" oninput="onSynthMinInput()"/></div>
+      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-synth-min" inputmode="numeric" placeholder="e.g. 15" min="0" style="font-size:16px;" oninput="onSynthMinInput()"/></div>
     </div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('timer-overlay')">Cancel</button>
@@ -1423,6 +1457,10 @@ function _cddEnsureRegistered(){
   if(!cddConfig['ae-word-speaker'])cddRegister('ae-word-speaker',{includeNarrator:true,onChange:autoTagWordSpeaker});
   if(!cddConfig['ae-rela'])cddRegister('ae-rela',{onChange:_cddRelChanged});
   if(!cddConfig['ae-relb'])cddRegister('ae-relb',{onChange:_cddRelChanged});
+  // #247 — Characteristic supporting-quote speaker
+  if(!cddConfig['ae-trait-speaker'])cddRegister('ae-trait-speaker',{includeNarrator:true,onChange:autoTagTraitSpeaker});
+  // #253 — Timeline supporting-quote speaker
+  if(!cddConfig['ae-tl-speaker'])cddRegister('ae-tl-speaker',{includeNarrator:true,onChange:autoTagTlSpeaker});
 }
 function _cddRelChanged(){
   // Fire the existing checkExistingRel logic via the rel form handler (defined in onTypeChange)
@@ -1436,12 +1474,19 @@ function _cddRelChanged(){
 function addChapSetupRow(num,start,end,title){
   const list=document.getElementById('chap-setup-list');
   const idx=list.children.length;
+  // #222 — when user taps "+ Add chapter" with no args, auto-fill start = prev.end + 1
+  if(start==null&&idx>0){
+    const prevRow=list.children[idx-1];
+    const prevIns=prevRow.querySelectorAll('input');
+    const prevEnd=+prevIns[2].value||+prevIns[1].value||0;
+    if(prevEnd>0)start=prevEnd+1;
+  }
   const row=document.createElement('div');row.className='chap-row';
   row.innerHTML=`<span style="font-size:11px;color:var(--t2);width:42px;flex-shrink:0;">Ch.${idx+1}</span>
-    <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:14px;"/>
-    <input type="number" inputmode="numeric" placeholder="p.start" min="1" value="${start||''}" style="flex:1;min-width:0;font-size:14px;"/>
+    <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.start" min="1" value="${start||''}" style="flex:1;min-width:0;font-size:16px;"/>
     <span style="font-size:11px;color:var(--t2);">–</span>
-    <input type="number" inputmode="numeric" placeholder="p.end" min="1" value="${end||''}" style="flex:1;min-width:0;font-size:14px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.end" min="1" value="${end||''}" style="flex:1;min-width:0;font-size:16px;"/>
     <button onclick="this.parentElement.remove();renumChaps()" style="background:transparent;color:var(--t3);font-size:16px;padding:0 4px;">×</button>`;
   list.appendChild(row);
 }
@@ -1475,6 +1520,22 @@ function autoChapFromPageLive(pgVal){
   if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
   if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
+}
+// #220 — Character form: derive intro chapter from intro page
+function autoCharIntroChap(){
+  const pgEl=document.getElementById('ae-cintro-pg');const chEl=document.getElementById('ae-cintro-ch');
+  if(!pgEl||!chEl)return;
+  const pgVal=pgEl.value.trim();if(!pgVal)return;
+  const chaps=pageToChapters(pgVal);
+  if(chaps.length&&!chEl.value)chEl.value=String(chaps[0]);
+}
+// #221 — Characteristic: derive quote chapter from quote page
+function autoTraitQuoteChap(){
+  const pgEl=document.getElementById('ae-sqp');const chEl=document.getElementById('ae-sqc');
+  if(!pgEl||!chEl)return;
+  const pgVal=pgEl.value.trim();if(!pgVal)return;
+  const chaps=pageToChapters(pgVal);
+  if(chaps.length&&!chEl.value)chEl.value=String(chaps[0]);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1857,19 +1918,31 @@ function addQuickRelRow(relType,charName){
   const list=document.getElementById('ae-quick-rels-list');
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
   const rowId='qr-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  const row=document.createElement('div');row.className='r2';row.style.marginBottom='7px';row.dataset.qrId=rowId;
-  row.innerHTML=`<div class="fg" style="margin-bottom:0"><select class="qr-type">${buildRelTypeOpts(relType||'')}</select></div>
-    <div style="display:flex;gap:5px;align-items:center;">
-      <div class="fg" style="flex:1;margin-bottom:0;position:relative;">
-        <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:14px;"/>
+  const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
+  row.dataset.qrId=rowId;
+  // #282 — rel-type on its own line (top), char field full-width on its own line (bottom), so the × clear is always visible
+  row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <select class="qr-type" style="flex:1;font-size:14px;">${buildRelTypeOpts(relType||'')}</select>
+      <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center;position:relative;">
+      <div style="flex:1;position:relative;min-width:0;">
+        <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:30px;"/>
         <input type="hidden" class="qr-char" value="${charName||''}"/>
+        <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:16px;padding:0 4px;cursor:pointer;line-height:1;">×</button>
         <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
       </div>
-      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="flex-shrink:0;padding:0 8px;font-size:11px;">+ New</button>
-      <button onclick="this.closest('.r2').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 4px;">×</button>
+      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="flex-shrink:0;padding:4px 10px;font-size:12px;">+ New</button>
     </div>`;
   list.appendChild(row);
   row.querySelector('.qr-type').addEventListener('change',checkSuggestions);
+}
+function qrCharClear(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  row.querySelector('.qr-char-search').value='';
+  row.querySelector('.qr-char').value='';
+  const list=row.querySelector('.qr-char-list');if(list)list.style.display='none';
+  checkSuggestions();
 }
 function qrCharFilter(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -1903,7 +1976,7 @@ if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
   window._qrGlobalCloseAttached=true;
 }
 function quickRelNewChar(btn){
-  const row=btn.closest('.r2');if(!row||!currentId)return;
+  const row=btn.closest('[data-qr-id]');if(!row||!currentId)return;
   const searchInput=row.querySelector('.qr-char-search');
   const seedName=(searchInput?.value||'').trim();
   let name=seedName;
@@ -1932,7 +2005,7 @@ function buildRelTypeOpts(sel){
   return`<option value="">— type —</option>`+groups.map(([g,opts])=>`<optgroup label="${g}">${opts.map(o=>`<option${o===sel?' selected':''}>${o}</option>`).join('')}</optgroup>`).join('');
 }
 function checkSuggestions(){
-  const rows=[...document.querySelectorAll('#ae-quick-rels-list .r2')];
+  const rows=[...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')];
   const newCharName=document.getElementById('ae-cn').value.trim();
   const sug=[];
   rows.forEach(row=>{
@@ -2088,10 +2161,11 @@ function onTypeChange(){
   document.getElementById('ae-inv-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
   document.getElementById('ae-chappage').style.display=isChar?'none':'';
   // Adjust chapter/page label for location entries
-  const chLabel=document.querySelector('#ae-chappage label');
-  const pgLabel=document.querySelectorAll('#ae-chappage label')[1];
-  if(isLoc){if(chLabel)chLabel.textContent='Intro Chapter #';if(pgLabel)pgLabel.textContent='Intro Page';}
-  else{if(chLabel)chLabel.textContent='Chapter #';if(pgLabel)pgLabel.textContent='Page range';}
+  // #219 — pg(s) is now the FIRST label, Chapter # is the SECOND
+  const pgLabel=document.querySelector('#ae-chappage label');
+  const chLabel=document.querySelectorAll('#ae-chappage label')[1];
+  if(isLoc){if(chLabel)chLabel.textContent='Intro Chapter #';if(pgLabel)pgLabel.firstChild.textContent='Intro Page ';}
+  else{if(chLabel)chLabel.textContent='Chapter #';if(pgLabel)pgLabel.firstChild.textContent='pg(s) ';}
 
   const lbl={Quote:'Quote / passage','Line/stanza':'Line or stanza',Chapter:'Chapter title or number',Timeline:'Event description',Event:'What happened?',Dialogue:'Conversation title / description','Word / Vocabulary':'Word',Location:'Location name',Translation:'Original text','Narrator quote':'Quote / passage'};
   document.getElementById('ae-clabel').textContent=lbl[type]||'Content';
@@ -2186,6 +2260,84 @@ function autoTagWordSpeaker(){
   if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
   _lastAutoTaggedWordSpeaker=spk;
 }
+// #247 — Characteristic supporting-quote speaker auto-tag
+let _lastAutoTaggedTraitSpeaker='';
+function autoTagTraitSpeaker(){
+  const spk=cddGet('ae-trait-speaker');
+  if(_lastAutoTaggedTraitSpeaker&&_lastAutoTaggedTraitSpeaker!==spk){
+    const current=cddGet('ae-inv');
+    cddSet('ae-inv',current.filter(c=>c!==_lastAutoTaggedTraitSpeaker));
+  }
+  if(!spk||spk==='Narrator / Author'){_lastAutoTaggedTraitSpeaker='';return;}
+  const current=cddGet('ae-inv');
+  if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
+  _lastAutoTaggedTraitSpeaker=spk;
+}
+// #253 — Timeline supporting-quote speaker auto-tag
+let _lastAutoTaggedTlSpeaker='';
+function autoTagTlSpeaker(){
+  const spk=cddGet('ae-tl-speaker');
+  if(_lastAutoTaggedTlSpeaker&&_lastAutoTaggedTlSpeaker!==spk){
+    const current=cddGet('ae-inv');
+    cddSet('ae-inv',current.filter(c=>c!==_lastAutoTaggedTlSpeaker));
+  }
+  if(!spk||spk==='Narrator / Author'){_lastAutoTaggedTlSpeaker='';return;}
+  const current=cddGet('ae-inv');
+  if(!current.includes(spk))cddSet('ae-inv',[...current,spk]);
+  _lastAutoTaggedTlSpeaker=spk;
+}
+// #248 — Quick characteristics row on Character entry form
+function addQuickTraitRow(traitType,text){
+  const list=document.getElementById('ae-quick-traits-list');if(!list)return;
+  const rowId='qt-'+Date.now()+'-'+Math.floor(Math.random()*9999);
+  const row=document.createElement('div');
+  row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
+  row.dataset.qtId=rowId;
+  row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <select class="qt-type" style="flex:1;font-size:14px;">
+        <option value="personality"${traitType==='personality'?' selected':''}>Personality</option>
+        <option value="physical"${traitType==='physical'?' selected':''}>Physical</option>
+        <option value="behavioral"${traitType==='behavioral'?' selected':''}>Behavioral</option>
+        <option value="emotional"${traitType==='emotional'?' selected':''}>Emotional</option>
+        <option value="intellectual"${traitType==='intellectual'?' selected':''}>Intellectual</option>
+      </select>
+      <button onclick="this.closest('[data-qt-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
+    </div>
+    <input type="text" class="qt-text" placeholder="e.g. quick-witted, jealous, kind to strangers…" value="${text||''}" style="font-size:16px;width:100%;"/>`;
+  list.appendChild(row);
+}
+// #250 — Discard draft (only valid when editing a draft entry)
+function discardDraft(){
+  const editId=document.getElementById('ae-edit-id').value;
+  if(!editId){closeSheet('ae-overlay');return;}
+  if(!confirm('Discard this draft? It will be moved to the Recycle Bin.'))return;
+  deleteEntry(Number(editId));
+  closeSheet('ae-overlay');
+}
+// #240/#241 — FAB on character profile (silently pre-fills current character into Involved)
+function openAddFromCharProfile(){
+  const name=currentCharName;
+  openAddSheet();
+  if(name){setTimeout(()=>{
+    _cddEnsureRegistered();
+    const current=cddGet('ae-inv')||[];
+    if(!current.includes(name))cddSet('ae-inv',[...current,name]);
+  },90);}
+}
+// #240 — FAB on location profile (pre-fills current location)
+function openAddFromLocProfile(){
+  const name=currentLocName;
+  openAddSheet();
+  if(name){setTimeout(()=>{
+    const locSel=document.getElementById('ae-loc-sel');
+    if(locSel){
+      // Try select option; fall back to typing into searchable input if present
+      const opt=[...locSel.options].find(o=>o.value===name||o.text===name);
+      if(opt)locSel.value=opt.value;
+      const locSearch=document.getElementById('ae-loc-search');if(locSearch)locSearch.value=name;
+    }
+  },90);}
+}
 function buildCharSelect(selectId,addBlankOption,narratorLabel){
   const el=document.getElementById(selectId);if(!el)return;
   const sorted=sortedChars();
@@ -2242,7 +2394,7 @@ function addDialogueLine(){
         </div>
         <div class="dial-speaker-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:0.5px solid var(--cb);border-radius:var(--r);max-height:160px;overflow-y:auto;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-top:2px;"></div>
       </div>
-      <textarea placeholder="What they said…" style="width:100%;min-height:48px;font-size:13px;line-height:1.5;font-style:italic;"></textarea>
+      <textarea placeholder="What they said…" style="width:100%;min-height:48px;font-size:16px;line-height:1.5;font-style:italic;"></textarea>
     </div>
     <button onclick="removeDialLine(this)" style="background:transparent;color:var(--t3);font-size:11px;padding:2px 6px;flex-shrink:0;border:0.5px solid var(--cb);border-radius:var(--r);" title="Remove this line">× Remove line</button>`;
   container.appendChild(div);
@@ -2353,18 +2505,21 @@ function openAddSheet(preType){
   openSheet('ae-overlay');onTypeChange();
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-tl-sq','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // Clear all searchable character dropdowns
   _cddEnsureRegistered();
-  ['ae-inv','ae-speaker','ae-word-speaker','ae-rela','ae-relb'].forEach(p=>cddClear(p));
-  ['ae-speaker-search','ae-word-speaker-search','ae-rela-search','ae-relb-search','ae-inv-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-inv','ae-speaker','ae-word-speaker','ae-rela','ae-relb','ae-trait-speaker','ae-tl-speaker'].forEach(p=>cddClear(p));
+  ['ae-speaker-search','ae-word-speaker-search','ae-rela-search','ae-relb-search','ae-inv-search','ae-trait-speaker-search','ae-tl-speaker-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
   document.getElementById('ae-gender').value='';
   document.getElementById('ae-char-photo-data').value='';setCharPhotos([]);
   document.getElementById('ae-photo-data').value='';setEntryPhotos([]);
   document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
+  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
+  // #250 — Discard draft button hidden until editEntry decides to show it
+  const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
   document.getElementById('ae-mw-result').style.display='none';
   document.getElementById('ae-dial-lines').innerHTML='';document.getElementById('ae-goodreads-hint').style.display='none';
   const tql=document.getElementById('ae-theme-quotes-list');if(tql)tql.innerHTML='';
@@ -2381,14 +2536,14 @@ function clearAEForm(){
   const skEl=document.getElementById('ae-sortkey');if(skEl)skEl.value='';
   const offTog=document.getElementById('ae-offset-toggle');if(offTog){offTog.checked=false;document.getElementById('ae-offset-block').style.display='none';}
   document.getElementById('ae-loc-type').value='real';onLocTypeChange();
-  document.getElementById('ae-event-to-tl').checked=true;
+  document.getElementById('ae-event-to-tl').checked=false;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
   // Reset draft toggle
   const di=document.getElementById('ae-is-draft');if(di)di.value='false';
   const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent='☐';
   const dbtn=document.getElementById('ae-draft-btn');if(dbtn){dbtn.style.borderColor='';dbtn.style.color='';}
-  _lastAutoTaggedSpeaker='';_lastAutoTaggedWordSpeaker='';
+  _lastAutoTaggedSpeaker='';_lastAutoTaggedWordSpeaker='';_lastAutoTaggedTraitSpeaker='';_lastAutoTaggedTlSpeaker='';
 }
 
 function addThemeQuote(){
@@ -2397,16 +2552,41 @@ function addThemeQuote(){
   const div=document.createElement('div');
   div.style.cssText='background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);padding:8px;margin-bottom:7px;';
   div.innerHTML=`
-    <div class="r2" style="margin-bottom:5px;">
-      <input type="text" placeholder="Page #" style="font-size:13px;" class="tq-page"/>
-      <select class="tq-speaker" style="font-size:13px;">
+    <div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;">
+      <input type="text" placeholder="pg(s)" title="Page or pages where this quote appears" style="font-size:16px;width:80px;flex-shrink:0;" class="tq-page"/>
+      <select class="tq-speaker" style="font-size:16px;flex:1;min-width:0;">
         <option value="">Narrator / Author</option>
         ${chars.map(c=>`<option>${c}</option>`).join('')}
       </select>
+      <button type="button" class="btn btn-sm" onclick="themeQuoteAddNewChar(this)" style="flex-shrink:0;padding:4px 8px;font-size:11px;" title="Quick-add a new character and select them as the speaker">+ New</button>
     </div>
-    <textarea class="tq-text" placeholder="Quote text…" style="min-height:44px;font-size:13px;width:100%;font-style:italic;"></textarea>
+    <textarea class="tq-text" placeholder="Quote text…" style="min-height:44px;font-size:16px;width:100%;font-style:italic;"></textarea>
     <button onclick="this.closest('div').remove()" style="background:transparent;color:var(--t3);font-size:12px;padding:2px;float:right;">× Remove</button>`;
   list.appendChild(div);
+}
+// #237 — Quick-add new character from a theme supporting-quote row;
+// auto-selects them as speaker AND tags them into the theme's Characters Involved.
+function themeQuoteAddNewChar(btn){
+  if(!currentId)return;
+  const name=(prompt('New character name:')||'').trim();if(!name)return;
+  // Create if not exists
+  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    book().entries.unshift(entry);getCC(name);save();
+  }
+  // Repopulate every speaker dropdown in this list, preserving existing selections
+  const list=document.getElementById('ae-theme-quotes-list');
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  list.querySelectorAll('.tq-speaker').forEach(sel=>{
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Narrator / Author</option>'+chars.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+  });
+  // Set THIS row's speaker to the new character
+  const row=btn.closest('div');const sel=row?row.querySelector('.tq-speaker'):null;
+  if(sel){const opt=[...sel.options].find(o=>o.value===name);if(opt)sel.value=name;}
+  // #238 — Auto-tag the new character in the theme's Characters Involved
+  const current=cddGet('ae-inv')||[];
+  if(!current.includes(name))cddSet('ae-inv',[...current,name]);
 }
 function getThemeQuotes(){
   return[...document.querySelectorAll('#ae-theme-quotes-list > div')].map(d=>({
@@ -2522,6 +2702,22 @@ function submitEntry(){
   const pgVal=isChar?'':document.getElementById('ae-pg').value.trim();
   if(pgVal&&!chapNum){const chaps=pageToChapters(pgVal);if(chaps.length)chapNum=chaps.length>1?chaps.join(','):String(chaps[0]);}
 
+  // #222-A — Warn if the chapter # being added skips over a missing chapter (e.g. user enters Ch.5 when only Ch.1–3 exist)
+  if(type==='Chapter'&&chapNum&&!editId){
+    const newCh=+chapNum;
+    if(Number.isFinite(newCh)&&newCh>1){
+      const existingChaps=entries().filter(e=>e.type==='Chapter').map(e=>+e.chapNum).filter(n=>Number.isFinite(n));
+      const setupChaps=(book().chapters||[]).map(c=>+c.ch).filter(n=>Number.isFinite(n));
+      const allKnown=new Set([...existingChaps,...setupChaps]);
+      const missing=[];
+      for(let i=1;i<newCh;i++){if(!allKnown.has(i))missing.push(i);}
+      if(missing.length){
+        const ms=missing.length===1?'Ch.'+missing[0]:'Ch.'+missing.join(', Ch.');
+        if(!confirm(`You're adding Ch.${newCh} but ${ms} ${missing.length===1?"hasn't":"haven't"} been added yet.\n\nDon't forget to add ${missing.length===1?'it':'them'}!\n\nContinue saving?`))return;
+      }
+    }
+  }
+
   // Required field validation — highlight red and return if missing
   function reqFail(id,msg){
     const el=document.getElementById(id);if(!el)return true;
@@ -2581,9 +2777,11 @@ function submitEntry(){
     entry.charIntro=[ich?'Ch.'+ich:'',ipg?'p.'+ipg:''].filter(Boolean).join(', ');
     entry.charDesc=document.getElementById('ae-cdesc').value.trim();
     entry.charPhys=document.getElementById('ae-cphys').value.trim();
+    // #251 — Background / history
+    const bgEl=document.getElementById('ae-cbg');entry.charBg=bgEl?bgEl.value.trim():'';
   }
   if(['Quote','Narrator quote','Line/stanza'].includes(type)){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;const qtTheme=document.getElementById('ae-quote-theme')?.value;entry.attachedTheme=qtTheme||'';const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
-  if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.sq=document.getElementById('ae-sq').value.trim();entry.sqp=document.getElementById('ae-sqp').value.trim();entry.sqc=document.getElementById('ae-sqc').value;}
+  if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.sq=document.getElementById('ae-sq').value.trim();entry.sqp=document.getElementById('ae-sqp').value.trim();entry.sqc=document.getElementById('ae-sqc').value;entry.traitSpeaker=cddGet('ae-trait-speaker')||'';}
   if(type==='Word / Vocabulary'){
     entry.definition=document.getElementById('ae-def').value.trim();
     entry.wordContext=document.getElementById('ae-word-context').value.trim();
@@ -2598,7 +2796,7 @@ function submitEntry(){
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
-  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}}
+  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSpeaker=cddGet('ae-tl-speaker')||'';}
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
     entry.eventTypes=getPickedEventTypes();
@@ -2688,14 +2886,54 @@ function submitEntry(){
     }
   }
 
-  if(editId){const idx=book().entries.findIndex(e=>e.id===Number(editId));if(idx>=0)book().entries[idx]=entry;}
+  if(editId){
+    const idx=book().entries.findIndex(e=>e.id===Number(editId));
+    if(idx>=0){
+      // #276 — merge instead of overwrite to preserve any legacy/untouched fields
+      const prev=book().entries[idx];
+      // #276 — if a Character was renamed (e.g. last name added), propagate the rename
+      // across all referenced rows so relationships, quotes, dialogue, and tags survive.
+      if(isChar){
+        const oldName=prev.cn||prev.content;
+        const newName=cn;
+        if(oldName&&newName&&oldName!==newName){
+          book().entries.forEach(r=>{
+            if(r.type==='Relationship'){
+              if(r.relA===oldName)r.relA=newName;
+              if(r.relB===oldName)r.relB=newName;
+              // also refresh the human-readable content if it embeds the old name
+              if(r.content&&r.content.includes(oldName))r.content=r.content.split(oldName).join(newName);
+            }
+            if(r.speaker===oldName)r.speaker=newName;
+            if(r.wordSpeaker===oldName)r.wordSpeaker=newName;
+            if(Array.isArray(r.involved)){r.involved=r.involved.map(n=>n===oldName?newName:n);}
+            if(Array.isArray(r.dialogueLines)){r.dialogueLines.forEach(l=>{if(l.speaker===oldName)l.speaker=newName;});}
+            if(Array.isArray(r.themeQuotes)){r.themeQuotes.forEach(q=>{if(q.speaker===oldName)q.speaker=newName;});}
+          });
+          // deletedChars timestamp map keyed by name
+          if(book().deletedChars&&book().deletedChars[oldName]!=null){
+            book().deletedChars[newName]=book().deletedChars[oldName];delete book().deletedChars[oldName];
+          }
+        }
+      }
+      book().entries[idx]={...prev,...entry};
+    }
+  }
   else book().entries.unshift(entry);
 
   // Save quick relationships
   if(isChar&&!editId){
-    [...document.querySelectorAll('#ae-quick-rels-list .r2')].forEach(row=>{
+    [...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')].forEach(row=>{
       const rt=row.querySelector('.qr-type').value;const ch=row.querySelector('.qr-char').value;if(!rt||!ch)return;
       addRelEntry(cn,rt,ch,'');
+    });
+    // #248 — Save quick characteristics as separate Characteristic entries tagged to this character
+    [...document.querySelectorAll('#ae-quick-traits-list [data-qt-id]')].forEach(row=>{
+      const tt=row.querySelector('.qt-type').value;
+      const text=row.querySelector('.qt-text').value.trim();
+      if(!text)return;
+      const traitEntry={id:Date.now()+Math.floor(Math.random()*9999),type:'Characteristic',content:text,note:'',pageNum:'',chapNum:'',date:localDate(),location:'',involved:[cn],traitType:tt||'personality',sq:'',sqp:'',sqc:''};
+      book().entries.unshift(traitEntry);
     });
   }
 
@@ -2934,7 +3172,7 @@ function editEntry(id){
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
-    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
@@ -2946,6 +3184,7 @@ function editEntry(id){
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){setTimeout(()=>{populateQuoteThemeSelect(e.attachedTheme||'');},40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     if(e.sq)document.getElementById('ae-sq').value=e.sq;if(e.sqp)document.getElementById('ae-sqp').value=e.sqp;if(e.sqc)document.getElementById('ae-sqc').value=e.sqc;
+    if(e.traitSpeaker)setTimeout(()=>cddSet('ae-trait-speaker',e.traitSpeaker),60);
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
     if(e.wordSpeaker)cddSet('ae-word-speaker',e.wordSpeaker);
     if(e.wordTransFrom||e.wordTransOriginal){
@@ -2988,6 +3227,14 @@ function editEntry(id){
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
+    // #253 — Restore Timeline supporting quote + speaker
+    if(e.tlSq)document.getElementById('ae-tl-sq').value=e.tlSq;
+    if(e.tlSpeaker)setTimeout(()=>cddSet('ae-tl-speaker',e.tlSpeaker),60);
+    // #250 — Show "Discard draft" button for drafts; reflect saved draft state
+    const ddb=document.getElementById('ae-discard-draft-btn');
+    if(ddb)ddb.style.display=e.isDraft?'':'none';
+    const di=document.getElementById('ae-is-draft');if(di)di.value=e.isDraft?'true':'false';
+    const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent=e.isDraft?'☑':'☐';
     if(e.type==='Dialogue'&&e.dialogueLines?.length)setTimeout(()=>{
       const cont=document.getElementById('ae-dial-lines');cont.innerHTML='';
       e.dialogueLines.forEach(l=>{
@@ -3361,6 +3608,36 @@ function renderCharDetail(name){
       return`<div class="citem" style="border-left:3px solid ${col.stroke};border-radius:0 var(--r) var(--r) 0;"><div class="ilabel" style="color:${col.text};">Said${q.emotion?` · <span class="ebadge ${toneClass(q.emotion)}">${q.emotion}</span>`:''}</div>"${q.content}"${nT(q)}${pgT(q)}${act(q)}</div>`;
     }).join('')+`</div></div>`;
   }
+  // #243 — Themes as its own collapsible section on character profile.
+  // A theme counts as "on this character's profile" if either:
+  //   (a) the character is in the theme's Characters Involved, or
+  //   (b) the character is the speaker of one of the theme's supporting quotes.
+  // #191-A "Both" — each theme card shows the supporting quote(s) nested underneath;
+  //   those same quotes continue to surface in the Quotes section above (unchanged).
+  const themesForChar=all.filter(e=>e.type==='Theme'&&(
+    (e.involved||[]).includes(name) ||
+    (e.themeQuotes||[]).some(q=>q.speaker===name)
+  ));
+  if(themesForChar.length){
+    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-themes')"><div class="csec-label" style="color:${col.stroke};">Themes (${themesForChar.length})</div><span class="csec-toggle" id="char-themes-tog">▾</span></div><div id="char-themes">`
+    +sortByPage(themesForChar).map(th=>{
+      // For this character, only nest the supporting quotes THEY spoke (that's the one most relevant to their profile).
+      // If they're only in `involved` but didn't speak any quote, show all the theme's supporting quotes.
+      const allQs=th.themeQuotes||[];
+      const myQs=allQs.filter(q=>q.speaker===name);
+      const show=myQs.length?myQs:allQs;
+      const nested=show.length?show.map(q=>{
+        const spkr=q.speaker||'Narrator / Author';
+        const spkrCol=q.speaker?getCC(q.speaker):null;
+        return`<div style="border-left:2px solid ${col.stroke};padding:5px 8px;margin-top:5px;background:var(--bg2);border-radius:0 var(--r) var(--r) 0;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${spkrCol?spkrCol.text:'var(--t3)'};margin-bottom:2px;">${spkr}</div>
+          <div style="font-size:12px;font-style:italic;color:var(--text);">"${q.text}"</div>
+          ${q.page?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${q.page}</div>`:''}
+        </div>`;
+      }).join(''):'';
+      return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div>${th.content}${nested}${nT(th)}${pgT(th)}${act(th)}</div>`;
+    }).join('')+`</div></div>`;
+  }
   if(events.length){
     // #267 + #269 — combine Event + Timeline entries for this character into one chronologically-sorted section
     const tlForChar=all.filter(e=>['Timeline','Date/Period'].includes(e.type)&&(e.involved?.includes(name)||e.speaker===name));
@@ -3385,7 +3662,7 @@ function renderCharDetail(name){
       return`<div class="citem"><div class="ilabel" style="color:${col.text};">${labelType}${e.evdate?' — '+e.evdate:''}</div>${e.content}${pgT(e)}${act(e)}</div>`;
     }).join('')+`</div></div>`;
   }
-  const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Timeline','Date/Period','Clue','Red herring','Question',...CT].includes(e.type)&&e.involved?.includes(name));
+  const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Timeline','Date/Period','Clue','Red herring','Question','Theme',...CT].includes(e.type)&&e.involved?.includes(name));
   const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
   const clues=all.filter(e=>['Clue','Red herring'].includes(e.type)&&e.involved?.includes(name));
   if(questions.length)html+=csecBlock(col,'Questions',questions,pgT,nT,act,'char-qq',sortByPage);
@@ -3730,12 +4007,12 @@ function renderTimeline(){
     const meIcons={Death:'🪦',Birth:'👶',Marriage:'💍','Move / Relocation':'📦',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔','Life-changing moment':'⭐'};
     const icons=isEvent?(item.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌':'';
     // #218-C — inline "+" between entries to insert
-    const plusBtn=i<items.length-1?`<div style="text-align:center;margin:-2px 0 -2px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.evdate||'')}','${esc(items[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
+    const plusBtn=i<items.length-1?`<div style="text-align:center;margin:-2px 0 -2px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.content||'')}','${esc(items[i+1].content||'')}','${esc(item.evdate||'')}','${esc(items[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
     return`<div class="titem">
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?` (${item.timeOffset}${item.timeOffsetFrom?' from "'+item.timeOffsetFrom.slice(0,30)+'"':' from prev.'})`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m)return ` (${item.timeOffset}${item.timeOffsetFrom?' from "'+item.timeOffsetFrom.slice(0,30)+'"':''})`;const dir=m[1]==='+'?'after':'before';const n=m[2];const u=m[3];const anchor=item.timeOffsetFrom?` "${item.timeOffsetFrom.slice(0,30)}"`:' previous';return ` (${n} ${u} ${dir}${anchor})`;})():''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
@@ -3746,7 +4023,12 @@ function renderTimeline(){
   }).join('')+'</div>';
 }
 // #218-C — open Timeline form pre-filled with offset toggle on, between two known events
-function insertTimelineBetween(beforeDate,afterDate){
+// Asks the user which anchor to use: "after [prev]" or "before [next]"
+function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
+  const prevLabel=(prevName||prevDate||'previous').slice(0,40);
+  const nextLabel=(nextName||nextDate||'next').slice(0,40);
+  // confirm() is binary: OK = "after prev", Cancel = "before next"
+  const useAfter=confirm(`Anchor this new entry to which event?\n\n• OK → "after ${prevLabel}"\n• Cancel → "before ${nextLabel}"`);
   buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
   document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
   document.getElementById('ae-type').value='Timeline';onTypeChange();
@@ -3754,12 +4036,13 @@ function insertTimelineBetween(beforeDate,afterDate){
     const t=document.getElementById('ae-offset-toggle');
     if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
     const evSel=document.getElementById('ae-offset-event');
-    if(evSel&&beforeDate){
-      // Match by evdate substring
-      const opt=[...evSel.options].find(o=>o.value.includes(beforeDate)||o.text.includes(beforeDate));
+    const anchorName=useAfter?prevName:nextName;
+    const anchorDate=useAfter?prevDate:nextDate;
+    if(evSel&&(anchorName||anchorDate)){
+      const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
       if(opt)evSel.value=opt.value;
     }
-    document.getElementById('ae-offset-dir').value='+';
+    document.getElementById('ae-offset-dir').value=useAfter?'+':'-';
   },80);
   openSheet('ae-overlay');
 }
@@ -5470,13 +5753,44 @@ function renderReportList(){
       <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start;">
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:12px;">${priIcon[r.priority]||''}${typeIcon[r.type]||''} #${r.num} — ${r.title}</div>
-          ${r.body?`<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.5;">${r.body.replace(/</g,'&lt;')}</div>`:''}
+          ${r.body?`<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.5;white-space:pre-wrap;">${r.body.replace(/</g,'&lt;')}</div>`:''}
           <div style="font-size:9px;color:var(--t3);margin-top:3px;">${ctxBits} · ${r.dateStr}</div>
         </div>
-        <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;flex-shrink:0;">×</button>
+        <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;">
+          <button class="btn-edit" onclick="editReport(${r.num})" style="font-size:11px;padding:2px 6px;">Edit</button>
+          <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;">×</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+// #277 — load an existing report back into the form/test panel for editing
+function editReport(num){
+  const reports=getReports();
+  const r=reports.find(x=>x.num===num);
+  if(!r)return;
+  if(r.type==='test'){
+    // Load into the test panel
+    document.getElementById('test-ticket-num').value=r.testTarget||'';
+    document.getElementById('test-ticket-note').value=r.body||'';
+    // Remove the existing report; logTestResult will re-create it on next ✅/⚠️ tap
+    saveReports(reports.filter(x=>x.num!==num));
+    renderReportList();
+    document.getElementById('test-ticket-num').scrollIntoView({behavior:'smooth',block:'center'});
+    document.getElementById('test-ticket-note').focus();
+    alert(`Editing test result for #${r.testTarget}. Adjust the note then tap ✅ or ⚠️ to re-save.`);
+    return;
+  }
+  // Bug/feature/change/question — load into the main report form
+  document.getElementById('report-type').value=r.type||'bug';
+  document.getElementById('report-title').value=r.title==='(untitled)'?'':(r.title||'');
+  document.getElementById('report-body').value=r.body||'';
+  document.getElementById('report-priority').value=r.priority||'normal';
+  saveReports(reports.filter(x=>x.num!==num));
+  renderReportList();
+  document.getElementById('report-title').scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('report-title').focus();
+  alert(`Editing report #${r.num}. Adjust the fields then tap "Save report" to re-save.`);
 }
 function deleteReport(num){
   if(!confirm('Delete this report?'))return;
@@ -5600,12 +5914,12 @@ load();renderLibrary();
     <div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:9px 11px;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">🧪 Log a test result</div>
       <div style="font-size:11px;color:var(--t2);margin-bottom:7px;line-height:1.5;">Type a ticket # (from your tracker — e.g. 217, 268), tap ✅ if it works or ⚠️ if it still needs fixes. Saves as a note in the batch below so it gets passed back to Claude.</div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 90px;font-size:14px;"/>
-        <input type="text" id="test-ticket-note" placeholder="optional note…" style="flex:1;font-size:13px;"/>
-        <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex-shrink:0;" onclick="logTestResult('pass')">✅</button>
-        <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex-shrink:0;" onclick="logTestResult('fail')">⚠️</button>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+        <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 100px;font-size:16px;"/>
+        <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
+        <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
       </div>
+      <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken (room to write a paragraph)…" style="width:100%;min-height:80px;font-size:16px;line-height:1.45;"></textarea>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <div class="slabel" style="margin:0;">Pending reports</div>
