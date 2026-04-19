@@ -6268,6 +6268,7 @@ function openReportIssue(){
   const ctxLines=Object.entries(ctx).map(([k,v])=>`${k}: ${v}`).join('  ·  ');
   document.getElementById('report-context-preview').textContent='Auto-captured: '+ctxLines;
   _normalizeReports();
+  const sEl=document.getElementById('report-search');if(sEl)sEl.value='';
   renderReportList();
   openSheet('report-overlay');
 }
@@ -6366,16 +6367,25 @@ function renderReportList(){
   const list=document.getElementById('report-list');
   if(!list)return;
   if(!reports.length){list.innerHTML='<div style="color:var(--t3);font-style:italic;padding:8px 0;">No reports yet.</div>';return;}
+  // #299 — Search filter: matches # (num or test target) + title + body
+  const qRaw=(document.getElementById('report-search')?.value||'').trim().toLowerCase();
+  const matches=r=>{
+    if(!qRaw)return true;
+    const hay=[String(r.num),String(r.testTarget||''),r.title||'',r.body||''].join(' ').toLowerCase();
+    return hay.includes(qRaw);
+  };
+  const filtered=reports.filter(matches);
   const sections=[
-    {key:'open',label:'Open',color:'var(--accent)',emptyText:'Nothing open.'},
-    {key:'reported',label:'Awaiting fix',color:'var(--t2)',emptyText:'Nothing awaiting fix.'},
-    {key:'closed',label:'Closed',color:'#1A6B3A',emptyText:'Nothing closed yet.'}
+    {key:'open',label:'Open',color:'var(--accent)',emptyText:qRaw?'No matches in Open.':'Nothing open.'},
+    {key:'reported',label:'Awaiting fix',color:'var(--t2)',emptyText:qRaw?'No matches in Awaiting fix.':'Nothing awaiting fix.'},
+    {key:'closed',label:'Closed',color:'#1A6B3A',emptyText:qRaw?'No matches in Closed.':'Nothing closed yet.'}
   ];
   list.innerHTML=sections.map(s=>{
-    const items=reports.filter(r=>r.status===s.key).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
-    const expanded=_trackerSectionsOpen[s.key];
+    const items=filtered.filter(r=>r.status===s.key).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    // When searching, auto-expand sections that have matches
+    const expanded=qRaw?(items.length>0||_trackerSectionsOpen[s.key]):_trackerSectionsOpen[s.key];
     const chevron=expanded?'▾':'▸';
-    const clearBtn=(s.key==='closed'&&items.length)?`<button onclick="event.stopPropagation();clearAllClosed()" style="font-size:10px;padding:2px 8px;background:var(--bg2);border:0.5px solid var(--bo);border-radius:var(--r);cursor:pointer;color:var(--t2);">Clear all closed</button>`:'';
+    const clearBtn=(s.key==='closed'&&items.length&&!qRaw)?`<button onclick="event.stopPropagation();clearAllClosed()" style="font-size:10px;padding:2px 8px;background:var(--bg2);border:0.5px solid var(--bo);border-radius:var(--r);cursor:pointer;color:var(--t2);">Clear all closed</button>`:'';
     const headerBg=s.key==='open'?'var(--al)':'var(--bg2)';
     const border=s.key==='open'?'0.5px solid var(--am)':'0.5px solid var(--bo)';
     return`<div style="margin-bottom:8px;">
@@ -6589,6 +6599,10 @@ load();renderLibrary();
       <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
     </div>
     <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;">Copy-all sends only items in <b>Open</b> (plus any test results). Items flip to <b>Awaiting fix</b> after copying so they don't repeat. Tap ✓ on an item when you've confirmed the fix.</div>
+    <div style="position:relative;margin-bottom:8px;">
+      <input type="text" id="report-search" placeholder="🔎 Search # or text…" autocomplete="off" oninput="renderReportList()" style="width:100%;font-size:14px;padding:8px 30px 8px 10px;"/>
+      <button type="button" onclick="document.getElementById('report-search').value='';renderReportList();" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;" title="Clear">×</button>
+    </div>
     <div id="report-list" style="font-size:12px;"></div>
   </div>
 </div>
