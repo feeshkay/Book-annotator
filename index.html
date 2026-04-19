@@ -3526,7 +3526,7 @@ function ecHTML(e,compact,fromTab){
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
 }
-function esc(s){return(s||'').replace(/'/g,"\\'");}
+function esc(s){return(s||'').replace(/'/g,"&#39;");}
 
 // ═══════════════════════════════════════════════════════════════
 // QUOTES TAB
