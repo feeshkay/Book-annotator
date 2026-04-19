@@ -136,12 +136,28 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .sum-card:active{opacity:0.7;}
 .sum-val{font-size:18px;font-weight:600;}
 .sum-lbl{font-size:11px;color:var(--t2);}
+/* #249 — info tip: larger tap target + click-to-expand */
+.info-tip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--bg2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;margin-left:4px;vertical-align:middle;-webkit-tap-highlight-color:transparent;user-select:none;}
+.info-tip:active{opacity:0.7;}
+.info-tip-msg{display:block;margin-top:5px;padding:7px 10px;background:var(--bg2);border-left:3px solid var(--t3);border-radius:var(--r);font-size:11px;font-weight:400;color:var(--t2);line-height:1.4;}
 /* timeline */
 .titem{display:flex;gap:9px;margin-bottom:13px;position:relative;}
 .tdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
 .tline{position:absolute;left:4px;top:13px;bottom:-13px;width:2px;background:var(--cb);}
 /* web */
-.web-wrap{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;-webkit-user-select:none;padding:8px 0;}
+.web-wrap{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;cursor:grab;user-select:none;-webkit-user-select:none;padding:8px 0;touch-action:none;}
+.web-wrap svg{touch-action:none;}
+/* rtp — searchable relationship-type picker (#246) */
+.rtp-wrap{position:relative;}
+.rtp-input-row{display:flex;gap:4px;align-items:center;}
+.rtp-input{flex:1;padding:10px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);font-size:14px;color:var(--text);}
+.rtp-panel{border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);margin-top:5px;max-height:260px;overflow-y:auto;padding:6px;}
+.rtp-group{margin-bottom:6px;}
+.rtp-group-label{font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--t3);padding:4px 6px 2px;}
+.rtp-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.rtp-chip{font-size:12px;padding:6px 10px;border-radius:14px;background:var(--bg2);border:0.5px solid var(--cb);color:var(--text);cursor:pointer;touch-action:manipulation;}
+.rtp-chip.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+.rtp-chip:active{transform:scale(0.95);}
 /* empty */
 .empty{text-align:center;padding:32px 14px;color:var(--t3);}
 .empty-icon{font-size:30px;margin-bottom:7px;}
@@ -222,6 +238,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" onclick="openNewBookSheet()">+ New</button>
     <button class="btn-icon" style="font-size:12px;" onclick="exportAllData()">⬇</button>
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
+    <button class="btn-icon" onclick="openSheet('lib-settings-overlay')" title="Settings" style="font-size:16px;">⚙</button>
   </div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
     <div style="font-size:10px;color:var(--t3);text-align:center;padding:6px 0 4px;">Data lives on this device only · Private to you</div>
@@ -274,8 +291,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="web-panel" class="panel" style="padding:8px 10px 85px;">
-      <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Tap a character · Filter by relationship type</div>
+      <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Tap a character · Drag to reposition · Pinch / scroll to zoom</div>
       <div class="fscroll" id="web-filter-bar"></div>
+      <div style="display:flex;justify-content:center;gap:4px;margin-bottom:6px;">
+        <button class="btn btn-sm" onclick="webZoom(-1)" title="Zoom out" style="padding:4px 10px;font-size:14px;">−</button>
+        <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
+        <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
+      </div>
       <div class="web-wrap" id="web-wrap"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
@@ -340,7 +362,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
   <div class="char-hero" id="char-hero"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="char-body"></div>
-  <button class="fab" onclick="openAddFromCharProfile()">+</button>
 </div>
 
 <!-- ══ LOCATION DETAIL ══ -->
@@ -352,7 +373,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="loc-body"></div>
-  <button class="fab" onclick="openAddFromLocProfile()">+</button>
 </div>
 
 <!-- ══ GUIDE SCREEN ══ -->
@@ -510,8 +530,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
       <div class="r2">
+        <div class="fg"><label>Introduced — p. <span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
-        <div class="fg"><label>Introduced — p. <span style="font-weight:400;color:var(--t3);font-size:10px;" title="Auto-fills the chapter if your chapter setup covers this page">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
       <div class="fg">
@@ -623,8 +643,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div class="r2">
-        <div class="fg"><label title="Page or pages where the supporting quote appears in the book">Quote pg(s) <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="text" id="ae-sqp" placeholder="e.g. 47 or 47–52" oninput="autoTraitQuoteChap()" onblur="autoTraitQuoteChap()"/></div>
-        <div class="fg"><label title="Chapter that contains the supporting quote">Quote ch <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="number" id="ae-sqc" inputmode="numeric" min="1" placeholder="ch."/></div>
+        <div class="fg"><label>Quote pg(s) <span class="info-tip" data-tip="Page or pages where the supporting quote appears in the book" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="text" id="ae-sqp" placeholder="e.g. 47 or 47–52" oninput="autoTraitQuoteChap()" onblur="autoTraitQuoteChap()"/></div>
+        <div class="fg"><label>Quote ch <span class="info-tip" data-tip="Chapter that contains the supporting quote" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="number" id="ae-sqc" inputmode="numeric" min="1" placeholder="ch."/></div>
       </div>
     </div>
 
@@ -700,9 +720,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-offset-event" style="font-size:16px;"><option value="">— free text / unspecified —</option></select>
         </div>
       </div>
-      <!-- #253 — Supporting quote + speaker auto-tag -->
+      <!-- #253 — Supporting quote + speaker auto-tag + quote page (flows to Quote page display) -->
       <div class="fg" style="margin-top:10px;"><label>Supporting quote <span style="font-weight:400;color:var(--t3);">(optional — quote from the text that anchors this event)</span></label>
         <input type="text" id="ae-tl-sq" placeholder="Quote from the book…"/>
+      </div>
+      <div class="fg"><label>Quote page # <span style="font-weight:400;color:var(--t3);">(optional — page where this quote appears)</span></label>
+        <input type="text" id="ae-tl-sq-pg" placeholder="e.g. 47 or 47–52" inputmode="numeric"/>
       </div>
       <div class="fg"><label>Quote speaker <span style="font-weight:400;color:var(--t3);">(auto-tags into Characters Involved)</span></label>
         <div class="cdd-wrap" id="ae-tl-speaker-cdd-wrap">
@@ -779,15 +802,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- RELATIONSHIP EXTRAS -->
     <div id="ae-rel-ex" style="display:none">
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:9px;"><strong>Who goes where?</strong><br>Character A = the one <em>being described</em>. Character B = the other person.<br>The label shows: "A is [type] of B." On B's profile it auto-reverses.<br>e.g. A=Elizabeth, type=Student, B=Professor → Elizabeth's profile: "Professor — Teacher." Professor's profile: "Elizabeth — Student."</div>
-      <div class="fg"><label>Relationship type</label><select id="ae-reltype" onchange="inferRelGender()">
-        <option value="">— select —</option>
-        <optgroup label="Distant Family"><option>Distant ancestor</option><option>Distant descendant</option><option>Distant relative (unknown degree)</option><option>Great-great-grandchild</option><option>Great-great-grandparent</option><option>Great-great-grandfather</option><option>Great-great-grandmother</option></optgroup>
-        <optgroup label="Family"><option>Adopted child</option><option>Adoptive parent</option><option>Aunt</option><option>Child</option><option>Cousin</option><option>Father</option><option>Grandchild</option><option>Grandfather</option><option>Grandmother</option><option>Great-grandchild</option><option>Great-grandfather</option><option>Great-grandmother</option><option>Guardian</option><option>Half-sibling</option><option>In-law</option><option>Mother</option><option>Nephew</option><option>Niece</option><option>Second cousin</option><option>Sibling</option><option>Step-child</option><option>Step-parent</option><option>Step-sibling</option><option>Uncle</option><option>Ward</option></optgroup>
-        <optgroup label="Romantic"><option>Admirer</option><option>Betrothed</option><option>Estranged spouse</option><option>Ex-partner</option><option>Husband</option><option>Love interest</option><option>Partner</option><option>Spouse</option><option>Wife</option></optgroup>
-        <optgroup label="Social"><option>Acquaintance</option><option>Ally</option><option>Best friend</option><option>Close friend</option><option>Confidant</option><option>Enemy</option><option>Friend</option><option>Mentor</option><option>Neighbour</option><option>Protégé</option><option>Rival</option><option>Stranger</option></optgroup>
-        <optgroup label="Professional"><option>Business partner</option><option>Colleague</option><option>Commander</option><option>Employee</option><option>Employer</option><option>Master</option><option>Servant</option><option>Student</option><option>Subordinate</option><option>Teacher</option></optgroup>
-        <optgroup label="Other"><option>Complicated</option><option>Unknown</option></optgroup>
-      </select></div>
+      <div class="fg"><label>Relationship type</label>
+        <div class="rtp-wrap" id="ae-reltype-wrap">
+          <div class="rtp-input-row">
+            <input type="text" class="rtp-input" id="ae-reltype-search" placeholder="Search or tap below…" autocomplete="off" oninput="rtpOnInput()" onfocus="rtpOpen()"/>
+            <button type="button" class="btn btn-sm" onclick="rtpClear()" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
+          </div>
+          <input type="hidden" id="ae-reltype"/>
+          <div class="rtp-panel" id="ae-reltype-panel"></div>
+        </div>
+      </div>
       <div class="fg"><label>Character A <span style="font-weight:400;">(this char)</span></label>
         <div class="cdd-wrap" id="ae-rela-cdd-wrap">
           <div class="cdd-input-row">
@@ -852,7 +876,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="ae-common">
       <div class="divider"></div>
       <div class="r2" id="ae-chappage">
-        <div class="fg"><label title="Page or pages where the entry appears in the book — single page (47) or range (47–52)">pg(s) <span style="font-weight:400;color:var(--t3);font-size:10px;">ⓘ</span></label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
+        <div class="fg"><label>pg(s) <span class="info-tip" data-tip="Page or pages where the entry appears in the book — single page (47) or range (47–52)" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
@@ -1020,6 +1044,18 @@ const SPINE=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D1
 const CT=['Character','Person','Figure','Suspect'];
 const PARENT_TYPES=['Mother','Father','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Great-great-grandparent','Distant ancestor','Adoptive parent','Step-parent','Guardian'];
 const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
+// #246 — Searchable relationship-type picker: grouped flat list with synonyms for search
+const REL_GROUPS=[
+  {label:'Family',items:['Mother','Father','Child','Sibling','Brother','Sister','Half-sibling','Step-sibling','Step-parent','Step-child','Grandmother','Grandfather','Grandchild','Great-grandmother','Great-grandfather','Great-grandchild','Aunt','Uncle','Uncle or Aunt','Niece','Nephew','Niece or Nephew','Cousin','Second cousin','In-law','Guardian','Ward','Adoptive parent','Adopted child','Godparent','Godchild']},
+  {label:'Distant family',items:['Distant ancestor','Distant descendant','Distant relative (unknown degree)','Great-great-grandmother','Great-great-grandfather','Great-great-grandchild','Great-great-grandparent']},
+  {label:'Romantic',items:['Spouse','Husband','Wife','Partner','Betrothed','Love interest','Admirer','Ex-partner','Estranged spouse']},
+  {label:'Social',items:['Friend','Best friend','Close friend','Acquaintance','Confidant','Ally','Enemy','Rival','Mentor','Protégé','Neighbour','Stranger']},
+  {label:'Professional',items:['Teacher','Student','Employer','Employee','Colleague','Business partner','Commander','Subordinate','Master','Servant']},
+  {label:'Other',items:['Complicated','Unknown']},
+];
+// #275/#286 — Godparent types added to hierarchy
+const GODPARENT_TYPES=['Godparent'];
+const GODCHILD_TYPES=['Godchild'];
 const REL_EMOJI={
   'Mother':'👩','Father':'👨','Child':'🧒','Parent':'👪','Sibling':'👫','Brother':'👦','Sister':'👧',
   'Grandparent':'👴','Grandmother':'👵','Grandfather':'👴','Grandchild':'🧒',
@@ -1029,6 +1065,7 @@ const REL_EMOJI={
   'Uncle or Aunt':'🧑','Niece or Nephew':'🧒',
   'Half-sibling':'👫','Step-parent':'👪','Step-child':'🧒','Step-sibling':'👫',
   'Adopted child':'🧒','Adoptive parent':'👪','Guardian':'🛡️','Ward':'🧒',
+  'Godparent':'✨','Godchild':'🌟','Godmother':'✨','Godfather':'✨',
   'Distant ancestor':'🌳','Distant descendant':'🌱','Distant relative (unknown degree)':'🌿',
   'Spouse':'💍','Partner':'💑','Betrothed':'💍','Love interest':'❤️','Husband':'🤵','Wife':'👰',
   'Admirer':'💌','Ex-partner':'💔','Estranged spouse':'💔',
@@ -1074,7 +1111,41 @@ function inferRelGender(){
   aEntry.gender=inferredGender;
   save();
 }
-const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling'};
+// #246 — Searchable relationship-type picker
+function rtpRender(filter){
+  const panel=document.getElementById('ae-reltype-panel');if(!panel)return;
+  const current=document.getElementById('ae-reltype').value;
+  const q=(filter||'').trim().toLowerCase();
+  let html='';
+  REL_GROUPS.forEach(g=>{
+    const matched=g.items.filter(it=>!q||it.toLowerCase().includes(q));
+    if(!matched.length)return;
+    html+=`<div class="rtp-group"><div class="rtp-group-label">${g.label}</div><div class="rtp-chips">`
+      +matched.map(it=>`<span class="rtp-chip${it===current?' active':''}" onclick="rtpPick('${it.replace(/'/g,"\\'")}')">${relEmoji(it)} ${it}</span>`).join('')
+      +`</div></div>`;
+  });
+  if(!html)html=`<div style="font-size:12px;color:var(--t3);padding:10px;text-align:center;">No matches for "${q}"</div>`;
+  panel.innerHTML=html;
+}
+function rtpOpen(){const p=document.getElementById('ae-reltype-panel');if(p){p.style.display='';rtpRender(document.getElementById('ae-reltype-search').value);}}
+function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
+function rtpPick(val){
+  document.getElementById('ae-reltype').value=val;
+  document.getElementById('ae-reltype-search').value=val;
+  rtpRender(''); // re-render to show active state
+  inferRelGender();
+}
+function rtpClear(){
+  document.getElementById('ae-reltype').value='';
+  document.getElementById('ae-reltype-search').value='';
+  rtpRender('');
+}
+function rtpSet(val){
+  document.getElementById('ae-reltype').value=val||'';
+  document.getElementById('ae-reltype-search').value=val||'';
+  rtpRender('');
+}
+const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
@@ -1160,6 +1231,19 @@ function localDate(){const d=new Date();return`${d.getFullYear()}-${String(d.get
 function fmt(d){if(!d)return'';try{const p=d.split('-');return`${+p[1]}/${+p[2]}/${p[0]}`;}catch(e){return d;}}
 function tk(t){return(t||'').toLowerCase().replace(/[^a-z]/g,'').replace('narratorquote','quote').replace('authornote','note').replace('linestanza','note').replace('redherring','redflag').replace('plottwist','note').replace('worldelement','concept').replace('dateperiod','concept').replace('actionable','concept').replace('wordvocabulary','word').replace('actsscene','chapter').replace('keyidea','keyidea').replace('majorevent','event');}
 function openLink(url){try{window.open(url,'_blank');}catch(e){location.href=url;}}
+// #249 — tap to expand an info tip. The button carries data-tip with the explanation.
+function toggleInfoTip(btn,ev){
+  if(ev){ev.stopPropagation();ev.preventDefault();}
+  const msg=btn.getAttribute('data-tip')||'';
+  const existing=btn.parentNode.querySelector(':scope > .info-tip-msg');
+  if(existing){existing.remove();return;}
+  // Close other open tips
+  document.querySelectorAll('.info-tip-msg').forEach(n=>n.remove());
+  const div=document.createElement('div');
+  div.className='info-tip-msg';
+  div.textContent=msg;
+  btn.parentNode.appendChild(div);
+}
 function titleCase(str){const articles=new Set(['a','an','the','and','but','or','for','nor','on','at','to','by','in','of','up','as','is']);return str.split(' ').map((w,i)=>{if(!w)return w;const low=w.toLowerCase();return(i===0||!articles.has(low))?w[0].toUpperCase()+w.slice(1).toLowerCase():low;}).join(' ');}
 function autoTitleCase(el){const pos=el.selectionStart;el.value=titleCase(el.value);el.setSelectionRange(pos,pos);}
 function toneClass(emotion){
@@ -1810,6 +1894,8 @@ function openBook(id){
 }
 function goLib(){currentId=null;currentCharName=null;currentLocName=null;show('lib-screen','book-screen');renderLibrary();}
 function openBookSettings(){openSheet('settings-overlay');}
+// #274/285 — Library-wide settings menu (gear icon in library topbar)
+function openLibSettings(){openSheet('lib-settings-overlay');}
 function openNewBookSheet(){
   document.getElementById('nb-edit-id').value='';
   document.getElementById('nb-sheet-title').textContent='New book';
@@ -1920,19 +2006,19 @@ function addQuickRelRow(relType,charName){
   const rowId='qr-'+Date.now()+'-'+Math.floor(Math.random()*9999);
   const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
   row.dataset.qrId=rowId;
-  // #282 — rel-type on its own line (top), char field full-width on its own line (bottom), so the × clear is always visible
+  // #239/272/282 — rel-type on its own line; char field full-width on its own line (× clear always visible); +New on its own line below so nothing crowds the char row.
   row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <select class="qr-type" style="flex:1;font-size:14px;">${buildRelTypeOpts(relType||'')}</select>
       <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
     </div>
-    <div style="display:flex;gap:5px;align-items:center;position:relative;">
-      <div style="flex:1;position:relative;min-width:0;">
-        <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:30px;"/>
-        <input type="hidden" class="qr-char" value="${charName||''}"/>
-        <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:16px;padding:0 4px;cursor:pointer;line-height:1;">×</button>
-        <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
-      </div>
-      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="flex-shrink:0;padding:4px 10px;font-size:12px;">+ New</button>
+    <div style="position:relative;margin-bottom:6px;">
+      <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:34px;"/>
+      <input type="hidden" class="qr-char" value="${charName||''}"/>
+      <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
+      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+    </div>
+    <div style="text-align:right;">
+      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
   row.querySelector('.qr-type').addEventListener('change',checkSuggestions);
@@ -1996,8 +2082,8 @@ function quickRelNewChar(btn){
 function buildRelTypeOpts(sel){
   const groups=[
     ['Distant Family',['Distant ancestor','Distant descendant','Distant relative (unknown degree)','Great-great-grandfather','Great-great-grandmother','Great-great-grandchild','Great-great-grandparent']],
-    ['Family',['Adopted child','Adoptive parent','Aunt','Brother','Child','Cousin','Father','Grandchild','Grandfather','Grandmother','Great-grandchild','Great-grandfather','Great-grandmother','Guardian','Half-sibling','In-law','Mother','Nephew','Niece','Second cousin','Sibling','Sister','Step-child','Step-parent','Step-sibling','Uncle','Ward']],
-    ['Romantic',['Admirer','Betrothed','Estranged spouse','Ex-partner','Love interest','Partner','Spouse']],
+    ['Family',['Adopted child','Adoptive parent','Aunt','Brother','Child','Cousin','Father','Godchild','Godparent','Grandchild','Grandfather','Grandmother','Great-grandchild','Great-grandfather','Great-grandmother','Guardian','Half-sibling','In-law','Mother','Nephew','Niece','Second cousin','Sibling','Sister','Step-child','Step-parent','Step-sibling','Uncle','Ward']],
+    ['Romantic',['Admirer','Betrothed','Estranged spouse','Ex-partner','Husband','Love interest','Partner','Spouse','Wife']],
     ['Social',['Acquaintance','Ally','Best friend','Close friend','Confidant','Enemy','Friend','Mentor','Neighbour','Protégé','Rival','Stranger']],
     ['Professional',['Business partner','Colleague','Commander','Employee','Employer','Master','Servant','Student','Subordinate','Teacher']],
     ['Other',['Complicated','Unknown']],
@@ -2191,6 +2277,8 @@ function onTypeChange(){
       cddSet('ae-rela','');
       cddSet('ae-relb','');
     }
+    // #246 — Render the searchable rel-type picker
+    rtpRender('');
     document.getElementById('ae-quick-add-b').style.display='none';
     window._cddRelChangeHook=function(){
       const a=cddGet('ae-rela');const b=cddGet('ae-relb');
@@ -2323,6 +2411,33 @@ function openAddFromCharProfile(){
     const current=cddGet('ae-inv')||[];
     if(!current.includes(name))cddSet('ae-inv',[...current,name]);
   },90);}
+}
+// #241 — Category-level Add buttons on char profile: open sheet pre-configured for a specific entry type
+function openAddTypeForChar(type){
+  const name=currentCharName;if(!name)return;
+  buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+  const titles={'Characteristic':'Add trait for ','Quote':'Add quote for ','Relationship':'Add relationship for ','Event':'Add event for ','Theme':'Add theme for ','Question':'Add question for '};
+  document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add for ')+name;
+  document.getElementById('ae-type').value=type;onTypeChange();
+  setTimeout(()=>{
+    _cddEnsureRegistered();
+    if(type==='Relationship'){cddSet('ae-rela',name);}
+    else{cddSet('ae-inv',[name]);}
+  },60);
+  openSheet('ae-overlay');
+}
+// #241 — Category-level Add buttons on location profile
+function openAddTypeForLoc(type){
+  const name=currentLocName;if(!name)return;
+  buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+  const titles={'Characteristic':'Add trait at ','Quote':'Add quote at ','Event':'Add event at ','Theme':'Add theme at ','Question':'Add question at ','Character':'Add character at '};
+  document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add at ')+name;
+  document.getElementById('ae-type').value=type;onTypeChange();
+  setTimeout(()=>{
+    const locSel=document.getElementById('ae-loc-sel');
+    if(locSel){const opt=[...locSel.options].find(o=>o.value===name||o.text===name);if(opt)locSel.value=opt.value;const locSearch=document.getElementById('ae-loc-search');if(locSearch)locSearch.value=name;}
+  },80);
+  openSheet('ae-overlay');
 }
 // #240 — FAB on location profile (pre-fills current location)
 function openAddFromLocProfile(){
@@ -2505,13 +2620,13 @@ function openAddSheet(preType){
   openSheet('ae-overlay');onTypeChange();
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-tl-sq','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-sq','ae-sqp','ae-sqc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // Clear all searchable character dropdowns
   _cddEnsureRegistered();
   ['ae-inv','ae-speaker','ae-word-speaker','ae-rela','ae-relb','ae-trait-speaker','ae-tl-speaker'].forEach(p=>cddClear(p));
   ['ae-speaker-search','ae-word-speaker-search','ae-rela-search','ae-relb-search','ae-inv-search','ae-trait-speaker-search','ae-tl-speaker-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';
+  document.getElementById('ae-emotion').value='';document.getElementById('ae-imp').value='normal';document.getElementById('ae-reltype').value='';if(document.getElementById('ae-reltype-search'))document.getElementById('ae-reltype-search').value='';
   document.getElementById('ae-crole').value='';document.getElementById('ae-cstatus').value='unknown';
   document.getElementById('ae-gender').value='';
   document.getElementById('ae-char-photo-data').value='';setCharPhotos([]);
@@ -2796,7 +2911,7 @@ function submitEntry(){
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
-  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSpeaker=cddGet('ae-tl-speaker')||'';}
+  if(type==='Timeline'){entry.evdate=document.getElementById('ae-evdate').value.trim();entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';}
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
     entry.eventTypes=getPickedEventTypes();
@@ -3173,7 +3288,7 @@ function editEntry(id){
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
-    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';document.getElementById('ae-reltype').value=e.relType||'';if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}
+    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
     document.getElementById('ae-loc-sel').value=e.location||'';
@@ -3229,6 +3344,7 @@ function editEntry(id){
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
     // #253 — Restore Timeline supporting quote + speaker
     if(e.tlSq)document.getElementById('ae-tl-sq').value=e.tlSq;
+    if(e.tlSqPg){const el=document.getElementById('ae-tl-sq-pg');if(el)el.value=e.tlSqPg;}
     if(e.tlSpeaker)setTimeout(()=>cddSet('ae-tl-speaker',e.tlSpeaker),60);
     // #250 — Show "Discard draft" button for drafts; reflect saved draft state
     const ddb=document.getElementById('ae-discard-draft-btn');
@@ -3383,7 +3499,10 @@ function ecHTML(e,compact,fromTab){
     </div>`;
   } else {
     const ph=e.photo?`<img src="${e.photo}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;float:right;margin-left:7px;"/>`:'' ;
-    body=`<div class="econtent">${ph}${e.content}</div>`;
+    // #229 — bigger quote text on Quote / Line/stanza / Narrator quote entries
+    const isQuoteLike=['Quote','Line/stanza','Narrator quote'].includes(e.type);
+    const quoteStyle=isQuoteLike?'font-size:17px;line-height:1.6;font-style:italic;':'';
+    body=`<div class="econtent" style="${quoteStyle}">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.content}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:'';
@@ -3422,6 +3541,15 @@ function renderQuotes(){
     +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
     +`<button class="chip${qFilter==='narrator'?' active':''}" onclick="setQuoteFilter('narrator')">Narrator</button>`;
   let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type));
+  // #253 — include Timeline/Event entries that have a supporting quote
+  const tlQuotes=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.tlSq);
+  // #242 — include Theme-embedded supporting quotes. Flatten each theme's themeQuotes[] into its own card.
+  const themeQuoteRows=[];
+  entries().filter(e=>e.type==='Theme'&&(e.themeQuotes||[]).length).forEach(th=>{
+    (th.themeQuotes||[]).filter(q=>q&&q.text).forEach((q,idx)=>{
+      themeQuoteRows.push({parent:th,q:q,idx:idx});
+    });
+  });
   if(qFilter!=='all'&&qFilter!=='narrator'){
     quotes=quotes.filter(e=>{
       if(e.type==='Dialogue'){
@@ -3432,8 +3560,44 @@ function renderQuotes(){
     });
   }
   if(qFilter==='narrator')quotes=quotes.filter(e=>e.type!=='Dialogue'&&(!e.speaker||e.speaker==='Narrator / Author'));
-  if(!quotes.length){list.innerHTML='';empty.style.display='';return;}
-  empty.style.display='none';list.innerHTML=quotes.map(e=>ecHTML(e,false)).join('');
+  // Filter tlQuotes the same way
+  let tlFiltered=tlQuotes;
+  if(qFilter!=='all'&&qFilter!=='narrator'){
+    tlFiltered=tlQuotes.filter(e=>e.tlSpeaker===qFilter||e.involved?.includes(qFilter));
+  }else if(qFilter==='narrator'){
+    tlFiltered=tlQuotes.filter(e=>!e.tlSpeaker||e.tlSpeaker==='Narrator / Author');
+  }
+  // Filter themeQuoteRows the same way
+  let themeFiltered=themeQuoteRows;
+  if(qFilter!=='all'&&qFilter!=='narrator'){
+    themeFiltered=themeQuoteRows.filter(r=>r.q.speaker===qFilter);
+  }else if(qFilter==='narrator'){
+    themeFiltered=themeQuoteRows.filter(r=>!r.q.speaker||r.q.speaker==='Narrator / Author');
+  }
+  if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const tlHTML=tlFiltered.map(e=>{
+    const icon=e.type==='Event'?'⭐':'📅';
+    const pg=e.tlSqPg||e.pageNum||'';
+    const spk=e.tlSpeaker?`<span style="color:var(--t3);font-weight:500;">— ${e.tlSpeaker}</span>`:'';
+    return `<div class="entry-card" style="border-left:3px solid #534AB7;">
+      <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">${icon} Supporting quote · ${esc(e.content||'')}${pg?` · p.${pg}`:''}${e.chapNum?` · Ch.${e.chapNum}`:''}</div>
+      <div style="font-size:17px;font-style:italic;line-height:1.6;"><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.tlSq}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span></div>
+      ${spk?`<div style="margin-top:4px;font-size:12px;">${spk}</div>`:''}
+      <div class="eactions"><button class="btn-edit" onclick="editEntry(${e.id})">Edit on ${e.type}</button></div>
+    </div>`;
+  }).join('');
+  const themeHTML=themeFiltered.map(({parent,q})=>{
+    const spk=q.speaker?`<span style="color:var(--t3);font-weight:500;">— ${q.speaker}</span>`:'';
+    const pg=q.page||'';
+    return `<div class="entry-card" style="border-left:3px solid var(--am);">
+      <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">🎯 Theme · ${esc(parent.content||'')}${pg?` · p.${pg}`:''}</div>
+      <div style="font-size:17px;font-style:italic;line-height:1.6;"><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${q.text}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span></div>
+      ${spk?`<div style="margin-top:4px;font-size:12px;">${spk}</div>`:''}
+      <div class="eactions"><button class="btn-edit" onclick="editEntry(${parent.id})">Edit on Theme</button></div>
+    </div>`;
+  }).join('');
+  list.innerHTML=quotes.map(e=>ecHTML(e,false)).join('')+tlHTML+themeHTML;
 }
 let activeQuoteFilter='all';
 function setQuoteFilter(f){activeQuoteFilter=f;renderQuotes();}
@@ -3557,9 +3721,14 @@ function renderCharDetail(name){
     </div>
   </div>`;
 
+  // #241 — Category-level Add button for each section on the char profile
+  const addBtn=(type,label)=>`<button class="btn btn-sm" onclick="event.stopPropagation();openAddTypeForChar('${type}')" style="font-size:10px;padding:3px 8px;margin-left:6px;flex-shrink:0;">+ ${label}</button>`;
+  const secHdr=(id,label,count,type,addLabel)=>`<div class="csec-header" onclick="toggleSec('${id}')"><div class="csec-label" style="color:${col.stroke};flex:1;">${label}${count!=null?' ('+count+')':''}</div>${type?addBtn(type,addLabel):''}<span class="csec-toggle" id="${id}-tog">▾</span></div>`;
+
+  // Relationships section — always show header (even when empty) so user can add
+  html+=`<div class="csec">${secHdr('char-rels','Relationships',rels.length,'Relationship','Rel')}<div id="char-rels">`;
   if(rels.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-rels')"><div class="csec-label" style="color:${col.stroke};">Relationships (${rels.length})</div><span class="csec-toggle" id="char-rels-tog">▾</span></div><div id="char-rels">`
-    +sortByPage(rels).map(r=>{
+    html+=sortByPage(rels).map(r=>{
       const other=r.relA===name?r.relB:r.relA;
       const isA=r.relA===name;
       // Show from this char's perspective with gender-aware reciprocal labels (#214)
@@ -3583,20 +3752,29 @@ function renderCharDetail(name){
         ${r.content&&r.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:3px;font-style:italic;">${r.content}</div>`:''}
         ${pgT(r)}${act(r)}
       </div>`;
-    }).join('')+`</div></div>`;
+    }).join('');
+  } else {
+    html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No relationships yet — tap + Rel to add one.</div>`;
   }
+  html+=`</div></div>`;
 
+  // Personality traits — always show header
+  html+=`<div class="csec">${secHdr('char-pers','Personality traits',persTraits.length,'Characteristic','Trait')}<div id="char-pers">`;
   if(persTraits.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-pers')"><div class="csec-label" style="color:${col.stroke};">Personality traits (${persTraits.length})</div><span class="csec-toggle" id="char-pers-tog">▾</span></div><div id="char-pers">`
-    +sortByPage(persTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${t.traitType||'Trait'}</div>${t.content}${t.sq?`<div style="border-left:2px solid ${col.stroke};padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${t.sq}"${t.sqp?` — p.${t.sqp}`:''}</div>`:''} ${nT(t)}${pgT(t)}${act(t)}</div>`).join('')+`</div></div>`;
+    html+=sortByPage(persTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${t.traitType||'Trait'}</div>${t.content}${t.sq?`<div style="border-left:2px solid ${col.stroke};padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${t.sq}"${t.sqp?` — p.${t.sqp}`:''}</div>`:''} ${nT(t)}${pgT(t)}${act(t)}</div>`).join('');
+  } else {
+    html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No traits yet — tap + Trait to add one.</div>`;
   }
+  html+=`</div></div>`;
+
   if(physTraits.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-phys')"><div class="csec-label" style="color:${col.stroke};">Physical traits (${physTraits.length})</div><span class="csec-toggle" id="char-phys-tog">▾</span></div><div id="char-phys">`
+    html+=`<div class="csec">${secHdr('char-phys','Physical traits',physTraits.length,null)}<div id="char-phys">`
     +sortByPage(physTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Physical</div>${t.content}${nT(t)}${pgT(t)}${act(t)}</div>`).join('')+`</div></div>`;
   }
+  // Quotes & Dialogue — always show header (Add Quote)
+  html+=`<div class="csec">${secHdr('char-quotes','Quotes & Dialogue',quotes.length,'Quote','Quote')}<div id="char-quotes">`;
   if(quotes.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-quotes')"><div class="csec-label" style="color:${col.stroke};">Quotes & Dialogue (${quotes.length})</div><span class="csec-toggle" id="char-quotes-tog">▾</span></div><div id="char-quotes">`
-    +sortByPage(quotes).map(q=>{
+    html+=sortByPage(quotes).map(q=>{
       if(q.type==='Dialogue'){
         const dLines=q.dialogueLines||[];
         const preview=dLines.slice(0,3).map(l=>{const cc=l.speaker?getCC(l.speaker):null;return`<div style="margin-bottom:3px;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;color:${cc?cc.stroke:'var(--t3)'};">${l.speaker||'Narrator'}</span><div style="font-size:12px;font-style:italic;">"${l.text}"</div></div>`;}).join('');
@@ -3608,40 +3786,32 @@ function renderCharDetail(name){
       return`<div class="citem" style="border-left:3px solid ${col.stroke};border-radius:0 var(--r) var(--r) 0;"><div class="ilabel" style="color:${col.text};">Said${q.emotion?` · <span class="ebadge ${toneClass(q.emotion)}">${q.emotion}</span>`:''}</div>"${q.content}"${nT(q)}${pgT(q)}${act(q)}</div>`;
     }).join('')+`</div></div>`;
   }
-  // #243 — Themes as its own collapsible section on character profile.
-  // A theme counts as "on this character's profile" if either:
-  //   (a) the character is in the theme's Characters Involved, or
-  //   (b) the character is the speaker of one of the theme's supporting quotes.
-  // #191-A "Both" — each theme card shows the supporting quote(s) nested underneath;
-  //   those same quotes continue to surface in the Quotes section above (unchanged).
-  const themesForChar=all.filter(e=>e.type==='Theme'&&(
-    (e.involved||[]).includes(name) ||
-    (e.themeQuotes||[]).some(q=>q.speaker===name)
-  ));
+  // Themes — always show header (Add Theme)
+  html+=`<div class="csec">${secHdr('char-themes','Themes',themesForChar.length,'Theme','Theme')}<div id="char-themes">`;
   if(themesForChar.length){
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-themes')"><div class="csec-label" style="color:${col.stroke};">Themes (${themesForChar.length})</div><span class="csec-toggle" id="char-themes-tog">▾</span></div><div id="char-themes">`
-    +sortByPage(themesForChar).map(th=>{
-      // For this character, only nest the supporting quotes THEY spoke (that's the one most relevant to their profile).
-      // If they're only in `involved` but didn't speak any quote, show all the theme's supporting quotes.
-      const allQs=th.themeQuotes||[];
-      const myQs=allQs.filter(q=>q.speaker===name);
-      const show=myQs.length?myQs:allQs;
-      const nested=show.length?show.map(q=>{
+    html+=sortByPage(themesForChar).map(th=>{
+      const allQs=(th.themeQuotes||[]).filter(q=>q&&q.text);
+      const nested=allQs.length?allQs.map(q=>{
         const spkr=q.speaker||'Narrator / Author';
         const spkrCol=q.speaker?getCC(q.speaker):null;
-        return`<div style="border-left:2px solid ${col.stroke};padding:5px 8px;margin-top:5px;background:var(--bg2);border-radius:0 var(--r) var(--r) 0;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${spkrCol?spkrCol.text:'var(--t3)'};margin-bottom:2px;">${spkr}</div>
+        const isMine=q.speaker===name;
+        return`<div style="border-left:2px solid ${isMine?col.stroke:'var(--t3)'};padding:5px 8px;margin-top:5px;background:var(--bg2);border-radius:0 var(--r) var(--r) 0;${isMine?'':'opacity:0.85;'}">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${spkrCol?spkrCol.text:'var(--t3)'};margin-bottom:2px;">${spkr}${isMine?' ★':''}</div>
           <div style="font-size:12px;font-style:italic;color:var(--text);">"${q.text}"</div>
           ${q.page?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${q.page}</div>`:''}
         </div>`;
       }).join(''):'';
       return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div>${th.content}${nested}${nT(th)}${pgT(th)}${act(th)}</div>`;
-    }).join('')+`</div></div>`;
+    }).join('');
+  } else {
+    html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No themes yet — tap + Theme to add one.</div>`;
   }
-  if(events.length){
-    // #267 + #269 — combine Event + Timeline entries for this character into one chronologically-sorted section
+  html+=`</div></div>`;
+
+  // Character timeline — always show header (Add Event)
+  let combined=[];
+  {
     const tlForChar=all.filter(e=>['Timeline','Date/Period'].includes(e.type)&&(e.involved?.includes(name)||e.speaker===name));
-    // Dedupe by content match (Event auto-creates Timeline entries with same content) — keep Event over Timeline
     const seen=new Map();
     [...events,...tlForChar].forEach(e=>{
       const key=(e.content||'').trim().toLowerCase();
@@ -3649,23 +3819,37 @@ function renderCharDetail(name){
       const ex=seen.get(key);
       if(!ex||(e.type==='Event'&&ex.type!=='Event'))seen.set(key,e);
     });
-    const combined=[...seen.values()].sort((a,b)=>{
-      // Sort by sortKey > evdate > chap > page
+    combined=[...seen.values()].sort((a,b)=>{
       const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
       if(sa!==sb)return sa-sb;
       const da=a.evdate||'',db=b.evdate||'';if(da&&db&&da!==db)return da.localeCompare(db);
       return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
     });
-    html+=`<div class="csec"><div class="csec-header" onclick="toggleSec('char-events')"><div class="csec-label" style="color:${col.stroke};">Character timeline (${combined.length})</div><span class="csec-toggle" id="char-events-tog">▾</span></div><div id="char-events">`
-    +combined.map(e=>{
+  }
+  html+=`<div class="csec">${secHdr('char-events','Character timeline',combined.length,'Event','Event')}<div id="char-events">`;
+  if(combined.length){
+    html+=combined.map(e=>{
       const labelType=e.type==='Event'?(e.eventTypes||[]).join(', ')||'Event':e.type;
       return`<div class="citem"><div class="ilabel" style="color:${col.text};">${labelType}${e.evdate?' — '+e.evdate:''}</div>${e.content}${pgT(e)}${act(e)}</div>`;
-    }).join('')+`</div></div>`;
+    }).join('');
+  } else {
+    html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No events yet — tap + Event to add one.</div>`;
   }
+  html+=`</div></div>`;
+
   const otherEntries=all.filter(e=>!['Characteristic','Quote','Narrator quote','Line/stanza','Relationship','Event','Timeline','Date/Period','Clue','Red herring','Question','Theme',...CT].includes(e.type)&&e.involved?.includes(name));
   const questions=all.filter(e=>e.type==='Question'&&e.involved?.includes(name));
   const clues=all.filter(e=>['Clue','Red herring'].includes(e.type)&&e.involved?.includes(name));
-  if(questions.length)html+=csecBlock(col,'Questions',questions,pgT,nT,act,'char-qq',sortByPage);
+
+  // Questions — always show header (Add Question)
+  html+=`<div class="csec">${secHdr('char-qq','Questions',questions.length,'Question','Question')}<div id="char-qq">`;
+  if(questions.length){
+    html+=sortByPage(questions).map(o=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${o.type}</div>${o.content}${nT(o)}${pgT(o)}${act(o)}</div>`).join('');
+  } else {
+    html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No questions yet — tap + Question to add one.</div>`;
+  }
+  html+=`</div></div>`;
+
   if(clues.length)html+=csecBlock(col,'Clues & red herrings',clues,pgT,nT,act,'char-clues',sortByPage);
   if(otherEntries.length)html+=csecBlock(col,'Other entries',otherEntries,pgT,nT,act,'char-other',sortByPage);
   if(!html.includes('citem'))html+=`<div class="empty"><div class="empty-text">No linked entries yet</div><div class="empty-sub">Add entries and select ${name} as involved</div></div>`;
@@ -3823,6 +4007,11 @@ function renderWeb(){
     row.forEach((c,ci)=>{c.x=step*(ci+1);c.y=y;c.vx=0;c.vy=0;});
   });
 
+  // #298 — Restore saved drag positions per book+filter. Pinned nodes skip the sim.
+  const posKey='webPos:'+currentId+':'+activeWebFilter;
+  let savedPos={};try{savedPos=JSON.parse(localStorage.getItem(posKey)||'{}');}catch(e){savedPos={};}
+  chars.forEach(c=>{if(savedPos[c.name]){c.x=savedPos[c.name].x;c.y=savedPos[c.name].y;c.pinned=true;}});
+
   // 6. Force simulation — horizontal only within each row to spread nodes
   //    Y position is LOCKED to generational row
   const REPULSE=NR*NR*90;
@@ -3858,8 +4047,9 @@ function renderWeb(){
       a.fx+=f*(dx/d);b.fx-=f*(dx/d);
     });
 
-    // Integrate X only — Y stays fixed
+    // Integrate X only — Y stays fixed. Pinned (user-dragged) nodes skip.
     chars.forEach(c=>{
+      if(c.pinned)return;
       c.vx=(c.vx+c.fx)*DAMP;
       c.x+=c.vx;
       c.x=Math.max(PAD,Math.min(viewW-PAD,c.x));
@@ -3916,8 +4106,9 @@ function renderWeb(){
     const isMain=n.role==='main';
     const nodeR=isMain?NR+3:NR;
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor='pointer';
-    g.setAttribute('onclick',`openCharDetail('${n.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}',true)`);
+    g.style.cursor='grab';
+    g.setAttribute('data-node-name',n.name);
+    g.classList.add('web-node');
 
     // Circle background
     const ci=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -3970,19 +4161,217 @@ function renderWeb(){
     svg.appendChild(g);
   });
 
+  // #298 — Stash render state on svg for drag/zoom to access
+  svg._webState={chars:chars,rels:dedupedRels,NR:NR,posKey:posKey,viewW:W,viewH:H};
   setupWebDrag();
 }
 function setupWebDrag(){
   const wrap=document.getElementById('web-wrap');
-  if(!wrap)return;
-  // Reset drag setup so it re-attaches after each render
-  wrap._dragSetup=false;
-  if(wrap._dragSetup)return;
-  wrap._dragSetup=true;
-  let isDragging=false,startX=0,startY=0,startSL=0,startST=0;
-  wrap.addEventListener('mousedown',e=>{isDragging=true;startX=e.clientX;startY=e.clientY;startSL=wrap.scrollLeft;startST=wrap.scrollTop;wrap.style.cursor='grabbing';e.preventDefault();});
-  window.addEventListener('mousemove',e=>{if(!isDragging)return;wrap.scrollLeft=startSL-(e.clientX-startX);wrap.scrollTop=startST-(e.clientY-startY);});
-  window.addEventListener('mouseup',()=>{isDragging=false;wrap.style.cursor='';});
+  const svg=document.getElementById('web-svg');
+  if(!wrap||!svg)return;
+  if(!window._webZoom)window._webZoom={scale:1};
+
+  // Apply current zoom scale by widening svg
+  const state=svg._webState;
+  if(state){
+    const s=window._webZoom.scale||1;
+    svg.style.width=(state.viewW*s)+'px';
+    svg.setAttribute('width',state.viewW*s);
+    svg.setAttribute('height',state.viewH*s);
+  }
+
+  // Convert a pointer event (client coords) to the SVG's viewBox coord system
+  function clientToSvg(clientX,clientY){
+    const r=svg.getBoundingClientRect();
+    const st=svg._webState;if(!st)return{x:0,y:0};
+    return {x:(clientX-r.left)*(st.viewW/r.width), y:(clientY-r.top)*(st.viewH/r.height)};
+  }
+
+  let dragNode=null, dragStartPt=null, panStart=null, movedPx=0;
+  let pinchStart=null; // {dist, scale}
+
+  function onNodeTap(nodeName){
+    // Click — open detail
+    openCharDetail(nodeName,true);
+  }
+
+  function getNodeEl(name){return svg.querySelector(`[data-node-name="${CSS.escape(name)}"]`);}
+  function getNodeData(name){return svg._webState?.chars.find(c=>c.name===name);}
+
+  function redrawNode(nodeData){
+    // Move the node group's children to the new x/y AND redraw attached edges/labels
+    const g=getNodeEl(nodeData.name);if(!g)return;
+    const NR=svg._webState.NR;
+    const nodeR=nodeData.role==='main'?NR+3:NR;
+    // Update all circles, images, texts inside this node g
+    [...g.querySelectorAll('circle')].forEach(c=>{c.setAttribute('cx',nodeData.x);c.setAttribute('cy',nodeData.y);});
+    [...g.querySelectorAll('image')].forEach(im=>{im.setAttribute('x',nodeData.x-nodeR);im.setAttribute('y',nodeData.y-nodeR);});
+    const texts=[...g.querySelectorAll('text')];
+    texts.forEach(t=>{
+      // Name-label text (the one with children tspans or below-node) has y > center
+      const cy=+t.getAttribute('y');
+      if(Math.abs(cy-nodeData.y)<2){t.setAttribute('x',nodeData.x);}
+      else {
+        // Below-label: y = nodeY + nodeR + 10 (approx); or deceased (x+nodeR-4, y-nodeR+6)
+        if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
+        else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
+      }
+    });
+    // Redraw clipPath circle for photo (if any)
+    const cid='wc'+nodeData.name.replace(/[^a-z0-9]/gi,'_');
+    const cp=svg.querySelector(`#${CSS.escape(cid)} circle`);
+    if(cp){cp.setAttribute('cx',nodeData.x);cp.setAttribute('cy',nodeData.y);}
+    // Redraw all edges touching this node
+    redrawEdges();
+  }
+
+  function redrawEdges(){
+    const st=svg._webState;if(!st)return;
+    const nameMap={};st.chars.forEach(c=>nameMap[c.name]=c);
+    // Rebuild edge layer by clearing all <line> and the label <rect>/<text> pairs, then redrawing
+    // Simpler: leave text labels/rects alone for now and only move the <line>s that match.
+    // Find lines — they were appended before nodes. We rebuild them all from rels:
+    [...svg.querySelectorAll('line')].forEach(l=>l.remove());
+    [...svg.querySelectorAll('rect')].forEach(r=>r.remove());
+    // Remove label <text> that aren't inside a node group
+    [...svg.querySelectorAll(':scope > text')].forEach(t=>t.remove());
+    // Redraw edges + labels
+    const NR=st.NR;
+    st.rels.forEach(r=>{
+      const A=nameMap[r.relA],B=nameMap[r.relB];if(!A||!B)return;
+      const dx=B.x-A.x,dy=B.y-A.y;const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+      const x1=A.x+(dx/d)*NR,y1=A.y+(dy/d)*NR;const x2=B.x-(dx/d)*NR,y2=B.y-(dy/d)*NR;
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
+      line.setAttribute('stroke',A.col.stroke+'66');line.setAttribute('stroke-width','1.5');
+      svg.insertBefore(line,svg.firstChild); // draw below nodes
+      if(r.relType){
+        const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+        const recip=RECIPROCAL[r.relType];
+        const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
+        const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
+        const tw=label.length*5+14;
+        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);
+        bg.setAttribute('rx','7');bg.setAttribute('fill','var(--bg)');bg.setAttribute('opacity','0.9');
+        const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lt.setAttribute('x',mx);lt.setAttribute('y',my+1);lt.setAttribute('text-anchor','middle');
+        lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','7');
+        lt.setAttribute('fill',A.col.text);lt.setAttribute('font-weight','600');
+        lt.setAttribute('font-family','-apple-system,sans-serif');lt.textContent=label;
+        // Insert rect and text above lines but below nodes — find first .web-node and insertBefore
+        const firstNode=svg.querySelector('.web-node');
+        if(firstNode){svg.insertBefore(bg,firstNode);svg.insertBefore(lt,firstNode);}
+        else{svg.appendChild(bg);svg.appendChild(lt);}
+      }
+    });
+  }
+
+  function saveNodePos(nodeData){
+    const st=svg._webState;if(!st)return;
+    let saved={};try{saved=JSON.parse(localStorage.getItem(st.posKey)||'{}');}catch(e){saved={};}
+    saved[nodeData.name]={x:nodeData.x,y:nodeData.y};
+    try{localStorage.setItem(st.posKey,JSON.stringify(saved));}catch(e){}
+    nodeData.pinned=true;
+  }
+
+  // ── Pointer / touch down on node ──
+  function onDownStart(e,clientX,clientY,target){
+    movedPx=0;
+    const nodeEl=target.closest?.('.web-node');
+    if(nodeEl){
+      const name=nodeEl.getAttribute('data-node-name');
+      const nd=getNodeData(name);
+      if(nd){dragNode={name,data:nd};dragStartPt=clientToSvg(clientX,clientY);nodeEl.style.cursor='grabbing';return true;}
+    }
+    panStart={x:clientX,y:clientY,sl:wrap.scrollLeft,st:wrap.scrollTop};
+    wrap.style.cursor='grabbing';
+    return false;
+  }
+  function onMoveStart(clientX,clientY){
+    if(dragNode){
+      const p=clientToSvg(clientX,clientY);
+      dragNode.data.x=p.x;dragNode.data.y=p.y;
+      redrawNode(dragNode.data);
+      movedPx+=2;
+    } else if(panStart){
+      const dx=clientX-panStart.x,dy=clientY-panStart.y;
+      wrap.scrollLeft=panStart.sl-dx;wrap.scrollTop=panStart.st-dy;
+      movedPx+=Math.abs(dx)+Math.abs(dy);
+    }
+  }
+  function onUpEnd(){
+    if(dragNode){
+      const nodeEl=getNodeEl(dragNode.name);if(nodeEl)nodeEl.style.cursor='grab';
+      if(movedPx<5){onNodeTap(dragNode.name);}
+      else{saveNodePos(dragNode.data);}
+      dragNode=null;
+    }
+    panStart=null;pinchStart=null;
+    wrap.style.cursor='';
+  }
+
+  // Mouse events
+  wrap.onmousedown=(e)=>{onDownStart(e,e.clientX,e.clientY,e.target);e.preventDefault();};
+  window.onmousemove=(e)=>{if(dragNode||panStart)onMoveStart(e.clientX,e.clientY);};
+  window.onmouseup=onUpEnd;
+
+  // Touch events (single finger = drag/pan; two fingers = pinch zoom)
+  wrap.ontouchstart=(e)=>{
+    if(e.touches.length===1){
+      const t=e.touches[0];
+      onDownStart(e,t.clientX,t.clientY,t.target);
+    } else if(e.touches.length===2){
+      dragNode=null;panStart=null;
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      pinchStart={dist:Math.sqrt(dx*dx+dy*dy),scale:window._webZoom.scale||1};
+    }
+  };
+  wrap.ontouchmove=(e)=>{
+    if(pinchStart&&e.touches.length===2){
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      const s=Math.max(0.4,Math.min(3,pinchStart.scale*(d/pinchStart.dist)));
+      window._webZoom.scale=s;
+      const st=svg._webState;if(st){svg.style.width=(st.viewW*s)+'px';svg.setAttribute('width',st.viewW*s);svg.setAttribute('height',st.viewH*s);}
+      e.preventDefault();
+    } else if(e.touches.length===1&&(dragNode||panStart)){
+      const t=e.touches[0];onMoveStart(t.clientX,t.clientY);
+      e.preventDefault();
+    }
+  };
+  wrap.ontouchend=onUpEnd;
+  wrap.ontouchcancel=onUpEnd;
+
+  // Wheel zoom (desktop)
+  wrap.onwheel=(e)=>{
+    if(!e.ctrlKey&&!e.metaKey&&Math.abs(e.deltaY)<40)return; // let normal scroll pass
+    e.preventDefault();
+    const s=Math.max(0.4,Math.min(3,(window._webZoom.scale||1)*(e.deltaY<0?1.1:0.9)));
+    window._webZoom.scale=s;
+    const st=svg._webState;if(st){svg.style.width=(st.viewW*s)+'px';svg.setAttribute('width',st.viewW*s);svg.setAttribute('height',st.viewH*s);}
+  };
+}
+
+// #298 — Zoom controls (called from the web panel buttons)
+function webZoom(dir){
+  if(!window._webZoom)window._webZoom={scale:1};
+  if(dir===0){
+    // Reset: clear saved positions for this book+filter AND reset zoom
+    window._webZoom.scale=1;
+    try{
+      const k='webPos:'+currentId+':'+activeWebFilter;
+      localStorage.removeItem(k);
+    }catch(e){}
+    renderWeb();
+    return;
+  }
+  window._webZoom.scale=Math.max(0.4,Math.min(3,window._webZoom.scale*(dir>0?1.15:0.85)));
+  const svg=document.getElementById('web-svg');
+  const st=svg?._webState;
+  if(st){const s=window._webZoom.scale;svg.style.width=(st.viewW*s)+'px';svg.setAttribute('width',st.viewW*s);svg.setAttribute('height',st.viewH*s);}
 }
 function setWebFilter(f){activeWebFilter=f;renderWeb();}
 
@@ -4012,39 +4401,78 @@ function renderTimeline(){
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m)return ` (${item.timeOffset}${item.timeOffsetFrom?' from "'+item.timeOffsetFrom.slice(0,30)+'"':''})`;const dir=m[1]==='+'?'after':'before';const n=m[2];const u=m[3];const anchor=item.timeOffsetFrom?` "${item.timeOffsetFrom.slice(0,30)}"`:' previous';return ` (${n} ${u} ${dir}${anchor})`;})():''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m)return ` (${item.timeOffset}${item.timeOffsetFrom?' near "'+item.timeOffsetFrom.slice(0,30)+'"':''})`;const dir=m[1]==='+'?'after':'before';const n=m[2];const u=m[3];const anchor=item.timeOffsetFrom?` "${item.timeOffsetFrom.slice(0,30)}"`:' previous';return ` (${n} ${u} ${dir}${anchor})`;})():''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
+        ${item.tlSq?`<div style="margin-top:5px;padding:5px 8px;background:var(--bg2);border-left:3px solid ${col};border-radius:4px;font-size:11px;font-style:italic;color:var(--t2);line-height:1.4;">“${item.tlSq}”${item.tlSpeaker?` <span style="font-style:normal;color:var(--t3);">— ${item.tlSpeaker}</span>`:''}${item.tlSqPg?` <span style="font-style:normal;color:var(--t3);">· p.${item.tlSqPg}</span>`:''}</div>`:''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
   }).join('')+'</div>';
 }
-// #218-C — open Timeline form pre-filled with offset toggle on, between two known events
-// Asks the user which anchor to use: "after [prev]" or "before [next]"
+// #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
+// Shows a custom 3-button modal (After / Before / Exit) instead of binary confirm().
+// Pre-fills sortKey so the new entry renders between the anchors, not at the top.
 function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
   const prevLabel=(prevName||prevDate||'previous').slice(0,40);
   const nextLabel=(nextName||nextDate||'next').slice(0,40);
-  // confirm() is binary: OK = "after prev", Cancel = "before next"
-  const useAfter=confirm(`Anchor this new entry to which event?\n\n• OK → "after ${prevLabel}"\n• Cancel → "before ${nextLabel}"`);
-  buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
-  document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
-  document.getElementById('ae-type').value='Timeline';onTypeChange();
-  setTimeout(()=>{
-    const t=document.getElementById('ae-offset-toggle');
-    if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
-    const evSel=document.getElementById('ae-offset-event');
-    const anchorName=useAfter?prevName:nextName;
-    const anchorDate=useAfter?prevDate:nextDate;
-    if(evSel&&(anchorName||anchorDate)){
-      const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
-      if(opt)evSel.value=opt.value;
+  // Build modal
+  const existing=document.getElementById('tl-insert-modal');if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='tl-insert-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML=`<div style="background:var(--bg1);color:var(--t1);border-radius:var(--r);max-width:340px;width:100%;padding:18px 18px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Where does this new entry go?</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.4;">Pick an anchor — the new entry will appear just next to it on the timeline.</div>
+    <button type="button" id="tl-ins-after" style="display:block;width:100%;padding:10px 12px;margin-bottom:8px;border:1px solid var(--t3);background:var(--bg2);color:var(--t1);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬇️ <strong>After</strong> "${prevLabel}"</button>
+    <button type="button" id="tl-ins-before" style="display:block;width:100%;padding:10px 12px;margin-bottom:12px;border:1px solid var(--t3);background:var(--bg2);color:var(--t1);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬆️ <strong>Before</strong> "${nextLabel}"</button>
+    <button type="button" id="tl-ins-exit" style="display:block;width:100%;padding:8px 12px;border:none;background:transparent;color:var(--t2);font-size:12px;cursor:pointer;">Exit — don't add anything</button>
+  </div>`;
+  document.body.appendChild(modal);
+  const close=()=>{modal.remove();};
+  document.getElementById('tl-ins-exit').onclick=close;
+  modal.onclick=(e)=>{if(e.target===modal)close();};
+  const pick=(useAfter)=>{
+    close();
+    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+    document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
+    document.getElementById('ae-type').value='Timeline';onTypeChange();
+    // Compute sortKey that slots new entry between anchors
+    const anchorItems=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
+      const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+      if(sa!==sb)return sa-sb;
+      return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+    });
+    const prevIdx=anchorItems.findIndex(e=>(e.content||'')===prevName);
+    let newSort=null;
+    if(prevIdx>=0&&prevIdx<anchorItems.length-1){
+      const prev=anchorItems[prevIdx],next=anchorItems[prevIdx+1];
+      const ps=prev.sortKey!=null?+prev.sortKey:prevIdx*10;
+      const ns=next.sortKey!=null?+next.sortKey:(prevIdx+1)*10;
+      newSort=useAfter?ps+(ns-ps)*0.33:ps+(ns-ps)*0.67;
+      // Ensure all anchors have sortKey so ordering is stable
+      anchorItems.forEach((e,i)=>{if(e.sortKey==null)e.sortKey=i*10;});
+      save();
     }
-    document.getElementById('ae-offset-dir').value=useAfter?'+':'-';
-  },80);
-  openSheet('ae-overlay');
+    setTimeout(()=>{
+      const t=document.getElementById('ae-offset-toggle');
+      if(t){t.checked=true;const blk=document.getElementById('ae-offset-block');if(blk)blk.style.display='';}
+      const evSel=document.getElementById('ae-offset-event');
+      const anchorName=useAfter?prevName:nextName;
+      const anchorDate=useAfter?prevDate:nextDate;
+      if(evSel&&(anchorName||anchorDate)){
+        const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
+        if(opt)evSel.value=opt.value;
+      }
+      const dir=document.getElementById('ae-offset-dir');if(dir)dir.value=useAfter?'+':'-';
+      const sk=document.getElementById('ae-sortkey');if(sk&&newSort!=null)sk.value=newSort;
+    },80);
+    openSheet('ae-overlay');
+  };
+  document.getElementById('tl-ins-after').onclick=()=>pick(true);
+  document.getElementById('tl-ins-before').onclick=()=>pick(false);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4207,19 +4635,28 @@ function renderLocDetail(name){
   const typeOrder=['Quote','Event','Timeline','Character','Characteristic','Relationship','Setting','Theme','Symbol','Question','Word / Vocabulary','Reference','Chapter'];
   const orderedTypes=[...typeOrder.filter(t=>typeGroups[t]),...Object.keys(typeGroups).filter(t=>!typeOrder.includes(t))];
 
+  // #241 — Add-category quick buttons at the top
+  const addables=['Quote','Event','Characteristic','Theme','Question','Character'];
+  html+=`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;padding:8px 10px;background:var(--bg2);border-radius:var(--r);">
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--t3);width:100%;margin-bottom:3px;">Add here:</div>
+    ${addables.map(t=>`<button class="btn btn-sm" onclick="openAddTypeForLoc('${t}')" style="font-size:11px;padding:5px 10px;">+ ${t==='Characteristic'?'Trait':t==='Word / Vocabulary'?'Word':t}</button>`).join('')}
+  </div>`;
+
   if(orderedTypes.length===0){
-    html+=`<div class="empty"><div class="empty-text">No entries for this location yet</div><div class="empty-sub">Tag entries with this location to see them here</div></div>`;
+    html+=`<div class="empty"><div class="empty-text">No entries for this location yet</div><div class="empty-sub">Tap a button above to add your first entry.</div></div>`;
   } else {
     orderedTypes.forEach(type=>{
       const arr=sortByPage(typeGroups[type]);
       const sid='loc-sec-'+type.replace(/[^a-z0-9]/gi,'');
       const tabLink=typeToTab(type);
+      const canAdd=addables.includes(type);
       html+=`<div class="csec">
         <div class="csec-header" onclick="toggleSec('${sid}')">
-          <div class="csec-label" style="cursor:default;">
+          <div class="csec-label" style="cursor:default;flex:1;">
             <span style="color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();forceTab('${tabLink}')">${type}</span>
             <span style="font-weight:400;color:var(--t3);margin-left:4px;">(${arr.length})</span>
           </div>
+          ${canAdd?`<button class="btn btn-sm" onclick="event.stopPropagation();openAddTypeForLoc('${type}')" style="font-size:10px;padding:3px 8px;margin-left:6px;flex-shrink:0;">+ Add</button>`:''}
           <span class="csec-toggle" id="${sid}-tog">▾</span>
         </div>
         <div id="${sid}">${arr.map(e=>ecHTML(e,false,true)).join('')}</div>
@@ -5408,6 +5845,56 @@ function suggestFamilyConnections(){
         }
       });
     });
+
+    // #275 — Rule 10: great-aunt/great-uncle via grandparent's sibling
+    myParents.forEach(parent=>{
+      parentsOf(parent).forEach(gp=>{
+        const gpSibs=rels.filter(r=>['Sibling','Half-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===gp||r.relB===gp)).map(r=>r.relA===gp?r.relB:r.relA);
+        gpSibs.forEach(gau=>{
+          if(!hasRel(name,gau)&&gau!==name){
+            suggestions.push({label:`${gp}'s sibling ${gau} → ${gau} is ${name}'s great-aunt/uncle?`,a:gau,b:name,type:'Great aunt or uncle'});
+          }
+        });
+      });
+    });
+
+    // #275 — Rule 11: spouse's parent → parent-in-law
+    const mySpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===name||r.relB===name)).map(r=>r.relA===name?r.relB:r.relA);
+    mySpouses.forEach(sp=>{
+      parentsOf(sp).forEach(pil=>{
+        if(!hasRel(name,pil)){
+          suggestions.push({label:`${sp}'s parent ${pil} → ${pil} is ${name}'s parent-in-law?`,a:pil,b:name,type:'In-law'});
+        }
+      });
+    });
+
+    // #286 — Rule 12: parent's spouse → step-parent (if not already a parent)
+    myParents.forEach(parent=>{
+      const parentSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+      parentSpouses.forEach(step=>{
+        if(step===name)return;
+        if(myParents.includes(step))return; // they're already a parent
+        if(!hasRel(name,step)){
+          suggestions.push({label:`${parent}'s spouse ${step} → ${step} is ${name}'s step-parent?`,a:step,b:name,type:'Step-parent'});
+        }
+      });
+    });
+
+    // #286 — Rule 13: step-sibling via step-parent's children
+    myParents.forEach(parent=>{
+      const parentSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+      parentSpouses.forEach(step=>{
+        if(myParents.includes(step))return; // biological co-parent, skip
+        childrenOf(step).forEach(stepSib=>{
+          if(stepSib===name||hasRel(name,stepSib))return;
+          // Only suggest if they don't share one of my parents (else they'd be a sibling)
+          const stepSibParents=parentsOf(stepSib);
+          if(!myParents.some(p=>stepSibParents.includes(p))){
+            suggestions.push({label:`${parent} married ${step}, and ${stepSib} is ${step}'s child → step-sibling?`,a:name,b:stepSib,type:'Step-sibling'});
+          }
+        });
+      });
+    });
   });
 
   // #268 — Rule 6 (refined): same last name + a shared connection → possibly related
@@ -5433,7 +5920,7 @@ function suggestFamilyConnections(){
   const seen=new Set();
   const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
 
-  if(!unique.length){alert('No new connections found.\n\nThis feature suggests connections by inferring from existing relationships you\'ve added. To get suggestions, try adding more of these first:\n\n• Family — Mother/Father/Parent/Sibling links between characters (then it suggests cousins, grandparents, aunts/uncles, in-laws)\n• Professional — Employer/Employee or Teacher/Student links (then it suggests colleagues and fellow students)\n• Same last name — characters that share a last name AND share a 3rd-party connection are flagged as possibly related');return;}
+  if(!unique.length){alert('No new connections found.\n\nThis feature suggests connections by inferring from existing relationships you\'ve added. To get suggestions, try adding more of these first:\n\n• Family — Mother/Father/Parent/Sibling/Spouse links between characters (then it suggests cousins, grandparents, aunts/uncles, great-aunts/uncles, in-laws, step-parents, step-siblings)\n• Professional — Employer/Employee or Teacher/Student links (then it suggests colleagues and fellow students)\n• Same last name — characters that share a last name AND share a 3rd-party connection are flagged as possibly related');return;}
 
   const body=document.getElementById('fam-suggestions-body');
   body.innerHTML=unique.map((s,i)=>{
@@ -5515,6 +6002,48 @@ function suggestFamilyConnectionsForChar(charName){
     });
   });
 
+  // #275 — great-aunt/great-uncle via grandparent's sibling
+  myParents.forEach(parent=>{
+    parentsOf(parent).forEach(gp=>{
+      const gpSibs=rels.filter(r=>['Sibling','Half-sibling','Brother','Sister'].includes(r.relType)&&(r.relA===gp||r.relB===gp)).map(r=>r.relA===gp?r.relB:r.relA);
+      gpSibs.forEach(gau=>{
+        if(!hasRel(charName,gau)&&gau!==charName)suggestions.push({label:`${gp}'s sibling ${gau} → ${gau} is ${charName}'s great-aunt/uncle?`,a:gau,b:charName,type:'Great aunt or uncle'});
+      });
+    });
+  });
+
+  // #275 — spouse's parent → parent-in-law
+  const mySpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===charName||r.relB===charName)).map(r=>r.relA===charName?r.relB:r.relA);
+  mySpouses.forEach(sp=>{
+    parentsOf(sp).forEach(pil=>{
+      if(!hasRel(charName,pil))suggestions.push({label:`${sp}'s parent ${pil} → ${pil} is ${charName}'s parent-in-law?`,a:pil,b:charName,type:'In-law'});
+    });
+  });
+
+  // #286 — parent's spouse → step-parent
+  myParents.forEach(parent=>{
+    const parentSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+    parentSpouses.forEach(step=>{
+      if(step===charName||myParents.includes(step)||hasRel(charName,step))return;
+      suggestions.push({label:`${parent}'s spouse ${step} → ${step} is ${charName}'s step-parent?`,a:step,b:charName,type:'Step-parent'});
+    });
+  });
+
+  // #286 — step-sibling via step-parent's children
+  myParents.forEach(parent=>{
+    const parentSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
+    parentSpouses.forEach(step=>{
+      if(myParents.includes(step))return;
+      childrenOf(step).forEach(stepSib=>{
+        if(stepSib===charName||hasRel(charName,stepSib))return;
+        const stepSibParents=parentsOf(stepSib);
+        if(!myParents.some(p=>stepSibParents.includes(p))){
+          suggestions.push({label:`${parent} married ${step}, and ${stepSib} is ${step}'s child → step-sibling?`,a:charName,b:stepSib,type:'Step-sibling'});
+        }
+      });
+    });
+  });
+
   const seen=new Set();
   const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
 
@@ -5553,6 +6082,12 @@ function acceptFamSuggestion(i){
     addRelEntry(sug.a,'Grandparent',sug.b,'Auto-suggested');
   } else if(sug.type==='Nibling (Niece/Nephew)'||sug.type==='Aunt or Uncle'){
     addRelEntry(sug.a,'Uncle or Aunt',sug.b,'Auto-suggested');
+  } else if(sug.type==='Great aunt or uncle'){
+    addRelEntry(sug.a,'Uncle or Aunt',sug.b,'Auto-suggested (great)');
+  } else if(sug.type==='Step-parent'){
+    addRelEntry(sug.a,'Step-parent',sug.b,'Auto-suggested');
+  } else if(sug.type==='Step-sibling'){
+    addRelEntry(sug.a,'Step-sibling',sug.b,'Auto-suggested');
   } else {
     addRelEntry(sug.a,sug.type,sug.b,'Auto-suggested');
   }
@@ -5657,23 +6192,31 @@ function renderLibStats(){
 // ═══════════════════════════════════════════════════════════════
 // REPORT ISSUE SYSTEM — captures bugs/requests with auto-context
 // Stored in localStorage under 'reports' (cross-book). Copy-pasteable for tracker.
+// #284: every report has status — 'open' (in next Copy-all) / 'reported' (awaiting fix, excluded from new-request Copy-all but kept for tests)
+//       / 'closed' (fixed & confirmed, hidden by default). Auto-transition open→reported on Copy-all.
+//       Test results with result=pass auto-close the target ticket.
 // ═══════════════════════════════════════════════════════════════
 function getReports(){try{return JSON.parse(localStorage.getItem('reports')||'[]');}catch(e){return[];}}
 function saveReports(r){localStorage.setItem('reports',JSON.stringify(r));}
+// Back-fill status on any legacy reports that don't have one.
+function _normalizeReports(){
+  const reports=getReports();let changed=false;
+  reports.forEach(r=>{if(!r.status){r.status='open';changed=true;}});
+  if(changed)saveReports(reports);
+  return reports;
+}
+// UI state (not persisted): which sections are expanded. Open expanded by default.
+const _trackerSectionsOpen={open:true,reported:false,closed:false};
 function captureReportContext(){
   const ctx={};
-  // Active screen
   const activeScreen=document.querySelector('.screen.active');
   ctx.screen=activeScreen?activeScreen.id:'unknown';
-  // Active book
   if(currentId){
     const b=book();
     ctx.book=b?(b.title||'(untitled)'):null;
     ctx.bookId=currentId;
   }
-  // Active tab (within book screen)
   if(typeof activeTab!=='undefined'&&activeTab)ctx.tab=activeTab;
-  // If on character/location profile
   if(typeof currentCharName!=='undefined'&&currentCharName&&document.getElementById('char-screen')?.classList.contains('active'))ctx.character=currentCharName;
   if(typeof currentLocName!=='undefined'&&currentLocName&&document.getElementById('loc-screen')?.classList.contains('active'))ctx.location=currentLocName;
   return ctx;
@@ -5684,7 +6227,7 @@ function logTestResult(result){
   const num=(numEl.value||'').trim();
   if(!num){alert('Please enter a ticket # to test.');return;}
   const note=(noteEl.value||'').trim();
-  const reports=getReports();
+  const reports=_normalizeReports();
   reports.push({
     num:_nextReportNum(),
     type:'test',
@@ -5694,14 +6237,29 @@ function logTestResult(result){
     title:`Test #${num} — ${result==='pass'?'✅ works':'⚠️ needs fixes'}`,
     body:note,
     context:captureReportContext(),
+    status:'open',
     timestamp:Date.now(),
     dateStr:new Date().toLocaleString()
   });
+  // #284 — If this is a ✅-works result, auto-close any matching open/reported ticket in the app tracker
+  // (target # is an app-tracker #, not xlsx #, so we only try an exact match here)
+  if(result==='pass'){
+    const targetN=parseInt(num,10);
+    if(!isNaN(targetN)){
+      const today=new Date().toLocaleDateString();
+      reports.forEach(r=>{
+        if(r.num===targetN&&r.type!=='test'&&r.status!=='closed'){
+          r.status='closed';r.closedDate=today;
+        }
+      });
+    }
+  }
   saveReports(reports);
   numEl.value='';noteEl.value='';
   renderReportList();
 }
 function openReportIssue(){
+  document.getElementById('report-edit-num').value='';
   document.getElementById('report-type').value='bug';
   document.getElementById('report-title').value='';
   document.getElementById('report-body').value='';
@@ -5709,6 +6267,7 @@ function openReportIssue(){
   const ctx=captureReportContext();
   const ctxLines=Object.entries(ctx).map(([k,v])=>`${k}: ${v}`).join('  ·  ');
   document.getElementById('report-context-preview').textContent='Auto-captured: '+ctxLines;
+  _normalizeReports();
   renderReportList();
   openSheet('report-overlay');
 }
@@ -5722,7 +6281,27 @@ function saveReport(){
   const title=document.getElementById('report-title').value.trim();
   const body=document.getElementById('report-body').value.trim();
   if(!title&&!body){alert('Please add a title or description.');return;}
-  const reports=getReports();
+  const reports=_normalizeReports();
+  // #277 — if editing an existing report, keep original # and replace the row in-place
+  const editNumRaw=document.getElementById('report-edit-num').value;
+  const editNum=editNumRaw?parseInt(editNumRaw,10):null;
+  if(editNum){
+    const existing=reports.find(r=>r.num===editNum);
+    if(existing){
+      existing.type=document.getElementById('report-type').value;
+      existing.priority=document.getElementById('report-priority').value;
+      existing.title=title||'(untitled)';
+      existing.body=body;
+      // keep existing.context, existing.status, existing.timestamp, existing.dateStr intact
+      saveReports(reports);
+      document.getElementById('report-edit-num').value='';
+      document.getElementById('report-title').value='';
+      document.getElementById('report-body').value='';
+      document.getElementById('report-priority').value='normal';
+      renderReportList();
+      return;
+    }
+  }
   reports.push({
     num:_nextReportNum(),
     type:document.getElementById('report-type').value,
@@ -5730,6 +6309,7 @@ function saveReport(){
     title:title||'(untitled)',
     body:body,
     context:captureReportContext(),
+    status:'open',
     timestamp:Date.now(),
     dateStr:new Date().toLocaleString()
   });
@@ -5739,41 +6319,82 @@ function saveReport(){
   document.getElementById('report-priority').value='normal';
   renderReportList();
 }
+// One row renderer — used inside each of the 3 sections
+function _renderReportRow(r){
+  const typeIcon={bug:'🐛',feature:'💡',change:'🔧',question:'❓',test:'🧪'};
+  const priIcon={top:'🔥 ',normal:'',low:'· '};
+  const ctx=r.context||{};
+  const ctxBits=[ctx.screen,ctx.tab,ctx.book,ctx.character,ctx.location].filter(Boolean).join(' › ');
+  // Visual styling per status
+  let bg='var(--bg2)',borderColor=(r.priority==='top'?'var(--red)':'var(--am)'),opacity='1';
+  if(r.status==='reported'){bg='var(--bg2)';opacity='0.65';borderColor='var(--t3)';}
+  if(r.status==='closed'){bg='var(--bg2)';opacity='0.5';borderColor='#6FCB91';}
+  // Row action buttons vary by status
+  let actions='';
+  if(r.status==='open'){
+    actions=`<button class="btn-edit" onclick="editReport(${r.num})" style="font-size:11px;padding:2px 6px;">Edit</button>
+      <button onclick="closeReport(${r.num})" title="Mark closed (fix confirmed)" style="font-size:11px;padding:2px 6px;background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;border-radius:var(--r);cursor:pointer;">✓</button>
+      <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;">×</button>`;
+  }else if(r.status==='reported'){
+    actions=`<button class="btn-edit" onclick="editReport(${r.num})" style="font-size:11px;padding:2px 6px;">Edit</button>
+      <button onclick="closeReport(${r.num})" title="Mark closed (fix confirmed)" style="font-size:11px;padding:2px 6px;background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;border-radius:var(--r);cursor:pointer;">✓</button>
+      <button onclick="reopenReport(${r.num})" title="Re-open" style="font-size:11px;padding:2px 6px;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:var(--r);cursor:pointer;">↺</button>
+      <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;">×</button>`;
+  }else{// closed
+    actions=`<button onclick="reopenReport(${r.num})" title="Re-open" style="font-size:11px;padding:2px 6px;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:var(--r);cursor:pointer;">↺</button>
+      <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;">×</button>`;
+  }
+  return`<div style="background:${bg};border-radius:var(--r);padding:8px 10px;margin-bottom:6px;border-left:3px solid ${borderColor};opacity:${opacity};">
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:12px;">${priIcon[r.priority]||''}${typeIcon[r.type]||''} #${r.num} — ${r.title}</div>
+        ${r.body?`<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.5;white-space:pre-wrap;">${r.body.replace(/</g,'&lt;')}</div>`:''}
+        <div style="font-size:9px;color:var(--t3);margin-top:3px;">${ctxBits} · ${r.dateStr}${r.reportedDate?' · reported '+r.reportedDate:''}${r.closedDate?' · closed '+r.closedDate:''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;">
+        ${actions}
+      </div>
+    </div>
+  </div>`;
+}
+function _toggleTrackerSection(key){
+  _trackerSectionsOpen[key]=!_trackerSectionsOpen[key];
+  renderReportList();
+}
 function renderReportList(){
-  const reports=getReports();
+  const reports=_normalizeReports();
   const list=document.getElementById('report-list');
   if(!list)return;
   if(!reports.length){list.innerHTML='<div style="color:var(--t3);font-style:italic;padding:8px 0;">No reports yet.</div>';return;}
-  const typeIcon={bug:'🐛',feature:'💡',change:'🔧',question:'❓',test:'🧪'};
-  const priIcon={top:'🔥 ',normal:'',low:'· '};
-  list.innerHTML=reports.slice().reverse().map(r=>{
-    const ctx=r.context||{};
-    const ctxBits=[ctx.screen,ctx.tab,ctx.book,ctx.character,ctx.location].filter(Boolean).join(' › ');
-    return`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:6px;border-left:3px solid ${r.priority==='top'?'var(--red)':'var(--am)'};">
-      <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:12px;">${priIcon[r.priority]||''}${typeIcon[r.type]||''} #${r.num} — ${r.title}</div>
-          ${r.body?`<div style="font-size:11px;color:var(--t2);margin-top:3px;line-height:1.5;white-space:pre-wrap;">${r.body.replace(/</g,'&lt;')}</div>`:''}
-          <div style="font-size:9px;color:var(--t3);margin-top:3px;">${ctxBits} · ${r.dateStr}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;">
-          <button class="btn-edit" onclick="editReport(${r.num})" style="font-size:11px;padding:2px 6px;">Edit</button>
-          <button class="btn-del" onclick="deleteReport(${r.num})" style="font-size:11px;padding:2px 6px;">×</button>
-        </div>
+  const sections=[
+    {key:'open',label:'Open',color:'var(--accent)',emptyText:'Nothing open.'},
+    {key:'reported',label:'Awaiting fix',color:'var(--t2)',emptyText:'Nothing awaiting fix.'},
+    {key:'closed',label:'Closed',color:'#1A6B3A',emptyText:'Nothing closed yet.'}
+  ];
+  list.innerHTML=sections.map(s=>{
+    const items=reports.filter(r=>r.status===s.key).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    const expanded=_trackerSectionsOpen[s.key];
+    const chevron=expanded?'▾':'▸';
+    const clearBtn=(s.key==='closed'&&items.length)?`<button onclick="event.stopPropagation();clearAllClosed()" style="font-size:10px;padding:2px 8px;background:var(--bg2);border:0.5px solid var(--bo);border-radius:var(--r);cursor:pointer;color:var(--t2);">Clear all closed</button>`:'';
+    const headerBg=s.key==='open'?'var(--al)':'var(--bg2)';
+    const border=s.key==='open'?'0.5px solid var(--am)':'0.5px solid var(--bo)';
+    return`<div style="margin-bottom:8px;">
+      <div onclick="_toggleTrackerSection('${s.key}')" style="display:flex;align-items:center;justify-content:space-between;gap:6px;background:${headerBg};border:${border};border-radius:var(--r);padding:6px 10px;cursor:pointer;user-select:none;">
+        <div style="font-size:12px;font-weight:700;color:${s.color};">${chevron} ${s.label} (${items.length})</div>
+        ${clearBtn}
       </div>
+      ${expanded?`<div style="padding:6px 2px 0;">${items.length?items.map(_renderReportRow).join(''):`<div style="color:var(--t3);font-style:italic;padding:6px 0;font-size:11px;">${s.emptyText}</div>`}</div>`:''}
     </div>`;
   }).join('');
 }
-// #277 — load an existing report back into the form/test panel for editing
+// #284 — Edit works for all rows (open/reported/closed). Loads into form; deletes the old one.
 function editReport(num){
-  const reports=getReports();
+  const reports=_normalizeReports();
   const r=reports.find(x=>x.num===num);
   if(!r)return;
   if(r.type==='test'){
-    // Load into the test panel
     document.getElementById('test-ticket-num').value=r.testTarget||'';
     document.getElementById('test-ticket-note').value=r.body||'';
-    // Remove the existing report; logTestResult will re-create it on next ✅/⚠️ tap
     saveReports(reports.filter(x=>x.num!==num));
     renderReportList();
     document.getElementById('test-ticket-num').scrollIntoView({behavior:'smooth',block:'center'});
@@ -5781,43 +6402,78 @@ function editReport(num){
     alert(`Editing test result for #${r.testTarget}. Adjust the note then tap ✅ or ⚠️ to re-save.`);
     return;
   }
-  // Bug/feature/change/question — load into the main report form
+  // #277 — keep original # by setting edit-num; saveReport will update the row in place
+  document.getElementById('report-edit-num').value=r.num;
   document.getElementById('report-type').value=r.type||'bug';
   document.getElementById('report-title').value=r.title==='(untitled)'?'':(r.title||'');
   document.getElementById('report-body').value=r.body||'';
   document.getElementById('report-priority').value=r.priority||'normal';
-  saveReports(reports.filter(x=>x.num!==num));
-  renderReportList();
   document.getElementById('report-title').scrollIntoView({behavior:'smooth',block:'center'});
   document.getElementById('report-title').focus();
-  alert(`Editing report #${r.num}. Adjust the fields then tap "Save report" to re-save.`);
+  alert(`Editing report #${r.num}. Adjust the fields then tap "Save report" to re-save (the # stays the same).`);
+}
+// #284 — Manual close. Also auto-closes the target ticket when a ✅-works test result is saved.
+function closeReport(num){
+  const reports=_normalizeReports();
+  const r=reports.find(x=>x.num===num);
+  if(!r)return;
+  r.status='closed';
+  r.closedDate=new Date().toLocaleDateString();
+  saveReports(reports);
+  renderReportList();
+}
+// #284 — Re-open (reported→open or closed→open)
+function reopenReport(num){
+  const reports=_normalizeReports();
+  const r=reports.find(x=>x.num===num);
+  if(!r)return;
+  r.status='open';
+  delete r.reportedDate;delete r.closedDate;
+  saveReports(reports);
+  renderReportList();
+}
+// #284 — Clear all closed rows (with confirm)
+function clearAllClosed(){
+  const reports=_normalizeReports();
+  const closedCount=reports.filter(r=>r.status==='closed').length;
+  if(!closedCount){alert('No closed reports to clear.');return;}
+  if(!confirm(`Delete all ${closedCount} closed report${closedCount===1?'':'s'}? This can't be undone.`))return;
+  saveReports(reports.filter(r=>r.status!=='closed'));
+  renderReportList();
 }
 function deleteReport(num){
-  if(!confirm('Delete this report?'))return;
+  if(!confirm('Permanently delete this report? (If you just want it out of Copy-all, tap ✓ to close it instead.)'))return;
   const reports=getReports().filter(r=>r.num!==num);
   saveReports(reports);
   renderReportList();
 }
 function copyAllReports(){
-  const reports=getReports();
+  const reports=_normalizeReports();
   if(!reports.length){alert('No reports to copy.');return;}
   const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
   const priLabel={top:'🔥 TOP PRIORITY',normal:'',low:'low priority'};
-  const tests=reports.filter(r=>r.type==='test');
-  const others=reports.filter(r=>r.type!=='test');
-  let out=`This is a batch of ${reports.length} update${reports.length===1?'':'s'} (${tests.length} test result${tests.length===1?'':'s'} + ${others.length} request${others.length===1?'':'s'}). I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below. Use this to draft something I can copy and paste into my next session that will include adding these to my tracker, my new requests/changes, the suggested order of operations, and the most recent files I should submit so we can pick up exactly where we left off — making the most bang for my buck energy-wise per session.\n\n`;
-  if(tests.length){
+  // #284 — Copy-all filter rules:
+  //   NEW REQUESTS section: only 'open' non-test items.
+  //   TEST RESULTS section: 'open' OR 'reported' test items (so re-tests still flow through).
+  //   After building output, auto-transition those items to 'reported' with today's date.
+  const openOthers=reports.filter(r=>r.type!=='test'&&r.status==='open');
+  const testsToSend=reports.filter(r=>r.type==='test'&&(r.status==='open'||r.status==='reported'));
+  const totalToSend=openOthers.length+testsToSend.length;
+  if(!totalToSend){alert('Nothing new to copy. All open items have already been reported.\n\nTip: tap ↺ on an item in "Awaiting fix" to re-open it, or log a fresh test result.');return;}
+  let out=`This is a batch of ${totalToSend} update${totalToSend===1?'':'s'} (${testsToSend.length} test result${testsToSend.length===1?'':'s'} + ${openOthers.length} new request${openOthers.length===1?'':'s'}). I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below.\n\n`;
+  out+=`⚠️ NOTE: Only OPEN items are below. Anything already reported to you in a previous session is now in the app's "Awaiting fix" bucket and is NOT repeated here.\n\n`;
+  if(testsToSend.length){
     out+='═══ TEST RESULTS ═══\n';
     out+='(These are MY test results on existing tickets. The number after "Test #" is the tracker # being tested — match it to the existing tracker row, do NOT renumber these as new tickets.)\n\n';
-    tests.forEach(r=>{
+    testsToSend.forEach(r=>{
       const sym=r.testResult==='pass'?'✅':'⚠️';
       out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
     });
     out+='\n';
   }
-  if(others.length){
+  if(openOthers.length){
     out+='═══ NEW REQUESTS / BUGS ═══\n\n';
-    others.forEach(r=>{
+    openOthers.forEach(r=>{
       const ctx=r.context||{};
       const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
       out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' — ':''}${r.title}\n`;
@@ -5828,13 +6484,18 @@ function copyAllReports(){
     out+=`\n⚠️ NOTE TO CLAUDE: The # numbers on these new requests are app-tracker numbers and likely conflict with the xlsx tracker. The xlsx numbering is the source of truth. For each new request: check if it relates to an existing xlsx ticket (slot it underneath as a child / variant), or assign the next available xlsx # if it's brand new. Add a "previously app #X" note in the xlsx so the trail is preserved.\n\n`;
   }
   out+='═══ FILES TO UPLOAD ═══\n- Latest index.html (from /mnt/user-data/outputs/ of last session)\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
-  // Try modern Clipboard API
+  // Auto-transition: everything in this batch flips open→reported with today's date.
+  const today=new Date().toLocaleDateString();
+  const idsInBatch=new Set([...openOthers,...testsToSend].filter(r=>r.status==='open').map(r=>r.num));
+  if(idsInBatch.size){
+    const all=getReports();
+    all.forEach(r=>{if(idsInBatch.has(r.num)){r.status='reported';r.reportedDate=today;}});
+    saveReports(all);
+  }
+  const done=()=>{renderReportList();alert('Copied! '+totalToSend+' item'+(totalToSend===1?'':'s')+' on clipboard.\n\nThese items have been moved to "Awaiting fix" so they won\'t show up in your next Copy-all.');};
   if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(out).then(
-      ()=>alert('Copied! '+reports.length+' item'+(reports.length===1?'':'s')+' on clipboard. Paste into next Claude session.'),
-      ()=>{_fallbackCopy(out);}
-    );
-  }else{_fallbackCopy(out);}
+    navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);renderReportList();});
+  }else{_fallbackCopy(out);renderReportList();}
 }
 function _fallbackCopy(text){
   const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
@@ -5876,6 +6537,8 @@ load();renderLibrary();
     <div class="sheet-handle"></div>
     <button class="sheet-x" onclick="closeSheet('report-overlay')">×</button>
     <div class="sheet-title" style="padding-right:48px;">🐛 Report issue / request feature</div>
+    <!-- #277 — preserves original # when editing an existing report -->
+    <input type="hidden" id="report-edit-num" value=""/>
     <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;line-height:1.55;">
       Capture bugs and feature requests as you go. Each one gets a tracker number and your context (current screen, book, last entry) auto-attached. At session end, copy the whole batch into your next Claude session.
     </div>
@@ -5921,10 +6584,11 @@ load();renderLibrary();
       </div>
       <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken (room to write a paragraph)…" style="width:100%;min-height:80px;font-size:16px;line-height:1.45;"></textarea>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <div class="slabel" style="margin:0;">Pending reports</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+      <div class="slabel" style="margin:0;">Tracker</div>
       <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
     </div>
+    <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;">Copy-all sends only items in <b>Open</b> (plus any test results). Items flip to <b>Awaiting fix</b> after copying so they don't repeat. Tap ✓ on an item when you've confirmed the fix.</div>
     <div id="report-list" style="font-size:12px;"></div>
   </div>
 </div>
@@ -6033,6 +6697,33 @@ load();renderLibrary();
       <button class="sheet-x" onclick="closeSheet('lib-stats-overlay')">×</button>
     </div>
     <div class="sheet-inner" id="lib-stats-body" style="padding-bottom:24px;"></div>
+  </div>
+</div>
+<!-- #274/285 — Library-level settings overlay -->
+<div class="sheet-overlay" id="lib-settings-overlay" onclick="mc('lib-settings-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">⚙ Settings</div>
+      <button class="sheet-x" onclick="closeSheet('lib-settings-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">Library-wide settings. Per-book settings stay inside each book (tap ⚙ inside a book).</div>
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Backup &amp; sync</label>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');exportAllData()" style="width:100%;margin-bottom:6px;">⬇ Export all books (backup)</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openSync()" style="width:100%;margin-bottom:6px;">☁️ iCloud sync</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');importDataMerge()" style="width:100%;">⬆ Import backup (merge)</button>
+      </div>
+      <div class="divider"></div>
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Bug tracker</label>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openReportIssue()" style="width:100%;margin-bottom:6px;">🐛 Open bug tracker</button>
+      </div>
+      <div class="divider"></div>
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Help</label>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');show('guide-screen','lib-screen');renderGuide()" style="width:100%;margin-bottom:6px;">📖 User guide</button>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--t3);text-align:center;padding:4px 0;">Book Annotator · Data lives on this device only</div>
+    </div>
   </div>
 </div>
 </body>
