@@ -1205,8 +1205,97 @@ let timerStart=null;
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════════════════════════
-function save(){localStorage.setItem('book-annotator-v4',JSON.stringify(library));}
-function load(){try{const d=localStorage.getItem('book-annotator-v4');if(d)library=JSON.parse(d);}catch(e){library={};}}
+// ═══════════════════════════════════════════════════════════════
+// STORAGE — #111
+// Library lives in IndexedDB (no practical size limit). localStorage
+// is kept as an emergency fallback + migration source for older installs.
+// Writes are coalesced in a microtask so rapid edits don't pile up.
+// ═══════════════════════════════════════════════════════════════
+const LS_KEY='book-annotator-v4';
+const IDB_NAME='book-annotator-db';
+const IDB_STORE='kv';
+let _idb=null;
+let _saveQueued=false;
+let _saveWarnedFallback=false;
+
+function _openIDB(){
+  return new Promise((resolve,reject)=>{
+    if(_idb)return resolve(_idb);
+    if(!window.indexedDB)return reject(new Error('no-idb'));
+    const req=indexedDB.open(IDB_NAME,1);
+    req.onupgradeneeded=()=>{req.result.createObjectStore(IDB_STORE);};
+    req.onsuccess=()=>{_idb=req.result;resolve(_idb);};
+    req.onerror=()=>reject(req.error||new Error('idb-open-failed'));
+  });
+}
+async function _idbGet(key){
+  const db=await _openIDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const r=tx.objectStore(IDB_STORE).get(key);
+    r.onsuccess=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error);
+  });
+}
+async function _idbPut(key,val){
+  const db=await _openIDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(val,key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+    tx.onabort=()=>reject(tx.error||new Error('idb-abort'));
+  });
+}
+
+async function _doSave(){
+  const snapshot=library;
+  try{
+    await _idbPut('library',snapshot);
+    // Mirror a pointer so we know IDB is authoritative
+    try{localStorage.setItem(LS_KEY+'-source','idb');}catch(e){}
+    return;
+  }catch(e){
+    console.warn('IDB save failed, falling back to localStorage:',e);
+  }
+  // localStorage fallback
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify(snapshot));
+  }catch(e){
+    if(!_saveWarnedFallback){
+      _saveWarnedFallback=true;
+      alert('⚠️ Your browser blocked saving. This is usually because storage is full or your browser is in Private / Incognito mode. Try: close and reopen the app, restart your device, or enable iCloud sync in Settings to back up your data.');
+    }
+    throw e;
+  }
+}
+
+function save(){
+  if(_saveQueued)return;
+  _saveQueued=true;
+  Promise.resolve().then(async()=>{
+    _saveQueued=false;
+    try{await _doSave();}catch(e){console.error('save failed',e);}
+  });
+}
+
+async function load(){
+  // Try IDB first
+  try{
+    const v=await _idbGet('library');
+    if(v&&typeof v==='object'){library=v;return;}
+  }catch(e){/* fall through */}
+  // Migrate from localStorage if present
+  try{
+    const d=localStorage.getItem(LS_KEY);
+    if(d){
+      library=JSON.parse(d);
+      // Migrate to IDB so future saves have room
+      try{await _idbPut('library',library);localStorage.setItem(LS_KEY+'-source','idb');}catch(e){}
+      return;
+    }
+  }catch(e){library={};}
+}
 function book(){return library[currentId];}
 function entries(){return book()?.entries||[];}
 function getCC(name){
@@ -6536,7 +6625,7 @@ function _fallbackCopy(text){
 // INIT
 // ═══════════════════════════════════════════════════════════════
 // serviceWorker registration removed for preview
-load();renderLibrary();
+(async()=>{try{await load();}catch(e){console.error(e);}renderLibrary();})();
 </script>
 
 <!-- ══ RECYCLE BIN SHEET ══ -->
