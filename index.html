@@ -137,7 +137,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .sum-val{font-size:18px;font-weight:600;}
 .sum-lbl{font-size:11px;color:var(--t2);}
 /* #249 — info tip: larger tap target + click-to-expand */
-.info-tip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--bg2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;margin-left:4px;vertical-align:middle;-webkit-tap-highlight-color:transparent;user-select:none;}
+.info-tip{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--bg2);color:var(--t2);font-size:15px;font-weight:600;cursor:pointer;margin-left:4px;vertical-align:middle;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;}/* #249 */
 .info-tip:active{opacity:0.7;}
 .info-tip-msg{display:block;margin-top:5px;padding:7px 10px;background:var(--bg2);border-left:3px solid var(--t3);border-radius:var(--r);font-size:11px;font-weight:400;color:var(--t2);line-height:1.4;}
 /* timeline */
@@ -356,8 +356,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-back" id="char-back-btn"></button>
     <div class="topbar-title" id="char-screen-title"></div>
     <button class="btn-icon" id="char-edit-btn" style="font-size:12px;">Edit</button>
-    <button class="btn-icon" id="char-add-trait-btn" style="font-size:12px;">+ Trait</button>
-    <button class="btn-icon" id="char-add-rel-btn" style="font-size:12px;">+ Rel</button>
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div class="char-hero" id="char-hero"></div>
@@ -2384,10 +2382,13 @@ function onTypeChange(){
     if(!document.getElementById('ae-edit-id').value)cddSet('ae-inv',[]);
     cddFilter('ae-inv');
     if(isTrait){
-      // Auto-select sole main char if present
+      // #311 — Auto-select: prefer sole main char; fall back to first char if only one exists
       setTimeout(()=>{
+        if(cddGet('ae-inv').length)return;
+        const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
         const mains=entries().filter(e=>CT.includes(e.type)&&e.charRole==='main').map(e=>e.cn||e.content);
-        if(mains.length===1&&!cddGet('ae-inv').length){cddSet('ae-inv',[mains[0]]);}
+        const pick=mains.length===1?mains[0]:(allChars.length===1?allChars[0]:null);
+        if(pick)cddSet('ae-inv',[pick]);
       },30);
     }
   }
@@ -3377,7 +3378,7 @@ function editEntry(id){
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
-    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}
+    else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');cddSet('ae-rela','');cddSet('ae-relb','');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}// #323 — clear first to prevent stale values from prior form state
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
     document.getElementById('ae-loc-sel').value=e.location||'';
@@ -3745,20 +3746,6 @@ function openCharDetail(name,fromWeb){
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
-  document.getElementById('char-add-trait-btn').onclick=()=>{
-    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
-    document.getElementById('ae-sheet-title').textContent='Add trait for '+name;
-    document.getElementById('ae-type').value='Characteristic';onTypeChange();
-    setTimeout(()=>cddSet('ae-inv',[name]),80);
-    openSheet('ae-overlay');
-  };
-  document.getElementById('char-add-rel-btn').onclick=()=>{
-    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
-    document.getElementById('ae-sheet-title').textContent='Add relationship for '+name;
-    document.getElementById('ae-type').value='Relationship';onTypeChange();
-    setTimeout(()=>cddSet('ae-rela',name),60);
-    openSheet('ae-overlay');
-  };
   renderCharDetail(name);show('char-screen','book-screen');
   const cb=document.getElementById('char-body');if(cb)cb.scrollTop=0;
 }
@@ -6698,7 +6685,7 @@ function _fallbackCopy(text){
         <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
         <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
       </div>
-      <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken (room to write a paragraph)…" style="width:100%;min-height:80px;font-size:16px;line-height:1.45;"></textarea>
+      <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken…" style="width:100%;min-height:140px;font-size:16px;line-height:1.55;"></textarea><!-- #273 -->
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
       <div class="slabel" style="margin:0;">Tracker</div>
