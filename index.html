@@ -567,7 +567,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
-      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" onblur="aeContentLocAutofill()"></textarea></div>
     </div>
 
     <!-- THEME QUOTES -->
@@ -884,6 +884,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <label>Street address <span style="font-weight:400;">(real places only)</span></label>
         <input type="text" id="ae-loc-street" placeholder="e.g. 221B Baker Street"/>
       </div>
+      <div id="ae-loc-autofill-hint" style="display:none;margin:-4px 0 6px;font-size:11px;color:var(--t2);padding:6px 8px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);"><span id="ae-loc-autofill-msg"></span></div>
       <div class="r2">
         <div class="fg"><label>City / Region</label><input type="text" id="ae-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-loc-city','ae-loc-country')"/></div>
         <div class="fg"><label>Country</label><input type="text" id="ae-loc-country" placeholder="e.g. England"/></div>
@@ -1148,12 +1149,14 @@ function rtpRender(filter){
   if(!html)html=`<div style="font-size:12px;color:var(--t3);padding:10px;text-align:center;">No matches for "${q}"</div>`;
   panel.innerHTML=html;
 }
-function rtpOpen(){const p=document.getElementById('ae-reltype-panel');if(p){p.style.display='';rtpRender(document.getElementById('ae-reltype-search').value);}}
-function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
+function rtpOpen(){const p=document.getElementById('ae-reltype-panel');if(p){p.style.display='';rtpRender(document.getElementById('ae-reltype-search').value);}
+  // Close on outside click
+  setTimeout(()=>{document.addEventListener('click',function _rtpOutside(e){const w=document.getElementById('ae-reltype-wrap');if(w&&!w.contains(e.target)){const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';}document.removeEventListener('click',_rtpOutside);},{once:true});},50);}
+function rtpOnInput(){const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='';rtpRender(document.getElementById('ae-reltype-search').value);}
 function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
-  rtpRender(''); // re-render to show active state
+  const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none'; // collapse after pick
   inferRelGender();
 }
 function rtpClear(){
@@ -1164,7 +1167,7 @@ function rtpClear(){
 function rtpSet(val){
   document.getElementById('ae-reltype').value=val||'';
   document.getElementById('ae-reltype-search').value=val||'';
-  rtpRender('');
+  const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
 const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
@@ -1829,6 +1832,40 @@ function elocApplyAutofill(){
   document.getElementById('eloc-autofill-hint').style.display='none';
   _elocAutofillData=null;
 }
+// #333 — autofill on standard Location entry form (ae-content = loc name, ae-loc-city etc)
+let _aeLocAutofillData=null;
+async function aeContentLocAutofill(){
+  const type=document.getElementById('ae-type')?.value;
+  if(type!=='Location')return;
+  const locType=document.getElementById('ae-loc-type')?.value;
+  if(locType!=='real')return;
+  const name=(document.getElementById('ae-content')?.value||'').trim();
+  if(!name)return;
+  const city=document.getElementById('ae-loc-city')?.value.trim();
+  const country=document.getElementById('ae-loc-country')?.value.trim();
+  if(city&&country)return;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const d=await r.json();
+    if(d&&d.length){
+      const results=d.map(item=>{const a=item.address||{};return{city:a.city||a.town||a.village||a.state||'',country:a.country||''};}).filter(x=>x.city||x.country);
+      if(!results.length)return;
+      _aeLocAutofillData=results;
+      const picks=results.slice(0,3).map((res,i)=>`<button class="btn btn-sm" onclick="aeLocApplyAutofill(${i})" style="display:inline-block;margin:2px 3px 2px 0;font-size:11px;">${[res.city,res.country].filter(Boolean).join(', ')}</button>`).join('');
+      const hint=document.getElementById('ae-loc-autofill-hint');
+      if(hint){document.getElementById('ae-loc-autofill-msg').innerHTML=`Which is correct? ${picks}`;hint.style.display='';}
+    }
+  }catch(e){}
+}
+function aeLocApplyAutofill(idx){
+  if(!_aeLocAutofillData)return;
+  const res=_aeLocAutofillData[idx||0];
+  const cityEl=document.getElementById('ae-loc-city');const countryEl=document.getElementById('ae-loc-country');
+  if(cityEl&&!cityEl.value.trim())cityEl.value=res.city||'';
+  if(countryEl&&!countryEl.value.trim())countryEl.value=res.country||'';
+  const hint=document.getElementById('ae-loc-autofill-hint');if(hint)hint.style.display='none';
+  _aeLocAutofillData=null;
+}
 function buildLocSelect(){
   // Now using custom searchable dropdown — just pre-populate search if value set
   const val=document.getElementById('ae-loc-sel')?.value||'';
@@ -2345,7 +2382,11 @@ function addQuickRelRow(relType,charName){
   row.dataset.qrId=rowId;
   // #239/272/282 — rel-type on its own line; char field full-width on its own line (× clear always visible); +New on its own line below so nothing crowds the char row.
   row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-      <select class="qr-type" style="flex:1;font-size:14px;">${buildRelTypeOpts(relType||'')}</select>
+      <div style="flex:1;position:relative;">
+        <input type="text" class="qr-type-search" placeholder="Relationship type…" autocomplete="off" value="${relType||''}" oninput="qrTypeFilter('${rowId}')" onfocus="qrTypeFilter('${rowId}')" style="font-size:14px;width:100%;"/>
+        <input type="hidden" class="qr-type" value="${relType||''}"/>
+        <div class="qr-type-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.15);"></div>
+      </div>
       <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
     </div>
     <div style="position:relative;margin-bottom:6px;">
@@ -2358,7 +2399,7 @@ function addQuickRelRow(relType,charName){
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
-  row.querySelector('.qr-type').addEventListener('change',checkSuggestions);
+  row.querySelector('.qr-type-search').addEventListener('input',checkSuggestions);
 }
 function qrCharClear(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -2387,6 +2428,30 @@ function qrCharPick(rowId,name){
   row.querySelector('.qr-char-search').value=name;
   row.querySelector('.qr-char').value=name;
   row.querySelector('.qr-char-list').style.display='none';
+  checkSuggestions();
+}
+// #308 — Searchable relationship-type picker for quick-rel rows on character entry
+function qrTypeFilter(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const input=row.querySelector('.qr-type-search');
+  const hidden=row.querySelector('.qr-type');
+  const list=row.querySelector('.qr-type-list');
+  const q=(input.value||'').trim().toLowerCase();
+  // Gather all rel types from REL_GROUPS
+  const allTypes=typeof REL_GROUPS!=='undefined'?REL_GROUPS.flatMap(g=>g.items):['Friend','Sibling','Parent','Child','Spouse','Partner','Teacher','Student','Enemy','Ally','Colleague'];
+  const matches=q?allTypes.filter(t=>t.toLowerCase().includes(q)):allTypes;
+  const exact=allTypes.find(t=>t.toLowerCase()===q);
+  hidden.value=exact||input.value;
+  if(!matches.length){list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — type a custom type</div>`;}
+  else{list.innerHTML=matches.map(t=>`<div onclick="qrTypePick('${rowId}','${t.replace(/'/g,"\\'")}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${typeof relEmoji==='function'?relEmoji(t)+' ':''} ${t}</div>`).join('');}
+  list.style.display='block';
+  setTimeout(()=>{document.addEventListener('click',function _qrtClose(e){if(!row.contains(e.target))list.style.display='none';document.removeEventListener('click',_qrtClose);},{once:true});},50);
+}
+function qrTypePick(rowId,val){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  row.querySelector('.qr-type-search').value=val;
+  row.querySelector('.qr-type').value=val;
+  row.querySelector('.qr-type-list').style.display='none';
   checkSuggestions();
 }
 // Close any open qr-char-list when clicking outside
@@ -2832,9 +2897,10 @@ function openAddTypeForLoc(type){
   const titles={'Characteristic':'Add trait at ','Quote':'Add quote at ','Event':'Add event at ','Theme':'Add theme at ','Question':'Add question at ','Character':'Add character at '};
   document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add at ')+name;
   document.getElementById('ae-type').value=type;onTypeChange();
-  // #241 loc — pre-fill location searchable dropdown
-  setTimeout(()=>{ prefillLocDropdown(name); },80);
   openSheet('ae-overlay');
+  // #241 loc — double prefill: once after onTypeChange settles, once more after sheet fully opens
+  setTimeout(()=>{ prefillLocDropdown(name); },120);
+  setTimeout(()=>{ prefillLocDropdown(name); },400);
 }
 // #241 loc — helper that reliably sets both the hidden select and the visible search input
 function prefillLocDropdown(name){
@@ -3119,7 +3185,9 @@ function renderThemeQuotes(quotes,listEl){
   });
 }
 // #191-A / #242 — Build the nested quote block for a Theme card
-function buildThemeQuoteBlock(allTqs){
+// Quotes with _entryId (attached entries) open that quote entry on tap.
+// Free-text quotes open the theme entry itself (_themeId) if provided.
+function buildThemeQuoteBlock(allTqs,themeId){
   if(!allTqs.length)return'';
   var rows=allTqs.map(function(q){
     var spkrCC=q.speaker&&q.speaker!=='Narrator / Author'?getCC(q.speaker):null;
@@ -3129,8 +3197,11 @@ function buildThemeQuoteBlock(allTqs){
         :'<span style="font-weight:700;color:var(--t2);">'+q.speaker+'</span>')
       :'<span style="color:var(--t3);">Narrator</span>';
     var pgHtml=q.page?' · p.'+q.page:'';
-    var qOpen=q._entryId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+q._entryId+')">'
-                        :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">';
+    // #191-A: attached quotes open the quote entry; free-text quotes open the theme entry
+    var clickTarget=q._entryId?q._entryId:themeId;
+    var qOpen=clickTarget
+      ?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;color:var(--text);" onclick="event.stopPropagation();editEntry('+clickTarget+')">'
+      :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">';
     return'<div style="margin-bottom:5px;"><div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
   });
   return'<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">'+rows.join('')+'</div>';
@@ -3366,18 +3437,41 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){
-    // #303/#335 — assemble evdate from structured fields; year is required
+    // #303/#335 — assemble evdate from structured fields
+    // Year is required ONLY if no offset-from-event is set
     const evYear=document.getElementById('ae-evdate-year').value.trim();
     const evMon=document.getElementById('ae-evdate-month').value;
     const evDay=(document.getElementById('ae-evdate-day').value||'').trim();
-    if(!evYear){alert('Please enter a year or era for this timeline entry.');return;}
+    const odSave=document.getElementById('ae-offset-dir').value;
+    const onSave=document.getElementById('ae-offset-num').value.trim();
+    const ouSave=document.getElementById('ae-offset-unit').value;
+    const oeSave=document.getElementById('ae-offset-event').value.trim();
+    const hasOffset=onSave&&oeSave; // offset is only "active" when BOTH number and anchor event are set
+    if(!evYear&&!hasOffset){alert('Please enter a year/era, or connect this entry to another event using the offset field.');return;}
     // Build evdate string: "1943", "1943-04", "1943-04-14", "Ch.4", etc.
     let assembled=evYear;
-    if(evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
+    if(evYear&&evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
+    // #303 — if offset active, compute actual year from anchor for sorting
+    if(hasOffset&&!evYear){
+      const anchorEntry=entries().find(e=>['Timeline','Event'].includes(e.type)&&(e.content||'').trim()===oeSave.trim());
+      if(anchorEntry&&anchorEntry.evdate){
+        const anchorYearM=anchorEntry.evdate.match(/^-?(\d{1,4})/);
+        if(anchorYearM){
+          const anchorYear=Number(anchorYearM[1]);
+          const offsetSign=odSave==='-'?-1:1;
+          const offsetNum=parseInt(onSave,10)||0;
+          // Convert all units to years (approximate)
+          const unitToYears={'days':1/365,'weeks':1/52,'months':1/12,'years':1};
+          const mult=unitToYears[ouSave.toLowerCase()]||1;
+          const computedYear=Math.round(anchorYear+offsetSign*offsetNum*mult);
+          assembled=String(computedYear);
+        }
+      }
+    }
     document.getElementById('ae-evdate').value=assembled;
     entry.evdate=assembled;
-    entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
-    entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
+    entry.evdateYear=evYear||assembled;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
+    entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;if(onSave){entry.timeOffset=`${odSave}${onSave} ${ouSave}`;if(oeSave)entry.timeOffsetFrom=oeSave;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -3965,12 +4059,17 @@ function ecHTML(e,compact,fromTab){
     const icons=(e.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌';
     const sigLabel={minor:'Minor',significant:'Significant',major:'Major',lifechanging:'Life-changing'}[e.eventSig]||'';
     body=`<div class="econtent">${icons} ${sigLabel?`<span class="tag" style="background:var(--rl);color:var(--red);">${sigLabel}</span> `:''}${e.content}</div>`;
+  } else if(e.type==='Timeline'){
+    // #253 — show supporting quote in log card too
+    const sqBlock=e.tlSq?`<div style="border-left:2px solid var(--am);padding-left:7px;margin-top:5px;font-size:12px;font-style:italic;color:var(--t2);line-height:1.4;">"${e.tlSq}"${e.tlSpeaker?` <span style="font-style:normal;font-size:11px;">— ${e.tlSpeaker}</span>`:''}${e.tlSqPg?` <span style="font-style:normal;font-size:11px;color:var(--t3);">· p.${e.tlSqPg}</span>`:''}</div>`:'';
+    const dateBit=e.evdate?`<span class="pbadge" style="margin-right:4px;">📅 ${e.evdate}</span>`:'';
+    body=`<div class="econtent">${dateBit}<strong>${e.content}</strong>${sqBlock}</div>`;
   } else if(e.type==='Theme'){
     const tqs=e.themeQuotes||[];
     // Build all quotes to show: themeQuotes (free-text) + attachedQuoteIds (linked entries)
     const attachedQEntries=(e.attachedQuoteIds||[]).map(id=>entries().find(q=>q.id===id)).filter(Boolean);
     const allTqs=[...tqs,...attachedQEntries.map(q=>({text:q.content,page:q.pageNum||'',speaker:q.speaker||'',_entryId:q.id}))];
-    const quoteBlock=buildThemeQuoteBlock(allTqs);
+    const quoteBlock=buildThemeQuoteBlock(allTqs,e.id);
     body='<div class="econtent"><strong>'+e.content+'</strong>'+(e.note?'<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">'+e.note+'</div>':'')+quoteBlock+'</div>';
   } else if(e.type==='Translation'){
     const langPair=e.transFrom&&e.transTo?`<span class="pbadge" style="margin-bottom:4px;">${e.transFrom} → ${e.transTo}</span>`:(e.transFrom||e.transTo)?`<span class="pbadge">${e.transFrom||e.transTo}</span>`:'';
@@ -4310,7 +4409,7 @@ function renderCharDetail(name){
           ${q.page?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${q.page}</div>`:''}
         </div>`;
       }).join(''):'';
-      return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div>${th.content}${nested}${nT(th)}${pgT(th)}${act(th)}</div>`;
+      return`<div class="citem" style="cursor:pointer;" onclick="editEntry(${th.id})"><div class="ilabel" style="color:${col.text};">🎯 Theme</div>${th.content}${nested}${nT(th)}${pgT(th)}<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${th.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${th.id})">Delete</button></div></div>`;
     }).join('');
   } else {
     html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No themes yet — tap + Theme to add one.</div>`;
@@ -4905,15 +5004,18 @@ function renderTimeline(){
   const activeLoc=tlLocFilter?.dataset.active||'all';
   const filtered=activeLoc==='all'?all:all.filter(e=>e.location===activeLoc);
 
-  // #303 — parse evdate to a sortable value: numeric year → number, else string, '' → null
+  // #303/#218 — parse evdate to sortable numeric; handles legacy entries and offset-computed years
   function evdateSort(e){
     const d=e.evdate||'';
-    if(!d)return null; // undated
-    // Try to extract leading year number e.g. "1943", "1943-04", "1943-04-14"
-    const m=d.match(/^-?(\d{1,4})/);
-    if(m)return Number(m[1])*10000
-      +(e.evdateMonth?Number(e.evdateMonth)*100:0)
-      +(e.evdateDay?Number(e.evdateDay):0);
+    if(!d)return null;
+    // Extract leading signed year: "1943", "-500", "1943-04", "1943-04-14"
+    const m=d.match(/^(-?\d{1,6})/);
+    if(m){
+      const yr=Number(m[1]);
+      const mon=e.evdateMonth?Number(e.evdateMonth):(d.length>4&&d[4]==='-'?Number(d.substring(5,7))||0:0);
+      const day=e.evdateDay?Number(e.evdateDay):(d.length>7&&d[7]==='-'?Number(d.substring(8,10))||0:0);
+      return yr*10000+(mon||0)*100+(day||0);
+    }
     return d; // narrative label e.g. "Ch.4" — string compare
   }
 
@@ -7052,13 +7154,12 @@ function editReport(num){
   const r=reports.find(x=>x.num===num);
   if(!r)return;
   if(r.type==='test'){
+    // #277 — preserve # for test reports too: pre-fill edit-num so saveTestResult updates in place
+    document.getElementById('report-edit-num').value=r.num;
     document.getElementById('test-ticket-num').value=r.testTarget||'';
     document.getElementById('test-ticket-note').value=r.body||'';
-    saveReports(reports.filter(x=>x.num!==num));
-    renderReportList();
     document.getElementById('test-ticket-num').scrollIntoView({behavior:'smooth',block:'center'});
-    document.getElementById('test-ticket-note').focus();
-    alert(`Editing test result for #${r.testTarget}. Adjust the note then tap ✅ or ⚠️ to re-save.`);
+    document.getElementById('test-ticket-num').focus();
     return;
   }
   // #277 — keep original # by setting edit-num; saveReport will update the row in place
@@ -7069,7 +7170,6 @@ function editReport(num){
   document.getElementById('report-priority').value=r.priority||'normal';
   document.getElementById('report-title').scrollIntoView({behavior:'smooth',block:'center'});
   document.getElementById('report-title').focus();
-  alert(`Editing report #${r.num}. Adjust the fields then tap "Save report" to re-save (the # stays the same).`);
 }
 // #284 — Manual close. Also auto-closes the target ticket when a ✅-works test result is saved.
 function closeReport(num){
