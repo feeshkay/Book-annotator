@@ -530,7 +530,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>Introduced — p. <span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
+        <div class="fg"><label>Introduced — p.</label><div style="display:flex;align-items:center;gap:4px;"><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" style="flex:1;" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/><span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)" style="flex-shrink:0;">ⓘ</span></div></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
@@ -1717,7 +1717,7 @@ function autoCharIntroChap(){
   if(!pgEl||!chEl)return;
   const pgVal=pgEl.value.trim();if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  if(chaps.length&&!chEl.value)chEl.value=String(chaps[0]);
+  if(chaps.length)chEl.value=String(chaps[0]); // #219 — always re-sync, even on edit
 }
 // #221 — Characteristic: derive quote chapter from quote page
 function autoTraitQuoteChap(){
@@ -1795,7 +1795,7 @@ function elocPhotoClear(){
   document.getElementById('eloc-photo-clear').style.display='none';
   document.getElementById('eloc-photo-input').value='';
 }
-// #333 — autofill address from location name
+// #333 — autofill address from location name (shows pick list of top results)
 let _elocAutofillData=null;
 async function elocAutofillAddress(){
   const name=document.getElementById('eloc-name').value.trim();
@@ -1805,25 +1805,27 @@ async function elocAutofillAddress(){
   const country=document.getElementById('eloc-country').value.trim();
   if(city&&country)return; // already filled
   try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
     const d=await r.json();
-    if(d&&d[0]?.address){
-      const a=d[0].address;
-      const sugCity=a.city||a.town||a.village||a.state||'';
-      const sugCountry=a.country||'';
-      if(!sugCity&&!sugCountry)return;
-      _elocAutofillData={city:sugCity,country:sugCountry};
-      const parts=[sugCity,sugCountry].filter(Boolean).join(', ');
-      document.getElementById('eloc-autofill-msg').textContent=`Found: ${parts}`;
-      document.getElementById('eloc-autofill-hint').style.display='';
+    if(d&&d.length){
+      const results=d.map(item=>{const a=item.address||{};return{city:a.city||a.town||a.village||a.state||'',country:a.country||'',display:item.display_name};}).filter(x=>x.city||x.country);
+      if(!results.length)return;
+      _elocAutofillData=results;
+      const hintEl=document.getElementById('eloc-autofill-hint');
+      const msgEl=document.getElementById('eloc-autofill-msg');
+      // Build pick list
+      const picks=results.slice(0,3).map((res,i)=>`<button class="btn btn-sm" onclick="elocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin-bottom:4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${[res.city,res.country].filter(Boolean).join(', ')}</button>`).join('');
+      msgEl.innerHTML=`Which is correct?<div style="margin-top:5px;">${picks}</div>`;
+      hintEl.style.display='';
     }
   }catch(e){}
 }
-function elocApplyAutofill(){
+function elocApplyAutofill(idx){
   if(!_elocAutofillData)return;
+  const res=_elocAutofillData[idx||0];
   const cityEl=document.getElementById('eloc-city');const countryEl=document.getElementById('eloc-country');
-  if(cityEl&&!cityEl.value.trim())cityEl.value=_elocAutofillData.city||'';
-  if(countryEl&&!countryEl.value.trim())countryEl.value=_elocAutofillData.country||'';
+  if(cityEl&&!cityEl.value.trim())cityEl.value=res.city||'';
+  if(countryEl&&!countryEl.value.trim())countryEl.value=res.country||'';
   document.getElementById('eloc-autofill-hint').style.display='none';
   _elocAutofillData=null;
 }
@@ -3217,18 +3219,83 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){
-    // #303/#335 — assemble evdate from structured fields; year is required
+    // #303/#335/#218 — year required ONLY when not connected to another event
+    const offToggled=document.getElementById('ae-offset-toggle')?.checked;
+    const od=document.getElementById('ae-offset-dir').value;
+    const on=document.getElementById('ae-offset-num').value.trim();
+    const ou=document.getElementById('ae-offset-unit').value;
+    const oe=document.getElementById('ae-offset-event').value.trim();
+    const hasOffset=offToggled&&on&&oe;
     const evYear=document.getElementById('ae-evdate-year').value.trim();
     const evMon=document.getElementById('ae-evdate-month').value;
     const evDay=(document.getElementById('ae-evdate-day').value||'').trim();
-    if(!evYear){alert('Please enter a year or era for this timeline entry.');return;}
-    // Build evdate string: "1943", "1943-04", "1943-04-14", "Ch.4", etc.
+    if(!evYear&&!hasOffset){alert('Please enter a year/era — OR check "Related to another event?" and pick an anchor event.');return;}
+    // Build evdate: either from typed year, or computed from anchor event
     let assembled=evYear;
-    if(evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
+    if(evYear&&evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
+    // #303/#218 — if offset is used, compute evdate from the anchor event's date
+    if(hasOffset&&!evYear){
+      // Find anchor event by matching content or evdate text
+      const anchorEntry=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
+        .find(e=>(e.content&&(oe.includes(e.content)||e.content===oe))||(e.evdate&&oe.includes(e.evdate)));
+      if(anchorEntry&&anchorEntry.evdate){
+        // Extract numeric year from anchor
+        const am=anchorEntry.evdate.match(/^(-?\d{1,6})/);
+        if(am){
+          const anchorYear=Number(am[1]);
+          const offsetN=Number(on);
+          const sign=od==='-'?-1:1;
+          // Convert offset to fractional years for evdate approximation
+          const unitToYearFrac={days:1/365,weeks:1/52,months:1/12,years:1,decades:10,centuries:100,hours:1/8760,minutes:1/525600};
+          const fracYears=offsetN*(unitToYearFrac[ou]||1)*sign;
+          const computedYear=Math.round(anchorYear+fracYears);
+          const computedMon=anchorEntry.evdateMonth||'';
+          assembled=String(computedYear);
+          if(computedMon){assembled+='-'+computedMon;}
+          entry.evdateYear=String(computedYear);entry.evdateMonth=computedMon;entry.evdateDay=anchorEntry.evdateDay||'';
+        } else {
+          // narrative anchor (e.g. "Ch.4") — copy anchor's evdate, sortKey will handle position
+          assembled=anchorEntry.evdate;
+          entry.evdateYear=anchorEntry.evdateYear||anchorEntry.evdate;entry.evdateMonth=anchorEntry.evdateMonth||'';entry.evdateDay=anchorEntry.evdateDay||'';
+        }
+      }
+    } else {
+      entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
+    }
     document.getElementById('ae-evdate').value=assembled;
     entry.evdate=assembled;
-    entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
-    entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
+    entry.importance=document.getElementById('ae-imp').value;
+    const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
+    // #303/#218 — if no explicit sortKey but offset is used, assign a sortKey relative to anchor
+    if(hasOffset&&(!sk||sk.value==='')){
+      const allTl=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&e.id!==entry.id);
+      // Ensure all existing entries have a sortKey based on current sort order
+      const sorted=allTl.slice().sort((a,b)=>{
+        const sa=a.sortKey!=null?+a.sortKey:99999,sb=b.sortKey!=null?+b.sortKey:99999;
+        if(sa!==sb)return sa-sb;
+        const da=a.evdate||'',db=b.evdate||'';
+        const ma=da.match(/^(-?\d{1,6})/),mb=db.match(/^(-?\d{1,6})/);
+        if(ma&&mb)return Number(ma[1])-Number(mb[1]);
+        return da.localeCompare(db)||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+      });
+      sorted.forEach((e,i)=>{if(e.sortKey==null)e.sortKey=i*10;});
+      // Find the anchor in sorted list
+      const anchorIdx=sorted.findIndex(e=>(e.content&&(oe.includes(e.content)||e.content===oe))||(e.evdate&&oe.includes(e.evdate)));
+      if(anchorIdx>=0){
+        const insertAfter=od==='+';
+        const baseIdx=insertAfter?anchorIdx:anchorIdx-1;
+        const baseEntry=sorted[baseIdx];
+        const nextEntry=sorted[baseIdx+1];
+        const baseKey=baseEntry?.sortKey!=null?+baseEntry.sortKey:(baseIdx*10);
+        const nextKey=nextEntry?.sortKey!=null?+nextEntry.sortKey:((baseIdx+1)*10+10);
+        const newKey=baseKey+(nextKey-baseKey)*0.5;
+        entry.sortKey=newKey;
+        if(sk)sk.value=newKey;
+        save(); // persist sortKeys assigned above
+      }
+    }
+    if(on&&oe){entry.timeOffset=`${od}${on} ${ou}`;entry.timeOffsetFrom=oe;}
+    entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -4494,7 +4561,7 @@ function renderWeb(){
       ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');
       ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size',isMain?'13':'11');
       ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');
-      ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
+      ti.setAttribute('font-family','-apple-system,sans-serif');ti.setAttribute('data-role','initials');ti.textContent=ini;g.appendChild(ti);
     }
 
     if(n.status==='deceased'){
@@ -4568,14 +4635,11 @@ function setupWebDrag(){
     [...g.querySelectorAll('image')].forEach(im=>{im.setAttribute('x',nodeData.x-nodeR);im.setAttribute('y',nodeData.y-nodeR);});
     const texts=[...g.querySelectorAll('text')];
     texts.forEach(t=>{
-      // Name-label text (the one with children tspans or below-node) has y > center
-      const cy=+t.getAttribute('y');
-      if(Math.abs(cy-nodeData.y)<2){t.setAttribute('x',nodeData.x);}
-      else {
-        // Below-label: y = nodeY + nodeR + 10 (approx); or deceased (x+nodeR-4, y-nodeR+6)
-        if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
-        else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
-      }
+      // #298 — use data-role tag to identify each text element reliably
+      const role=t.getAttribute('data-role');
+      if(role==='initials'){t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y);}
+      else if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
+      else{t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
     });
     // Redraw clipPath circle for photo (if any)
     const cid='wc'+nodeData.name.replace(/[^a-z0-9]/gi,'_');
@@ -4922,6 +4986,8 @@ function renderMap(){
 
   list.innerHTML=headerHTML+locNames.map(loc=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
+    // #334 — if photo not in locations store, fall back to Location-type entry photo
+    if(!locData.photo){const locEntry=locEntries.find(e=>e.content===loc);if(locEntry?.photo)locData.photo=locEntry.photo;}
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
     const isReal=locData.type==='real';
@@ -7007,39 +7073,6 @@ function copyAllReports(){
     navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);renderReportList();});
   }else{_fallbackCopy(out);renderReportList();}
 }
-function copyAwaitingFix(){
-  const reports=_normalizeReports();
-  const awaiting=reports.filter(r=>r.status==='reported');
-  if(!awaiting.length){alert('Nothing in Awaiting fix to copy.');return;}
-  const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
-  let out='═══ AWAITING FIX (re-sending for reference) ═══\n';
-  out+='(These items were previously sent. They are still awaiting a fix from the developer.)\n\n';
-  const tests=awaiting.filter(r=>r.type==='test');
-  const others=awaiting.filter(r=>r.type!=='test');
-  if(tests.length){
-    out+='── Test results still pending ──\n';
-    tests.forEach(r=>{
-      const sym=r.testResult==='pass'?'✅':'⚠️';
-      out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
-    });
-    out+='\n';
-  }
-  if(others.length){
-    out+='── Open requests awaiting fix ──\n\n';
-    others.forEach(r=>{
-      const ctx=r.context||{};
-      const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
-      out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${r.title}\n`;
-      if(r.body)out+=`   ${r.body}\n`;
-      if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
-      out+=`   🕐 ${r.dateStr}\n\n`;
-    });
-  }
-  const done=()=>{alert('Copied! '+awaiting.length+' awaiting-fix item'+(awaiting.length===1?'':'s')+' on clipboard.\n\nThese items stay in "Awaiting fix" — they won\'t be marked as anything new.');};
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);});
-  }else{_fallbackCopy(out);}
-}
 function _fallbackCopy(text){
   const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
   document.body.appendChild(ta);ta.select();
@@ -7129,12 +7162,9 @@ function _fallbackCopy(text){
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
       <div class="slabel" style="margin:0;">Tracker</div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy Open</button>
-        <button class="btn btn-sm" style="background:var(--cb2,#FEF0D4);color:var(--t2);" onclick="copyAwaitingFix()">📋 Copy Awaiting Fix</button>
-      </div>
+      <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
     </div>
-    <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;"><b>Copy Open</b> sends Open items + test results (flips them to Awaiting fix). <b>Copy Awaiting Fix</b> sends only already-reported items without changing their status.</div>
+    <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;">Copy-all sends only items in <b>Open</b> (plus any test results). Items flip to <b>Awaiting fix</b> after copying so they don't repeat. Tap ✓ on an item when you've confirmed the fix.</div>
     <div style="position:relative;margin-bottom:8px;">
       <input type="text" id="report-search" placeholder="🔎 Search # or text…" autocomplete="off" oninput="renderReportList()" style="width:100%;font-size:14px;padding:8px 30px 8px 10px;"/>
       <button type="button" onclick="document.getElementById('report-search').value='';renderReportList();" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;" title="Clear">×</button>
@@ -7196,7 +7226,7 @@ function _fallbackCopy(text){
         <div class="fg"><label>Country</label><input type="text" id="eloc-country" placeholder="e.g. England"/></div>
       </div>
       <!-- #333 — autofill hint -->
-      <div id="eloc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="eloc-autofill-msg"></span> <button class="btn btn-sm" onclick="elocApplyAutofill()" style="margin-left:4px;font-size:11px;">Apply</button></div>
+      <div id="eloc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="eloc-autofill-msg"></span></div>
       <!-- #328 — parent location -->
       <div class="fg"><label>Part of / parent location <span style="font-weight:400;color:var(--t3);">(optional — for nested places)</span></label>
         <select id="eloc-parent"><option value="">— None —</option></select>
