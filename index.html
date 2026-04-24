@@ -392,8 +392,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="sheet-x" onclick="closeSheet('nb-overlay')">×</button>
     <div class="sheet-title" id="nb-sheet-title">New book</div>
     <input type="hidden" id="nb-edit-id"/>
-    <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value)"/></div>
+    <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value);if(this.value.trim()){const wb=document.getElementById('nb-wiki-btn');if(wb){wb.style.display='';wb._title=this.value.trim();}}"/></div>
     <div id="nb-lookup-hint" style="display:none;font-size:11px;color:var(--accent);margin:-6px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);"></div>
+    <button type="button" id="nb-wiki-btn" onclick="wikiPrePopulate()" style="display:none;width:100%;margin:-4px 0 10px;padding:8px;font-size:12px;background:var(--bg2);border:0.5px solid var(--am);border-radius:var(--r);color:var(--accent);cursor:pointer;font-weight:600;">✨ Pre-populate characters, locations & themes from Wikipedia</button>
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
     <div class="r2">
       <div class="fg"><label>Genre / Type</label>
@@ -530,7 +531,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>Introduced — p.</label><div style="display:flex;align-items:center;gap:4px;"><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" style="flex:1;" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/><span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)" style="flex-shrink:0;">ⓘ</span></div></div>
+        <div class="fg"><label>Introduced — p. <span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
@@ -911,7 +912,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <div id="ae-quick-loc" style="display:none;margin-top:6px;background:var(--bg2);border-radius:var(--r);padding:10px;border:0.5px solid var(--am);">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:7px;">Add new location</div>
-          <div class="fg"><input type="text" id="ae-new-loc-name" placeholder="Location name (e.g. The Library, Paris, Hogwarts)"/></div>
+          <div class="fg"><input type="text" id="ae-new-loc-name" placeholder="Location name (e.g. The Library, Paris, Hogwarts)" onblur="quickLocAutofill()"/></div>
+          <div id="ae-new-loc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 6px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="ae-new-loc-autofill-msg"></span></div>
           <div class="r2">
             <div class="fg"><label>Real or fictional?</label>
               <select id="ae-new-loc-type"><option value="real">Real place</option><option value="fictional">Fictional place</option><option value="unknown">Unknown</option></select>
@@ -1512,7 +1514,7 @@ function setPhotoBox(bid,data,ph,size){
 const cddConfig={};
 const cddMultiValues={}; // for multi pickers: prefix -> [names]
 function _cddGetChars(){
-  return sortedChars().map(c=>({value:c.name,label:c.label,color:getCC(c.name)}));
+  return sortedChars().map(c=>({value:c.name,label:c.label,nickname:c.nickname||'',color:getCC(c.name)}));
 }
 function cddRegister(prefix,opts){
   cddConfig[prefix]=Object.assign({multi:false,includeNarrator:false,onChange:null,onQuickAdd:null,placeholder:'Search…'},opts||{});
@@ -1557,7 +1559,7 @@ function cddFilter(prefix){
   if(cfg.includeNarrator){
     items=[{value:'Narrator / Author',label:'🎙 Narrator / Author',color:null},...items];
   }
-  if(q)items=items.filter(i=>i.label.toLowerCase().includes(q)||i.value.toLowerCase().includes(q));
+  if(q)items=items.filter(i=>i.label.toLowerCase().includes(q)||i.value.toLowerCase().includes(q)||(i.nickname&&i.nickname.toLowerCase().includes(q)));
   const list=document.getElementById(prefix+'-list');
   if(!list)return;
   if(!items.length){
@@ -1717,7 +1719,7 @@ function autoCharIntroChap(){
   if(!pgEl||!chEl)return;
   const pgVal=pgEl.value.trim();if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  if(chaps.length)chEl.value=String(chaps[0]); // #219 — always re-sync, even on edit
+  if(chaps.length&&!chEl.value)chEl.value=String(chaps[0]);
 }
 // #221 — Characteristic: derive quote chapter from quote page
 function autoTraitQuoteChap(){
@@ -1795,7 +1797,7 @@ function elocPhotoClear(){
   document.getElementById('eloc-photo-clear').style.display='none';
   document.getElementById('eloc-photo-input').value='';
 }
-// #333 — autofill address from location name (shows pick list of top results)
+// #333 — autofill address from location name
 let _elocAutofillData=null;
 async function elocAutofillAddress(){
   const name=document.getElementById('eloc-name').value.trim();
@@ -1805,27 +1807,25 @@ async function elocAutofillAddress(){
   const country=document.getElementById('eloc-country').value.trim();
   if(city&&country)return; // already filled
   try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
     const d=await r.json();
-    if(d&&d.length){
-      const results=d.map(item=>{const a=item.address||{};return{city:a.city||a.town||a.village||a.state||'',country:a.country||'',display:item.display_name};}).filter(x=>x.city||x.country);
-      if(!results.length)return;
-      _elocAutofillData=results;
-      const hintEl=document.getElementById('eloc-autofill-hint');
-      const msgEl=document.getElementById('eloc-autofill-msg');
-      // Build pick list
-      const picks=results.slice(0,3).map((res,i)=>`<button class="btn btn-sm" onclick="elocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin-bottom:4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${[res.city,res.country].filter(Boolean).join(', ')}</button>`).join('');
-      msgEl.innerHTML=`Which is correct?<div style="margin-top:5px;">${picks}</div>`;
-      hintEl.style.display='';
+    if(d&&d[0]?.address){
+      const a=d[0].address;
+      const sugCity=a.city||a.town||a.village||a.state||'';
+      const sugCountry=a.country||'';
+      if(!sugCity&&!sugCountry)return;
+      _elocAutofillData={city:sugCity,country:sugCountry};
+      const parts=[sugCity,sugCountry].filter(Boolean).join(', ');
+      document.getElementById('eloc-autofill-msg').textContent=`Found: ${parts}`;
+      document.getElementById('eloc-autofill-hint').style.display='';
     }
   }catch(e){}
 }
-function elocApplyAutofill(idx){
+function elocApplyAutofill(){
   if(!_elocAutofillData)return;
-  const res=_elocAutofillData[idx||0];
   const cityEl=document.getElementById('eloc-city');const countryEl=document.getElementById('eloc-country');
-  if(cityEl&&!cityEl.value.trim())cityEl.value=res.city||'';
-  if(countryEl&&!countryEl.value.trim())countryEl.value=res.country||'';
+  if(cityEl&&!cityEl.value.trim())cityEl.value=_elocAutofillData.city||'';
+  if(countryEl&&!countryEl.value.trim())countryEl.value=_elocAutofillData.country||'';
   document.getElementById('eloc-autofill-hint').style.display='none';
   _elocAutofillData=null;
 }
@@ -1833,6 +1833,37 @@ function buildLocSelect(){
   // Now using custom searchable dropdown — just pre-populate search if value set
   const val=document.getElementById('ae-loc-sel')?.value||'';
   if(val){const s=document.getElementById('ae-loc-search');if(s)s.value=val;}
+}
+// #333 — autofill for the quick-add new location form inside the entry sheet
+let _quickLocAutofillData=null;
+async function quickLocAutofill(){
+  const name=(document.getElementById('ae-new-loc-name')?.value||'').trim();
+  const locType=document.getElementById('ae-new-loc-type')?.value;
+  if(!name||locType!=='real')return;
+  const city=document.getElementById('ae-new-loc-city')?.value.trim();
+  const country=document.getElementById('ae-new-loc-country')?.value.trim();
+  if(city&&country)return;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const d=await r.json();
+    if(d&&d.length){
+      const results=d.map(item=>{const a=item.address||{};return{city:a.city||a.town||a.village||a.state||'',country:a.country||''};}).filter(x=>x.city||x.country);
+      if(!results.length)return;
+      _quickLocAutofillData=results;
+      const picks=results.slice(0,3).map((res,i)=>`<button class="btn btn-sm" onclick="quickLocApplyAutofill(${i})" style="display:inline-block;margin:2px 3px 2px 0;font-size:11px;">${[res.city,res.country].filter(Boolean).join(', ')}</button>`).join('');
+      document.getElementById('ae-new-loc-autofill-msg').innerHTML=`Which is correct? ${picks}`;
+      document.getElementById('ae-new-loc-autofill-hint').style.display='';
+    }
+  }catch(e){}
+}
+function quickLocApplyAutofill(idx){
+  if(!_quickLocAutofillData)return;
+  const res=_quickLocAutofillData[idx||0];
+  const cityEl=document.getElementById('ae-new-loc-city');const countryEl=document.getElementById('ae-new-loc-country');
+  if(cityEl&&!cityEl.value.trim())cityEl.value=res.city||'';
+  if(countryEl&&!countryEl.value.trim())countryEl.value=res.country||'';
+  document.getElementById('ae-new-loc-autofill-hint').style.display='none';
+  _quickLocAutofillData=null;
 }
 function showLocDropdown(){
   const q=(document.getElementById('ae-loc-search')?.value||'').toLowerCase();
@@ -1927,8 +1958,122 @@ async function applyLookup(idx){
     }catch(e){/* cover fetch failed silently */}
   }
   document.getElementById('nb-lookup-hint').style.display='none';
+  // Show Wikipedia pre-populate button
+  const title=document.getElementById('nb-title').value.trim();
+  if(title){
+    const wikiBtn=document.getElementById('nb-wiki-btn');
+    if(wikiBtn){wikiBtn.style.display='';wikiBtn._title=title;}
+  }
 }
 
+async function wikiPrePopulate(){
+  const btn=document.getElementById('nb-wiki-btn');
+  const title=(btn?._title)||document.getElementById('nb-title').value.trim();
+  if(!title)return;
+  btn.disabled=true;btn.textContent='⏳ Fetching…';
+  try{
+    // Step 1: search Wikipedia for the book
+    const searchUrl=`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const sectUrl=`https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&prop=sections|wikitext&format=json&origin=*`;
+    const [sumRes,sectRes]=await Promise.all([fetch(searchUrl),fetch(sectUrl)]);
+    const sumData=await sumRes.json();
+    const sectData=await sectRes.json();
+    const wikitext=sectData?.parse?.wikitext?.['*']||'';
+    const pageTitle=sectData?.parse?.title||title;
+    // Step 2: extract characters, locations, themes from wikitext heuristics
+    const chars=[], locs=[], themes=[];
+    // Characters: look for ==Characters== section or bullet lists with character names
+    const charSection=wikitext.match(/==\s*Characters?\s*==\s*([\s\S]*?)(?===)/i)?.[1]||'';
+    const charMatches=[...charSection.matchAll(/\*+\s*'''([^']+)'''/g),...charSection.matchAll(/\*+\s*\[\[([^\]|]+)/g)];
+    charMatches.forEach(m=>{const n=m[1].trim();if(n&&n.length<60&&!chars.includes(n))chars.push(n);});
+    // Locations: look for ==Setting== or place names
+    const settingSection=wikitext.match(/==\s*(Setting|Locations?|Places?)\s*==\s*([\s\S]*?)(?===)/i)?.[2]||'';
+    const locMatches=[...settingSection.matchAll(/\*+\s*'''([^']+)'''/g),...settingSection.matchAll(/\*+\s*\[\[([^\]|]+)/g)];
+    locMatches.forEach(m=>{const n=m[1].trim();if(n&&n.length<80&&!locs.includes(n))locs.push(n);});
+    // Themes: look for ==Themes== section
+    const themeSection=wikitext.match(/==\s*Themes?\s*==\s*([\s\S]*?)(?===)/i)?.[1]||'';
+    const themeMatches=[...themeSection.matchAll(/===\s*([^=]+?)\s*===/g),...themeSection.matchAll(/\*+\s*['']*([^'\n*]{5,60})['']/g)];
+    themeMatches.forEach(m=>{const t=m[1].trim();if(t&&!themes.includes(t))themes.push(t);});
+    // Summary
+    const summary=sumData.extract||'';
+    // Step 3: show preview modal
+    showWikiPreviewModal(pageTitle,chars,locs,themes,summary);
+  }catch(e){
+    btn.disabled=false;btn.textContent='✨ Pre-populate from Wikipedia';
+    alert('Could not fetch Wikipedia data for this title. The book may not have a Wikipedia article, or you may be offline.');
+  }
+}
+function showWikiPreviewModal(title,chars,locs,themes,summary){
+  const existing=document.getElementById('wiki-preview-modal');if(existing)existing.remove();
+  const hasAnything=chars.length||locs.length||themes.length||summary;
+  const modal=document.createElement('div');
+  modal.id='wiki-preview-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0;';
+  const makeList=(label,items,id)=>items.length?`
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.06em;">${label} (${items.length})</div>
+      <div id="${id}">${items.map((x,i)=>`<label style="display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12px;cursor:pointer;"><input type="checkbox" checked data-val="${esc(x)}" style="width:auto;min-width:0;flex-shrink:0;"/> ${x}</label>`).join('')}</div>
+    </div>`:'';
+  modal.innerHTML=`<div style="background:var(--bg);color:var(--text);border-radius:var(--r) var(--r) 0 0;max-height:85vh;overflow-y:auto;width:100%;max-width:560px;padding:18px 16px 24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;">✨ Pre-populate from Wikipedia</div>
+      <button onclick="document.getElementById('wiki-preview-modal').remove();document.getElementById('nb-wiki-btn').disabled=false;document.getElementById('nb-wiki-btn').textContent='✨ Pre-populate from Wikipedia';" style="background:none;border:none;font-size:20px;color:var(--t2);cursor:pointer;padding:0 4px;">×</button>
+    </div>
+    ${summary?`<div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">${summary.slice(0,300)}${summary.length>300?'…':''}</div>`:''}
+    ${hasAnything?(makeList('Characters',chars,'wiki-char-list')+makeList('Locations',locs,'wiki-loc-list')+makeList('Themes',themes,'wiki-theme-list')):`<div style="font-size:12px;color:var(--t2);padding:12px 0;">Wikipedia has an article for this book but no structured character/location/theme data was found. You can still copy the summary above.</div>`}
+    ${hasAnything?`<button class="btn btn-primary" onclick="applyWikiData()" style="width:100%;margin-top:6px;">Add selected items to book</button>`:''}
+    <div style="font-size:10px;color:var(--t3);margin-top:8px;text-align:center;">Review and uncheck anything you don't want. You can always edit or delete after adding.</div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.onclick=(e)=>{if(e.target===modal){modal.remove();const b=document.getElementById('nb-wiki-btn');if(b){b.disabled=false;b.textContent='✨ Pre-populate from Wikipedia';}}};
+}
+function applyWikiData(){
+  // This runs AFTER the book is saved — store pending data and apply once book exists
+  const charChecks=[...document.querySelectorAll('#wiki-char-list input[type=checkbox]:checked')];
+  const locChecks=[...document.querySelectorAll('#wiki-loc-list input[type=checkbox]:checked')];
+  const themeChecks=[...document.querySelectorAll('#wiki-theme-list input[type=checkbox]:checked')];
+  window._wikiPending={
+    chars:charChecks.map(c=>c.dataset.val),
+    locs:locChecks.map(c=>c.dataset.val),
+    themes:themeChecks.map(c=>c.dataset.val)
+  };
+  document.getElementById('wiki-preview-modal').remove();
+  // Save the book first, then inject
+  saveBook(true);
+}
+function _applyWikiPending(bookId){
+  const p=window._wikiPending;if(!p)return;
+  window._wikiPending=null;
+  const b=library[bookId];if(!b)return;
+  const now=Date.now();
+  // Characters
+  p.chars.forEach((name,i)=>{
+    if(!b.entries)b.entries=[];
+    if(!b.entries.some(e=>CT.includes(e.type)&&(e.cn||e.content)===name)){
+      b.entries.push({id:now+i,type:'Character',content:name,cn:name,charRole:'side',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'From Wikipedia pre-populate',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[]});
+    }
+  });
+  // Locations
+  p.locs.forEach((name,i)=>{
+    if(!b.locations)b.locations=[];
+    if(!b.locations.some(l=>l.name===name)){
+      b.locations.push({name,type:'unknown',building:'',city:'',country:'',era:'',notes:'From Wikipedia pre-populate'});
+    }
+    if(!b.entries)b.entries=[];
+    if(!b.entries.some(e=>e.type==='Location'&&e.content===name)){
+      b.entries.push({id:now+1000+i,type:'Location',content:name,note:'From Wikipedia pre-populate',date:localDate(),pageNum:'',chapNum:'',involved:[]});
+    }
+  });
+  // Themes
+  p.themes.forEach((name,i)=>{
+    if(!b.entries)b.entries=[];
+    if(!b.entries.some(e=>e.type==='Theme'&&e.content===name)){
+      b.entries.push({id:now+2000+i,type:'Theme',content:name,note:'From Wikipedia pre-populate',date:localDate(),pageNum:'',chapNum:'',involved:[]});
+    }
+  });
+  save();
+  alert(`Done! Added: ${p.chars.length} character(s), ${p.locs.length} location(s), ${p.themes.length} theme(s). Review and edit them anytime.`);
+}
 function onLocTypeChange(){
   const t=document.getElementById('ae-loc-type')?.value;
   const row=document.getElementById('ae-loc-street-row');
@@ -2131,7 +2276,7 @@ function openEditBook(id){
   openSheet('nb-overlay');
 }
 function deleteBook(){if(!confirm('Delete this book and all annotations?'))return;delete library[currentId];save();goLib();}
-function saveBook(){
+function saveBook(applyWiki){
   const titleEl=document.getElementById('nb-title');
   if(!titleEl){console.error('nb-title not found');return;}
   const title=titleEl.value.trim();
@@ -2149,10 +2294,12 @@ function saveBook(){
   });
   document.getElementById('nb-edit-id').value='';document.getElementById('nb-cover-data').value='';
   document.getElementById('nb-lookup-hint').style.display='none';
+  const wikiBtnEl=document.getElementById('nb-wiki-btn');if(wikiBtnEl)wikiBtnEl.style.display='none';
   ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('chap-setup-list').innerHTML='';
   closeSheet('nb-overlay');save();renderLibrary();
   if(editId&&currentId===editId)document.getElementById('bs-title').textContent=library[id].title;
+  if(applyWiki)_applyWikiPending(id);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2226,13 +2373,13 @@ function qrCharFilter(rowId){
   const hidden=row.querySelector('.qr-char');
   const list=row.querySelector('.qr-char-list');
   const q=(input.value||'').toLowerCase().trim();
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  const matches=q?chars.filter(c=>c.toLowerCase().includes(q)):chars;
-  // Keep hidden value in sync only when input matches an existing char exactly; otherwise clear
-  const exact=chars.find(c=>c.toLowerCase()===q);
-  hidden.value=exact||'';
+  const charEntries=entries().filter(e=>CT.includes(e.type));
+  const chars=charEntries.map(e=>({name:e.cn||e.content,nick:(e.nickname||'').toLowerCase()}));
+  const matches=q?chars.filter(c=>c.name.toLowerCase().includes(q)||c.nick.includes(q)):chars;
+  const exact=chars.find(c=>c.name.toLowerCase()===q||c.nick===q);
+  hidden.value=exact?.name||'';
   if(!matches.length){list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — tap "+ New" to create.</div>`;}
-  else{list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c}</div>`).join('');}
+  else{list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');}
   list.style.display='block';
 }
 function qrCharPick(rowId,name){
@@ -2502,14 +2649,14 @@ function onTypeChange(){
   buildLocSelect();
 }
 function sortedChars(){
-  // Returns [{name, role, label}] — main chars first (★), then side/antagonist (◆), then others
+  // Returns [{name, role, label, nickname}] — main chars first (★), then side/antagonist (◆), then others
   const all=entries().filter(e=>CT.includes(e.type));
   const roleOrder={main:0,antagonist:1,side:1,narrator:1,minor:2,stranger:2,'':3};
   const roleSymbol={main:'★ ',antagonist:'◆ ',side:'◆ '};
   return all
-    .map(e=>({name:e.cn||e.content,role:e.charRole||''}))
+    .map(e=>({name:e.cn||e.content,role:e.charRole||'',nickname:e.nickname||''}))
     .sort((a,b)=>(roleOrder[a.role]??3)-(roleOrder[b.role]??3)||a.name.localeCompare(b.name))
-    .map(c=>({name:c.name,role:c.role,label:(roleSymbol[c.role]||'')+c.name}));
+    .map(c=>({name:c.name,role:c.role,nickname:c.nickname,label:(roleSymbol[c.role]||'')+c.name+(c.nickname?` (${c.nickname})`:'')}));
 }
 function buildCPick(chars){/* deprecated — replaced by cdd dropdowns */}
 function filterCPick(q){/* deprecated */}
@@ -3219,83 +3366,18 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){
-    // #303/#335/#218 — year required ONLY when not connected to another event
-    const offToggled=document.getElementById('ae-offset-toggle')?.checked;
-    const od=document.getElementById('ae-offset-dir').value;
-    const on=document.getElementById('ae-offset-num').value.trim();
-    const ou=document.getElementById('ae-offset-unit').value;
-    const oe=document.getElementById('ae-offset-event').value.trim();
-    const hasOffset=offToggled&&on&&oe;
+    // #303/#335 — assemble evdate from structured fields; year is required
     const evYear=document.getElementById('ae-evdate-year').value.trim();
     const evMon=document.getElementById('ae-evdate-month').value;
     const evDay=(document.getElementById('ae-evdate-day').value||'').trim();
-    if(!evYear&&!hasOffset){alert('Please enter a year/era — OR check "Related to another event?" and pick an anchor event.');return;}
-    // Build evdate: either from typed year, or computed from anchor event
+    if(!evYear){alert('Please enter a year or era for this timeline entry.');return;}
+    // Build evdate string: "1943", "1943-04", "1943-04-14", "Ch.4", etc.
     let assembled=evYear;
-    if(evYear&&evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
-    // #303/#218 — if offset is used, compute evdate from the anchor event's date
-    if(hasOffset&&!evYear){
-      // Find anchor event by matching content or evdate text
-      const anchorEntry=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
-        .find(e=>(e.content&&(oe.includes(e.content)||e.content===oe))||(e.evdate&&oe.includes(e.evdate)));
-      if(anchorEntry&&anchorEntry.evdate){
-        // Extract numeric year from anchor
-        const am=anchorEntry.evdate.match(/^(-?\d{1,6})/);
-        if(am){
-          const anchorYear=Number(am[1]);
-          const offsetN=Number(on);
-          const sign=od==='-'?-1:1;
-          // Convert offset to fractional years for evdate approximation
-          const unitToYearFrac={days:1/365,weeks:1/52,months:1/12,years:1,decades:10,centuries:100,hours:1/8760,minutes:1/525600};
-          const fracYears=offsetN*(unitToYearFrac[ou]||1)*sign;
-          const computedYear=Math.round(anchorYear+fracYears);
-          const computedMon=anchorEntry.evdateMonth||'';
-          assembled=String(computedYear);
-          if(computedMon){assembled+='-'+computedMon;}
-          entry.evdateYear=String(computedYear);entry.evdateMonth=computedMon;entry.evdateDay=anchorEntry.evdateDay||'';
-        } else {
-          // narrative anchor (e.g. "Ch.4") — copy anchor's evdate, sortKey will handle position
-          assembled=anchorEntry.evdate;
-          entry.evdateYear=anchorEntry.evdateYear||anchorEntry.evdate;entry.evdateMonth=anchorEntry.evdateMonth||'';entry.evdateDay=anchorEntry.evdateDay||'';
-        }
-      }
-    } else {
-      entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
-    }
+    if(evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
     document.getElementById('ae-evdate').value=assembled;
     entry.evdate=assembled;
-    entry.importance=document.getElementById('ae-imp').value;
-    const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
-    // #303/#218 — if no explicit sortKey but offset is used, assign a sortKey relative to anchor
-    if(hasOffset&&(!sk||sk.value==='')){
-      const allTl=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&e.id!==entry.id);
-      // Ensure all existing entries have a sortKey based on current sort order
-      const sorted=allTl.slice().sort((a,b)=>{
-        const sa=a.sortKey!=null?+a.sortKey:99999,sb=b.sortKey!=null?+b.sortKey:99999;
-        if(sa!==sb)return sa-sb;
-        const da=a.evdate||'',db=b.evdate||'';
-        const ma=da.match(/^(-?\d{1,6})/),mb=db.match(/^(-?\d{1,6})/);
-        if(ma&&mb)return Number(ma[1])-Number(mb[1]);
-        return da.localeCompare(db)||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
-      });
-      sorted.forEach((e,i)=>{if(e.sortKey==null)e.sortKey=i*10;});
-      // Find the anchor in sorted list
-      const anchorIdx=sorted.findIndex(e=>(e.content&&(oe.includes(e.content)||e.content===oe))||(e.evdate&&oe.includes(e.evdate)));
-      if(anchorIdx>=0){
-        const insertAfter=od==='+';
-        const baseIdx=insertAfter?anchorIdx:anchorIdx-1;
-        const baseEntry=sorted[baseIdx];
-        const nextEntry=sorted[baseIdx+1];
-        const baseKey=baseEntry?.sortKey!=null?+baseEntry.sortKey:(baseIdx*10);
-        const nextKey=nextEntry?.sortKey!=null?+nextEntry.sortKey:((baseIdx+1)*10+10);
-        const newKey=baseKey+(nextKey-baseKey)*0.5;
-        entry.sortKey=newKey;
-        if(sk)sk.value=newKey;
-        save(); // persist sortKeys assigned above
-      }
-    }
-    if(on&&oe){entry.timeOffset=`${od}${on} ${ou}`;entry.timeOffsetFrom=oe;}
-    entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
+    entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
+    entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -4561,7 +4643,7 @@ function renderWeb(){
       ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');
       ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size',isMain?'13':'11');
       ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');
-      ti.setAttribute('font-family','-apple-system,sans-serif');ti.setAttribute('data-role','initials');ti.textContent=ini;g.appendChild(ti);
+      ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
     }
 
     if(n.status==='deceased'){
@@ -4635,11 +4717,14 @@ function setupWebDrag(){
     [...g.querySelectorAll('image')].forEach(im=>{im.setAttribute('x',nodeData.x-nodeR);im.setAttribute('y',nodeData.y-nodeR);});
     const texts=[...g.querySelectorAll('text')];
     texts.forEach(t=>{
-      // #298 — use data-role tag to identify each text element reliably
-      const role=t.getAttribute('data-role');
-      if(role==='initials'){t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y);}
-      else if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
-      else{t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
+      // Name-label text (the one with children tspans or below-node) has y > center
+      const cy=+t.getAttribute('y');
+      if(Math.abs(cy-nodeData.y)<2){t.setAttribute('x',nodeData.x);}
+      else {
+        // Below-label: y = nodeY + nodeR + 10 (approx); or deceased (x+nodeR-4, y-nodeR+6)
+        if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
+        else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
+      }
     });
     // Redraw clipPath circle for photo (if any)
     const cid='wc'+nodeData.name.replace(/[^a-z0-9]/gi,'_');
@@ -4986,8 +5071,6 @@ function renderMap(){
 
   list.innerHTML=headerHTML+locNames.map(loc=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
-    // #334 — if photo not in locations store, fall back to Location-type entry photo
-    if(!locData.photo){const locEntry=locEntries.find(e=>e.content===loc);if(locEntry?.photo)locData.photo=locEntry.photo;}
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
     const isReal=locData.type==='real';
@@ -7226,7 +7309,7 @@ function _fallbackCopy(text){
         <div class="fg"><label>Country</label><input type="text" id="eloc-country" placeholder="e.g. England"/></div>
       </div>
       <!-- #333 — autofill hint -->
-      <div id="eloc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="eloc-autofill-msg"></span></div>
+      <div id="eloc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="eloc-autofill-msg"></span> <button class="btn btn-sm" onclick="elocApplyAutofill()" style="margin-left:4px;font-size:11px;">Apply</button></div>
       <!-- #328 — parent location -->
       <div class="fg"><label>Part of / parent location <span style="font-weight:400;color:var(--t3);">(optional — for nested places)</span></label>
         <select id="eloc-parent"><option value="">— None —</option></select>
