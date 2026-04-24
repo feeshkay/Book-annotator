@@ -7007,6 +7007,39 @@ function copyAllReports(){
     navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);renderReportList();});
   }else{_fallbackCopy(out);renderReportList();}
 }
+function copyAwaitingFix(){
+  const reports=_normalizeReports();
+  const awaiting=reports.filter(r=>r.status==='reported');
+  if(!awaiting.length){alert('Nothing in Awaiting fix to copy.');return;}
+  const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
+  let out='═══ AWAITING FIX (re-sending for reference) ═══\n';
+  out+='(These items were previously sent. They are still awaiting a fix from the developer.)\n\n';
+  const tests=awaiting.filter(r=>r.type==='test');
+  const others=awaiting.filter(r=>r.type!=='test');
+  if(tests.length){
+    out+='── Test results still pending ──\n';
+    tests.forEach(r=>{
+      const sym=r.testResult==='pass'?'✅':'⚠️';
+      out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
+    });
+    out+='\n';
+  }
+  if(others.length){
+    out+='── Open requests awaiting fix ──\n\n';
+    others.forEach(r=>{
+      const ctx=r.context||{};
+      const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
+      out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${r.title}\n`;
+      if(r.body)out+=`   ${r.body}\n`;
+      if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
+      out+=`   🕐 ${r.dateStr}\n\n`;
+    });
+  }
+  const done=()=>{alert('Copied! '+awaiting.length+' awaiting-fix item'+(awaiting.length===1?'':'s')+' on clipboard.\n\nThese items stay in "Awaiting fix" — they won\'t be marked as anything new.');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);});
+  }else{_fallbackCopy(out);}
+}
 function _fallbackCopy(text){
   const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
   document.body.appendChild(ta);ta.select();
@@ -7096,9 +7129,12 @@ function _fallbackCopy(text){
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
       <div class="slabel" style="margin:0;">Tracker</div>
-      <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy all for tracker</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm" onclick="copyAllReports()">📋 Copy Open</button>
+        <button class="btn btn-sm" style="background:var(--cb2,#FEF0D4);color:var(--t2);" onclick="copyAwaitingFix()">📋 Copy Awaiting Fix</button>
+      </div>
     </div>
-    <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;">Copy-all sends only items in <b>Open</b> (plus any test results). Items flip to <b>Awaiting fix</b> after copying so they don't repeat. Tap ✓ on an item when you've confirmed the fix.</div>
+    <div style="font-size:10px;color:var(--t3);margin-bottom:8px;line-height:1.45;"><b>Copy Open</b> sends Open items + test results (flips them to Awaiting fix). <b>Copy Awaiting Fix</b> sends only already-reported items without changing their status.</div>
     <div style="position:relative;margin-bottom:8px;">
       <input type="text" id="report-search" placeholder="🔎 Search # or text…" autocomplete="off" oninput="renderReportList()" style="width:100%;font-size:14px;padding:8px 30px 8px 10px;"/>
       <button type="button" onclick="document.getElementById('report-search').value='';renderReportList();" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;" title="Clear">×</button>
