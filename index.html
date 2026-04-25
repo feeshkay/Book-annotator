@@ -1150,7 +1150,7 @@ function rtpRender(filter){
 }
 function rtpOpen(){
   const p=document.getElementById('ae-reltype-panel');if(!p)return;
-  p.style.display='';
+  p.style.display='block';
   rtpRender('');
 }
 function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
@@ -2346,9 +2346,13 @@ function addQuickRelRow(relType,charName){
   const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
   row.dataset.qrId=rowId;
   // #239/272/282 — rel-type on its own line; char field full-width on its own line (× clear always visible); +New on its own line below so nothing crowds the char row.
-  row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-      <select class="qr-type" style="flex:1;font-size:14px;">${buildRelTypeOpts(relType||'')}</select>
-      <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
+  row.innerHTML=`<div style="margin-bottom:6px;position:relative;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="text" class="qr-type-search" placeholder="Search relationship type…" autocomplete="off" value="${relType||''}" style="flex:1;font-size:14px;" oninput="qrTypeFilter('${rowId}')" onclick="qrTypeOpen('${rowId}')"/>
+        <input type="hidden" class="qr-type" value="${relType||''}"/>
+        <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
+      </div>
+      <div class="qr-type-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
     </div>
     <div style="position:relative;margin-bottom:6px;">
       <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:34px;"/>
@@ -2360,7 +2364,7 @@ function addQuickRelRow(relType,charName){
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
-  row.querySelector('.qr-type').addEventListener('change',checkSuggestions);
+  // qr-type is now a hidden input; checkSuggestions is called from qrTypePick
 }
 function qrCharClear(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -2391,10 +2395,45 @@ function qrCharPick(rowId,name){
   row.querySelector('.qr-char-list').style.display='none';
   checkSuggestions();
 }
+function qrTypeOpen(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  qrTypeFilter(rowId);
+  row.querySelector('.qr-type-list').style.display='block';
+}
+function qrTypeFilter(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const input=row.querySelector('.qr-type-search');
+  const list=row.querySelector('.qr-type-list');
+  const q=(input.value||'').toLowerCase().trim();
+  let html='';
+  REL_GROUPS.forEach(g=>{
+    const matched=g.items.filter(it=>!q||it.toLowerCase().includes(q));
+    if(!matched.length)return;
+    const cur=row.querySelector('.qr-type').value;
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);padding:4px 8px 2px;text-transform:uppercase;letter-spacing:.05em;">${g.label}</div>`
+      +matched.map(it=>`<div onclick="qrTypePick('${rowId}','${it.replace(/'/g,"\'")}','${it.replace(/'/g,"\'")}',this)" style="padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);${it===cur?'background:var(--al);color:var(--accent);':''}">${relEmoji(it)} ${it}</div>`).join('');
+  });
+  if(!html)html=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);">No matches</div>`;
+  list.innerHTML=html;
+  list.style.display='block';
+}
+function qrTypePick(rowId,val,label){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  row.querySelector('.qr-type').value=val;
+  row.querySelector('.qr-type-search').value=label;
+  row.querySelector('.qr-type-list').style.display='none';
+  checkSuggestions();
+}
 // Close any open qr-char-list and rtp panel when clicking outside
 if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
   document.addEventListener('click',function(ev){
     document.querySelectorAll('.qr-char-list').forEach(l=>{
+      if(!l.parentElement.contains(ev.target))l.style.display='none';
+    });
+    document.querySelectorAll('.qr-type-list').forEach(l=>{
+      if(!l.parentElement.parentElement.contains(ev.target))l.style.display='none';
+    });
+    document.querySelectorAll('.tsq-speaker-list').forEach(l=>{
       if(!l.parentElement.contains(ev.target))l.style.display='none';
     });
     const rtpPanel=document.getElementById('ae-reltype-panel');
@@ -2736,9 +2775,12 @@ function addTraitQuoteRow(data){
   </div>
   <input type="text" class="tsq-text" placeholder="Quote from the book that shows this trait…" value="${(data?.text||'').replace(/"/g,'&quot;')}" style="font-size:13px;width:100%;margin-bottom:5px;"/>
   <div style="display:flex;gap:6px;flex-wrap:wrap;">
-    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;"/>
-    <input type="number" class="tsq-ch" placeholder="ch." value="${data?.ch||''}" min="1" style="width:60px;font-size:13px;"/>
-    <input type="text" class="tsq-speaker" placeholder="Speaker (optional)" value="${data?.speaker||''}" style="flex:1;min-width:100px;font-size:13px;"/>
+    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;" oninput="tsqAutoChap(this)"/>
+    <input type="text" class="tsq-ch" placeholder="ch." value="${data?.ch||''}" style="width:60px;font-size:13px;"/>
+    <div style="position:relative;flex:1;min-width:100px;">
+      <input type="text" class="tsq-speaker" placeholder="Speaker (optional)" value="${data?.speaker||''}" autocomplete="off" style="font-size:13px;width:100%;" oninput="tsqSpeakerFilter(this)" onclick="tsqSpeakerFilter(this)"/>
+      <div class="tsq-speaker-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:130px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+    </div>
   </div>`;
   list.appendChild(div);
   renumberTraitQuoteRows();
@@ -2750,6 +2792,28 @@ function removeTraitQuoteRow(btn){
 function renumberTraitQuoteRows(){
   const list=document.getElementById('ae-sq-list');if(!list)return;
   [...list.children].forEach((row,i)=>{const lbl=row.querySelector('span');if(lbl)lbl.textContent='Quote '+(i+1);});
+}
+// #315 — pg->ch autosync for trait quote rows
+function tsqAutoChap(pgInput){
+  const chEl=pgInput.closest('[data-tsq-id]')?.querySelector('.tsq-ch');if(!chEl)return;
+  const chaps=pageToChapters(pgInput.value);
+  if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
+}
+// #315 — searchable speaker dropdown for trait quote rows
+function tsqSpeakerFilter(input){
+  const row=input.closest('[data-tsq-id]');if(!row)return;
+  const list=row.querySelector('.tsq-speaker-list');if(!list)return;
+  const q=(input.value||'').toLowerCase().trim();
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const matches=q?chars.filter(c=>c.toLowerCase().includes(q)):chars;
+  if(!matches.length){list.style.display='none';return;}
+  list.innerHTML=matches.map(c=>`<div onclick="tsqSpeakerPick(this,'${c.replace(/'/g,"\'")}')" style="padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c}</div>`).join('');
+  list.style.display='block';
+}
+function tsqSpeakerPick(el,name){
+  const row=el.closest('[data-tsq-id]');if(!row)return;
+  row.querySelector('.tsq-speaker').value=name;
+  row.querySelector('.tsq-speaker-list').style.display='none';
 }
 function getTraitQuotes(){
   return [...document.querySelectorAll('#ae-sq-list [data-tsq-id]')].map(row=>({
@@ -4999,7 +5063,7 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:9px 11px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:10px 12px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
@@ -7048,6 +7112,17 @@ function logTestResult(result){
   if(!num){alert('Please enter a ticket # to test.');return;}
   const note=(noteEl.value||'').trim();
   const reports=_normalizeReports();
+  // #277 — if editing an existing test result, update in-place
+  if(window._testEditNum){
+    const existing=reports.find(r=>r.num===window._testEditNum);
+    if(existing){
+      existing.testTarget=num;existing.testResult=result;existing.body=note;
+      existing.title=`Test #${num} — ${result==='pass'?'✅ works':'⚠️ needs fixes'}`;
+      saveReports(reports);
+      numEl.value='';noteEl.value='';window._testEditNum=null;
+      renderReportList();return;
+    }
+  }
   reports.push({
     num:_nextReportNum(),
     type:'test',
@@ -7075,7 +7150,7 @@ function logTestResult(result){
     }
   }
   saveReports(reports);
-  noteEl.value=''; // #277 — keep ticket # so user can log another result on same ticket
+  numEl.value='';noteEl.value='';
   renderReportList();
 }
 function openReportIssue(){
@@ -7226,11 +7301,12 @@ function editReport(num){
   if(r.type==='test'){
     document.getElementById('test-ticket-num').value=r.testTarget||'';
     document.getElementById('test-ticket-note').value=r.body||'';
-    saveReports(reports.filter(x=>x.num!==num));
-    renderReportList();
+    // Store original for discard
+    window._testEditNum=r.num;
+    window._testEditOrigNum=r.testTarget||'';
+    window._testEditOrigNote=r.body||'';
     document.getElementById('test-ticket-num').scrollIntoView({behavior:'smooth',block:'center'});
     document.getElementById('test-ticket-note').focus();
-    alert(`Editing test result for #${r.testTarget}. Adjust the note then tap ✅ or ⚠️ to re-save.`);
     return;
   }
   // #277 — keep original # by setting edit-num; saveReport will update the row in place
@@ -7242,6 +7318,17 @@ function editReport(num){
   const db=document.getElementById('report-discard-btn');if(db)db.style.display='';
   document.getElementById('report-title').scrollIntoView({behavior:'smooth',block:'center'});
   document.getElementById('report-title').focus();
+}
+// #277 — Discard test result edit
+function discardTestEdit(){
+  if(window._testEditNum){
+    document.getElementById('test-ticket-num').value=window._testEditOrigNum||'';
+    document.getElementById('test-ticket-note').value=window._testEditOrigNote||'';
+    window._testEditNum=null;
+  }else{
+    document.getElementById('test-ticket-num').value='';
+    document.getElementById('test-ticket-note').value='';
+  }
 }
 // #277 — Discard in-progress edits
 function discardReportEdit(){
@@ -7473,7 +7560,7 @@ function copyClosedReports(){
         <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 100px;font-size:16px;"/>
         <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
         <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
-        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-note').value='';" title="Clear note">× Cancel</button>
+        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="discardTestEdit()" title="Clear">× Cancel</button>
       </div>
       <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken…" style="width:100%;min-height:140px;font-size:16px;line-height:1.55;"></textarea><!-- #273 -->
     </div>
