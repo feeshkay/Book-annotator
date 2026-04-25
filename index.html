@@ -1065,12 +1065,12 @@ const PARENT_TYPES=['Mother','Father','Parent','Grandmother','Grandfather','Grea
 const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
 // #246 — Searchable relationship-type picker: grouped flat list with synonyms for search
 const REL_GROUPS=[
-  {label:'Family',items:['Mother','Father','Parent','Child','Sibling','Brother','Sister','Half-sibling','Step-sibling','Step-parent','Step-child','Grandmother','Grandfather','Grandchild','Great-grandmother','Great-grandfather','Great-grandchild','Aunt','Uncle','Uncle or Aunt','Niece','Nephew','Niece or Nephew','Cousin','Second cousin','In-law','Guardian','Ward','Adoptive parent','Adopted child','Godparent','Godchild']},
+  {label:'Family',items:['Mother','Father','Son','Daughter','Parent','Child','Sibling','Brother','Sister','Half-sibling','Step-sibling','Step-parent','Step-child','Grandmother','Grandfather','Grandchild','Great-grandmother','Great-grandfather','Great-grandchild','Aunt','Uncle','Uncle or Aunt','Niece','Nephew','Niece or Nephew','Cousin','Second cousin','In-law','Guardian','Ward','Adoptive parent','Adopted child','Godparent','Godchild']},
   {label:'Distant family',items:['Distant ancestor','Distant descendant','Distant relative (unknown degree)','Great-great-grandmother','Great-great-grandfather','Great-great-grandchild','Great-great-grandparent']},
   {label:'Romantic',items:['Spouse','Husband','Wife','Partner','Betrothed','Love interest','Admirer','Ex-partner','Estranged spouse']},
   {label:'Social',items:['Friend','Best friend','Close friend','Acquaintance','Confidant','Ally','Enemy','Rival','Mentor','Protégé','Neighbour','Stranger']},
   {label:'Professional',items:['Teacher','Student','Employer','Employee','Colleague','Business partner','Commander','Subordinate','Master','Servant']},
-  {label:'Other',items:['Complicated','Unknown']},
+  {label:'Other',items:['Complicated','Unknown','Custom…']},
 ];
 // #275/#286 — Godparent types added to hierarchy
 const GODPARENT_TYPES=['Godparent'];
@@ -1118,18 +1118,7 @@ function autoSetGenderFromPronouns(){
   if(!gEl)return;
   if(!gEl.value)gEl.value=inferred; // only set if blank — never overwrite
 }
-function inferRelGender(){
-  const rt=document.getElementById('ae-reltype')?.value;
-  const inferredGender=REL_GENDER_MAP[rt];
-  if(!inferredGender)return;
-  const aName=cddGet('ae-rela');
-  if(!aName)return;
-  const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===aName);
-  if(!aEntry)return;
-  if(aEntry.gender&&aEntry.gender!=='')return; // don't overwrite existing gender
-  aEntry.gender=inferredGender;
-  save();
-}
+// #185 — inferRelGender removed
 // #246 — Searchable relationship-type picker
 function rtpRender(filter){
   const panel=document.getElementById('ae-reltype-panel');if(!panel)return;
@@ -1153,6 +1142,11 @@ function rtpOpen(){
 }
 function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
 function rtpPick(val){
+  if(val==='Custom…'){
+    const custom=prompt('Enter a custom relationship type:');
+    if(!custom||!custom.trim())return;
+    val=custom.trim();
+  }
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
@@ -1168,12 +1162,12 @@ function rtpSet(val){
   rtpRender('');
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
-const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
+const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Son':'Parent','Daughter':'Parent','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
   'Quote':{icon:'💬',desc:'A direct passage from the text — something a character said OR something the narrator/author wrote.',tips:['Select the speaker (or "Narrator/Author" for authorial voice).','Add an emotion/tone to track how it feels.','Tag the page and chapter so you can find it again.','Ask: what does this reveal — character, theme, or plot?']},
-  'Character':{icon:'👤',desc:'A person (or being) in the story.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Minor/Unnamed = a professor, a stranger, a one-time character. Still log them if they said something worth keeping.','Set introduced Ch. and p. so they appear on the timeline correctly.']},
+  'Character':{icon:'👤',desc:'A person (or being) in the story.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Minor/Unnamed = a professor, a stranger, a one-time character. Still log them if they said something worth keeping.','Set introduced Ch. and p. so they appear on the timeline correctly.','💡 To remove from Drafts: open the entry, uncheck "Save as draft", then tap Save.']},
   'Characteristic':{icon:'🔍',desc:'A personality OR physical trait.',tips:['Specify Personality vs Physical — they display separately on the profile.','Attach a supporting quote (the proof of the trait) with its page number.','The main Ch./p. fields = where in the book you noticed this trait.','Ask: is this shown through action, dialogue, or description?']},
   'Relationship':{icon:'🔗',desc:'A connection between two characters.',tips:['Character A = the one being described. Character B = the other person.','The reciprocal relationship auto-shows on Character B\'s profile.','Use "Stranger" for unnamed one-time connections.','Add a description to capture the dynamic, not just the type.']},
   'Setting':{icon:'🌍',desc:'The literary/narrative context — time period, atmosphere, social world.',tips:['Setting ≠ Location. Setting = "Victorian London, fog-laden and class-obsessed." Location = "the Bennet drawing room, Ch.3."','Ask: how does this setting shape the characters?','How does it create mood or tension?','Does it change over the course of the story?']},
@@ -2415,6 +2409,11 @@ function qrTypeFilter(rowId){
   list.style.display='block';
 }
 function qrTypePick(rowId,val,label){
+  if(val==='Custom…'){
+    const custom=prompt('Enter a custom relationship type:');
+    if(!custom||!custom.trim())return;
+    val=custom.trim();label=val;
+  }
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
   row.querySelector('.qr-type').value=val;
   row.querySelector('.qr-type-search').value=label;
@@ -2624,7 +2623,7 @@ function onTypeChange(){
   document.getElementById('ae-trans-ex').style.display=isTrans?'':'none';
   document.getElementById('ae-loc-ex').style.display=isLoc?'':'none';
   document.getElementById('ae-common').style.display=isChar?'none':'';
-  document.getElementById('ae-inv-group').style.display=(!isChar&&!isRel&&chars.length)?'':'none';
+  document.getElementById('ae-inv-group').style.display=(!isChar&&chars.length)?'':'none';
   document.getElementById('ae-chappage').style.display=isChar?'none':'';
   // Adjust chapter/page label for location entries
   // #219 — pg(s) is now the FIRST label, Chapter # is the SECOND
@@ -2667,10 +2666,15 @@ function onTypeChange(){
       const a=cddGet('ae-rela');const b=cddGet('ae-relb');
       const warn=document.getElementById('ae-rel-existing-warn');
       if(!warn)return;
-      if(!a||!b){warn.style.display='none';return;}
-      const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===a&&e.relB===b)||(e.relA===b&&e.relB===a)));
-      if(existing.length){warn.style.display='';warn.innerHTML=`⚠️ ${a} & ${b} already have: <strong>${existing.map(e=>e.relType||'(unnamed)').join(', ')}</strong>. You can still add another relationship below.`;}
-      else warn.style.display='none';
+      if(!a||!b){warn.style.display='none';}
+      else{
+        const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===a&&e.relB===b)||(e.relA===b&&e.relB===a)));
+        if(existing.length){warn.style.display='';warn.innerHTML=`⚠️ ${a} & ${b} already have: <strong>${existing.map(e=>e.relType||'(unnamed)').join(', ')}</strong>. You can still add another relationship below.`;}
+        else warn.style.display='none';
+      }
+      // #320 — auto-populate involved when relA+relB are set
+      const inv=[a,b].filter(Boolean);
+      if(inv.length)cddSet('ae-inv',inv);
     };
   }
   if(!isChar&&!isRel&&chars.length){
@@ -3195,8 +3199,10 @@ function buildThemeQuoteBlock(allTqs){
         :'<span style="font-weight:700;color:var(--t2);">'+q.speaker+'</span>')
       :'<span style="color:var(--t3);">Narrator</span>';
     var pgHtml=q.page?' · p.'+q.page:'';
+    var thId=q._themeId||'';
     var qOpen=q._entryId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+q._entryId+')">'
-                        :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">';
+                        :(thId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+thId+')">'
+                               :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">');
     return'<div style="margin-bottom:5px;"><div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
   });
   return'<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">'+rows.join('')+'</div>';
@@ -3491,24 +3497,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.relB=document.getElementById('ae-relb').value;
     // #320 — auto-tag both chars in involved
     if(entry.relA||entry.relB)entry.involved=[...new Set([entry.relA,entry.relB].filter(Boolean))];
-    // #185 — Gender inference: confirm for BOTH chars, never auto-set
-    const inferredGender=REL_GENDER_MAP[entry.relType];
-    if(inferredGender&&entry.relA){
-      const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relA);
-      if(aEntry&&!aEntry.gender){
-        if(confirm(`Set ${entry.relA}'s gender to ${inferredGender}?\n(Tap Cancel for same-sex or non-binary couples.)`))aEntry.gender=inferredGender;
-      }
-    }
-    if(entry.relB){
-      const bEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relB);
-      if(bEntry&&!bEntry.gender){
-        const recipType=RECIPROCAL[entry.relType];
-        const recipGender=recipType?REL_GENDER_MAP[recipType]:null;
-        if(recipGender){
-          if(confirm(`Set ${entry.relB}'s gender to ${recipGender}?\n(Tap Cancel for same-sex or non-binary couples.)`))bEntry.gender=recipGender;
-        }
-      }
-    }
+    // #185 — Gender inference removed: set gender explicitly on the character form
     if(!editId&&entry.relA&&entry.relB){
       const existing=entries().filter(e=>e.type==='Relationship'&&((e.relA===entry.relA&&e.relB===entry.relB)||(e.relA===entry.relB&&e.relB===entry.relA)));
       if(existing.length){const desc=existing.map(e=>e.relType||e.content).join(', ');const ok=confirm(`${entry.relA} and ${entry.relB} already have: "${desc}".\n\nAdd another relationship?`);if(!ok)return;}
@@ -4097,7 +4086,8 @@ function ecHTML(e,compact,fromTab){
     // Build all quotes to show: themeQuotes (free-text) + attachedQuoteIds (linked entries)
     const attachedQEntries=(e.attachedQuoteIds||[]).map(id=>entries().find(q=>q.id===id)).filter(Boolean);
     const allTqs=[...tqs,...attachedQEntries.map(q=>({text:q.content,page:q.pageNum||'',speaker:q.speaker||'',_entryId:q.id}))];
-    const quoteBlock=buildThemeQuoteBlock(allTqs);
+    const allTqsWithId=allTqs.map(q=>({...q,_themeId:e.id}));
+    const quoteBlock=buildThemeQuoteBlock(allTqsWithId);
     body='<div class="econtent"><strong>'+e.content+'</strong>'+(e.note?'<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">'+e.note+'</div>':'')+quoteBlock+'</div>';
   } else if(e.type==='Translation'){
     const langPair=e.transFrom&&e.transTo?`<span class="pbadge" style="margin-bottom:4px;">${e.transFrom} → ${e.transTo}</span>`:(e.transFrom||e.transTo)?`<span class="pbadge">${e.transFrom||e.transTo}</span>`:'';
