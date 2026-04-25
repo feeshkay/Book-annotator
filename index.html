@@ -151,7 +151,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .rtp-wrap{position:relative;}
 .rtp-input-row{display:flex;gap:4px;align-items:center;}
 .rtp-input{flex:1;padding:10px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);font-size:14px;color:var(--text);}
-.rtp-panel{border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);margin-top:5px;max-height:260px;overflow-y:auto;padding:6px;}
+.rtp-panel{display:none;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg);margin-top:5px;max-height:260px;overflow-y:auto;padding:6px;}
 .rtp-group{margin-bottom:6px;}
 .rtp-group-label{font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--t3);padding:4px 6px 2px;}
 .rtp-chips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -394,7 +394,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <input type="hidden" id="nb-edit-id"/>
     <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value);if(this.value.trim()){const wb=document.getElementById('nb-wiki-btn');if(wb){wb.style.display='';wb._title=this.value.trim();}}"/></div>
     <div id="nb-lookup-hint" style="display:none;font-size:11px;color:var(--accent);margin:-6px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);"></div>
-    <button type="button" id="nb-wiki-btn" onclick="wikiPrePopulate()" style="display:none;width:100%;margin:-4px 0 10px;padding:8px;font-size:12px;background:var(--bg2);border:0.5px solid var(--am);border-radius:var(--r);color:var(--accent);cursor:pointer;font-weight:600;">✨ Pre-populate characters, locations & themes from Wikipedia</button>
+    <button type="button" id="nb-wiki-btn" onclick="wikiPrePopulate()" style="display:none;width:100%;margin:-4px 0 10px;padding:8px;font-size:12px;background:var(--bg2);border:0.5px solid var(--am);border-radius:var(--r);color:var(--accent);cursor:pointer;font-weight:600;">✨ Pre-populate characters, locations & themes with Claude AI</button>
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
     <div class="r2">
       <div class="fg"><label>Genre / Type</label>
@@ -531,7 +531,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>Introduced — p. <span class="info-tip" data-tip="Auto-fills the chapter if your chapter setup covers this page" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
+        <div class="fg"><label>Introduced — p.</label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
@@ -825,7 +825,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>Relationship type</label>
         <div class="rtp-wrap" id="ae-reltype-wrap">
           <div class="rtp-input-row">
-            <input type="text" class="rtp-input" id="ae-reltype-search" placeholder="Search or tap below…" autocomplete="off" oninput="rtpOnInput()" onfocus="rtpOpen()"/>
+            <input type="text" class="rtp-input" id="ae-reltype-search" placeholder="Search relationship type…" autocomplete="off" oninput="rtpOnInput()" onclick="rtpOpen()"/>
             <button type="button" class="btn btn-sm" onclick="rtpClear()" style="flex-shrink:0;padding:0 8px;color:var(--t3);" title="Clear">×</button>
           </div>
           <input type="hidden" id="ae-reltype"/>
@@ -896,7 +896,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="ae-common">
       <div class="divider"></div>
       <div class="r2" id="ae-chappage">
-        <div class="fg"><label>pg(s) <span class="info-tip" data-tip="Page or pages where the entry appears in the book — single page (47) or range (47–52)" onclick="toggleInfoTip(this,event)">ⓘ</span></label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
+        <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
@@ -985,7 +985,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn" id="timer-read-btn" onclick="toggleReadTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
         </div>
       </div>
-      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-read-min" inputmode="numeric" placeholder="e.g. 30" min="0" style="font-size:16px;" oninput="onReadMinInput()"/></div>
+      <div class="fg" style="margin:0;"><label>Or enter time manually</label><div class="r2" style="gap:6px;"><div><input type="number" id="timer-read-min" inputmode="numeric" placeholder="min" min="0" style="font-size:16px;text-align:center;" oninput="onReadMinInput()"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">minutes</div></div><div><input type="number" id="timer-read-sec" inputmode="numeric" placeholder="sec" min="0" max="59" style="font-size:16px;text-align:center;" oninput="onReadSecInput()"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">seconds</div></div></div></div>
     </div>
     <!-- SYNTH TIMER -->
     <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
@@ -996,7 +996,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn" id="timer-synth-btn" onclick="toggleSynthTimer()" style="font-size:13px;padding:6px 12px;">▶ Start</button>
         </div>
       </div>
-      <div class="fg" style="margin:0;"><label>Or enter minutes manually</label><input type="number" id="timer-synth-min" inputmode="numeric" placeholder="e.g. 15" min="0" style="font-size:16px;" oninput="onSynthMinInput()"/></div>
+      <div class="fg" style="margin:0;"><label>Or enter time manually</label><div class="r2" style="gap:6px;"><div><input type="number" id="timer-synth-min" inputmode="numeric" placeholder="min" min="0" style="font-size:16px;text-align:center;" oninput="onSynthMinInput()"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">minutes</div></div><div><input type="number" id="timer-synth-sec" inputmode="numeric" placeholder="sec" min="0" max="59" style="font-size:16px;text-align:center;" oninput="onSynthSecInput()"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">seconds</div></div></div></div>
     </div>
     <div class="fa">
       <button class="btn" onclick="closeSheet('timer-overlay')">Cancel</button>
@@ -1067,7 +1067,7 @@ const PARENT_TYPES=['Mother','Father','Parent','Grandmother','Grandfather','Grea
 const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
 // #246 — Searchable relationship-type picker: grouped flat list with synonyms for search
 const REL_GROUPS=[
-  {label:'Family',items:['Mother','Father','Child','Sibling','Brother','Sister','Half-sibling','Step-sibling','Step-parent','Step-child','Grandmother','Grandfather','Grandchild','Great-grandmother','Great-grandfather','Great-grandchild','Aunt','Uncle','Uncle or Aunt','Niece','Nephew','Niece or Nephew','Cousin','Second cousin','In-law','Guardian','Ward','Adoptive parent','Adopted child','Godparent','Godchild']},
+  {label:'Family',items:['Mother','Father','Parent','Child','Sibling','Brother','Sister','Half-sibling','Step-sibling','Step-parent','Step-child','Grandmother','Grandfather','Grandchild','Great-grandmother','Great-grandfather','Great-grandchild','Aunt','Uncle','Uncle or Aunt','Niece','Nephew','Niece or Nephew','Cousin','Second cousin','In-law','Guardian','Ward','Adoptive parent','Adopted child','Godparent','Godchild']},
   {label:'Distant family',items:['Distant ancestor','Distant descendant','Distant relative (unknown degree)','Great-great-grandmother','Great-great-grandfather','Great-great-grandchild','Great-great-grandparent']},
   {label:'Romantic',items:['Spouse','Husband','Wife','Partner','Betrothed','Love interest','Admirer','Ex-partner','Estranged spouse']},
   {label:'Social',items:['Friend','Best friend','Close friend','Acquaintance','Confidant','Ally','Enemy','Rival','Mentor','Protégé','Neighbour','Stranger']},
@@ -1719,7 +1719,7 @@ function autoCharIntroChap(){
   if(!pgEl||!chEl)return;
   const pgVal=pgEl.value.trim();if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
-  if(chaps.length&&!chEl.value)chEl.value=String(chaps[0]);
+  if(chaps.length)chEl.value=String(chaps[0]); // always update, not just when empty
 }
 // #221 — Characteristic: derive quote chapter from quote page
 function autoTraitQuoteChap(){
@@ -1970,37 +1970,33 @@ async function wikiPrePopulate(){
   const btn=document.getElementById('nb-wiki-btn');
   const title=(btn?._title)||document.getElementById('nb-title').value.trim();
   if(!title)return;
-  btn.disabled=true;btn.textContent='⏳ Fetching…';
+  btn.disabled=true;btn.textContent='⏳ Asking Claude…';
   try{
-    // Step 1: search Wikipedia for the book
-    const searchUrl=`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-    const sectUrl=`https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&prop=sections|wikitext&format=json&origin=*`;
-    const [sumRes,sectRes]=await Promise.all([fetch(searchUrl),fetch(sectUrl)]);
-    const sumData=await sumRes.json();
-    const sectData=await sectRes.json();
-    const wikitext=sectData?.parse?.wikitext?.['*']||'';
-    const pageTitle=sectData?.parse?.title||title;
-    // Step 2: extract characters, locations, themes from wikitext heuristics
-    const chars=[], locs=[], themes=[];
-    // Characters: look for ==Characters== section or bullet lists with character names
-    const charSection=wikitext.match(/==\s*Characters?\s*==\s*([\s\S]*?)(?===)/i)?.[1]||'';
-    const charMatches=[...charSection.matchAll(/\*+\s*'''([^']+)'''/g),...charSection.matchAll(/\*+\s*\[\[([^\]|]+)/g)];
-    charMatches.forEach(m=>{const n=m[1].trim();if(n&&n.length<60&&!chars.includes(n))chars.push(n);});
-    // Locations: look for ==Setting== or place names
-    const settingSection=wikitext.match(/==\s*(Setting|Locations?|Places?)\s*==\s*([\s\S]*?)(?===)/i)?.[2]||'';
-    const locMatches=[...settingSection.matchAll(/\*+\s*'''([^']+)'''/g),...settingSection.matchAll(/\*+\s*\[\[([^\]|]+)/g)];
-    locMatches.forEach(m=>{const n=m[1].trim();if(n&&n.length<80&&!locs.includes(n))locs.push(n);});
-    // Themes: look for ==Themes== section
-    const themeSection=wikitext.match(/==\s*Themes?\s*==\s*([\s\S]*?)(?===)/i)?.[1]||'';
-    const themeMatches=[...themeSection.matchAll(/===\s*([^=]+?)\s*===/g),...themeSection.matchAll(/\*+\s*['']*([^'\n*]{5,60})['']/g)];
-    themeMatches.forEach(m=>{const t=m[1].trim();if(t&&!themes.includes(t))themes.push(t);});
-    // Summary
-    const summary=sumData.extract||'';
-    // Step 3: show preview modal
-    showWikiPreviewModal(pageTitle,chars,locs,themes,summary);
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`For the book "${title}", list:
+1. Main characters (names only, up to 12)
+2. Key locations (up to 8)
+3. Major themes (up to 6)
+
+Respond ONLY with valid JSON, no markdown, no explanation:
+{"summary":"1-2 sentence plot summary","characters":["name1","name2"],"locations":["loc1"],"themes":["theme1"]}`}]
+      })
+    });
+    const data=await resp.json();
+    const raw=data.content?.find(b=>b.type==='text')?.text||'';
+    let parsed;
+    try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){throw new Error('Claude returned unexpected format');}
+    const {summary='',characters=[],locations=[],themes=[]}=parsed;
+    btn.disabled=false;btn.textContent='✨ Pre-populate from Claude AI';
+    showWikiPreviewModal(title,characters,locations,themes,summary);
   }catch(e){
-    btn.disabled=false;btn.textContent='✨ Pre-populate from Wikipedia';
-    alert('Could not fetch Wikipedia data for this title. The book may not have a Wikipedia article, or you may be offline.');
+    btn.disabled=false;btn.textContent='✨ Pre-populate from Claude AI';
+    alert('Could not fetch data for this title. Check your connection and try again.\n\n'+e.message);
   }
 }
 function showWikiPreviewModal(title,chars,locs,themes,summary){
@@ -2016,8 +2012,8 @@ function showWikiPreviewModal(title,chars,locs,themes,summary){
     </div>`:'';
   modal.innerHTML=`<div style="background:var(--bg);color:var(--text);border-radius:var(--r) var(--r) 0 0;max-height:85vh;overflow-y:auto;width:100%;max-width:560px;padding:18px 16px 24px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div style="font-size:14px;font-weight:700;">✨ Pre-populate from Wikipedia</div>
-      <button onclick="document.getElementById('wiki-preview-modal').remove();document.getElementById('nb-wiki-btn').disabled=false;document.getElementById('nb-wiki-btn').textContent='✨ Pre-populate from Wikipedia';" style="background:none;border:none;font-size:20px;color:var(--t2);cursor:pointer;padding:0 4px;">×</button>
+      <div style="font-size:14px;font-weight:700;">✨ Pre-populate from Claude AI</div>
+      <button onclick="document.getElementById('wiki-preview-modal').remove();document.getElementById('nb-wiki-btn').disabled=false;document.getElementById('nb-wiki-btn').textContent='✨ Pre-populate from Claude AI';" style="background:none;border:none;font-size:20px;color:var(--t2);cursor:pointer;padding:0 4px;">×</button>
     </div>
     ${summary?`<div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">${summary.slice(0,300)}${summary.length>300?'…':''}</div>`:''}
     ${hasAnything?(makeList('Characters',chars,'wiki-char-list')+makeList('Locations',locs,'wiki-loc-list')+makeList('Themes',themes,'wiki-theme-list')):`<div style="font-size:12px;color:var(--t2);padding:12px 0;">Wikipedia has an article for this book but no structured character/location/theme data was found. You can still copy the summary above.</div>`}
@@ -2025,7 +2021,7 @@ function showWikiPreviewModal(title,chars,locs,themes,summary){
     <div style="font-size:10px;color:var(--t3);margin-top:8px;text-align:center;">Review and uncheck anything you don't want. You can always edit or delete after adding.</div>
   </div>`;
   document.body.appendChild(modal);
-  modal.onclick=(e)=>{if(e.target===modal){modal.remove();const b=document.getElementById('nb-wiki-btn');if(b){b.disabled=false;b.textContent='✨ Pre-populate from Wikipedia';}}};
+  modal.onclick=(e)=>{if(e.target===modal){modal.remove();const b=document.getElementById('nb-wiki-btn');if(b){b.disabled=false;b.textContent='✨ Pre-populate from Claude AI';}}};
 }
 function applyWikiData(){
   // This runs AFTER the book is saved — store pending data and apply once book exists
@@ -3366,18 +3362,45 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){
-    // #303/#335 — assemble evdate from structured fields; year is required
+    // #303/#335 — assemble evdate from structured fields
     const evYear=document.getElementById('ae-evdate-year').value.trim();
     const evMon=document.getElementById('ae-evdate-month').value;
     const evDay=(document.getElementById('ae-evdate-day').value||'').trim();
-    if(!evYear){alert('Please enter a year or era for this timeline entry.');return;}
-    // Build evdate string: "1943", "1943-04", "1943-04-14", "Ch.4", etc.
+    const od=document.getElementById('ae-offset-dir').value;
+    const on=document.getElementById('ae-offset-num').value.trim();
+    const ou=document.getElementById('ae-offset-unit').value;
+    const oe=document.getElementById('ae-offset-event').value;
+    const offsetActive=document.getElementById('ae-offset-toggle')?.checked && on;
+    // Year required ONLY if no offset anchor
+    if(!evYear && !offsetActive){alert('Please enter a year or era, OR connect this entry to another event.');return;}
+    // Build evdate string
     let assembled=evYear;
-    if(evMon){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
-    document.getElementById('ae-evdate').value=assembled;
-    entry.evdate=assembled;
+    if(evMon&&evYear){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
+    if(assembled){document.getElementById('ae-evdate').value=assembled;}
+    entry.evdate=assembled||'';
     entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
-    entry.importance=document.getElementById('ae-imp').value;const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;const od=document.getElementById('ae-offset-dir').value;const on=document.getElementById('ae-offset-num').value;const ou=document.getElementById('ae-offset-unit').value;const oe=document.getElementById('ae-offset-event').value;if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
+    entry.importance=document.getElementById('ae-imp').value;
+    // Store offset
+    if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}
+    // #303 — compute numeric sort value from anchor so entry lands in correct position
+    if(offsetActive && oe){
+      const anchor=findAnchorEntry(oe);
+      if(anchor){
+        const computed=computeOffsetSortNum(anchor.evdate||anchor.computedEvdate,anchor.evdateMonth,anchor.evdateDay,od,on,ou);
+        if(computed!==null){
+          entry.computedSortNum=computed;
+          // Also back-fill a human-readable computed year if no explicit year given
+          if(!evYear){
+            const yr=Math.round(computed/10000);
+            entry.evdate=String(yr);entry.evdateYear=String(yr);
+          }
+        }
+      }
+    } else {
+      delete entry.computedSortNum; // clear if offset removed
+    }
+    const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
+    entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -4127,7 +4150,7 @@ function renderChars(){
     return `<div class="clcard char-list-card" data-char-name="${escAttr(name)}" data-char-id="${c.id}" style="background:${col.bg};border-color:${col.stroke}44;cursor:pointer;">
       <div class="avatar" style="width:42px;height:42px;font-size:13px;background:${col.stroke}28;color:${col.text};">${ph||ini}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${escText(name)}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${escText(c.nickname)})</span>`:''}</div>
+        <div style="font-size:13px;font-weight:600;color:${col.text};">${c.charStatus==='deceased'?'🪦 ':''}${escText(name)}${c.nickname?` <span style="font-size:10px;font-weight:400;">(${escText(c.nickname)})</span>`:''}${c.isDraft?` <span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;">DRAFT</span>`:''}</div>
         <div style="font-size:10px;color:var(--t2);">${roleLabel}${c.gender?' · '+c.gender:''}${c.charIntro?' · intro '+escText(c.charIntro):''}${relCount?' · '+relCount+' rel'+( relCount!==1?'s':''):''}</div>
         ${relEmojiRow}
       </div>
@@ -4294,29 +4317,31 @@ function renderCharDetail(name){
   //   section above (unchanged).
   const themesForChar=all.filter(e=>e.type==='Theme'&&(
     (e.involved||[]).includes(name) ||
-    (e.themeQuotes||[]).some(q=>q.speaker===name)
+    (e.themeQuotes||[]).some(q=>q.speaker===name) ||
+    (e.attachedQuoteIds||[]).some(id=>{const q=entries().find(x=>x.id===id);return q&&(q.speaker===name||(q.involved||[]).includes(name));})
   ));
   html+=`<div class="csec">${secHdr('char-themes','Themes',themesForChar.length,'Theme','Theme')}<div id="char-themes">`;
   if(themesForChar.length){
     html+=sortByPage(themesForChar).map(th=>{
-      const allQs=(th.themeQuotes||[]).filter(q=>q&&q.text);
-      const nested=allQs.length?allQs.map(q=>{
-        const spkr=q.speaker||'Narrator / Author';
-        const spkrCol=q.speaker?getCC(q.speaker):null;
-        const isMine=q.speaker===name;
-        return`<div style="border-left:2px solid ${isMine?col.stroke:'var(--t3)'};padding:5px 8px;margin-top:5px;background:var(--bg2);border-radius:0 var(--r) var(--r) 0;${isMine?'':'opacity:0.85;'}">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${spkrCol?spkrCol.text:'var(--t3)'};margin-bottom:2px;">${spkr}${isMine?' ★':''}</div>
-          <div style="font-size:12px;font-style:italic;color:var(--text);">"${q.text}"</div>
-          ${q.page?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${q.page}</div>`:''}
-        </div>`;
-      }).join(''):'';
-      return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div>${th.content}${nested}${nT(th)}${pgT(th)}${act(th)}</div>`;
+      const freeQs=(th.themeQuotes||[]).filter(q=>q&&q.text);
+      const attachedQs=(th.attachedQuoteIds||[]).map(id=>entries().find(e=>e.id===id)).filter(Boolean);
+      const makeRow=(txt,spkr,pg,entryId,isMine)=>{
+        const spkrCol=spkr&&spkr!=='Narrator / Author'?getCC(spkr):null;
+        const spkrHtml=spkrCol?`<span style="cursor:pointer;font-weight:700;color:${spkrCol.text};" onclick="event.stopPropagation();openCharDetail('${esc(spkr)}',false)">${spkr}${isMine?' ★':''}</span>`:`<span style="font-weight:700;color:var(--t3);">${spkr||'Narrator'}${isMine?' ★':''}</span>`;
+        const qHtml=entryId?`<div style="font-size:12px;font-style:italic;color:var(--text);cursor:pointer;" onclick="event.stopPropagation();editEntry(${entryId})">"${txt}"</div>`:`<div style="font-size:12px;font-style:italic;color:var(--text);">"${txt}"</div>`;
+        return`<div style="border-left:2px solid ${isMine?col.stroke:'var(--t3)'};padding:5px 8px;margin-top:5px;background:var(--bg2);border-radius:0 var(--r) var(--r) 0;${isMine?'':'opacity:0.85;'}"><div style="font-size:10px;text-transform:uppercase;margin-bottom:2px;">${spkrHtml}${pg?`<span style="color:var(--t3);"> · p.${pg}</span>`:''}</div>${qHtml}</div>`;
+      };
+      const freeRows=freeQs.map(q=>makeRow(q.text,q.speaker,q.page,null,q.speaker===name));
+      const attachRows=attachedQs.map(q=>makeRow(q.content,q.speaker,q.pageNum,q.id,q.speaker===name||(q.involved||[]).includes(name)));
+      const nested=[...freeRows,...attachRows].join('');
+      const invTags=(th.involved||[]).filter(c=>c).map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;margin-right:3px;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}</span>`;}).join('');
+      const locTag=th.location?`<span style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="event.stopPropagation();openLocDetail('${esc(th.location)}')">📍 ${th.location}</span>`:'';
+      return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div><strong>${th.content}</strong>${nested}${invTags?`<div class="inv-row" style="margin-top:4px;">${invTags}</div>`:''} ${locTag}${nT(th)}${pgT(th)}${act(th)}</div>`;
     }).join('');
   } else {
     html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No themes yet — tap + Theme to add one.</div>`;
   }
   html+=`</div></div>`;
-
   // Character timeline — always show header (Add Event)
   let combined=[];
   {
@@ -4905,21 +4930,27 @@ function renderTimeline(){
   const activeLoc=tlLocFilter?.dataset.active||'all';
   const filtered=activeLoc==='all'?all:all.filter(e=>e.location===activeLoc);
 
-  // #303 — parse evdate to a sortable value: numeric year → number, else string, '' → null
+  // #303 — parse evdate to a sortable value; use computedSortNum for offset entries
   function evdateSort(e){
+    // Offset entries: use pre-computed sort number (considers anchor position)
+    if(e.computedSortNum!=null)return e.computedSortNum;
     const d=e.evdate||'';
-    if(!d)return null; // undated
-    // Try to extract leading year number e.g. "1943", "1943-04", "1943-04-14"
-    const m=d.match(/^-?(\d{1,4})/);
-    if(m)return Number(m[1])*10000
-      +(e.evdateMonth?Number(e.evdateMonth)*100:0)
-      +(e.evdateDay?Number(e.evdateDay):0);
-    return d; // narrative label e.g. "Ch.4" — string compare
+    if(!d)return null;
+    // Parse leading year (handles pre-update entries with raw evdate like "1943" or "1943-04-14")
+    const m=d.match(/^-?(\d{1,6})/);
+    if(m){
+      // Try to get month/day from stored fields first, else parse from evdate string
+      let mon=e.evdateMonth?Number(e.evdateMonth):0;
+      let day=e.evdateDay?Number(e.evdateDay):0;
+      if(!mon&&d.includes('-')){const parts=d.split('-');if(parts[1])mon=Number(parts[1]);if(parts[2])day=Number(parts[2]);}
+      return Number(m[1])*10000+mon*100+day;
+    }
+    return d; // narrative label — string compare
   }
 
-  // #270 — split dated vs undated
-  const dated=filtered.filter(e=>e.evdate||(e.sortKey!=null));
-  const undated=filtered.filter(e=>!e.evdate&&e.sortKey==null);
+  // #270 — split dated vs undated (computedSortNum counts as dated)
+  const dated=filtered.filter(e=>e.evdate||e.computedSortNum!=null||(e.sortKey!=null));
+  const undated=filtered.filter(e=>!e.evdate&&e.computedSortNum==null&&e.sortKey==null);
 
   // #303/#325 — sort: explicit sortKey first, then parsed evdate (numeric), then ch/page tiebreak
   dated.sort((a,b)=>{
@@ -4952,9 +4983,9 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?`<div style="margin-top:5px;padding:5px 8px;background:var(--bg2);border-left:3px solid ${col};border-radius:4px;font-size:11px;font-style:italic;color:var(--t2);line-height:1.4;">“${item.tlSq}”${item.tlSpeaker?` <span style="font-style:normal;color:var(--t3);">— ${item.tlSpeaker}</span>`:''}${item.tlSqPg?` <span style="font-style:normal;color:var(--t3);">· p.${item.tlSqPg}</span>`:''}</div>`:''}
+        ${item.tlSq?`<div style="margin-top:6px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid var(--cb);"><div style="font-size:13px;font-style:italic;line-height:1.45;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>${item.tlSq}<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>${item.tlSpeaker||item.tlSqPg?`<div style="font-size:11px;color:var(--t2);margin-top:4px;">${item.tlSpeaker?`— ${item.tlSpeaker}`:''}${item.tlSqPg?` · p.${item.tlSqPg}`:''}</div>`:''}</div>`:''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
-        <div class="eactions"><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
+        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
   };
@@ -4980,6 +5011,74 @@ function setTlLocFilter(loc){
 }
 // #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
 // Shows a custom 3-button modal (After / Before / Exit) instead of binary confirm().
+// #218-C — Move a timeline entry up (-1) or down (+1) relative to its neighbours.
+// Assigns sortKey values so the swap persists across renders.
+function moveTlEntry(id, dir){
+  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  // Build same sort as renderTimeline
+  function localSort(a,b){
+    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+    if(sa!==sb)return sa-sb;
+    const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+    const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+    if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
+    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  }
+  const sorted=[...all].sort(localSort);
+  const idx=sorted.findIndex(e=>e.id===id);
+  if(idx<0)return;
+  const swapIdx=idx+dir;
+  if(swapIdx<0||swapIdx>=sorted.length)return;
+  // Assign explicit sortKeys to all items so order is stable after swap
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  // Swap keys
+  const tmp=sorted[idx].sortKey;
+  sorted[idx].sortKey=sorted[swapIdx].sortKey;
+  sorted[swapIdx].sortKey=tmp;
+  save();
+  // Suggest date update
+  const moved=sorted.find(e=>e.id===id);
+  const neighbour=sorted.find(e=>e.id===sorted[swapIdx].id)||sorted[idx];
+  if(moved&&neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
+    const nDate=neighbour.evdate||'';
+    if(nDate&&confirm(`Entry moved. Would you like to update its date to align with its new position?\n\nNeighbour date: ${nDate}\n\nTap OK to open and edit, or Cancel to keep as-is.`)){
+      editEntry(id);
+    }
+  }
+  renderTimeline();
+}
+
+// ── Timeline sort helpers (global) ──────────────────────────────// Convert an evdate string to a sortable number. Returns null for undated.
+function evdateToNum(evdate, evdateMonth, evdateDay){
+  const d=evdate||'';
+  if(!d)return null;
+  const m=d.match(/^-?(\d{1,6})/);
+  if(m)return Number(m[1])*10000
+    +(evdateMonth?Number(evdateMonth)*100:0)
+    +(evdateDay?Number(evdateDay):0);
+  return null; // narrative label — use string compare elsewhere
+}
+
+// Unit → approximate days multiplier
+const UNIT_DAYS={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};
+
+// Given an anchor entry and offset fields, compute the resulting numeric sort value.
+// Returns null if anchor has no numeric date.
+function computeOffsetSortNum(anchorEvdate, anchorMonth, anchorDay, dir, num, unit){
+  const base=evdateToNum(anchorEvdate, anchorMonth, anchorDay);
+  if(base===null)return null;
+  const days=(parseFloat(num)||0)*( UNIT_DAYS[unit]||1);
+  const deltaYears=days/365.25;
+  const sign=(dir==='-')?-1:1;
+  return base + sign*deltaYears*10000;
+}
+
+// Find an anchor timeline entry by its content label (stored in timeOffsetFrom).
+function findAnchorEntry(label){
+  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
+    .find(e=>(e.content||'')===(label||''));
+}
+
 // Pre-fills sortKey so the new entry renders between the anchors, not at the top.
 function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
   const prevLabel=(prevName||prevDate||'previous').slice(0,40);
@@ -5005,10 +5104,14 @@ function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
     buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
     document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
     document.getElementById('ae-type').value='Timeline';onTypeChange();
-    // Compute sortKey that slots new entry between anchors
+    // Compute sortKey that slots new entry between anchors using proper sort
     const anchorItems=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
       const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
       if(sa!==sb)return sa-sb;
+      // Use computedSortNum for offset entries
+      const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+      const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+      if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
       return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
     });
     const prevIdx=anchorItems.findIndex(e=>(e.content||'')===prevName);
@@ -5787,17 +5890,25 @@ function toggleSynthTimer(){
 }
 
 function onReadMinInput(){
-  readTimerRunning=false;readTimerSeconds=0;
-  const d=document.getElementById('timer-read-display');if(d)d.textContent='00:00';
+  readTimerRunning=false;
+  const m=parseInt(document.getElementById('timer-read-min').value)||0;
+  const s=parseInt(document.getElementById('timer-read-sec')?.value)||0;
+  readTimerSeconds=m*60+s;
+  const d=document.getElementById('timer-read-display');if(d)d.textContent=fmtTimer(readTimerSeconds);
   const b=document.getElementById('timer-read-btn');if(b)b.textContent='▶ Start';
   updateTimerPill();
 }
+function onReadSecInput(){onReadMinInput();}
 function onSynthMinInput(){
-  synthTimerRunning=false;synthTimerSeconds=0;
-  const d=document.getElementById('timer-synth-display');if(d)d.textContent='00:00';
+  synthTimerRunning=false;
+  const m=parseInt(document.getElementById('timer-synth-min').value)||0;
+  const s=parseInt(document.getElementById('timer-synth-sec')?.value)||0;
+  synthTimerSeconds=m*60+s;
+  const d=document.getElementById('timer-synth-display');if(d)d.textContent=fmtTimer(synthTimerSeconds);
   const b=document.getElementById('timer-synth-btn');if(b)b.textContent='▶ Start';
   updateTimerPill();
 }
+function onSynthSecInput(){onSynthMinInput();}
 
 function resetTimers(){
   readTimerSeconds=0;readTimerRunning=false;
@@ -5807,7 +5918,9 @@ function resetTimers(){
   const rb=document.getElementById('timer-read-btn');if(rb)rb.textContent='▶ Start';
   const sb=document.getElementById('timer-synth-btn');if(sb)sb.textContent='▶ Start';
   const rm=document.getElementById('timer-read-min');if(rm)rm.value='';
+  const rs=document.getElementById('timer-read-sec');if(rs)rs.value='';
   const sm=document.getElementById('timer-synth-min');if(sm)sm.value='';
+  const ss2=document.getElementById('timer-synth-sec');if(ss2)ss2.value='';
   updateTimerPill();
 }
 
@@ -5848,7 +5961,11 @@ function editSession(idx){
   const sMin=s.synthMinutes!=null?s.synthMinutes:(s.mode==='synth'?s.minutes:0)||0;
   document.getElementById('timer-read-min').value=rMin||'';
   document.getElementById('timer-synth-min').value=sMin||'';
-  // Restore exact seconds so display shows precise saved time
+  // Restore exact seconds — show in sec field too
+  const rSec=(s.readSeconds!=null?s.readSeconds:rMin*60)%60;
+  const sSec=(s.synthSeconds!=null?s.synthSeconds:sMin*60)%60;
+  const rsEl=document.getElementById('timer-read-sec');if(rsEl&&rSec)rsEl.value=rSec;
+  const ssEl=document.getElementById('timer-synth-sec');if(ssEl&&sSec)ssEl.value=sSec;
   readTimerSeconds=s.readSeconds!=null?s.readSeconds:rMin*60;
   synthTimerSeconds=s.synthSeconds!=null?s.synthSeconds:sMin*60;
   const rd=document.getElementById('timer-read-display');if(rd)rd.textContent=fmtTimer(readTimerSeconds);
@@ -6948,6 +7065,7 @@ function saveReport(){
       document.getElementById('report-title').value='';
       document.getElementById('report-body').value='';
       document.getElementById('report-priority').value='normal';
+      const db=document.getElementById('report-discard-btn');if(db)db.style.display='none';
       renderReportList();
       return;
     }
@@ -7067,9 +7185,17 @@ function editReport(num){
   document.getElementById('report-title').value=r.title==='(untitled)'?'':(r.title||'');
   document.getElementById('report-body').value=r.body||'';
   document.getElementById('report-priority').value=r.priority||'normal';
+  const db=document.getElementById('report-discard-btn');if(db)db.style.display='';
   document.getElementById('report-title').scrollIntoView({behavior:'smooth',block:'center'});
   document.getElementById('report-title').focus();
-  alert(`Editing report #${r.num}. Adjust the fields then tap "Save report" to re-save (the # stays the same).`);
+}
+// #277 — Discard in-progress edits
+function discardReportEdit(){
+  document.getElementById('report-edit-num').value='';
+  document.getElementById('report-title').value='';
+  document.getElementById('report-body').value='';
+  document.getElementById('report-priority').value='normal';
+  const db=document.getElementById('report-discard-btn');if(db)db.style.display='none';
 }
 // #284 — Manual close. Also auto-closes the target ticket when a ✅-works test result is saved.
 function closeReport(num){
@@ -7280,6 +7406,7 @@ function copyClosedReports(){
     </div>
     <div id="report-context-preview" style="font-size:10px;color:var(--t3);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:10px;font-family:monospace;line-height:1.5;"></div>
     <div class="fa">
+      <button class="btn" id="report-discard-btn" onclick="discardReportEdit()" style="display:none;color:var(--red);border-color:var(--red);">× Discard</button>
       <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
       <button class="btn btn-primary" onclick="saveReport()">Save report</button>
     </div>
