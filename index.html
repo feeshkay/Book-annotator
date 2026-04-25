@@ -4129,14 +4129,14 @@ function renderQuotes(){
   if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length&&!quoteDrafts.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   // #206 — drafts collapsed by default; hidden from main list
-  const draftHTML=quoteDrafts.length?`<details style="margin-bottom:10px;">
+  const draftHTML=quoteDrafts.length?`\x3Cdetails style="margin-bottom:10px;">
     <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;">
       <span style="flex:1;">📝 Drafts (${quoteDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>
     </summary>
     <div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">
       ${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}
     </div>
-  </details>`:'';
+  \x3C/details>`:'';
   const tlHTML=tlFiltered.map(e=>{
     const icon=e.type==='Event'?'⭐':'📅';
     const pg=e.tlSqPg||e.pageNum||'';
