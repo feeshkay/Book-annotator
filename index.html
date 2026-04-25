@@ -271,14 +271,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="panel-wrap">
 
     <div id="log-panel" class="panel active" style="padding:10px 11px 85px;">
-      <input type="text" id="log-search" placeholder="🔍 Search log…" oninput="renderEntries()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:6px;"/>
+      <div style="position:relative;margin-bottom:8px;"><input type="text" id="log-search" placeholder="🔍 Search log…" oninput="renderEntries()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('log-search').value='';renderEntries();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div class="fscroll" id="filter-bar"></div>
       <div id="entries-list"></div>
       <div id="log-empty" class="empty" style="display:none"><div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div><div class="empty-sub">Tap + to begin</div></div>
     </div>
 
     <div id="quotes-panel" class="panel" style="padding:10px 11px 85px;">
-      <input type="text" id="quotes-search" placeholder="🔍 Search quotes…" oninput="renderQuotes()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:6px;"/>
+      <div style="position:relative;margin-bottom:8px;"><input type="text" id="quotes-search" placeholder="🔍 Search quotes…" oninput="renderQuotes()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('quotes-search').value='';renderQuotes();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div class="fscroll" id="quote-filter"></div>
       <div id="quotes-list"></div>
       <div id="quotes-empty" class="empty" style="display:none"><div class="empty-icon">💬</div><div class="empty-text">No quotes yet</div></div>
@@ -286,7 +286,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <div id="chars-panel" class="panel" style="padding:10px 11px 85px;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <input type="text" id="chars-search" placeholder="🔍 Search characters…" oninput="renderChars()" style="flex:1;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/>
+        <input type="text" id="chars-search" placeholder="🔍 Search characters…" oninput="renderChars()" style="flex:1;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('chars-search').value='';renderChars();" style="background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0;">×</button>
         <button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;flex-shrink:0;">🧬 Suggest</button>
       </div>
       <div id="chars-list"></div>
@@ -309,13 +309,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
-      <input type="text" id="tl-search" placeholder="🔍 Search timeline…" oninput="renderTimeline()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:8px;"/>
+      <div style="position:relative;margin-bottom:8px;"><input type="text" id="tl-search" placeholder="🔍 Search timeline…" oninput="renderTimeline()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('tl-search').value='';renderTimeline();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div id="timeline-list"></div>
       <div id="tl-empty" class="empty" style="display:none"><div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div></div>
     </div>
 
     <div id="map-panel" class="panel" style="padding:10px 11px 85px;">
-      <input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:8px;"/>
+      <div style="position:relative;margin-bottom:8px;"><input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('map-search').value='';renderMap();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div id="map-list"></div>
       <div id="map-empty" class="empty" style="display:none"><div class="empty-icon">📍</div><div class="empty-text">No locations yet</div></div>
     </div>
@@ -397,9 +397,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="sheet-x" onclick="closeSheet('nb-overlay')">×</button>
     <div class="sheet-title" id="nb-sheet-title">New book</div>
     <input type="hidden" id="nb-edit-id"/>
-    <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value);if(this.value.trim()){const wb=document.getElementById('nb-wiki-btn');if(wb){wb.style.display='';wb._title=this.value.trim();}}"/></div>
+    <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value);"/></div>
     <div id="nb-lookup-hint" style="display:none;font-size:11px;color:var(--accent);margin:-6px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);"></div>
-    <button type="button" id="nb-wiki-btn" onclick="wikiPrePopulate()" style="display:none;width:100%;margin:-4px 0 10px;padding:8px;font-size:12px;background:var(--bg2);border:0.5px solid var(--am);border-radius:var(--r);color:var(--accent);cursor:pointer;font-weight:600;">✨ Pre-populate characters, locations & themes with Claude AI</button>
+
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
     <div class="r2">
       <div class="fg"><label>Genre / Type</label>
@@ -732,12 +732,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <strong>−</strong> = BEFORE (this event happens ABOVE the other on the timeline)
         </div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <select id="ae-offset-dir" style="width:130px;flex-shrink:0;font-size:16px;">
+          <select id="ae-offset-dir" onchange="anchorChanged()" style="width:130px;flex-shrink:0;font-size:16px;">
             <option value="+">+ later (below)</option>
             <option value="-">− earlier (above)</option>
           </select>
-          <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;"/>
-          <select id="ae-offset-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
+          <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;" oninput="anchorChanged()"/>
+          <select id="ae-offset-unit" style="flex:1;" onchange="anchorChanged()"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
         <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(most recent first)</span></label>
           <select id="ae-offset-event" style="font-size:16px;" onchange="anchorChanged(this.value)"><option value="">— free text / unspecified —</option></select>
@@ -1124,14 +1124,59 @@ function autoSetGenderFromPronouns(){
   if(!gEl.value)gEl.value=inferred; // only set if blank — never overwrite
 }
 // #185 — inferRelGender removed
+// #185 — offer gender popup when relType implies gender for each char
+function offerGenderFromRelType(relType){
+  const aName=cddGet('ae-rela');const bName=cddGet('ae-relb');
+  const aGender=REL_GENDER_MAP[relType];
+  const recipType=RECIPROCAL[relType]||relType;
+  const bGender=REL_GENDER_MAP[recipType];
+  function offerOne(charName,impliedGender,label){
+    if(!charName||!impliedGender)return;
+    const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===charName);
+    if(!e)return;
+    if(e.gender&&e.gender!=='')return; // already set
+    setTimeout(()=>{
+      const ans=confirm(`What is ${charName}'s gender?
+
+OK = ${impliedGender}
+Cancel = skip / different gender`);
+      if(ans){e.gender=impliedGender;save();}
+    },100);
+  }
+  offerOne(aName,aGender,'A');
+  // Delay B so both confirms don't stack
+  setTimeout(()=>offerOne(bName,bGender,'B'),400);
+}
 // #309 — auto-fill year/era from anchor so offset entries sort correctly on timeline
 function anchorChanged(anchorLabel){
-  if(!anchorLabel)return;
-  const anchor=findAnchorEntry(anchorLabel);
+  // Called when anchor, direction, num, or unit changes — recalculates the target year
+  const label=anchorLabel!=null?anchorLabel:document.getElementById('ae-offset-event')?.value||'';
+  if(!label)return;
+  const anchor=findAnchorEntry(label);
   if(!anchor)return;
   const yearEl=document.getElementById('ae-evdate-year');if(!yearEl)return;
-  const anchorYear=anchor.evdateYear||(anchor.evdate?anchor.evdate.split('-')[0]:'')||(anchor.computedSortNum!=null?String(Math.round(anchor.computedSortNum/10000)):'')||(anchor.chapNum?'Ch.'+anchor.chapNum:'');
-  if(anchorYear){yearEl.value=anchorYear;yearEl.style.borderColor='var(--accent)';setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);}
+  const od=document.getElementById('ae-offset-dir')?.value||'+';
+  const on=parseFloat(document.getElementById('ae-offset-num')?.value||'0')||0;
+  const ou=document.getElementById('ae-offset-unit')?.value||'years';
+  // Get anchor's base year as a number
+  const anchorYearRaw=anchor.evdateYear||(anchor.evdate?anchor.evdate.split('-')[0]:'')||(anchor.computedSortNum!=null?String(Math.round(anchor.computedSortNum/10000)):'');
+  const anchorYearNum=parseInt(anchorYearRaw)||null;
+  let calculated='';
+  if(anchorYearNum!==null&&on){
+    const UNIT_Y={days:1/365.25,weeks:7/365.25,months:1/12,years:1,decades:10,centuries:100,hours:1/8766,minutes:1/525960};
+    const deltaYears=(on*(UNIT_Y[ou]||1))*(od==='-'?-1:1);
+    const newYear=Math.round(anchorYearNum+deltaYears);
+    calculated=String(newYear);
+  } else if(anchorYearRaw){
+    calculated=anchorYearRaw;
+  } else if(anchor.chapNum){
+    calculated='Ch.'+anchor.chapNum;
+  }
+  if(calculated){
+    yearEl.value=calculated;
+    yearEl.style.borderColor='var(--accent)';
+    setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);
+  }
 }
 // #246 — Searchable relationship-type picker
 function rtpRender(filter){
@@ -1164,6 +1209,8 @@ function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
+  // #185 — ask gender for each char if relType implies one and gender not set
+  offerGenderFromRelType(val);
 }
 function rtpClear(){
   document.getElementById('ae-reltype').value='';
@@ -1971,7 +2018,7 @@ async function applyLookup(idx){
   // Show Wikipedia pre-populate button
   const title=document.getElementById('nb-title').value.trim();
   if(title){
-    const wikiBtn=document.getElementById('nb-wiki-btn');
+    const wikiBtn=null;
     if(wikiBtn){wikiBtn.style.display='';wikiBtn._title=title;}
   }
 }
