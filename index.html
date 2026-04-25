@@ -500,7 +500,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="if(!document.getElementById('ae-edit-id').value)checkDuplicateChar(this.value.trim())"/></div>
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="checkDuplicateChar(this.value.trim())"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
       <div class="r3">
@@ -531,7 +531,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
       <div class="r2" style="align-items:end;">
-        <div class="fg"><label>Introduced — p. <span style="font-size:10px;color:var(--accent);font-weight:400;cursor:pointer;" onclick="alert('The page where this character first appears in the book.')">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
+        <div class="fg"><label>Introduced — p. <span style="font-size:13px;color:var(--accent);cursor:pointer;padding:2px 6px;" onclick="alert('The page where this character first appears in the book.')">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
@@ -715,9 +715,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- hidden field keeps evdate assembled for backward compat -->
       <input type="hidden" id="ae-evdate"/>
       <!-- #270 — manual sort key when no date is available -->
-      <div class="fg"><label>Sequence # <span style="font-weight:400;">(optional — for ordering when date is unknown; lower = earlier)</span></label>
-        <input type="number" id="ae-sortkey" inputmode="numeric" placeholder="e.g. 1, 2, 3…"/>
-      </div>
+      <div style="margin-bottom:8px;"><button type="button" style="background:transparent;color:var(--t3);font-size:11px;padding:0;border:none;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':this.nextElementSibling.style.display===\'\'?\'none\':\'none\'; this.textContent=this.nextElementSibling.style.display===\'none\'?\'+ Manual sort order (advanced)\':\'− Manual sort order (advanced)\'">+ Manual sort order (advanced)</button><div class="fg" style="display:none;margin-top:6px;"><label>Sequence # <span style="font-weight:400;">(lower = earlier; only needed if no date)</span></label><input type="number" id="ae-sortkey" inputmode="numeric" placeholder="e.g. 1, 2, 3…"/></div></div>
       <!-- #218-A — collapsed by default; #218-B — renamed -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="document.getElementById('ae-offset-block').style.display=this.checked?'':'none';"/>
@@ -3489,6 +3487,8 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
     entry.relB=document.getElementById('ae-relb').value;
+    // #320 — auto-tag both chars in involved
+    if(entry.relA||entry.relB)entry.involved=[...new Set([entry.relA,entry.relB].filter(Boolean))];
     // Gender inference from relationship type — Char A only (no auto-flip for B)
     const inferredGender=REL_GENDER_MAP[entry.relType];
     if(inferredGender&&entry.relA){
@@ -3736,9 +3736,14 @@ function deleteLocCard(name){
 // ── Duplicate character detection ─────────────────────────────
 function checkDuplicateChar(name){
   if(!name||!currentId)return false;
-  const existing=entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  const editId=document.getElementById('ae-edit-id')?.value||'';
+  const existing=entries().filter(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase()&&(!editId||String(e.id)!==editId));
   if(existing.length){
-    const choice=confirm(`A character named "${existing[0].cn||existing[0].content}" already exists.\n\nOK = open existing character\nCancel = continue adding new`);
+    const isEdit=!!editId;
+    const msg=isEdit
+      ?`A character named "${existing[0].cn||existing[0].content}" already exists.\n\nOK = open existing character\nCancel = keep editing`
+      :`A character named "${existing[0].cn||existing[0].content}" already exists.\n\nOK = open existing character\nCancel = continue adding new`;
+    const choice=confirm(msg);
     if(choice){closeSheet('ae-overlay');openCharDetail(existing[0].cn||existing[0].content,false);return true;}
   }
   return false;
@@ -4015,12 +4020,20 @@ function filterEntries(){
   if(activeFilter.startsWith('ch:'))return all.filter(e=>e.chapNum&&(e.chapNum===activeFilter.slice(3)||e.chapNum.split(',').includes(activeFilter.slice(3))));
   return all.filter(e=>e.type===activeFilter);
 }
+function filterDraftsForTab(){
+  // #206 — when a type filter is active, also return matching drafts for that type
+  if(activeFilter==='all'||activeFilter.startsWith('ch:'))return[];
+  return entries().filter(e=>e.type===activeFilter&&e.isDraft);
+}
 
 function renderEntries(){
   const list=document.getElementById('entries-list');const empty=document.getElementById('log-empty');
   const filtered=filterEntries();
-  if(!filtered.length){list.innerHTML='';empty.style.display='';return;}
-  empty.style.display='none';list.innerHTML=filtered.map(e=>ecHTML(e,false)).join('');
+  const drafts=filterDraftsForTab();
+  if(!filtered.length&&!drafts.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const draftHTML=drafts.length?('\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.content||e.cn||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('')+'</div>\x3C/details>'):'';
+  list.innerHTML=draftHTML+filtered.map(e=>ecHTML(e,false)).join('');
 }
 
 function ecHTML(e,compact,fromTab){
@@ -5054,7 +5067,7 @@ function renderTimeline(){
     const meIcons={Death:'🪦',Birth:'👶',Marriage:'💍','Move / Relocation':'📦',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔','Life-changing moment':'⭐'};
     const icons=isEvent?(item.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌':'';
     // #218-C — inline "+" between entries to insert
-    const plusBtn=i<arr.length-1?`<div style="text-align:center;margin:-2px 0 -2px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.content||'')}','${esc(arr[i+1].content||'')}','${esc(item.evdate||'')}','${esc(arr[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
+    const plusBtn=i<arr.length-1?`<div style="text-align:center;margin:4px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.content||'')}','${esc(arr[i+1].content||'')}','${esc(item.evdate||'')}','${esc(arr[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
     return`<div class="titem">
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
@@ -5063,9 +5076,9 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:10px 12px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div class="ec quote" style="margin-top:7px;margin-bottom:0;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
-        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
+        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
   };
@@ -5124,6 +5137,60 @@ function moveTlEntry(id, dir){
     if(nDate&&confirm(`Entry moved. Would you like to update its date to align with its new position?\n\nNeighbour date: ${nDate}\n\nTap OK to open and edit, or Cancel to keep as-is.`)){
       editEntry(id);
     }
+  }
+  renderTimeline();
+}
+
+// #218-C — Move entry several positions or before/after a named event
+function moveTlEntryPrompt(id){
+  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  function localSort(a,b){
+    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+    if(sa!==sb)return sa-sb;
+    const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+    const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+    if(da!==null&&db!==null)return da-db;
+    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  }
+  const sorted=[...all].sort(localSort);
+  const idx=sorted.findIndex(e=>e.id===id);
+  if(idx<0)return;
+  const entry=sorted[idx];
+  // Build choice list of other events
+  const others=sorted.filter(e=>e.id!==id).map((e,i)=>({e,i:sorted.indexOf(e),label:e.content||(e.evdate||'untitled')}));
+  const listStr=others.map((o,i)=>`${i+1}. ${o.label.slice(0,50)}`).join('\n');
+  const input=prompt(`Move "${entry.content||'this entry'}" before or after which event?
+
+Enter a number, or type "before N" or "after N":
+
+${listStr}`);
+  if(!input)return;
+  const inp=input.trim().toLowerCase();
+  let targetIdx=-1, insertBefore=true;
+  const afterMatch=inp.match(/^after\s+(\d+)$/);
+  const beforeMatch=inp.match(/^before\s+(\d+)$/);
+  const numMatch=inp.match(/^(\d+)$/);
+  if(afterMatch){const n=parseInt(afterMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=false;}}
+  else if(beforeMatch){const n=parseInt(beforeMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
+  else if(numMatch){const n=parseInt(numMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
+  if(targetIdx<0){alert('Not a valid number.');return;}
+  // Assign sort keys
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  // Remove entry from sorted, insert at target
+  const moved=sorted.splice(idx,1)[0];
+  let insertAt=targetIdx>idx?targetIdx-1:targetIdx;
+  if(!insertBefore)insertAt++;
+  sorted.splice(insertAt,0,moved);
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  save();
+  const neighbour=sorted[insertAt===0?1:insertAt-1]||sorted[insertAt+1];
+  if(neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
+    const nDate=neighbour.evdate||'';
+    if(nDate&&confirm(`Entry moved. Update its date to align with new position?
+
+Neighbour date: ${nDate}
+
+OK = open to edit, Cancel = keep as-is`))editEntry(id);
   }
   renderTimeline();
 }
@@ -7321,14 +7388,9 @@ function editReport(num){
 }
 // #277 — Discard test result edit
 function discardTestEdit(){
-  if(window._testEditNum){
-    document.getElementById('test-ticket-num').value=window._testEditOrigNum||'';
-    document.getElementById('test-ticket-note').value=window._testEditOrigNote||'';
-    window._testEditNum=null;
-  }else{
-    document.getElementById('test-ticket-num').value='';
-    document.getElementById('test-ticket-note').value='';
-  }
+  document.getElementById('test-ticket-num').value='';
+  document.getElementById('test-ticket-note').value='';
+  window._testEditNum=null;
 }
 // #277 — Discard in-progress edits
 function discardReportEdit(){
