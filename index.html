@@ -271,20 +271,23 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;" id="panel-wrap">
 
     <div id="log-panel" class="panel active" style="padding:10px 11px 85px;">
+      <input type="text" id="log-search" placeholder="🔍 Search log…" oninput="renderEntries()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:6px;"/>
       <div class="fscroll" id="filter-bar"></div>
       <div id="entries-list"></div>
       <div id="log-empty" class="empty" style="display:none"><div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div><div class="empty-sub">Tap + to begin</div></div>
     </div>
 
     <div id="quotes-panel" class="panel" style="padding:10px 11px 85px;">
+      <input type="text" id="quotes-search" placeholder="🔍 Search quotes…" oninput="renderQuotes()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:6px;"/>
       <div class="fscroll" id="quote-filter"></div>
       <div id="quotes-list"></div>
       <div id="quotes-empty" class="empty" style="display:none"><div class="empty-icon">💬</div><div class="empty-text">No quotes yet</div></div>
     </div>
 
     <div id="chars-panel" class="panel" style="padding:10px 11px 85px;">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;">🧬 Suggest relationships</button>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <input type="text" id="chars-search" placeholder="🔍 Search characters…" oninput="renderChars()" style="flex:1;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/>
+        <button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;flex-shrink:0;">🧬 Suggest</button>
       </div>
       <div id="chars-list"></div>
       <div id="chars-empty" class="empty" style="display:none"><div class="empty-icon">👤</div><div class="empty-text">No characters yet</div></div>
@@ -306,11 +309,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
+      <input type="text" id="tl-search" placeholder="🔍 Search timeline…" oninput="renderTimeline()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:8px;"/>
       <div id="timeline-list"></div>
       <div id="tl-empty" class="empty" style="display:none"><div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div></div>
     </div>
 
     <div id="map-panel" class="panel" style="padding:10px 11px 85px;">
+      <input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-bottom:8px;"/>
       <div id="map-list"></div>
       <div id="map-empty" class="empty" style="display:none"><div class="empty-icon">📍</div><div class="empty-text">No locations yet</div></div>
     </div>
@@ -735,7 +740,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-offset-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
         <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(most recent first)</span></label>
-          <select id="ae-offset-event" style="font-size:16px;"><option value="">— free text / unspecified —</option></select>
+          <select id="ae-offset-event" style="font-size:16px;" onchange="anchorChanged(this.value)"><option value="">— free text / unspecified —</option></select>
         </div>
       </div>
       <!-- #253 — Supporting quote + speaker auto-tag + quote page (flows to Quote page display) -->
@@ -1119,6 +1124,15 @@ function autoSetGenderFromPronouns(){
   if(!gEl.value)gEl.value=inferred; // only set if blank — never overwrite
 }
 // #185 — inferRelGender removed
+// #309 — auto-fill year/era from anchor so offset entries sort correctly on timeline
+function anchorChanged(anchorLabel){
+  if(!anchorLabel)return;
+  const anchor=findAnchorEntry(anchorLabel);
+  if(!anchor)return;
+  const yearEl=document.getElementById('ae-evdate-year');if(!yearEl)return;
+  const anchorYear=anchor.evdateYear||(anchor.evdate?anchor.evdate.split('-')[0]:'')||(anchor.computedSortNum!=null?String(Math.round(anchor.computedSortNum/10000)):'')||(anchor.chapNum?'Ch.'+anchor.chapNum:'');
+  if(anchorYear){yearEl.value=anchorYear;yearEl.style.borderColor='var(--accent)';setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);}
+}
 // #246 — Searchable relationship-type picker
 function rtpRender(filter){
   const panel=document.getElementById('ae-reltype-panel');if(!panel)return;
@@ -1162,12 +1176,12 @@ function rtpSet(val){
   rtpRender('');
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
-const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Son':'Parent','Daughter':'Parent','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
+const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Son':'Parent','Daughter':'Parent','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
   'Quote':{icon:'💬',desc:'A direct passage from the text — something a character said OR something the narrator/author wrote.',tips:['Select the speaker (or "Narrator/Author" for authorial voice).','Add an emotion/tone to track how it feels.','Tag the page and chapter so you can find it again.','Ask: what does this reveal — character, theme, or plot?']},
-  'Character':{icon:'👤',desc:'A person (or being) in the story.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Minor/Unnamed = a professor, a stranger, a one-time character. Still log them if they said something worth keeping.','Set introduced Ch. and p. so they appear on the timeline correctly.','💡 To remove from Drafts: open the entry, uncheck "Save as draft", then tap Save.']},
+  'Character':{icon:'👤',desc:'A person (or being) in the story.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Minor/Unnamed = a professor, a stranger, a one-time character. Still log them if they said something worth keeping.','Set introduced Ch. and p. so they appear on the timeline correctly.']},
   'Characteristic':{icon:'🔍',desc:'A personality OR physical trait.',tips:['Specify Personality vs Physical — they display separately on the profile.','Attach a supporting quote (the proof of the trait) with its page number.','The main Ch./p. fields = where in the book you noticed this trait.','Ask: is this shown through action, dialogue, or description?']},
   'Relationship':{icon:'🔗',desc:'A connection between two characters.',tips:['Character A = the one being described. Character B = the other person.','The reciprocal relationship auto-shows on Character B\'s profile.','Use "Stranger" for unnamed one-time connections.','Add a description to capture the dynamic, not just the type.']},
   'Setting':{icon:'🌍',desc:'The literary/narrative context — time period, atmosphere, social world.',tips:['Setting ≠ Location. Setting = "Victorian London, fog-laden and class-obsessed." Location = "the Bennet drawing room, Ch.3."','Ask: how does this setting shape the characters?','How does it create mood or tension?','Does it change over the course of the story?']},
@@ -1983,6 +1997,7 @@ Respond ONLY with valid JSON, no markdown, no explanation:
 {"summary":"1-2 sentence plot summary","characters":["name1","name2"],"locations":["loc1"],"themes":["theme1"]}`}]
       })
     });
+    if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(String(resp.status)+': '+(err?.error?.message||resp.statusText));}
     const data=await resp.json();
     const raw=data.content?.find(b=>b.type==='text')?.text||'';
     let parsed;
@@ -1992,7 +2007,10 @@ Respond ONLY with valid JSON, no markdown, no explanation:
     showWikiPreviewModal(title,characters,locations,themes,summary);
   }catch(e){
     btn.disabled=false;btn.textContent='✨ Pre-populate from Claude AI';
-    alert('Could not fetch data for this title. Check your connection and try again.\n\n'+e.message);
+    const is401=e.message?.includes('401')||e.message?.includes('Unauthorized');
+    alert(is401
+      ?'Pre-populate needs a Claude API connection.\n\nThis feature works when the app is opened inside Claude (claude.ai). It cannot connect from an external browser tab due to authentication.\n\nOpen this app from within a Claude conversation to use this feature.'
+      :'Could not pre-populate. Check your connection and try again.\n\n'+e.message);
   }
 }
 function showWikiPreviewModal(title,chars,locs,themes,summary){
@@ -4037,7 +4055,9 @@ function renderEntries(){
   if(!filtered.length&&!drafts.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const draftHTML=drafts.length?('\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.content||e.cn||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('')+'</div>\x3C/details>'):'';
-  list.innerHTML=draftHTML+filtered.map(e=>ecHTML(e,false)).join('');
+  const logQ=(document.getElementById('log-search')?.value||'').toLowerCase().trim();
+  const filteredLog=logQ?filtered.filter(e=>(e.content||e.cn||'').toLowerCase().includes(logQ)||(e.note||'').toLowerCase().includes(logQ)||(e.speaker||'').toLowerCase().includes(logQ)||(e.location||'').toLowerCase().includes(logQ)):filtered;
+  list.innerHTML=draftHTML+filteredLog.map(e=>ecHTML(e,false)).join('');
 }
 
 function ecHTML(e,compact,fromTab){
@@ -4208,7 +4228,9 @@ function renderQuotes(){
       <div class="eactions"><button class="btn-edit" onclick="editEntry(${parent.id})">Edit on Theme</button></div>
     </div>`;
   }).join('');
-  list.innerHTML=draftHTML+quotes.map(e=>ecHTML(e,false)).join('')+tlHTML+themeHTML;
+  const quotesQ=(document.getElementById('quotes-search')?.value||'').toLowerCase().trim();
+  const filteredQuotes=quotesQ?quotes.filter(e=>(e.content||'').toLowerCase().includes(quotesQ)||(e.speaker||'').toLowerCase().includes(quotesQ)||(e.note||'').toLowerCase().includes(quotesQ)):quotes;
+  list.innerHTML=draftHTML+filteredQuotes.map(e=>ecHTML(e,false)).join('')+(quotesQ?'':tlHTML+themeHTML);
 }
 let activeQuoteFilter='all';
 function setQuoteFilter(f){activeQuoteFilter=f;renderQuotes();}
@@ -4231,7 +4253,10 @@ function renderChars(){
   // #304 — use data attributes + delegated click handler; avoids all string-escape pitfalls with names containing quotes/apostrophes/&
   const escAttr=s=>(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const escText=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  list.innerHTML=chars.map(c=>{
+  const charsQ=(document.getElementById('chars-search')?.value||'').toLowerCase().trim();
+  const filteredChars=charsQ?chars.filter(c=>{const n=(c.cn||c.content||'').toLowerCase();const nick=(c.nickname||'').toLowerCase();const desc=(c.charDesc||'').toLowerCase();return n.includes(charsQ)||nick.includes(charsQ)||desc.includes(charsQ);}):chars;
+  if(!filteredChars.length&&charsQ){list.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No characters match "'+charsQ+'"</div>';return;}
+  list.innerHTML=filteredChars.map(c=>{
     const name=c.cn||c.content;const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const ph=c.photo?`<img src="${escAttr(c.photo)}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
@@ -5362,7 +5387,10 @@ function renderMap(){
     </div>`;
   }
 
-  list.innerHTML=locDraftHTML+headerHTML+locNames.map(loc=>{
+  const mapQ=(document.getElementById('map-search')?.value||'').toLowerCase().trim();
+  const filteredLocNames=mapQ?locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return loc.toLowerCase().includes(mapQ)||(d.city||'').toLowerCase().includes(mapQ)||(d.country||'').toLowerCase().includes(mapQ)||(d.building||'').toLowerCase().includes(mapQ);}):locNames;
+  if(!filteredLocNames.length&&mapQ){list.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match "'+mapQ+'"</div>';return;}
+  list.innerHTML=locDraftHTML+headerHTML+filteredLocNames.map(loc=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
