@@ -1148,7 +1148,12 @@ function rtpRender(filter){
   if(!html)html=`<div style="font-size:12px;color:var(--t3);padding:10px;text-align:center;">No matches for "${q}"</div>`;
   panel.innerHTML=html;
 }
-function rtpOpen(){const p=document.getElementById('ae-reltype-panel');if(p){p.style.display='';rtpRender(document.getElementById('ae-reltype-search').value);}}
+function rtpOpen(){
+  const p=document.getElementById('ae-reltype-panel');if(!p)return;
+  p.style.display='';
+  // #308 — always render full list on open (don't filter by current value in the input)
+  rtpRender('');
+}
 function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
 function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
@@ -1165,6 +1170,8 @@ function rtpClear(){
 function rtpSet(val){
   document.getElementById('ae-reltype').value=val||'';
   document.getElementById('ae-reltype-search').value=val||'';
+  // Pre-render so active chip is correct when user taps to open; panel stays hidden
+  rtpRender('');
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
 const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
@@ -2621,6 +2628,7 @@ function onTypeChange(){
     }
     // #246 — Render the searchable rel-type picker (panel stays collapsed until user clicks)
     rtpRender('');
+    // #308 — panel hidden until user taps search; pre-rendered so chips are ready
     const _rtp=document.getElementById('ae-reltype-panel');if(_rtp)_rtp.style.display='none';
     document.getElementById('ae-quick-add-b').style.display='none';
     window._cddRelChangeHook=function(){
@@ -2850,17 +2858,15 @@ function openAddTypeForLoc(type){
   const titles={'Characteristic':'Add trait at ','Quote':'Add quote at ','Event':'Add event at ','Theme':'Add theme at ','Question':'Add question at ','Character':'Add character at '};
   document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add at ')+name;
   document.getElementById('ae-type').value=type;onTypeChange();
-  // #241 loc — pre-fill location searchable dropdown
-  setTimeout(()=>{ prefillLocDropdown(name); },80);
+  // #241 loc — pre-fill location after onTypeChange has settled
+  setTimeout(()=>{ prefillLocDropdown(name); },150);
   openSheet('ae-overlay');
 }
 // #241 loc — helper that reliably sets both the hidden select and the visible search input
 function prefillLocDropdown(name){
   if(!name)return;
-  const locSel=document.getElementById('ae-loc-sel');
-  const locSearch=document.getElementById('ae-loc-search');
-  if(locSel)locSel.value=name;
-  if(locSearch)locSearch.value=name;
+  // Use selectLocOption so both fields are set consistently and dropdown stays closed
+  selectLocOption(name,name);
 }
 // #240 / #241 loc — FAB on location profile (pre-fills current location)
 function openAddFromLocProfile(){
@@ -4084,7 +4090,9 @@ function renderQuotes(){
   qbar.innerHTML=`<button class="chip${qFilter==='all'?' active':''}" onclick="setQuoteFilter('all')">All</button>`
     +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
     +`<button class="chip${qFilter==='narrator'?' active':''}" onclick="setQuoteFilter('narrator')">Narrator</button>`;
-  let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type));
+  let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&!e.isDraft);
+  // #206 — drafts collected separately, hidden behind toggle
+  const quoteDrafts=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&e.isDraft);
   // #253 — include Timeline/Event entries that have a supporting quote
   const tlQuotes=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.tlSq);
   // #242 — include Theme-embedded supporting quotes. Flatten each theme's themeQuotes[] into its own card.
@@ -4118,14 +4126,17 @@ function renderQuotes(){
   }else if(qFilter==='narrator'){
     themeFiltered=themeQuoteRows.filter(r=>!r.q.speaker||r.q.speaker==='Narrator / Author');
   }
-  if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length){list.innerHTML='';empty.style.display='';return;}
+  if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length&&!quoteDrafts.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  // #206 — show Quote drafts at top
-  const quoteDrafts=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&e.isDraft);
-  const draftHTML=quoteDrafts.length?`<div style="margin-bottom:8px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid #f0a500;">
-    <div style="font-size:11px;font-weight:700;color:#7F4F24;margin-bottom:5px;">📝 DRAFTS (${quoteDrafts.length})</div>
-    ${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span></div>`).join('')}
-  </div>`:'';
+  // #206 — drafts collapsed by default; hidden from main list
+  const draftHTML=quoteDrafts.length?`<details style="margin-bottom:10px;">
+    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;">
+      <span style="flex:1;">📝 Drafts (${quoteDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>
+    </summary>
+    <div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">
+      ${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}
+    </div>
+  </details>`:'';
   const tlHTML=tlFiltered.map(e=>{
     const icon=e.type==='Event'?'⭐':'📅';
     const pg=e.tlSqPg||e.pageNum||'';
@@ -5025,228 +5036,7 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'<span class="cbadge" style="font-size:10px;">\u2014 '+item.tlSpeaker+'</span>':'';const _pg=item.tlSqPg?'<span class="pbadge">p.'+item.tlSqPg+'</span>':'';return '<div style="margin-top:6px;border-left:3px solid #1D9E75;padding-left:8px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:3px;">'+_spk+' '+_pg+'</div>':'')+'</div>';})():''}
-        ${item.note?`<div class="enote">${item.note}</div>`:''}
-        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
-      </div>
-    </div>${plusBtn}`;
-  };
-  // #270 — render dated items, then undated bucket at bottom
-  let html=`<div style="padding-left:5px;">`;
-  html+=dated.map((item,i)=>renderItem(item,i,dated)).join('');
-  if(undated.length){
-    html+=`<div style="margin:14px 0 6px;font-size:11px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-left:5px;">
-      <span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span>
-      📋 Undated / order unknown
-      <span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span>
-    </div>`;
-    html+=undated.map((item,i)=>renderItem(item,i,undated)).join('');
-  }
-  html+='</div>';
-  list.innerHTML=html;
-}
-// #314 — timeline location filter
-function setTlLocFilter(loc){
-  const bar=document.getElementById('tl-loc-filter');
-  if(bar)bar.dataset.active=loc;
-  renderTimeline();
-}
-// #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
-// Shows a custom 3-button modal (After / Before / Exit) instead of binary confirm().
-// #218-C — Move a timeline entry up (-1) or down (+1) relative to its neighbours.
-// Assigns sortKey values so the swap persists across renders.
-function moveTlEntry(id, dir){
-  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
-  // Build same sort as renderTimeline
-  function localSort(a,b){
-    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
-    if(sa!==sb)return sa-sb;
-    const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
-    const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
-    if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
-    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
-  }
-  const sorted=[...all].sort(localSort);
-  const idx=sorted.findIndex(e=>e.id===id);
-  if(idx<0)return;
-  const swapIdx=idx+dir;
-  if(swapIdx<0||swapIdx>=sorted.length)return;
-  // Assign explicit sortKeys to all items so order is stable after swap
-  sorted.forEach((e,i)=>{e.sortKey=i*10;});
-  // Swap keys
-  const tmp=sorted[idx].sortKey;
-  sorted[idx].sortKey=sorted[swapIdx].sortKey;
-  sorted[swapIdx].sortKey=tmp;
-  save();
-  // Suggest date update
-  const moved=sorted.find(e=>e.id===id);
-  const neighbour=sorted.find(e=>e.id===sorted[swapIdx].id)||sorted[idx];
-  if(moved&&neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
-    const nDate=neighbour.evdate||'';
-    if(nDate&&confirm(`Entry moved. Would you like to update its date to align with its new position?\n\nNeighbour date: ${nDate}\n\nTap OK to open and edit, or Cancel to keep as-is.`)){
-      editEntry(id);
-    }
-  }
-  renderTimeline();
-}
-
-// ── Timeline sort helpers (global) ──────────────────────────────// Convert an evdate string to a sortable number. Returns null for undated.
-function evdateToNum(evdate, evdateMonth, evdateDay){
-  const d=evdate||'';
-  if(!d)return null;
-  const m=d.match(/^-?(\d{1,6})/);
-  if(m)return Number(m[1])*10000
-    +(evdateMonth?Number(evdateMonth)*100:0)
-    +(evdateDay?Number(evdateDay):0);
-  return null; // narrative label — use string compare elsewhere
-}
-
-// Unit → approximate days multiplier
-const UNIT_DAYS={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};
-
-// Given an anchor entry and offset fields, compute the resulting numeric sort value.
-// Returns null if anchor has no numeric date.
-function computeOffsetSortNum(anchorEvdate, anchorMonth, anchorDay, dir, num, unit){
-  const base=evdateToNum(anchorEvdate, anchorMonth, anchorDay);
-  if(base===null)return null;
-  const days=(parseFloat(num)||0)*( UNIT_DAYS[unit]||1);
-  const deltaYears=days/365.25;
-  const sign=(dir==='-')?-1:1;
-  return base + sign*deltaYears*10000;
-}
-
-// Find an anchor timeline entry by its content label (stored in timeOffsetFrom).
-function findAnchorEntry(label){
-  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
-    .find(e=>(e.content||'')===(label||''));
-}
-
-// #218/#303 — One-time migration: recalculate computedSortNum for ALL offset entries on book open.
-// This fixes pre-Batch15 entries where computedSortNum was never set (so they sorted to top/bottom).
-// Also re-runs whenever an entry is saved (called from saveEntry via backfillTimelineSortNums).
-function backfillTimelineSortNums(){
-  if(!currentId)return;
-  const tlEntries=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
-  let changed=false;
-  // Two-pass: anchors may themselves be offset entries; iterate until stable (max 5 passes)
-  for(let pass=0;pass<5;pass++){
-    let anyChange=false;
-    tlEntries.forEach(e=>{
-      if(!e.timeOffset||!e.timeOffsetFrom)return; // not an offset entry
-      const od=e.timeOffset.startsWith('-')?'-':'+';
-      const rest=e.timeOffset.replace(/^[+-]/,'').trim().match(/^([\d.]+)\s+(\w+)/);
-      if(!rest)return;
-      const on=rest[1],ou=rest[2];
-      const anchor=findAnchorEntry(e.timeOffsetFrom);
-      if(!anchor)return;
-      // Use anchor's computedSortNum if available (handles chained offsets), else parse its evdate
-      const anchorBase=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
-      if(anchorBase===null)return;
-      const anchorFakeDate=String(Math.round(anchorBase/10000)); // year approximation for computeOffsetSortNum
-      const newVal=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
-      if(newVal!==null&&newVal!==e.computedSortNum){e.computedSortNum=newVal;anyChange=true;changed=true;}
-    });
-    if(!anyChange)break;
-  }
-  if(changed)save();
-}
-
-// Pre-fills sortKey so the new entry renders between the anchors, not at the top.
-function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
-  const prevLabel=(prevName||prevDate||'previous').slice(0,40);
-  const nextLabel=(nextName||nextDate||'next').slice(0,40);
-  // Build modal
-  const existing=document.getElementById('tl-insert-modal');if(existing)existing.remove();
-  const modal=document.createElement('div');
-  modal.id='tl-insert-modal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
-  modal.innerHTML=`<div style="background:var(--bg);color:var(--text);border-radius:var(--r);max-width:340px;width:100%;padding:18px 18px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Where does this new entry go?</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.4;">Pick an anchor — the new entry will appear just next to it on the timeline.</div>
-    <button type="button" id="tl-ins-after" style="display:block;width:100%;padding:10px 12px;margin-bottom:8px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬇️ <strong>After</strong> "${prevLabel}"</button>
-    <button type="button" id="tl-ins-before" style="display:block;width:100%;padding:10px 12px;margin-bottom:12px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬆️ <strong>Before</strong> "${nextLabel}"</button>
-    <button type="button" id="tl-ins-exit" style="display:block;width:100%;padding:8px 12px;border:none;background:transparent;color:var(--t2);font-size:12px;cursor:pointer;">Exit — don't add anything</button>
-  </div>`;
-  document.body.appendChild(modal);
-  const close=()=>{modal.remove();};
-  document.getElementById('tl-ins-exit').onclick=close;
-  modal.onclick=(e)=>{if(e.target===modal)close();};
-  const pick=(useAfter)=>{
-    close();
-    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
-    document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
-    document.getElementById('ae-type').value='Timeline';onTypeChange();
-    // Compute sortKey that slots new entry between anchors using proper sort
-    const anchorItems=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
-      const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
-      if(sa!==sb)return sa-sb;
-      // Use computedSortNum for offset entries
-      const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
-      const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
-      if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
-      return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
-    });
-    const prevIdx=anchorItems.findIndex(e=>(e.content||'')===prevName);
-    let newSort=null;
-    if(prevIdx>=0&&prevIdx<anchorItems.length-1){
-      const prev=anchorItems[prevIdx],next=anchorItems[prevIdx+1];
-      const ps=prev.sortKey!=null?+prev.sortKey:prevIdx*10;
-      const ns=next.sortKey!=null?+next.sortKey:(prevIdx+1)*10;
-      newSort=useAfter?ps+(ns-ps)*0.33:ps+(ns-ps)*0.67;
-      // Ensure all anchors have sortKey so ordering is stable
-      anchorItems.forEach((e,i)=>{if(e.sortKey==null)e.sortKey=i*10;});
-      save();
-    }
-    setTimeout(()=>{
-      const t=document.getElementById('ae-offset-toggle');
-      if(t){t.checked=true;const blk=document.getElementById('ae-offset-block');if(blk)blk.style.display='';}
-      const evSel=document.getElementById('ae-offset-event');
-      const anchorName=useAfter?prevName:nextName;
-      const anchorDate=useAfter?prevDate:nextDate;
-      if(evSel&&(anchorName||anchorDate)){
-        const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
-        if(opt)evSel.value=opt.value;
-      }
-      const dir=document.getElementById('ae-offset-dir');if(dir)dir.value=useAfter?'+':'-';
-      const sk=document.getElementById('ae-sortkey');if(sk&&newSort!=null)sk.value=newSort;
-    },80);
-    openSheet('ae-overlay');
-  };
-  document.getElementById('tl-ins-after').onclick=()=>pick(true);
-  document.getElementById('tl-ins-before').onclick=()=>pick(false);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// LOCATIONS
-// ═══════════════════════════════════════════════════════════════
-function renderMap(){
-  const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
-  const locEntries=entries().filter(e=>e.type==='Location');
-  const locNames=[...new Set([...locEntries.map(e=>e.content),...getLocations().map(l=>l.name),...entries().filter(e=>e.location).map(e=>e.location)])];
-  if(!locNames.length){list.innerHTML='';empty.style.display='';return;}
-  empty.style.display='none';
-
-  // #206 — Location drafts at top
-  const locDrafts=entries().filter(e=>e.type==='Location'&&e.isDraft);
-  const locDraftHTML=locDrafts.length?`<div style="margin-bottom:8px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid #f0a500;">
-    <div style="font-size:11px;font-weight:700;color:#7F4F24;margin-bottom:5px;">📝 DRAFTS (${locDrafts.length})</div>
-    ${locDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span></div>`).join('')}
-  </div>`:'';
-
-  // Collect all real locations for a combined Maps link
-  const realLocs=locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return d.type==='real';});
-  const mapsAllUrl=realLocs.length>=1
-    ? 'https://www.google.com/maps/search/?api=1&query='+realLocs.map(l=>{const d=getLocations().find(x=>x.name===l)||{};return encodeURIComponent([l,d.city,d.country].filter(Boolean).join(', '));}).join('|')
-    : null;
-  // Build a search-friendly multi-location Maps URL (opens search for first, links all)
-  const mapsSearchUrl=realLocs.length>=1
-    ? 'https://www.google.com/maps/search/'+encodeURIComponent(realLocs.slice(0,5).map(l=>{const d=getLocations().find(x=>x.name===l)||{};return [l,d.city,d.country].filter(Boolean).join(', ');}).join(' | '))
-    : null;
-
-  let headerHTML='';
-  if(realLocs.length>0){
-    headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:12px;font-weight:600;flex:1;">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} in this book</span>
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'<span class="cbadge" style="font-size:10px;">— '+item.tlSpeaker+'</span>':'';const _pg=item.tlSqPg?'<span class="pbadge">p.'+item.tlSqPg+'</span>':'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:9px 11px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+_spk+((_spk&&_pg)?' ':'')+_pg+'</div>':'')+'</div>';})():''} in this book</span>
       <button class="btn btn-sm" onclick="openLink('${mapsSearchUrl}')">🗺️ View all in Maps</button>
     </div>`;
   }
@@ -7100,7 +6890,8 @@ function logTestResult(result){
     }
   }
   saveReports(reports);
-  numEl.value='';noteEl.value='';
+  // #277 — keep ticket # so user can quickly re-test or log another note on same ticket
+  noteEl.value='';
   renderReportList();
 }
 function openReportIssue(){
@@ -7498,7 +7289,7 @@ function copyClosedReports(){
         <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 100px;font-size:16px;"/>
         <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
         <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
-        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-num').value='';document.getElementById('test-ticket-note').value='';" title="Clear">× Clear</button>
+        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-note').value='';" title="Cancel / clear note">× Cancel</button>
       </div>
       <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken…" style="width:100%;min-height:140px;font-size:16px;line-height:1.55;"></textarea><!-- #273 -->
     </div>
