@@ -530,8 +530,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
-      <div class="r2">
-        <div class="fg"><label>Introduced — p.</label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
+      <div class="r2" style="align-items:end;">
+        <div class="fg"><label style="display:flex;align-items:center;gap:4px;">Introduced — p. <button type="button" onclick="alert('The page where this character first appears in the book.')" style="background:none;border:none;padding:0;font-size:11px;color:var(--accent);cursor:pointer;line-height:1;flex-shrink:0;">ⓘ</button></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
       </div>
       <div class="fg"><label>Physical description</label><textarea id="ae-cphys" placeholder="Appearance, distinguishing features…" style="min-height:50px;"></textarea></div>
@@ -895,7 +895,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- COMMON FIELDS -->
     <div id="ae-common">
       <div class="divider"></div>
-      <div class="r2" id="ae-chappage">
+      <div class="r2" id="ae-chappage" style="align-items:end;">
         <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
       </div>
@@ -1153,18 +1153,19 @@ function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').val
 function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
-  rtpRender(''); // re-render to show active state
+  // #308 — collapse panel after selection
+  const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
   inferRelGender();
 }
 function rtpClear(){
   document.getElementById('ae-reltype').value='';
   document.getElementById('ae-reltype-search').value='';
-  rtpRender('');
+  const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
 function rtpSet(val){
   document.getElementById('ae-reltype').value=val||'';
   document.getElementById('ae-reltype-search').value=val||'';
-  rtpRender('');
+  const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
 const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Husband':'Wife','Wife':'Husband','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
@@ -2221,6 +2222,8 @@ function convertRefToBook(bookId,refId){
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
   document.getElementById('bs-title').textContent=book().title;
+  // #218/#303 — backfill computedSortNum for all offset entries so old entries sort correctly
+  backfillTimelineSortNums();
   show('book-screen','lib-screen');buildTabs();buildTypeSelect();populateEventTypePicks();renderAll();
 }
 function goLib(){currentId=null;currentCharName=null;currentLocName=null;show('lib-screen','book-screen');renderLibrary();}
@@ -2385,12 +2388,16 @@ function qrCharPick(rowId,name){
   row.querySelector('.qr-char-list').style.display='none';
   checkSuggestions();
 }
-// Close any open qr-char-list when clicking outside
+// Close any open qr-char-list and rtp panel when clicking outside
 if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
   document.addEventListener('click',function(ev){
     document.querySelectorAll('.qr-char-list').forEach(l=>{
       if(!l.parentElement.contains(ev.target))l.style.display='none';
     });
+    // #308 — close rel-type panel when clicking outside it
+    const rtpPanel=document.getElementById('ae-reltype-panel');
+    const rtpWrap=document.getElementById('ae-reltype-wrap');
+    if(rtpPanel&&rtpWrap&&!rtpWrap.contains(ev.target))rtpPanel.style.display='none';
   },true);
   window._qrGlobalCloseAttached=true;
 }
@@ -2612,8 +2619,9 @@ function onTypeChange(){
       cddSet('ae-rela','');
       cddSet('ae-relb','');
     }
-    // #246 — Render the searchable rel-type picker
+    // #246 — Render the searchable rel-type picker (panel stays collapsed until user clicks)
     rtpRender('');
+    const _rtp=document.getElementById('ae-reltype-panel');if(_rtp)_rtp.style.display='none';
     document.getElementById('ae-quick-add-b').style.display='none';
     window._cddRelChangeHook=function(){
       const a=cddGet('ae-rela');const b=cddGet('ae-relb');
@@ -2651,7 +2659,7 @@ function sortedChars(){
   const roleSymbol={main:'★ ',antagonist:'◆ ',side:'◆ '};
   return all
     .map(e=>({name:e.cn||e.content,role:e.charRole||'',nickname:e.nickname||''}))
-    .sort((a,b)=>(roleOrder[a.role]??3)-(roleOrder[b.role]??3)||a.name.localeCompare(b.name))
+    .sort((a,b)=>(roleOrder[a.role]??3)-(roleOrder[b.role]??3)||a.name.trim().localeCompare(b.name.trim(),undefined,{sensitivity:'base'}))
     .map(c=>({name:c.name,role:c.role,nickname:c.nickname,label:(roleSymbol[c.role]||'')+c.name+(c.nickname?` (${c.nickname})`:'')}));
 }
 function buildCPick(chars){/* deprecated — replaced by cdd dropdowns */}
@@ -2725,10 +2733,10 @@ function addTraitQuoteRow(data){
     <button type="button" onclick="removeTraitQuoteRow(this)" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
   </div>
   <input type="text" class="tsq-text" placeholder="Quote from the book that shows this trait…" value="${(data?.text||'').replace(/"/g,'&quot;')}" style="font-size:13px;width:100%;margin-bottom:5px;"/>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;">
-    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;"/>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;">
+    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;" oninput="traitQuotePgSync(this)"/>
     <input type="number" class="tsq-ch" placeholder="ch." value="${data?.ch||''}" min="1" style="width:60px;font-size:13px;"/>
-    <input type="text" class="tsq-speaker" placeholder="Speaker (optional)" value="${data?.speaker||''}" style="flex:1;min-width:100px;font-size:13px;"/>
+    <select class="tsq-speaker" style="flex:1;min-width:100px;font-size:13px;"><option value="">— Speaker —</option>${buildTraitSpeakerOpts(data?.speaker||'')}</select>
   </div>`;
   list.appendChild(div);
   renumberTraitQuoteRows();
@@ -2736,6 +2744,20 @@ function addTraitQuoteRow(data){
 function removeTraitQuoteRow(btn){
   btn.closest('[data-tsq-id]').remove();
   renumberTraitQuoteRows();
+}
+// #315/#316 — pg→ch autosync for trait quote rows
+function traitQuotePgSync(pgInput){
+  const pg=parseInt(pgInput.value)||0;if(!pg)return;
+  const chInput=pgInput.closest('[data-tsq-id]')?.querySelector('.tsq-ch');
+  if(!chInput||chInput.value)return;
+  const chaps=book()?.chapters;
+  if(chaps&&chaps.length){const m=chaps.find(c=>pg>=+(c.start||0)&&pg<=(+(c.end||9999)));if(m)chInput.value=m.num||'';}
+  else{if(!chInput.value){const estCh=getChapFromPage(String(pg));if(estCh)chInput.value=estCh;}}
+}
+// #315/#316 — build speaker options from character list
+function buildTraitSpeakerOpts(selected){
+  const chars=sortedChars().map(c=>c.name);
+  return ['Narrator / Author',...chars].map(n=>`<option value="${esc(n)}"${n===selected?' selected':''}>${n}</option>`).join('');
 }
 function renumberTraitQuoteRows(){
   const list=document.getElementById('ae-sq-list');if(!list)return;
@@ -3386,10 +3408,12 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     if(offsetActive && oe){
       const anchor=findAnchorEntry(oe);
       if(anchor){
-        const computed=computeOffsetSortNum(anchor.evdate||anchor.computedEvdate,anchor.evdateMonth,anchor.evdateDay,od,on,ou);
+        // #303 — use anchor's computedSortNum if available (handles chained offsets); fall back to evdate
+        const anchorNum=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
+        const anchorFakeDate=anchorNum!=null?String(Math.round(anchorNum/10000)):anchor.evdate;
+        const computed=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
         if(computed!==null){
           entry.computedSortNum=computed;
-          // Also back-fill a human-readable computed year if no explicit year given
           if(!evYear){
             const yr=Math.round(computed/10000);
             entry.evdate=String(yr);entry.evdateYear=String(yr);
@@ -3555,7 +3579,10 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     if(dup&&!confirm(`"${dup.content}" already exists for this character. Save anyway?`))return;
   }
 
-  save();closeSheet('ae-overlay');renderAll();buildTypeSelect();
+  save();
+  // #218/#303 — recalculate offset sort nums so new/edited entries land in correct position
+  if(['Timeline','Event','Date/Period'].includes(type))backfillTimelineSortNums();
+  closeSheet('ae-overlay');renderAll();buildTypeSelect();
   // Feature 3: Navigate to the view that best fits the saved entry type
   postSaveNavigate(entry,type);
   } catch(err) {
@@ -3816,9 +3843,11 @@ function editEntry(id){
     }
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}
-      // #303 — populate structured fields
+      // #303 — populate structured fields; #377 — don't pre-fill year for offset entries (it's computed)
       if(e.type==='Timeline'){
-        document.getElementById('ae-evdate-year').value=e.evdateYear||e.evdate||'';
+        // Only show year if this entry has an explicit year (not purely derived from offset)
+        const hasOffset=!!(e.timeOffset&&e.timeOffsetFrom);
+        document.getElementById('ae-evdate-year').value=hasOffset?'':( e.evdateYear||e.evdate||'');
         const evMonEl=document.getElementById('ae-evdate-month');if(evMonEl)evMonEl.value=e.evdateMonth||'';
         document.getElementById('ae-evdate-day').value=e.evdateDay||'';
       }
@@ -4091,6 +4120,12 @@ function renderQuotes(){
   }
   if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
+  // #206 — show Quote drafts at top
+  const quoteDrafts=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&e.isDraft);
+  const draftHTML=quoteDrafts.length?`<div style="margin-bottom:8px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid #f0a500;">
+    <div style="font-size:11px;font-weight:700;color:#7F4F24;margin-bottom:5px;">📝 DRAFTS (${quoteDrafts.length})</div>
+    ${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span></div>`).join('')}
+  </div>`:'';
   const tlHTML=tlFiltered.map(e=>{
     const icon=e.type==='Event'?'⭐':'📅';
     const pg=e.tlSqPg||e.pageNum||'';
@@ -4112,7 +4147,7 @@ function renderQuotes(){
       <div class="eactions"><button class="btn-edit" onclick="editEntry(${parent.id})">Edit on Theme</button></div>
     </div>`;
   }).join('');
-  list.innerHTML=quotes.map(e=>ecHTML(e,false)).join('')+tlHTML+themeHTML;
+  list.innerHTML=draftHTML+quotes.map(e=>ecHTML(e,false)).join('')+tlHTML+themeHTML;
 }
 let activeQuoteFilter='all';
 function setQuoteFilter(f){activeQuoteFilter=f;renderQuotes();}
@@ -4125,12 +4160,12 @@ function renderChars(){
   const chars=entries().filter(e=>CT.includes(e.type));
   if(!chars.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  // #338 — main characters on top, the rest alphabetical
+  // #338 — main characters on top, the rest alphabetical (case-insensitive)
   const roleOrder={main:0,antagonist:1,side:1,narrator:1,minor:2,stranger:2,'':3};
   chars.sort((a,b)=>{
     const ra=roleOrder[a.charRole||'']??3;const rb=roleOrder[b.charRole||'']??3;
     if(ra!==rb)return ra-rb;
-    return (a.cn||a.content||'').localeCompare(b.cn||b.content||'');
+    return (a.cn||a.content||'').trim().localeCompare((b.cn||b.content||'').trim(),undefined,{sensitivity:'base'});
   });
   // #304 — use data attributes + delegated click handler; avoids all string-escape pitfalls with names containing quotes/apostrophes/&
   const escAttr=s=>(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -4668,7 +4703,9 @@ function renderWeb(){
       ti.setAttribute('x',n.x);ti.setAttribute('y',n.y);ti.setAttribute('text-anchor','middle');
       ti.setAttribute('dominant-baseline','middle');ti.setAttribute('font-size',isMain?'13':'11');
       ti.setAttribute('fill',n.col.text);ti.setAttribute('font-weight','700');
-      ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;g.appendChild(ti);
+      ti.setAttribute('font-family','-apple-system,sans-serif');ti.textContent=ini;
+      ti.setAttribute('data-node-initials','1');
+      g.appendChild(ti);
     }
 
     if(n.status==='deceased'){
@@ -4742,14 +4779,12 @@ function setupWebDrag(){
     [...g.querySelectorAll('image')].forEach(im=>{im.setAttribute('x',nodeData.x-nodeR);im.setAttribute('y',nodeData.y-nodeR);});
     const texts=[...g.querySelectorAll('text')];
     texts.forEach(t=>{
-      // Name-label text (the one with children tspans or below-node) has y > center
-      const cy=+t.getAttribute('y');
-      if(Math.abs(cy-nodeData.y)<2){t.setAttribute('x',nodeData.x);}
-      else {
-        // Below-label: y = nodeY + nodeR + 10 (approx); or deceased (x+nodeR-4, y-nodeR+6)
-        if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
-        else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
-      }
+      // #298/#369 — use data attribute to reliably identify initials text
+      if(t.getAttribute('data-node-initials')==='1'){t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y);return;}
+      // Deceased emoji
+      if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
+      // Name label below node
+      else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
     });
     // Redraw clipPath circle for photo (if any)
     const cid='wc'+nodeData.name.replace(/[^a-z0-9]/gi,'_');
@@ -4957,9 +4992,16 @@ function renderTimeline(){
     const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
     if(sa!==sb)return sa-sb;
     const da=evdateSort(a),db=evdateSort(b);
-    if(da!==null&&db!==null){if(typeof da==='number'&&typeof db==='number')return da-db;return String(da).localeCompare(String(db));}
+    if(da!==null&&db!==null){
+      if(typeof da==='number'&&typeof db==='number'){
+        if(da!==db)return da-db;
+        // #325 — same numeric sort: use chapter then page as tiebreaker
+        return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+      }
+      return String(da).localeCompare(String(db));
+    }
     if(da!==null)return -1;if(db!==null)return 1;
-    // #325 — same evdate: sort by chapter then page
+    // #325 — undated tiebreak
     return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
   });
 
@@ -4983,7 +5025,7 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?`<div style="margin-top:6px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid var(--cb);"><div style="font-size:13px;font-style:italic;line-height:1.45;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>${item.tlSq}<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>${item.tlSpeaker||item.tlSqPg?`<div style="font-size:11px;color:var(--t2);margin-top:4px;">${item.tlSpeaker?`— ${item.tlSpeaker}`:''}${item.tlSqPg?` · p.${item.tlSqPg}`:''}</div>`:''}</div>`:''}
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'<span class="cbadge" style="font-size:10px;">\u2014 '+item.tlSpeaker+'</span>':'';const _pg=item.tlSqPg?'<span class="pbadge">p.'+item.tlSqPg+'</span>':'';return '<div style="margin-top:6px;border-left:3px solid #1D9E75;padding-left:8px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:3px;">'+_spk+' '+_pg+'</div>':'')+'</div>';})():''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
@@ -5079,6 +5121,36 @@ function findAnchorEntry(label){
     .find(e=>(e.content||'')===(label||''));
 }
 
+// #218/#303 — One-time migration: recalculate computedSortNum for ALL offset entries on book open.
+// This fixes pre-Batch15 entries where computedSortNum was never set (so they sorted to top/bottom).
+// Also re-runs whenever an entry is saved (called from saveEntry via backfillTimelineSortNums).
+function backfillTimelineSortNums(){
+  if(!currentId)return;
+  const tlEntries=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  let changed=false;
+  // Two-pass: anchors may themselves be offset entries; iterate until stable (max 5 passes)
+  for(let pass=0;pass<5;pass++){
+    let anyChange=false;
+    tlEntries.forEach(e=>{
+      if(!e.timeOffset||!e.timeOffsetFrom)return; // not an offset entry
+      const od=e.timeOffset.startsWith('-')?'-':'+';
+      const rest=e.timeOffset.replace(/^[+-]/,'').trim().match(/^([\d.]+)\s+(\w+)/);
+      if(!rest)return;
+      const on=rest[1],ou=rest[2];
+      const anchor=findAnchorEntry(e.timeOffsetFrom);
+      if(!anchor)return;
+      // Use anchor's computedSortNum if available (handles chained offsets), else parse its evdate
+      const anchorBase=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
+      if(anchorBase===null)return;
+      const anchorFakeDate=String(Math.round(anchorBase/10000)); // year approximation for computeOffsetSortNum
+      const newVal=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
+      if(newVal!==null&&newVal!==e.computedSortNum){e.computedSortNum=newVal;anyChange=true;changed=true;}
+    });
+    if(!anyChange)break;
+  }
+  if(changed)save();
+}
+
 // Pre-fills sortKey so the new entry renders between the anchors, not at the top.
 function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
   const prevLabel=(prevName||prevDate||'previous').slice(0,40);
@@ -5154,6 +5226,13 @@ function renderMap(){
   if(!locNames.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
 
+  // #206 — Location drafts at top
+  const locDrafts=entries().filter(e=>e.type==='Location'&&e.isDraft);
+  const locDraftHTML=locDrafts.length?`<div style="margin-bottom:8px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid #f0a500;">
+    <div style="font-size:11px;font-weight:700;color:#7F4F24;margin-bottom:5px;">📝 DRAFTS (${locDrafts.length})</div>
+    ${locDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span></div>`).join('')}
+  </div>`:'';
+
   // Collect all real locations for a combined Maps link
   const realLocs=locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return d.type==='real';});
   const mapsAllUrl=realLocs.length>=1
@@ -5172,7 +5251,7 @@ function renderMap(){
     </div>`;
   }
 
-  list.innerHTML=headerHTML+locNames.map(loc=>{
+  list.innerHTML=locDraftHTML+headerHTML+locNames.map(loc=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
@@ -7419,6 +7498,7 @@ function copyClosedReports(){
         <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 100px;font-size:16px;"/>
         <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
         <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
+        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-num').value='';document.getElementById('test-ticket-note').value='';" title="Clear">× Clear</button>
       </div>
       <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken…" style="width:100%;min-height:140px;font-size:16px;line-height:1.55;"></textarea><!-- #273 -->
     </div>
