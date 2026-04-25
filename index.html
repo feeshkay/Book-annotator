@@ -5080,6 +5080,57 @@ function renderTimeline(){
   }).join('');
 }
 function openGallery(){renderGallery('all');openSheet('gallery-overlay');}
+
+// #218/#303/#325/#335 — Timeline sort helper functions
+function evdateToNum(evdate, evdateMonth, evdateDay){
+  const d=evdate||'';if(!d)return null;
+  const m=d.match(/^-?(\d{1,6})/);
+  if(m){
+    const yr=Number(m[1]);
+    const mon=evdateMonth?Number(evdateMonth):0;
+    const day=evdateDay?Number(evdateDay):0;
+    return yr*10000+mon*100+day;
+  }
+  return null;
+}
+function computeOffsetSortNum(anchorEvdate, anchorMonth, anchorDay, dir, num, unit){
+  const base=evdateToNum(anchorEvdate, anchorMonth, anchorDay);
+  if(base===null)return null;
+  const n=parseFloat(num)||0;
+  const sign=dir==='-'?-1:1;
+  const unitMap={day:1/365,days:1/365,week:7/365,weeks:7/365,month:1/12,months:1/12,year:1,years:1,decade:10,decades:10,century:100,centuries:100,millennium:1000};
+  const factor=unitMap[(unit||'').toLowerCase()]||1;
+  const yearDelta=sign*n*factor;
+  return base + yearDelta*10000;
+}
+function findAnchorEntry(label){
+  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
+    .find(e=>(e.content||'')===(label||''));
+}
+function backfillTimelineSortNums(){
+  if(!currentId)return;
+  const tlEntries=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  let changed=false;
+  for(let pass=0;pass<5;pass++){
+    let anyChange=false;
+    tlEntries.forEach(e=>{
+      if(!e.timeOffset||!e.timeOffsetFrom)return;
+      const m=e.timeOffset.match(/^([+-])([\d.]+)\s+(\w+)/);
+      if(!m)return;
+      const od=m[1],on=m[2],ou=m[3];
+      const anchor=findAnchorEntry(e.timeOffsetFrom);
+      if(!anchor)return;
+      const anchorBase=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
+      if(anchorBase===null)return;
+      const anchorFakeDate=String(Math.round(anchorBase/10000));
+      const newVal=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
+      if(newVal!==null&&newVal!==e.computedSortNum){e.computedSortNum=newVal;anyChange=true;changed=true;}
+    });
+    if(!anyChange)break;
+  }
+  if(changed)save();
+}
+
 function setGalFilter(f){
   document.querySelectorAll('[id^="gal-chip-"]').forEach(b=>b.classList.remove('active'));
   const chip=document.getElementById('gal-chip-'+f);if(chip)chip.classList.add('active');
