@@ -567,7 +567,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
-      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…"></textarea></div>
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" onblur="checkDuplicateEntry(this.value.trim())"></textarea></div>
     </div>
 
     <!-- THEME QUOTES -->
@@ -715,7 +715,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- hidden field keeps evdate assembled for backward compat -->
       <input type="hidden" id="ae-evdate"/>
       <!-- #270 — manual sort key when no date is available -->
-      <div style="margin-bottom:8px;"><button type="button" style="background:transparent;color:var(--t3);font-size:11px;padding:0;border:none;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':this.nextElementSibling.style.display===\'\'?\'none\':\'none\'; this.textContent=this.nextElementSibling.style.display===\'none\'?\'+ Manual sort order (advanced)\':\'− Manual sort order (advanced)\'">+ Manual sort order (advanced)</button><div class="fg" style="display:none;margin-top:6px;"><label>Sequence # <span style="font-weight:400;">(lower = earlier; only needed if no date)</span></label><input type="number" id="ae-sortkey" inputmode="numeric" placeholder="e.g. 1, 2, 3…"/></div></div>
+      <input type="hidden" id="ae-sortkey"/>
       <!-- #218-A — collapsed by default; #218-B — renamed -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="document.getElementById('ae-offset-block').style.display=this.checked?'':'none';"/>
@@ -1156,7 +1156,6 @@ function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
-  inferRelGender();
 }
 function rtpClear(){
   document.getElementById('ae-reltype').value='';
@@ -2494,12 +2493,14 @@ function checkSuggestions(){
       });
     }
   });
+  // #260 — only show suggestions that involve the current character
+  const filtered=sug.filter(s=>!newCharName||(s.a===newCharName||s.b===newCharName));
   const box=document.getElementById('ae-sug-box');
   const content=document.getElementById('ae-sug-content');
-  if(!sug.length){box.style.display='none';return;}
+  if(!filtered.length){box.style.display='none';return;}
   box.style.display='';
-  content.innerHTML=sug.map((s,i)=>`<span class="sug-btn" onclick="acceptSug(${i})">${s.label}</span>`).join('');
-  box._sug=sug;
+  content.innerHTML=filtered.map((s,i)=>`<span class="sug-btn" onclick="acceptSug(${i})">${s.label}</span>`).join('');
+  box._sug=filtered;
 }
 function acceptSug(i){
   const sug=document.getElementById('ae-sug-content').parentElement._sug[i];if(!sug)return;
@@ -2508,9 +2509,9 @@ function acceptSug(i){
   addRelEntry(sug.a,rt,sug.b,'Auto-suggested');
   document.getElementById('ae-sug-box').style.display='none';
 }
-function addRelEntry(a,rt,b,note){
+function addRelEntry(a,rt,b,note,autoInvolved){
   const recip=RECIPROCAL[rt]||rt;
-  book().entries.push({id:Date.now()+Math.random(),type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:[],note:note||''});
+  book().entries.push({id:Date.now()+Math.random(),type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:autoInvolved?[a,b].filter(Boolean):[],note:note||''});
   save();renderAll();
 }
 
@@ -3449,8 +3450,9 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.evdate=assembled||'';
     entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
     entry.importance=document.getElementById('ae-imp').value;
-    // Store offset
-    if(on){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}
+    // Store offset — #309: clear if toggle is unchecked
+    if(offsetActive){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}
+    else{delete entry.timeOffset;delete entry.timeOffsetFrom;}
     // #303 — compute numeric sort value from anchor so entry lands in correct position
     if(offsetActive && oe){
       const anchor=findAnchorEntry(oe);
@@ -3489,13 +3491,14 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.relB=document.getElementById('ae-relb').value;
     // #320 — auto-tag both chars in involved
     if(entry.relA||entry.relB)entry.involved=[...new Set([entry.relA,entry.relB].filter(Boolean))];
-    // Gender inference from relationship type — Char A only (no auto-flip for B)
+    // #185 — Gender inference: confirm for BOTH chars, never auto-set
     const inferredGender=REL_GENDER_MAP[entry.relType];
     if(inferredGender&&entry.relA){
       const aEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relA);
-      if(aEntry&&!aEntry.gender)aEntry.gender=inferredGender;
+      if(aEntry&&!aEntry.gender){
+        if(confirm(`Set ${entry.relA}'s gender to ${inferredGender}?\n(Tap Cancel for same-sex or non-binary couples.)`))aEntry.gender=inferredGender;
+      }
     }
-    // Char B: offer reciprocal gender with a confirmation so same-sex/non-binary couples work
     if(entry.relB){
       const bEntry=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===entry.relB);
       if(bEntry&&!bEntry.gender){
@@ -3605,7 +3608,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isChar&&!editId){
     [...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')].forEach(row=>{
       const rt=row.querySelector('.qr-type').value;const ch=row.querySelector('.qr-char').value;if(!rt||!ch)return;
-      addRelEntry(cn,rt,ch,'');
+      addRelEntry(cn,rt,ch,'',true);
     });
     // #248 — Save quick characteristics as separate Characteristic entries tagged to this character
     [...document.querySelectorAll('#ae-quick-traits-list [data-qt-id]')].forEach(row=>{
@@ -3734,6 +3737,18 @@ function deleteLocCard(name){
   save();renderMap();
 }
 // ── Duplicate character detection ─────────────────────────────
+function checkDuplicateEntry(name){
+  if(!name||!currentId)return false;
+  const type=document.getElementById('ae-type')?.value||'';
+  if(CT.includes(type)){checkDuplicateChar(name);return;}// handled separately
+  const editId=document.getElementById('ae-edit-id')?.value||'';
+  const existing=entries().filter(e=>e.type===type&&(e.content||'').toLowerCase()===name.toLowerCase()&&(!editId||String(e.id)!==editId));
+  if(existing.length){
+    const choice=confirm(`A ${type} entry named "${existing[0].content}" already exists.\n\nOK = edit existing\nCancel = continue`);
+    if(choice){closeSheet('ae-overlay');editEntry(existing[0].id);return true;}
+  }
+  return false;
+}
 function checkDuplicateChar(name){
   if(!name||!currentId)return false;
   const editId=document.getElementById('ae-edit-id')?.value||'';
@@ -4186,7 +4201,7 @@ function renderQuotes(){
     const icon=e.type==='Event'?'⭐':'📅';
     const pg=e.tlSqPg||e.pageNum||'';
     const spk=e.tlSpeaker?`<span style="color:var(--t3);font-weight:500;">— ${e.tlSpeaker}</span>`:'';
-    return `<div class="entry-card" style="border-left:3px solid #534AB7;">
+    return `<div class="ec quote">
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">${icon} Supporting quote · ${esc(e.content||'')}${pg?` · p.${pg}`:''}${e.chapNum?` · Ch.${e.chapNum}`:''}</div>
       <div style="font-size:13px;font-style:italic;line-height:1.45;"><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.tlSq}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span></div>
       ${spk?`<div style="margin-top:4px;font-size:12px;">${spk}</div>`:''}
@@ -4196,7 +4211,7 @@ function renderQuotes(){
   const themeHTML=themeFiltered.map(({parent,q})=>{
     const spk=q.speaker?`<span style="color:var(--t3);font-weight:500;">— ${q.speaker}</span>`:'';
     const pg=q.page||'';
-    return `<div class="entry-card" style="border-left:3px solid var(--am);">
+    return `<div class="ec" style="border-left-color:var(--am);">
       <div style="font-size:10px;color:var(--t3);margin-bottom:4px;">🎯 Theme · ${esc(parent.content||'')}${pg?` · p.${pg}`:''}</div>
       <div style="font-size:13px;font-style:italic;line-height:1.45;"><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${q.text}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span></div>
       ${spk?`<div style="margin-top:4px;font-size:12px;">${spk}</div>`:''}
@@ -6313,7 +6328,7 @@ function showMyMapsInstructions(filename){
       <div id="mymaps-instr-body" style="font-size:13px;line-height:1.6;color:var(--text);"></div>
       <div class="fa" style="margin-top:14px;">
         <button class="btn" onclick="document.getElementById('mymaps-instr-overlay').classList.remove('open')">Close</button>
-        <button class="btn btn-primary" onclick="openLink('https://www.google.com/mymaps')">Open My Maps</button>
+        <button class="btn btn-primary" onclick="openLink('https://mymaps.google.com')">Open My Maps</button>
       </div>
     </div>`;
     document.body.appendChild(ov);
@@ -6321,7 +6336,7 @@ function showMyMapsInstructions(filename){
   document.getElementById('mymaps-instr-body').innerHTML=`
     <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Your file <strong>${filename||'locations.kml'}</strong> has been downloaded. To see your book's locations on a real map:</div>
     <ol style="padding-left:20px;margin:0;">
-      <li style="margin-bottom:8px;">Go to <span style="color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="openLink('https://www.google.com/mymaps')">mymaps.google.com</span> and sign in.</li>
+      <li style="margin-bottom:8px;">Go to <span style="color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="openLink('https://mymaps.google.com')">mymaps.google.com</span> and sign in.</li>
       <li style="margin-bottom:8px;">Click <strong>"+ Create a new map"</strong>.</li>
       <li style="margin-bottom:8px;">Under the first layer, click <strong>"Import"</strong>.</li>
       <li style="margin-bottom:8px;">Upload the <strong>.kml</strong> file you just downloaded.</li>
@@ -6640,6 +6655,8 @@ function renderGuide(){
 // ═══════════════════════════════════════════════════════════════
 function suggestFamilyConnections(){
   if(!currentId)return;
+  // #260 — scope to active char if entry form is open
+  const _scopeChar=(document.getElementById('ae-overlay')?.classList.contains('open')?document.getElementById('ae-cn')?.value.trim():'')||'';
   const all=entries();
   const rels=all.filter(e=>e.type==='Relationship');
   const suggestions=[];
@@ -6853,7 +6870,8 @@ function suggestFamilyConnections(){
 
   // Deduplicate
   const seen=new Set();
-  const unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
+  let unique=suggestions.filter(s=>{const k=[s.a,s.b,s.type].sort().join('|');if(seen.has(k))return false;seen.add(k);return true;});
+  if(_scopeChar)unique=unique.filter(s=>s.a===_scopeChar||s.b===_scopeChar);
 
   if(!unique.length){alert('No new connections found.\n\nThis feature suggests connections by inferring from existing relationships you\'ve added. To get suggestions, try adding more of these first:\n\n• Family — Mother/Father/Parent/Sibling/Spouse links between characters (then it suggests cousins, grandparents, aunts/uncles, great-aunts/uncles, in-laws, step-parents, step-siblings)\n• Professional — Employer/Employee or Teacher/Student links (then it suggests colleagues and fellow students)\n• Same last name — characters that share a last name AND share a 3rd-party connection are flagged as possibly related');return;}
 
