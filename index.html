@@ -895,7 +895,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- COMMON FIELDS -->
     <div id="ae-common">
       <div class="divider"></div>
-      <div class="r2" id="ae-chappage" style="align-items:end;">
+      <div class="r2" id="ae-chappage">
         <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
       </div>
@@ -1151,14 +1151,12 @@ function rtpRender(filter){
 function rtpOpen(){
   const p=document.getElementById('ae-reltype-panel');if(!p)return;
   p.style.display='';
-  // #308 — always render full list on open (don't filter by current value in the input)
   rtpRender('');
 }
 function rtpOnInput(){rtpRender(document.getElementById('ae-reltype-search').value);}
 function rtpPick(val){
   document.getElementById('ae-reltype').value=val;
   document.getElementById('ae-reltype-search').value=val;
-  // #308 — collapse panel after selection
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
   inferRelGender();
 }
@@ -1170,7 +1168,6 @@ function rtpClear(){
 function rtpSet(val){
   document.getElementById('ae-reltype').value=val||'';
   document.getElementById('ae-reltype-search').value=val||'';
-  // Pre-render so active chip is correct when user taps to open; panel stays hidden
   rtpRender('');
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
@@ -2229,7 +2226,6 @@ function convertRefToBook(bookId,refId){
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
   document.getElementById('bs-title').textContent=book().title;
-  // #218/#303 — backfill computedSortNum for all offset entries so old entries sort correctly
   backfillTimelineSortNums();
   show('book-screen','lib-screen');buildTabs();buildTypeSelect();populateEventTypePicks();renderAll();
 }
@@ -2401,7 +2397,6 @@ if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
     document.querySelectorAll('.qr-char-list').forEach(l=>{
       if(!l.parentElement.contains(ev.target))l.style.display='none';
     });
-    // #308 — close rel-type panel when clicking outside it
     const rtpPanel=document.getElementById('ae-reltype-panel');
     const rtpWrap=document.getElementById('ae-reltype-wrap');
     if(rtpPanel&&rtpWrap&&!rtpWrap.contains(ev.target))rtpPanel.style.display='none';
@@ -2626,9 +2621,8 @@ function onTypeChange(){
       cddSet('ae-rela','');
       cddSet('ae-relb','');
     }
-    // #246 — Render the searchable rel-type picker (panel stays collapsed until user clicks)
+    // #246 — Render the searchable rel-type picker (panel hidden until tapped)
     rtpRender('');
-    // #308 — panel hidden until user taps search; pre-rendered so chips are ready
     const _rtp=document.getElementById('ae-reltype-panel');if(_rtp)_rtp.style.display='none';
     document.getElementById('ae-quick-add-b').style.display='none';
     window._cddRelChangeHook=function(){
@@ -2741,10 +2735,10 @@ function addTraitQuoteRow(data){
     <button type="button" onclick="removeTraitQuoteRow(this)" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
   </div>
   <input type="text" class="tsq-text" placeholder="Quote from the book that shows this trait…" value="${(data?.text||'').replace(/"/g,'&quot;')}" style="font-size:13px;width:100%;margin-bottom:5px;"/>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;">
-    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;" oninput="traitQuotePgSync(this)"/>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <input type="text" class="tsq-pg" placeholder="pg(s)" value="${data?.pg||''}" style="width:70px;font-size:13px;"/>
     <input type="number" class="tsq-ch" placeholder="ch." value="${data?.ch||''}" min="1" style="width:60px;font-size:13px;"/>
-    <select class="tsq-speaker" style="flex:1;min-width:100px;font-size:13px;"><option value="">— Speaker —</option>${buildTraitSpeakerOpts(data?.speaker||'')}</select>
+    <input type="text" class="tsq-speaker" placeholder="Speaker (optional)" value="${data?.speaker||''}" style="flex:1;min-width:100px;font-size:13px;"/>
   </div>`;
   list.appendChild(div);
   renumberTraitQuoteRows();
@@ -2752,20 +2746,6 @@ function addTraitQuoteRow(data){
 function removeTraitQuoteRow(btn){
   btn.closest('[data-tsq-id]').remove();
   renumberTraitQuoteRows();
-}
-// #315/#316 — pg→ch autosync for trait quote rows
-function traitQuotePgSync(pgInput){
-  const pg=parseInt(pgInput.value)||0;if(!pg)return;
-  const chInput=pgInput.closest('[data-tsq-id]')?.querySelector('.tsq-ch');
-  if(!chInput||chInput.value)return;
-  const chaps=book()?.chapters;
-  if(chaps&&chaps.length){const m=chaps.find(c=>pg>=+(c.start||0)&&pg<=(+(c.end||9999)));if(m)chInput.value=m.num||'';}
-  else{if(!chInput.value){const estCh=getChapFromPage(String(pg));if(estCh)chInput.value=estCh;}}
-}
-// #315/#316 — build speaker options from character list
-function buildTraitSpeakerOpts(selected){
-  const chars=sortedChars().map(c=>c.name);
-  return ['Narrator / Author',...chars].map(n=>`<option value="${esc(n)}"${n===selected?' selected':''}>${n}</option>`).join('');
 }
 function renumberTraitQuoteRows(){
   const list=document.getElementById('ae-sq-list');if(!list)return;
@@ -2858,14 +2838,13 @@ function openAddTypeForLoc(type){
   const titles={'Characteristic':'Add trait at ','Quote':'Add quote at ','Event':'Add event at ','Theme':'Add theme at ','Question':'Add question at ','Character':'Add character at '};
   document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add at ')+name;
   document.getElementById('ae-type').value=type;onTypeChange();
-  // #241 loc — pre-fill location after onTypeChange has settled
+  // #241 loc — pre-fill location searchable dropdown
   setTimeout(()=>{ prefillLocDropdown(name); },150);
   openSheet('ae-overlay');
 }
 // #241 loc — helper that reliably sets both the hidden select and the visible search input
 function prefillLocDropdown(name){
   if(!name)return;
-  // Use selectLocOption so both fields are set consistently and dropdown stays closed
   selectLocOption(name,name);
 }
 // #240 / #241 loc — FAB on location profile (pre-fills current location)
@@ -3414,12 +3393,12 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     if(offsetActive && oe){
       const anchor=findAnchorEntry(oe);
       if(anchor){
-        // #303 — use anchor's computedSortNum if available (handles chained offsets); fall back to evdate
         const anchorNum=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
         const anchorFakeDate=anchorNum!=null?String(Math.round(anchorNum/10000)):anchor.evdate;
         const computed=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
         if(computed!==null){
           entry.computedSortNum=computed;
+          // Also back-fill a human-readable computed year if no explicit year given
           if(!evYear){
             const yr=Math.round(computed/10000);
             entry.evdate=String(yr);entry.evdateYear=String(yr);
@@ -3586,7 +3565,6 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
 
   save();
-  // #218/#303 — recalculate offset sort nums so new/edited entries land in correct position
   if(['Timeline','Event','Date/Period'].includes(type))backfillTimelineSortNums();
   closeSheet('ae-overlay');renderAll();buildTypeSelect();
   // Feature 3: Navigate to the view that best fits the saved entry type
@@ -3849,11 +3827,10 @@ function editEntry(id){
     }
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}
-      // #303 — populate structured fields; #377 — don't pre-fill year for offset entries (it's computed)
+      // #303 — populate structured fields
       if(e.type==='Timeline'){
-        // Only show year if this entry has an explicit year (not purely derived from offset)
         const hasOffset=!!(e.timeOffset&&e.timeOffsetFrom);
-        document.getElementById('ae-evdate-year').value=hasOffset?'':( e.evdateYear||e.evdate||'');
+        document.getElementById('ae-evdate-year').value=hasOffset?'':(e.evdateYear||e.evdate||'');
         const evMonEl=document.getElementById('ae-evdate-month');if(evMonEl)evMonEl.value=e.evdateMonth||'';
         document.getElementById('ae-evdate-day').value=e.evdateDay||'';
       }
@@ -4091,7 +4068,6 @@ function renderQuotes(){
     +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
     +`<button class="chip${qFilter==='narrator'?' active':''}" onclick="setQuoteFilter('narrator')">Narrator</button>`;
   let quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&!e.isDraft);
-  // #206 — drafts collected separately, hidden behind toggle
   const quoteDrafts=entries().filter(e=>['Quote','Line/stanza','Narrator quote','Dialogue'].includes(e.type)&&e.isDraft);
   // #253 — include Timeline/Event entries that have a supporting quote
   const tlQuotes=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.tlSq);
@@ -4128,15 +4104,7 @@ function renderQuotes(){
   }
   if(!quotes.length&&!tlFiltered.length&&!themeFiltered.length&&!quoteDrafts.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  // #206 — drafts collapsed by default; hidden from main list
-  const draftHTML=quoteDrafts.length?`\x3Cdetails style="margin-bottom:10px;">
-    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;">
-      <span style="flex:1;">📝 Drafts (${quoteDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>
-    </summary>
-    <div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">
-      ${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}
-    </div>
-  \x3C/details>`:'';
+  const draftHTML=quoteDrafts.length?`\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts (${quoteDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">${quoteDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}</div>\x3C/details>`:'';
   const tlHTML=tlFiltered.map(e=>{
     const icon=e.type==='Event'?'⭐':'📅';
     const pg=e.tlSqPg||e.pageNum||'';
@@ -4171,7 +4139,7 @@ function renderChars(){
   const chars=entries().filter(e=>CT.includes(e.type));
   if(!chars.length){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  // #338 — main characters on top, the rest alphabetical (case-insensitive)
+  // #338 — main characters on top, the rest alphabetical
   const roleOrder={main:0,antagonist:1,side:1,narrator:1,minor:2,stranger:2,'':3};
   chars.sort((a,b)=>{
     const ra=roleOrder[a.charRole||'']??3;const rb=roleOrder[b.charRole||'']??3;
@@ -4790,12 +4758,9 @@ function setupWebDrag(){
     [...g.querySelectorAll('image')].forEach(im=>{im.setAttribute('x',nodeData.x-nodeR);im.setAttribute('y',nodeData.y-nodeR);});
     const texts=[...g.querySelectorAll('text')];
     texts.forEach(t=>{
-      // #298/#369 — use data attribute to reliably identify initials text
       if(t.getAttribute('data-node-initials')==='1'){t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y);return;}
-      // Deceased emoji
       if(t.textContent==='🪦'){t.setAttribute('x',nodeData.x+nodeR-4);t.setAttribute('y',nodeData.y-nodeR+6);}
-      // Name label below node
-      else {t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
+      else{t.setAttribute('x',nodeData.x);t.setAttribute('y',nodeData.y+nodeR+10);[...t.querySelectorAll('tspan')].forEach(ts=>ts.setAttribute('x',nodeData.x));}
     });
     // Redraw clipPath circle for photo (if any)
     const cid='wc'+nodeData.name.replace(/[^a-z0-9]/gi,'_');
@@ -5006,13 +4971,11 @@ function renderTimeline(){
     if(da!==null&&db!==null){
       if(typeof da==='number'&&typeof db==='number'){
         if(da!==db)return da-db;
-        // #325 — same numeric sort: use chapter then page as tiebreaker
         return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
       }
       return String(da).localeCompare(String(db));
     }
     if(da!==null)return -1;if(db!==null)return 1;
-    // #325 — undated tiebreak
     return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
   });
 
@@ -5036,7 +4999,229 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'<span class="cbadge" style="font-size:10px;">— '+item.tlSpeaker+'</span>':'';const _pg=item.tlSqPg?'<span class="pbadge">p.'+item.tlSqPg+'</span>':'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:9px 11px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+_spk+((_spk&&_pg)?' ':'')+_pg+'</div>':'')+'</div>';})():''} in this book</span>
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);border-left:3px solid #1D9E75;padding:9px 11px;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
+        ${item.note?`<div class="enote">${item.note}</div>`:''}
+        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
+      </div>
+    </div>${plusBtn}`;
+  };
+  // #270 — render dated items, then undated bucket at bottom
+  let html=`<div style="padding-left:5px;">`;
+  html+=dated.map((item,i)=>renderItem(item,i,dated)).join('');
+  if(undated.length){
+    html+=`<div style="margin:14px 0 6px;font-size:11px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-left:5px;">
+      <span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span>
+      📋 Undated / order unknown
+      <span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span>
+    </div>`;
+    html+=undated.map((item,i)=>renderItem(item,i,undated)).join('');
+  }
+  html+='</div>';
+  list.innerHTML=html;
+}
+// #314 — timeline location filter
+function setTlLocFilter(loc){
+  const bar=document.getElementById('tl-loc-filter');
+  if(bar)bar.dataset.active=loc;
+  renderTimeline();
+}
+// #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
+// Shows a custom 3-button modal (After / Before / Exit) instead of binary confirm().
+// #218-C — Move a timeline entry up (-1) or down (+1) relative to its neighbours.
+// Assigns sortKey values so the swap persists across renders.
+function moveTlEntry(id, dir){
+  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  // Build same sort as renderTimeline
+  function localSort(a,b){
+    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+    if(sa!==sb)return sa-sb;
+    const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+    const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+    if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
+    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  }
+  const sorted=[...all].sort(localSort);
+  const idx=sorted.findIndex(e=>e.id===id);
+  if(idx<0)return;
+  const swapIdx=idx+dir;
+  if(swapIdx<0||swapIdx>=sorted.length)return;
+  // Assign explicit sortKeys to all items so order is stable after swap
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  // Swap keys
+  const tmp=sorted[idx].sortKey;
+  sorted[idx].sortKey=sorted[swapIdx].sortKey;
+  sorted[swapIdx].sortKey=tmp;
+  save();
+  // Suggest date update
+  const moved=sorted.find(e=>e.id===id);
+  const neighbour=sorted.find(e=>e.id===sorted[swapIdx].id)||sorted[idx];
+  if(moved&&neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
+    const nDate=neighbour.evdate||'';
+    if(nDate&&confirm(`Entry moved. Would you like to update its date to align with its new position?\n\nNeighbour date: ${nDate}\n\nTap OK to open and edit, or Cancel to keep as-is.`)){
+      editEntry(id);
+    }
+  }
+  renderTimeline();
+}
+
+// ── Timeline sort helpers (global) ──────────────────────────────// Convert an evdate string to a sortable number. Returns null for undated.
+function evdateToNum(evdate, evdateMonth, evdateDay){
+  const d=evdate||'';
+  if(!d)return null;
+  const m=d.match(/^-?(\d{1,6})/);
+  if(m)return Number(m[1])*10000
+    +(evdateMonth?Number(evdateMonth)*100:0)
+    +(evdateDay?Number(evdateDay):0);
+  return null; // narrative label — use string compare elsewhere
+}
+
+// Unit → approximate days multiplier
+const UNIT_DAYS={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};
+
+// Given an anchor entry and offset fields, compute the resulting numeric sort value.
+// Returns null if anchor has no numeric date.
+function computeOffsetSortNum(anchorEvdate, anchorMonth, anchorDay, dir, num, unit){
+  const base=evdateToNum(anchorEvdate, anchorMonth, anchorDay);
+  if(base===null)return null;
+  const days=(parseFloat(num)||0)*( UNIT_DAYS[unit]||1);
+  const deltaYears=days/365.25;
+  const sign=(dir==='-')?-1:1;
+  return base + sign*deltaYears*10000;
+}
+
+// Find an anchor timeline entry by its content label (stored in timeOffsetFrom).
+function findAnchorEntry(label){
+  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
+    .find(e=>(e.content||'')===(label||''));
+}
+
+// Pre-fills sortKey so the new entry renders between the anchors, not at the top.
+function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
+  const prevLabel=(prevName||prevDate||'previous').slice(0,40);
+  const nextLabel=(nextName||nextDate||'next').slice(0,40);
+  // Build modal
+  const existing=document.getElementById('tl-insert-modal');if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='tl-insert-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML=`<div style="background:var(--bg);color:var(--text);border-radius:var(--r);max-width:340px;width:100%;padding:18px 18px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Where does this new entry go?</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.4;">Pick an anchor — the new entry will appear just next to it on the timeline.</div>
+    <button type="button" id="tl-ins-after" style="display:block;width:100%;padding:10px 12px;margin-bottom:8px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬇️ <strong>After</strong> "${prevLabel}"</button>
+    <button type="button" id="tl-ins-before" style="display:block;width:100%;padding:10px 12px;margin-bottom:12px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);border-radius:var(--r);font-size:13px;text-align:left;cursor:pointer;">⬆️ <strong>Before</strong> "${nextLabel}"</button>
+    <button type="button" id="tl-ins-exit" style="display:block;width:100%;padding:8px 12px;border:none;background:transparent;color:var(--t2);font-size:12px;cursor:pointer;">Exit — don't add anything</button>
+  </div>`;
+  document.body.appendChild(modal);
+  const close=()=>{modal.remove();};
+  document.getElementById('tl-ins-exit').onclick=close;
+  modal.onclick=(e)=>{if(e.target===modal)close();};
+  const pick=(useAfter)=>{
+    close();
+    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
+    document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
+    document.getElementById('ae-type').value='Timeline';onTypeChange();
+    // Compute sortKey that slots new entry between anchors using proper sort
+    const anchorItems=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
+      const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+      if(sa!==sb)return sa-sb;
+      // Use computedSortNum for offset entries
+      const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+      const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+      if(da!==null&&db!==null&&typeof da==='number'&&typeof db==='number')return da-db;
+      return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+    });
+    const prevIdx=anchorItems.findIndex(e=>(e.content||'')===prevName);
+    let newSort=null;
+    if(prevIdx>=0&&prevIdx<anchorItems.length-1){
+      const prev=anchorItems[prevIdx],next=anchorItems[prevIdx+1];
+      const ps=prev.sortKey!=null?+prev.sortKey:prevIdx*10;
+      const ns=next.sortKey!=null?+next.sortKey:(prevIdx+1)*10;
+      newSort=useAfter?ps+(ns-ps)*0.33:ps+(ns-ps)*0.67;
+      // Ensure all anchors have sortKey so ordering is stable
+      anchorItems.forEach((e,i)=>{if(e.sortKey==null)e.sortKey=i*10;});
+      save();
+    }
+    setTimeout(()=>{
+      const t=document.getElementById('ae-offset-toggle');
+      if(t){t.checked=true;const blk=document.getElementById('ae-offset-block');if(blk)blk.style.display='';}
+      const evSel=document.getElementById('ae-offset-event');
+      const anchorName=useAfter?prevName:nextName;
+      const anchorDate=useAfter?prevDate:nextDate;
+      if(evSel&&(anchorName||anchorDate)){
+        const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
+        if(opt)evSel.value=opt.value;
+      }
+      const dir=document.getElementById('ae-offset-dir');if(dir)dir.value=useAfter?'+':'-';
+      const sk=document.getElementById('ae-sortkey');if(sk&&newSort!=null)sk.value=newSort;
+    },80);
+    openSheet('ae-overlay');
+  };
+  document.getElementById('tl-ins-after').onclick=()=>pick(true);
+  document.getElementById('tl-ins-before').onclick=()=>pick(false);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCATIONS
+// ═══════════════════════════════════════════════════════════════
+// #218/#303 — Timeline sort helper functions
+function evdateToNum(evdate, evdateMonth, evdateDay){
+  const d=evdate||'';if(!d)return null;
+  const m=d.match(/^-?(\d{1,6})/);
+  if(m){return Number(m[1])*10000+(evdateMonth?Number(evdateMonth):0)*100+(evdateDay?Number(evdateDay):0);}
+  return null;
+}
+function computeOffsetSortNum(anchorEvdate,anchorMonth,anchorDay,dir,num,unit){
+  const base=evdateToNum(anchorEvdate,anchorMonth,anchorDay);if(base===null)return null;
+  const n=parseFloat(num)||0;const sign=dir==='-'?-1:1;
+  const unitMap={day:1/365,days:1/365,week:7/365,weeks:7/365,month:1/12,months:1/12,year:1,years:1,decade:10,decades:10,century:100,centuries:100,millennium:1000};
+  return base+(sign*n*(unitMap[(unit||'').toLowerCase()]||1))*10000;
+}
+function findAnchorEntry(label){
+  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).find(e=>(e.content||'')===(label||''));
+}
+function backfillTimelineSortNums(){
+  if(!currentId)return;
+  const tl=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  let changed=false;
+  for(let pass=0;pass<5;pass++){
+    let any=false;
+    tl.forEach(e=>{
+      if(!e.timeOffset||!e.timeOffsetFrom)return;
+      const m=e.timeOffset.match(/^([+-])([\d.]+)\s+(\w+)/);if(!m)return;
+      const anchor=findAnchorEntry(e.timeOffsetFrom);if(!anchor)return;
+      const base=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
+      if(base===null)return;
+      const v=computeOffsetSortNum(String(Math.round(base/10000)),'','',m[1],m[2],m[3]);
+      if(v!==null&&v!==e.computedSortNum){e.computedSortNum=v;any=true;changed=true;}
+    });
+    if(!any)break;
+  }
+  if(changed)save();
+}
+function renderMap(){
+  const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
+  const locEntries=entries().filter(e=>e.type==='Location');
+  const locDrafts=locEntries.filter(e=>e.isDraft);
+  const draftNames=new Set(locDrafts.map(e=>e.content));
+  const locNames=[...new Set([...locEntries.filter(e=>!e.isDraft).map(e=>e.content),...getLocations().map(l=>l.name),...entries().filter(e=>e.location).map(e=>e.location)])].filter(n=>!draftNames.has(n));
+  if(!locNames.length&&!locDrafts.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  const locDraftHTML=locDrafts.length?`\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts (${locDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">${locDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}</div>\x3C/details>`:'';
+
+  // Collect all real locations for a combined Maps link
+  const realLocs=locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return d.type==='real';});
+  const mapsAllUrl=realLocs.length>=1
+    ? 'https://www.google.com/maps/search/?api=1&query='+realLocs.map(l=>{const d=getLocations().find(x=>x.name===l)||{};return encodeURIComponent([l,d.city,d.country].filter(Boolean).join(', '));}).join('|')
+    : null;
+  // Build a search-friendly multi-location Maps URL (opens search for first, links all)
+  const mapsSearchUrl=realLocs.length>=1
+    ? 'https://www.google.com/maps/search/'+encodeURIComponent(realLocs.slice(0,5).map(l=>{const d=getLocations().find(x=>x.name===l)||{};return [l,d.city,d.country].filter(Boolean).join(', ');}).join(' | '))
+    : null;
+
+  let headerHTML='';
+  if(realLocs.length>0){
+    headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;font-weight:600;flex:1;">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} in this book</span>
       <button class="btn btn-sm" onclick="openLink('${mapsSearchUrl}')">🗺️ View all in Maps</button>
     </div>`;
   }
@@ -5080,57 +5265,6 @@ function renderTimeline(){
   }).join('');
 }
 function openGallery(){renderGallery('all');openSheet('gallery-overlay');}
-
-// #218/#303/#325/#335 — Timeline sort helper functions
-function evdateToNum(evdate, evdateMonth, evdateDay){
-  const d=evdate||'';if(!d)return null;
-  const m=d.match(/^-?(\d{1,6})/);
-  if(m){
-    const yr=Number(m[1]);
-    const mon=evdateMonth?Number(evdateMonth):0;
-    const day=evdateDay?Number(evdateDay):0;
-    return yr*10000+mon*100+day;
-  }
-  return null;
-}
-function computeOffsetSortNum(anchorEvdate, anchorMonth, anchorDay, dir, num, unit){
-  const base=evdateToNum(anchorEvdate, anchorMonth, anchorDay);
-  if(base===null)return null;
-  const n=parseFloat(num)||0;
-  const sign=dir==='-'?-1:1;
-  const unitMap={day:1/365,days:1/365,week:7/365,weeks:7/365,month:1/12,months:1/12,year:1,years:1,decade:10,decades:10,century:100,centuries:100,millennium:1000};
-  const factor=unitMap[(unit||'').toLowerCase()]||1;
-  const yearDelta=sign*n*factor;
-  return base + yearDelta*10000;
-}
-function findAnchorEntry(label){
-  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type))
-    .find(e=>(e.content||'')===(label||''));
-}
-function backfillTimelineSortNums(){
-  if(!currentId)return;
-  const tlEntries=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
-  let changed=false;
-  for(let pass=0;pass<5;pass++){
-    let anyChange=false;
-    tlEntries.forEach(e=>{
-      if(!e.timeOffset||!e.timeOffsetFrom)return;
-      const m=e.timeOffset.match(/^([+-])([\d.]+)\s+(\w+)/);
-      if(!m)return;
-      const od=m[1],on=m[2],ou=m[3];
-      const anchor=findAnchorEntry(e.timeOffsetFrom);
-      if(!anchor)return;
-      const anchorBase=anchor.computedSortNum!=null?anchor.computedSortNum:evdateToNum(anchor.evdate,anchor.evdateMonth,anchor.evdateDay);
-      if(anchorBase===null)return;
-      const anchorFakeDate=String(Math.round(anchorBase/10000));
-      const newVal=computeOffsetSortNum(anchorFakeDate,'','',od,on,ou);
-      if(newVal!==null&&newVal!==e.computedSortNum){e.computedSortNum=newVal;anyChange=true;changed=true;}
-    });
-    if(!anyChange)break;
-  }
-  if(changed)save();
-}
-
 function setGalFilter(f){
   document.querySelectorAll('[id^="gal-chip-"]').forEach(b=>b.classList.remove('active'));
   const chip=document.getElementById('gal-chip-'+f);if(chip)chip.classList.add('active');
@@ -6941,8 +7075,7 @@ function logTestResult(result){
     }
   }
   saveReports(reports);
-  // #277 — keep ticket # so user can quickly re-test or log another note on same ticket
-  noteEl.value='';
+  noteEl.value=''; // #277 — keep ticket # so user can log another result on same ticket
   renderReportList();
 }
 function openReportIssue(){
@@ -7340,7 +7473,7 @@ function copyClosedReports(){
         <input type="text" id="test-ticket-num" placeholder="# e.g. 217" style="flex:0 0 100px;font-size:16px;"/>
         <button type="button" class="btn btn-sm" style="background:#D4F0DC;color:#1A6B3A;border:0.5px solid #6FCB91;flex:1;" onclick="logTestResult('pass')">✅ works</button>
         <button type="button" class="btn btn-sm" style="background:#FEF0D4;color:#7F4F24;border:0.5px solid #E8853C;flex:1;" onclick="logTestResult('fail')">⚠️ needs fixes</button>
-        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-note').value='';" title="Cancel / clear note">× Cancel</button>
+        <button type="button" class="btn btn-sm" style="color:var(--t3);flex:0 0 auto;" onclick="document.getElementById('test-ticket-note').value='';" title="Clear note">× Cancel</button>
       </div>
       <textarea id="test-ticket-note" placeholder="Optional note — describe what works or what's still broken…" style="width:100%;min-height:140px;font-size:16px;line-height:1.55;"></textarea><!-- #273 -->
     </div>
