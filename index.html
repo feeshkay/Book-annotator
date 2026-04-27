@@ -577,7 +577,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
-      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" onblur="checkDuplicateEntry(this.value.trim())"></textarea></div>
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" onblur="checkDuplicateEntry(this.value.trim());if(document.getElementById('ae-type')?.value==='Location')stdLocAutofill();"></textarea></div>
     </div>
 
     <!-- THEME QUOTES -->
@@ -886,7 +886,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Real or fictional?</label>
           <select id="ae-loc-type" onchange="onLocTypeChange()" ><option value="real">Real place</option><option value="fictional">Fictional place</option><option value="unknown">Unknown</option></select>
         </div>
-        <div class="fg"><label>Building / Place name</label><input type="text" id="ae-loc-building" placeholder="e.g. Hogwarts, 10 Downing St"/></div>
+        <div class="fg"><label>Building / Place name</label><input type="text" id="ae-loc-building" placeholder="e.g. Hogwarts, 10 Downing St" onblur="stdLocAutofill()"/></div>
       </div>
       <div class="fg" id="ae-loc-street-row" style="display:none;">
         <label>Street address <span style="font-weight:400;">(real places only)</span></label>
@@ -895,6 +895,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="r2">
         <div class="fg"><label>City / Region</label><input type="text" id="ae-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-loc-city','ae-loc-country')"/></div>
         <div class="fg"><label>Country</label><input type="text" id="ae-loc-country" placeholder="e.g. England"/></div>
+      </div>
+      <div id="ae-loc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:4px 0 8px;padding:7px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);">
+        <span id="ae-loc-autofill-msg"></span>
       </div>
       <div class="fg"><label>Era / Time period at book</label><input type="text" id="ae-loc-era" placeholder="e.g. 1940s wartime London"/></div>
       <div class="fg"><label>Notes on location</label><textarea id="ae-loc-notes" placeholder="Atmosphere, significance, what happened here…" style="min-height:50px;"></textarea></div>
@@ -928,6 +931,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             </div>
             <div class="fg"><label>Building / place</label><input type="text" id="ae-new-loc-building" placeholder="e.g. 10 Downing St"/></div>
           </div>
+          <div class="fg"><label>Street address <span style="font-weight:400;color:var(--t3);">(real places)</span></label><input type="text" id="ae-new-loc-street" placeholder="e.g. 221B Baker Street"/></div>
           <div class="r2">
             <div class="fg"><label>City / region</label><input type="text" id="ae-new-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-new-loc-city','ae-new-loc-country')"/></div>
             <div class="fg"><label>Country</label><input type="text" id="ae-new-loc-country" placeholder="e.g. England"/></div>
@@ -2150,18 +2154,30 @@ async function quickLocAutofill(){
   const name=(document.getElementById('ae-new-loc-name')?.value||'').trim();
   const locType=document.getElementById('ae-new-loc-type')?.value;
   if(!name||locType!=='real')return;
+  const street=document.getElementById('ae-new-loc-street')?.value.trim();
   const city=document.getElementById('ae-new-loc-city')?.value.trim();
   const country=document.getElementById('ae-new-loc-country')?.value.trim();
-  if(city&&country)return;
+  if(street&&city&&country)return;
   try{
     const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
     const d=await r.json();
     if(d&&d.length){
-      const results=d.map(item=>{const a=item.address||{};return{city:a.city||a.town||a.village||a.state||'',country:a.country||''};}).filter(x=>x.city||x.country);
+      const results=d.map(item=>{
+        const a=item.address||{};
+        const houseAndRoad=[a.house_number,a.road].filter(Boolean).join(' ');
+        return{
+          street:houseAndRoad,
+          city:a.city||a.town||a.village||a.suburb||a.state||'',
+          country:a.country||''
+        };
+      }).filter(x=>x.city||x.country||x.street);
       if(!results.length)return;
       _quickLocAutofillData=results;
-      const picks=results.slice(0,3).map((res,i)=>`<button class="btn btn-sm" onclick="quickLocApplyAutofill(${i})" style="display:inline-block;margin:2px 3px 2px 0;font-size:11px;">${[res.city,res.country].filter(Boolean).join(', ')}</button>`).join('');
-      document.getElementById('ae-new-loc-autofill-msg').innerHTML=`Which is correct? ${picks}`;
+      const picks=results.slice(0,4).map((res,i)=>{
+        const label=[res.street,res.city,res.country].filter(Boolean).join(', ').slice(0,55);
+        return `<button class="btn btn-sm" onclick="quickLocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin:3px 0;font-size:11px;padding:6px 8px;line-height:1.35;">${label||'(unknown)'}</button>`;
+      }).join('');
+      document.getElementById('ae-new-loc-autofill-msg').innerHTML=`<div style="margin-bottom:4px;font-weight:600;">Which match?</div>${picks}`;
       document.getElementById('ae-new-loc-autofill-hint').style.display='';
     }
   }catch(e){}
@@ -2169,9 +2185,11 @@ async function quickLocAutofill(){
 function quickLocApplyAutofill(idx){
   if(!_quickLocAutofillData)return;
   const res=_quickLocAutofillData[idx||0];
+  const streetEl=document.getElementById('ae-new-loc-street');
   const cityEl=document.getElementById('ae-new-loc-city');const countryEl=document.getElementById('ae-new-loc-country');
-  if(cityEl&&!cityEl.value.trim())cityEl.value=res.city||'';
-  if(countryEl&&!countryEl.value.trim())countryEl.value=res.country||'';
+  if(streetEl&&!streetEl.value.trim()&&res.street)streetEl.value=res.street;
+  if(cityEl&&!cityEl.value.trim()&&res.city)cityEl.value=res.city;
+  if(countryEl&&!countryEl.value.trim()&&res.country)countryEl.value=res.country;
   document.getElementById('ae-new-loc-autofill-hint').style.display='none';
   _quickLocAutofillData=null;
 }
@@ -2205,13 +2223,14 @@ function saveQuickLoc(){
   const locData={
     type:document.getElementById('ae-new-loc-type').value,
     building:document.getElementById('ae-new-loc-building').value.trim(),
+    street:document.getElementById('ae-new-loc-street')?.value.trim()||'',
     city:document.getElementById('ae-new-loc-city').value.trim(),
     country:document.getElementById('ae-new-loc-country').value.trim(),
     era:document.getElementById('ae-new-loc-era').value.trim(),
   };
   saveLocation(name,locData);selectLocOption(name,name);
   document.getElementById('ae-quick-loc').style.display='none';
-  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-city','ae-new-loc-country','ae-new-loc-era'].forEach(id=>document.getElementById(id).value='');
+  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2403,6 +2422,70 @@ async function geocodeCity(cityId,countryId){
     }
   }catch(e){} // silent fail — geocoding is best-effort
 }
+// #333 — address autofill for the STANDARD new-location entry form.
+// Fires on blur of ae-loc-building (or ae-content for Location entries with no building).
+// Fetches up to 4 matches from Nominatim, shows a confirm-from-list strip so the user
+// picks the correct one before any field is filled. Includes street address.
+let _stdLocAutofillData=null;
+async function stdLocAutofill(){
+  // Only fire for "real" places
+  const locType=document.getElementById('ae-loc-type')?.value;
+  if(locType!=='real')return;
+  // Use whichever name-y field is filled: building, then content (location entry name)
+  const building=(document.getElementById('ae-loc-building')?.value||'').trim();
+  const content=(document.getElementById('ae-content')?.value||'').trim();
+  const q=building||content;
+  if(!q||q.length<3)return;
+  // Don't bother if all 4 target fields are already filled
+  const street=(document.getElementById('ae-loc-street')?.value||'').trim();
+  const city=(document.getElementById('ae-loc-city')?.value||'').trim();
+  const country=(document.getElementById('ae-loc-country')?.value||'').trim();
+  if(street&&city&&country)return;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=4&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const d=await r.json();
+    if(!d||!d.length)return;
+    const results=d.map(item=>{
+      const a=item.address||{};
+      const houseAndRoad=[a.house_number,a.road].filter(Boolean).join(' ');
+      return{
+        display:item.display_name||'',
+        street:houseAndRoad,
+        city:a.city||a.town||a.village||a.suburb||a.state||'',
+        country:a.country||''
+      };
+    }).filter(x=>x.city||x.country||x.street);
+    if(!results.length)return;
+    _stdLocAutofillData=results;
+    const picks=results.slice(0,4).map((res,i)=>{
+      const label=[res.street,res.city,res.country].filter(Boolean).join(', ').slice(0,55);
+      return `<button class="btn btn-sm" onclick="stdLocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin:3px 0;font-size:11px;padding:6px 8px;line-height:1.35;">${label||'(unknown)'}</button>`;
+    }).join('');
+    const hint=document.getElementById('ae-loc-autofill-hint');
+    const msg=document.getElementById('ae-loc-autofill-msg');
+    if(hint&&msg){
+      msg.innerHTML=`<div style="margin-bottom:4px;font-weight:600;">Which match?</div>${picks}<div style="margin-top:4px;"><button class="btn btn-sm" onclick="stdLocCancelAutofill()" style="font-size:10px;padding:3px 8px;color:var(--t3);">None of these</button></div>`;
+      hint.style.display='';
+    }
+  }catch(e){}
+}
+function stdLocApplyAutofill(idx){
+  if(!_stdLocAutofillData)return;
+  const res=_stdLocAutofillData[idx||0];
+  const streetEl=document.getElementById('ae-loc-street');
+  const cityEl=document.getElementById('ae-loc-city');
+  const countryEl=document.getElementById('ae-loc-country');
+  if(streetEl&&!streetEl.value.trim()&&res.street)streetEl.value=res.street;
+  if(cityEl&&!cityEl.value.trim()&&res.city)cityEl.value=res.city;
+  if(countryEl&&!countryEl.value.trim()&&res.country)countryEl.value=res.country;
+  const hint=document.getElementById('ae-loc-autofill-hint');if(hint)hint.style.display='none';
+  _stdLocAutofillData=null;
+}
+function stdLocCancelAutofill(){
+  const hint=document.getElementById('ae-loc-autofill-hint');if(hint)hint.style.display='none';
+  _stdLocAutofillData=null;
+}
+
 // #333 — address autofill: look up a place name and fill city/country (and optionally building)
 async function autofillAddress(nameVal,cityId,countryId,buildingId){
   const q=(nameVal||document.getElementById(buildingId||'')?.value||'').trim();
