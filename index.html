@@ -286,9 +286,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="chars-panel" class="panel" style="padding:10px 11px 85px;">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <div style="position:relative;flex:1;"><input type="text" id="chars-search" placeholder="🔍 Search characters…" oninput="renderChars()" style="width:100%;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);box-sizing:border-box;"/><button onclick="document.getElementById('chars-search').value='';renderChars();" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 2px;line-height:1;">×</button></div>
-        <select id="chars-sort-mode" onchange="renderChars()" style="font-size:11px;padding:4px 6px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);flex-shrink:0;"><option value="role">By role</option><option value="alpha">A–Z</option></select><button class="btn btn-sm" onclick="suggestFamilyConnections()" style="font-size:11px;flex-shrink:0;">🧬 Suggest</button>
+      <div style="display:flex;gap:5px;align-items:center;margin-bottom:8px;">
+        <!-- #384/#385 — Search bar must be the widest element. Sort + Suggest are compact, fixed-width. ✕ stays INSIDE the search input. -->
+        <div style="position:relative;flex:1 1 auto;min-width:0;"><input type="text" id="chars-search" placeholder="🔍 Search characters…" oninput="renderChars()" style="width:100%;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);box-sizing:border-box;"/><button onclick="document.getElementById('chars-search').value='';renderChars();" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 2px;line-height:1;">×</button></div>
+        <select id="chars-sort-mode" onchange="renderChars()" title="Sort" style="font-size:11px;padding:4px 4px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);flex:0 0 auto;width:62px;max-width:62px;-webkit-appearance:none;appearance:none;text-align:center;"><option value="role">Role</option><option value="alpha">A–Z</option></select>
+        <button class="btn btn-sm" onclick="suggestFamilyConnections()" title="Suggest relationships" style="font-size:14px;flex:0 0 auto;padding:6px 8px;width:38px;">🧬</button>
       </div>
       <div id="chars-list"></div>
       <div id="chars-empty" class="empty" style="display:none"><div class="empty-icon">👤</div><div class="empty-text">No characters yet</div></div>
@@ -696,7 +698,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- #303/#335 — structured date fields; year/era required for Timeline -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required — use a real year, "Ch.4", "Year 3", "Unknown", etc.)</span></label>
-        <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown"/>
+        <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;"/>
       </div>
       <div class="r2">
         <div class="fg"><label>Month <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
@@ -724,7 +726,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <input type="hidden" id="ae-sortkey"/>
       <!-- #218-A — collapsed by default; #218-B — renamed -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="document.getElementById('ae-offset-block').style.display=this.checked?'':'none';"/>
+        <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="onOffsetToggleChange(this);"/>
         <label for="ae-offset-toggle" style="font-size:12px;text-transform:none;letter-spacing:0;cursor:pointer;">Related to another event?</label>
       </div>
       <div id="ae-offset-block" style="display:none;">
@@ -795,7 +797,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label id="ae-ref-length-label">Pages</label><input type="number" id="ae-ref-length" inputmode="numeric" placeholder="e.g. 320" min="0" oninput="toggleGoodreads()"/></div>
         <div class="fg"><label>Est. reading time</label><input type="text" id="ae-ref-time-est" placeholder="auto" readonly style="background:var(--bg3);color:var(--t2);cursor:default;"/></div>
       </div>
-      <div class="fg"><label>Link / URL</label><input type="text" id="ae-ref-url" placeholder="https://…"/></div>
+      <div class="fg"><label>Link / URL <span style="font-weight:400;color:var(--t3);">(optional — if blank, the reference card shows a Google search button)</span></label><input type="text" id="ae-ref-url" placeholder="https://…"/></div>
       <div id="ae-goodreads-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 Book reference — consider <span style="text-decoration:underline;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent(document.getElementById('ae-content').value))">adding to Goodreads</span> too.</div>
     </div>
 
@@ -1126,46 +1128,162 @@ function autoSetGenderFromPronouns(){
 }
 // #185 — inferRelGender removed
 // #185 — 4-option gender picker sheet + smart relType label update
+// Maps from a single character's gender to the gender-specific RELATIONSHIP-TYPE
+// label that should be applied IN ADDITION to whatever the user picked from the
+// type list. Used both for #185 (Husband/Wife from Spouse) and #214 (gendered
+// reciprocal labels — Son/Daughter/Mother/Father/etc.).
 const GENDER_REL_MAP={
-  'Male':{'Spouse':'Husband','Parent':'Father','Child':'Son','Sibling':'Brother','Grandparent':'Grandfather','Uncle or Aunt':'Uncle','Niece or Nephew':'Nephew'},
-  'Female':{'Spouse':'Wife','Parent':'Mother','Child':'Daughter','Sibling':'Sister','Grandparent':'Grandmother','Uncle or Aunt':'Aunt','Niece or Nephew':'Niece'},
-  'Nonbinary':{'Spouse':'Spouse','Parent':'Parent','Child':'Child','Sibling':'Sibling'},
+  'Male':{'Spouse':'Husband','Husband':'Husband','Wife':'Husband','Partner':'Husband','Parent':'Father','Mother':'Father','Father':'Father','Child':'Son','Son':'Son','Daughter':'Son','Sibling':'Brother','Brother':'Brother','Sister':'Brother','Grandparent':'Grandfather','Grandmother':'Grandfather','Grandfather':'Grandfather','Grandchild':'Grandson','Grandson':'Grandson','Granddaughter':'Grandson','Uncle or Aunt':'Uncle','Uncle':'Uncle','Aunt':'Uncle','Niece or Nephew':'Nephew','Nephew':'Nephew','Niece':'Nephew','Godparent':'Godfather','Godchild':'Godson'},
+  'Female':{'Spouse':'Wife','Husband':'Wife','Wife':'Wife','Partner':'Wife','Parent':'Mother','Mother':'Mother','Father':'Mother','Child':'Daughter','Son':'Daughter','Daughter':'Daughter','Sibling':'Sister','Brother':'Sister','Sister':'Sister','Grandparent':'Grandmother','Grandmother':'Grandmother','Grandfather':'Grandmother','Grandchild':'Granddaughter','Grandson':'Granddaughter','Granddaughter':'Granddaughter','Uncle or Aunt':'Aunt','Uncle':'Aunt','Aunt':'Aunt','Niece or Nephew':'Niece','Nephew':'Niece','Niece':'Niece','Godparent':'Godmother','Godchild':'Goddaughter'},
+  // Nonbinary / Unknown collapse gendered specific labels back to neutral
+  'Nonbinary':{'Husband':'Spouse','Wife':'Spouse','Father':'Parent','Mother':'Parent','Son':'Child','Daughter':'Child','Brother':'Sibling','Sister':'Sibling','Grandfather':'Grandparent','Grandmother':'Grandparent','Uncle':'Uncle or Aunt','Aunt':'Uncle or Aunt','Nephew':'Niece or Nephew','Niece':'Niece or Nephew','Spouse':'Spouse','Parent':'Parent','Child':'Child','Sibling':'Sibling','Grandparent':'Grandparent'},
   'Unknown':{}
 };
+// Set of ungendered relationship types that imply a gender question. Picked from
+// the type list, these will trigger the per-character gender sheet flow.
+const GENDERABLE_RELTYPES=new Set([
+  'Spouse','Husband','Wife','Partner',
+  'Parent','Father','Mother','Child','Son','Daughter',
+  'Sibling','Brother','Sister','Half-sibling','Step-sibling',
+  'Grandparent','Grandfather','Grandmother','Grandchild','Grandson','Granddaughter',
+  'Uncle or Aunt','Uncle','Aunt','Niece or Nephew','Nephew','Niece',
+  'Godparent','Godchild','Step-parent','Step-child','In-law','Adoptive parent','Adopted child'
+]);
+// Neutral "trunk" we map a picked label down to before re-mapping per gender.
+// e.g. user picks 'Wife' → trunk 'Spouse'; per-char gender then re-derives the
+// final label so a Male+Male couple becomes Husband/Husband instead of Wife/Wife.
+const RELTYPE_TRUNK={
+  'Husband':'Spouse','Wife':'Spouse','Spouse':'Spouse','Partner':'Partner',
+  'Father':'Parent','Mother':'Parent','Parent':'Parent',
+  'Son':'Child','Daughter':'Child','Child':'Child',
+  'Brother':'Sibling','Sister':'Sibling','Sibling':'Sibling',
+  'Grandfather':'Grandparent','Grandmother':'Grandparent','Grandparent':'Grandparent',
+  'Grandson':'Grandchild','Granddaughter':'Grandchild','Grandchild':'Grandchild',
+  'Uncle':'Uncle or Aunt','Aunt':'Uncle or Aunt','Uncle or Aunt':'Uncle or Aunt',
+  'Nephew':'Niece or Nephew','Niece':'Niece or Nephew','Niece or Nephew':'Niece or Nephew'
+};
+function _trunkOf(rt){return RELTYPE_TRUNK[rt]||rt;}
+function _labelForGender(trunk,gender){
+  const g=gender||'Unknown';
+  // Nonbinary/Unknown → keep the neutral trunk
+  if(g==='Nonbinary'||g==='Unknown')return trunk;
+  return (GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][trunk])||trunk;
+}
+// Show a 4-option gender sheet with an explicit Cancel that resolves to null.
+// onPick is called with the chosen gender ('Male'|'Female'|'Nonbinary'|'Unknown')
+// or with null if the user cancels. Cancel must NOT mutate anything.
 function pickGenderSheet(charName,callback){
-  const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
-  if(existing?.gender&&existing.gender!==''){callback(existing.gender,charName);return;}
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:flex-end;';
-  overlay.innerHTML=`<div style="background:var(--bg);width:100%;border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px 32px;"><div style="font-size:14px;font-weight:600;margin-bottom:4px;">What is ${charName}'s gender?</div><div style="font-size:12px;color:var(--t3);margin-bottom:14px;">This helps label relationships correctly.</div><div style="display:flex;flex-direction:column;gap:8px;">${['Male','Female','Nonbinary','Unknown'].map(g=>`<button onclick="this.closest('div[style*=fixed]').remove();_resolveGender('${charName}','${g}')" style="padding:12px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);font-size:14px;text-align:left;cursor:pointer;">${g==='Male'?'👨 Male':g==='Female'?'👩 Female':g==='Nonbinary'?'🧑 Nonbinary':'❓ Unknown / skip'}</button>`).join('')}</div></div>`;
+  const close=()=>overlay.remove();
+  const opts=[
+    {g:'Male',label:'👨 Male'},
+    {g:'Female',label:'👩 Female'},
+    {g:'Nonbinary',label:'🧑 Nonbinary'},
+    {g:'Unknown',label:'❓ Unknown / skip'}
+  ];
+  overlay.innerHTML=`<div style="background:var(--bg);width:100%;border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px 32px;">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">What is ${charName}'s gender?</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">This helps label relationships correctly. Cancel leaves the relationship type unchanged.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${opts.map((o,i)=>`<button data-pick="${o.g}" style="padding:12px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);font-size:14px;text-align:left;cursor:pointer;">${o.label}</button>`).join('')}
+      <button data-pick="__cancel__" style="padding:11px;border-radius:var(--r);border:0.5px solid var(--cb);background:transparent;font-size:13px;text-align:center;cursor:pointer;color:var(--t2);margin-top:4px;">Cancel</button>
+    </div>
+  </div>`;
+  // Backdrop tap also cancels
+  overlay.addEventListener('click',(ev)=>{if(ev.target===overlay){close();callback(null,charName);} });
+  overlay.querySelectorAll('button[data-pick]').forEach(btn=>{
+    btn.addEventListener('click',(ev)=>{
+      ev.stopPropagation();
+      const pick=btn.dataset.pick;
+      close();
+      if(pick==='__cancel__')return callback(null,charName);
+      // Persist picked gender onto the character entry (skip Unknown which is "no answer")
+      if(pick!=='Unknown'){
+        const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===charName);
+        if(e){e.gender=pick;save();}
+      }
+      callback(pick,charName);
+    });
+  });
   document.body.appendChild(overlay);
-  window._genderCallback=callback;
-  window._genderChar=charName;
 }
-function _resolveGender(charName,gender){
-  const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===charName);
-  if(e&&gender!=='Unknown'){e.gender=gender;save();}
-  if(window._genderCallback)window._genderCallback(gender,charName);
-  window._genderCallback=null;
+// #185 — Run gender flow for the relationship form (or quick-rel picker via setRelTypeFn).
+// Asks Char A first, then Char B SEPARATELY. Each Cancel is honoured. The relType label
+// is recomputed after BOTH picks (or skipped) using the gender-aware map.
+// pickedRelType is whatever the user just selected from the type list.
+// setRelTypeFn(label) is how we write the new label back (different for full form vs quick-rel rows).
+function runGenderFlowForRel(pickedRelType,aName,bName,setRelTypeFn,originalRelType){
+  if(!GENDERABLE_RELTYPES.has(pickedRelType)){return;} // type doesn't imply a gender — nothing to do
+  const trunk=_trunkOf(pickedRelType);
+  // Helper: resolve a character's gender — either from existing entry or by asking
+  function resolveGender(name,cb){
+    if(!name){return cb(null);}
+    const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
+    // If gender already set, use it WITHOUT showing the sheet (avoid pestering)
+    if(existing&&existing.gender){return cb(existing.gender);}
+    pickGenderSheet(name,(picked)=>cb(picked));
+  }
+  // Track whether user cancelled at any step. Cancel anywhere = leave relType as it was BEFORE this run.
+  let cancelled=false;
+  resolveGender(aName,(gA)=>{
+    if(gA===null&&aName){
+      // User cancelled A's gender sheet → revert relType
+      cancelled=true;
+      if(originalRelType!==undefined)setRelTypeFn(originalRelType);
+      return;
+    }
+    // Compute A's side label so the form reflects it immediately
+    const aLabel=_labelForGender(trunk,gA||'Unknown');
+    setRelTypeFn(aLabel);
+    // Now ask B (separately, after a small tick so the first sheet has finished tearing down)
+    setTimeout(()=>{
+      resolveGender(bName,(gB)=>{
+        if(gB===null&&bName){
+          // B cancelled — keep A's label (do not revert) but stop here.
+          return;
+        }
+        // B's gender is persisted inside pickGenderSheet directly. The reciprocal
+        // label on B's profile is rendered live in renderCharDetail using
+        // GENDER_REL_MAP (#214), so we don't need to mutate the rel here.
+      });
+    },200);
+  });
 }
+// Backwards-compatible wrapper used from rtpPick (full Relationship form)
 function offerGenderFromRelType(relType){
   const aName=cddGet('ae-rela');const bName=cddGet('ae-relb');
-  function handleA(gender){
-    const mapped=GENDER_REL_MAP[gender]?.[relType]||relType;
-    document.getElementById('ae-reltype').value=mapped;
-    document.getElementById('ae-reltype-search').value=mapped;
-    if(bName)setTimeout(()=>{
-      const recipBase=RECIPROCAL[mapped]||mapped;
-      pickGenderSheet(bName,(gB)=>{
-        const mappedB=GENDER_REL_MAP[gB]?.[recipBase];
-        // B's label shown via gender-aware RECIPROCAL on their profile
-      });
-    },400);
-  }
-  if(aName)pickGenderSheet(aName,handleA);
-  else if(bName)pickGenderSheet(bName,()=>{});
+  const original=relType; // what the user just picked
+  const setLabel=(lbl)=>{
+    const v=lbl||'';
+    const t=document.getElementById('ae-reltype');if(t)t.value=v;
+    const s=document.getElementById('ae-reltype-search');if(s)s.value=v;
+  };
+  runGenderFlowForRel(relType,aName,bName,setLabel,original);
 }
 // #309 — auto-fill year/era from anchor so offset entries sort correctly on timeline
+// Track whether the year/era field was last auto-filled by the offset machinery
+// (vs manually edited by the user). When the toggle is turned off, the auto-filled
+// value is cleared; user-typed values are preserved.
+let _yearAutoFilled=false;
+function onOffsetToggleChange(toggleEl){
+  const blk=document.getElementById('ae-offset-block');
+  if(blk)blk.style.display=toggleEl.checked?'':'none';
+  if(!toggleEl.checked){
+    // Clear stored offset fields visually so saving with toggle off cleanly drops them
+    const odEl=document.getElementById('ae-offset-dir');if(odEl)odEl.value='+';
+    const onEl=document.getElementById('ae-offset-num');if(onEl)onEl.value='';
+    const ouEl=document.getElementById('ae-offset-unit');if(ouEl)ouEl.value='days';
+    const oeEl=document.getElementById('ae-offset-event');if(oeEl)oeEl.value='';
+    // Only clear year/era if we know we auto-filled it (don't trash user-typed values)
+    if(_yearAutoFilled){
+      const yEl=document.getElementById('ae-evdate-year');if(yEl)yEl.value='';
+      const mEl=document.getElementById('ae-evdate-month');if(mEl)mEl.value='';
+      const dEl=document.getElementById('ae-evdate-day');if(dEl)dEl.value='';
+      _yearAutoFilled=false;
+    }
+  }
+}
 function anchorChanged(anchorLabel){
   // Only runs when the offset toggle is active
   const tog=document.getElementById('ae-offset-toggle');
@@ -1194,6 +1312,7 @@ function anchorChanged(anchorLabel){
   }
   if(calculated){
     yearEl.value=calculated;
+    _yearAutoFilled=true;
     yearEl.style.borderColor='var(--accent)';
     setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);
     // Also update month if we can compute it precisely
@@ -1404,6 +1523,13 @@ async function load(){
 }
 function book(){return library[currentId];}
 function entries(){return book()?.entries||[];}
+// #386/#309 — globally-available deletedChars accessor + warning badge.
+// Previously _dc was declared local to ecHTML(); other render fns referenced it
+// and threw "Can't find variable _dc", which broke the Questions tab and the
+// entire Timeline render (since renderTimeline built items via template strings
+// that referenced _dc inline).
+function _dcMap(){return book()?.deletedChars||{};}
+function _dcBadge(name){return _dcMap()[name]?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':'';}
 function getCC(name){
   if(!currentId)return CP[0];
   if(!ccMap[currentId])ccMap[currentId]={};
@@ -2519,6 +2645,20 @@ function qrTypePick(rowId,val,label){
   row.querySelector('.qr-type-search').value=label;
   row.querySelector('.qr-type-list').style.display='none';
   checkSuggestions();
+  // #185 — also run the gender flow for the quick-relationship picker.
+  // Char A = the character whose entry form is open (ae-cn). Char B = the qr-char.
+  if(GENDERABLE_RELTYPES&&GENDERABLE_RELTYPES.has(val)){
+    const aName=(document.getElementById('ae-cn')?.value||'').trim();
+    const bName=(row.querySelector('.qr-char')?.value||'').trim();
+    const original=val;
+    const setLabel=(lbl)=>{
+      const v=lbl||'';
+      row.querySelector('.qr-type').value=v;
+      row.querySelector('.qr-type-search').value=v;
+      checkSuggestions();
+    };
+    runGenderFlowForRel(val,aName,bName,setLabel,original);
+  }
 }
 // Close any open qr-char-list and rtp panel when clicking outside
 if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
@@ -3485,9 +3625,9 @@ function submitEntry(){
       validationFail=true;
     }
   }
-  if(isRef&&!document.getElementById('ae-ref-url').value.trim()){
-    reqFail('ae-ref-url','URL required');validationFail=true;
-  }
+  // #228-B — URL is no longer required on References. When the saved entry has
+  // no refUrl, the References list shows a "🔍 Search on Google" fallback that
+  // opens a Google query for the reference content + author (see ref render).
   if(isLoc){
     const locType=document.getElementById('ae-loc-type').value;
     if(locType==='real'){
@@ -3541,6 +3681,18 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'){
+    // #309 — warn on duplicate timeline name (only on NEW entries, not edits).
+    // Soft warning (confirm) so the user can override — same name across batches
+    // can be intentional ("Year 1815" used twice in different sections).
+    if(!editId){
+      const dupName=(content||'').trim();
+      if(dupName){
+        const dup=entries().find(x=>x.type==='Timeline'&&(x.content||'').trim().toLowerCase()===dupName.toLowerCase());
+        if(dup){
+          if(!confirm(`A Timeline entry called "${dupName}" already exists.\n\nCreate another with the same name?\n\nOK = create anyway · Cancel = stop and rename`))return;
+        }
+      }
+    }
     // #303/#335 — assemble evdate from structured fields
     const evYear=document.getElementById('ae-evdate-year').value.trim();
     const evMon=document.getElementById('ae-evdate-month').value;
@@ -3714,13 +3866,29 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     });
   }
 
-  // #309 — Warn on duplicate trait for same character
-  if(type==='Characteristic'&&!editId){
-    const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+  // #309 — Duplicate-content detection for ALL involved-character-bearing entries.
+  // Fires on new entries AND on edits that change/add an involved character.
+  // Skip relationship-style and rename-prone types where it'd be noisy.
+  const _DUP_SKIP=new Set(['Relationship','Question','Reference','Chapter','Translation','Word / Vocabulary']);
+  if(!_DUP_SKIP.has(type)){
+    const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const canon=norm(entry.content);
     const chars=entry.involved||[];
-    const dup=entries().find(e=>e.type==='Characteristic'&&e.id!==entry.id&&norm(e.content)===canon&&chars.some(c=>e.involved?.includes(c)));
-    if(dup&&!confirm(`"${dup.content}" already exists for this character. Save anyway?`))return;
+    if(canon&&chars.length){
+      // For edits: only warn about chars that are NEW since last save (so just bumping
+      // a typo on an existing entry doesn't re-trigger the warning).
+      const prev=editId?book().entries.find(x=>x.id===Number(editId)):null;
+      const prevChars=prev?.involved||[];
+      const newlyAddedChars=chars.filter(c=>!prevChars.includes(c));
+      const charsToCheck=editId?newlyAddedChars:chars;
+      if(charsToCheck.length){
+        const dup=entries().find(e=>e.type===type&&e.id!==entry.id&&norm(e.content)===canon&&charsToCheck.some(c=>e.involved?.includes(c)));
+        if(dup){
+          const charName=charsToCheck.find(c=>dup.involved?.includes(c))||charsToCheck[0];
+          if(!confirm(`A ${type} entry "${dup.content}" already exists for ${charName}.\n\nSave anyway?`))return;
+        }
+      }
+    }
   }
 
   save();
@@ -4062,6 +4230,10 @@ function editEntry(id){
         }
       });
     },50);
+    // #228-B — Always reset Characters Involved before restoring, so opening a
+    // Reference (or any entry without `involved`) doesn't inherit chars left over
+    // in form state from a previous unrelated entry.
+    cddSet('ae-inv',[]);
     if(e.involved?.length)setTimeout(()=>{cddSet('ae-inv',e.involved.filter(Boolean));cddFilter('ae-inv');const list=document.getElementById('ae-inv-list');if(list)list.classList.remove('open');},80);
     if(e.type==='Dialogue'&&e.dialogueLines?.length){
       setTimeout(()=>{
@@ -4475,17 +4647,22 @@ function renderCharDetail(name){
     html+=sortByPage(rels).map(r=>{
       const other=r.relA===name?r.relB:r.relA;
       const isA=r.relA===name;
-      // Show from this char's perspective with gender-aware reciprocal labels (#214)
+      // Show from this char's perspective with gender-aware labels (#214).
+      // Step 1: pick the raw label for this side (A's stored relType, or its reciprocal for B).
       let relLabel=isA?r.relType:(RECIPROCAL[r.relType]||r.relType);
-      // If we're Char B, try to use current char's gender to pick gendered reciprocal
-      if(!isA){
-        const myEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);
-        const myGender=myEntry?.gender;
-        // #214 — gender-aware reciprocal: use GENDER_REL_MAP
-        const gm=typeof GENDER_REL_MAP!=='undefined'?GENDER_REL_MAP:{};
-        const mappedLabel=myGender&&gm[myGender]?gm[myGender][relLabel]:null;
-        if(mappedLabel)relLabel=mappedLabel;
-      }
+      // Step 2: regardless of side, re-derive the label from the VIEWED character's gender
+      // by collapsing to a neutral trunk and re-mapping. This means:
+      //   • A=Male, A "Child" of B → on A's profile shows "Son" (was the bug).
+      //   • B's profile (B=Female) of the same rel shows reciprocal "Mother".
+      const myEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);
+      const myGender=myEntry?.gender||'Unknown';
+      try{
+        if(typeof RELTYPE_TRUNK!=='undefined'&&typeof _labelForGender==='function'){
+          const trunk=RELTYPE_TRUNK[relLabel]||relLabel;
+          const mapped=_labelForGender(trunk,myGender);
+          if(mapped)relLabel=mapped;
+        }
+      }catch(e){/* fall through to ungendered label */}
       const relEmojiStr=relEmoji(relLabel);
       const oc=getCC(other);
       // Format as "Other's [relationship]" for clarity
@@ -4555,7 +4732,7 @@ function renderCharDetail(name){
       const freeRows=freeQs.map(q=>makeRow(q.text,q.speaker,q.page,null,q.speaker===name));
       const attachRows=attachedQs.map(q=>makeRow(q.content,q.speaker,q.pageNum,q.id,q.speaker===name||(q.involved||[]).includes(name)));
       const nested=[...freeRows,...attachRows].join('');
-      const invTags=(th.involved||[]).filter(c=>c).map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;margin-right:3px;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dc[c]?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':''}</span>`;}).join('');
+      const invTags=(th.involved||[]).filter(c=>c).map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;margin-right:3px;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('');
       const locTag=th.location?`<span style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="event.stopPropagation();openLocDetail('${esc(th.location)}')">📍 ${th.location}</span>`:'';
       return`<div class="citem"><div class="ilabel" style="color:${col.text};">🎯 Theme</div><strong style="cursor:pointer;" onclick="editEntry(${th.id})">${th.content}</strong>${nested}${invTags?`<div class="inv-row" style="margin-top:4px;">${invTags}</div>`:''} ${locTag}${nT(th)}${pgT(th)}${act(th)}</div>`;
     }).join('');
@@ -5199,7 +5376,7 @@ function renderTimeline(){
   const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780',significant:'#378ADD',lifechanging:'#D4537E'};
   const renderItem=(item,i,arr)=>{
     const col=icol[item.importance||item.eventSig||'normal']||'#534AB7';
-    const invB=(item.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${(_dc&&_dc[c])?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':''}</span>`;}).join('');
+    const invB=(item.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('');
     const isEvent=item.type==='Event';
     const meIcons={Death:'🪦',Birth:'👶',Marriage:'💍','Move / Relocation':'📦',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔','Life-changing moment':'⭐'};
     const icons=isEvent?(item.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌':'';
@@ -5617,7 +5794,7 @@ function renderLocDetail(name){
       ${locEntries.length?`<span class="pbadge">${locEntries.length} entr${locEntries.length===1?'y':'ies'}</span>`:''}
       ${charsHere.length?`<span class="pbadge">👤 ${charsHere.length} character${charsHere.length===1?'':'s'}</span>`:''}
     </div>
-    ${charsHere.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">${charsHere.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${(_dc&&_dc[c])?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':''}</span>`;}).join('')}</div>`:''}
+    ${charsHere.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">${charsHere.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:''}
     ${isReal?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
       <button class="btn btn-sm" onclick="openLink('${mapsUrl}')">🗺️ Google Maps</button>
       <button class="btn btn-sm" onclick="openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(name)}'))">📖 Wikipedia</button>
@@ -5739,7 +5916,7 @@ function renderQuestions(){
 }
 function qHTML(q){
   const checked=q.answered;
-  const invB=(q.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${(_dc&&_dc[c])?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':''}</span>`;}).join('');
+  const invB=(q.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('');
   return`<div class="q-card ec question" style="${checked?'opacity:0.6;':''}">
     <div style="display:flex;align-items:flex-start;gap:9px;">
       <div onclick="toggleQ(${q.id})" style="cursor:pointer;flex-shrink:0;margin-top:0;padding:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
@@ -6787,8 +6964,28 @@ function suggestFamilyConnections(){
   const rels=all.filter(e=>e.type==='Relationship');
   const suggestions=[];
 
-  function parentsOf(name){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===name).map(r=>r.relA);}
-  function childrenOf(name){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===name).map(r=>r.relB);}
+  // #275/#286 — Sibling chaining via shared parent was broken: parentsOf only
+  // looked for PARENT_TYPES, so a relationship stored as
+  //   relA=A, relB=B, relType="Child" (i.e. "A is B's child")
+  // was invisible. We now ALSO walk CHILD_TYPES (and "Son"/"Daughter") in reverse.
+  const _CHILD_LIKE=new Set([...(CHILD_TYPES||[]),'Son','Daughter']);
+  const _PARENT_LIKE=new Set([...(PARENT_TYPES||[])]);
+  function parentsOf(name){
+    const out=new Set();
+    rels.forEach(r=>{
+      if(_PARENT_LIKE.has(r.relType)&&r.relB===name)out.add(r.relA);   // "B is A's parent"-style
+      if(_CHILD_LIKE.has(r.relType)&&r.relA===name)out.add(r.relB);    // "A is B's child"-style
+    });
+    return [...out];
+  }
+  function childrenOf(name){
+    const out=new Set();
+    rels.forEach(r=>{
+      if(_PARENT_LIKE.has(r.relType)&&r.relA===name)out.add(r.relB);
+      if(_CHILD_LIKE.has(r.relType)&&r.relB===name)out.add(r.relA);
+    });
+    return [...out];
+  }
   function hasRel(a,b){return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));}
 
   const chars=all.filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
@@ -7028,8 +7225,25 @@ function suggestFamilyConnectionsForChar(charName){
   const all=entries();const rels=all.filter(e=>e.type==='Relationship');
   const suggestions=[];
 
-  function parentsOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relB===n).map(r=>r.relA);}
-  function childrenOf(n){return rels.filter(r=>PARENT_TYPES.includes(r.relType)&&r.relA===n).map(r=>r.relB);}
+  // #275/#286 — same bidirectional walk as in suggestFamilyConnections
+  const _CHILD_LIKE2=new Set([...(CHILD_TYPES||[]),'Son','Daughter']);
+  const _PARENT_LIKE2=new Set([...(PARENT_TYPES||[])]);
+  function parentsOf(n){
+    const out=new Set();
+    rels.forEach(r=>{
+      if(_PARENT_LIKE2.has(r.relType)&&r.relB===n)out.add(r.relA);
+      if(_CHILD_LIKE2.has(r.relType)&&r.relA===n)out.add(r.relB);
+    });
+    return [...out];
+  }
+  function childrenOf(n){
+    const out=new Set();
+    rels.forEach(r=>{
+      if(_PARENT_LIKE2.has(r.relType)&&r.relA===n)out.add(r.relB);
+      if(_CHILD_LIKE2.has(r.relType)&&r.relB===n)out.add(r.relA);
+    });
+    return [...out];
+  }
   function hasRel(a,b){return rels.some(r=>(r.relA===a&&r.relB===b)||(r.relA===b&&r.relB===a));}
   const chars=all.filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
 
