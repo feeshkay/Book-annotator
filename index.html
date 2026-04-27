@@ -142,6 +142,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .info-tip-msg{display:block;margin-top:5px;padding:7px 10px;background:var(--bg2);border-left:3px solid var(--t3);border-radius:var(--r);font-size:11px;font-weight:400;color:var(--t2);line-height:1.4;}
 /* timeline */
 .titem{display:flex;gap:9px;margin-bottom:13px;position:relative;}
+.titem.tl-drop-target{outline:2px dashed var(--accent);outline-offset:3px;border-radius:6px;transition:outline 0.12s ease;}
 .tdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
 .tline{position:absolute;left:4px;top:13px;bottom:-13px;width:2px;background:var(--cb);}
 /* web */
@@ -499,6 +500,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div style="display:flex;gap:6px;align-items:center;">
           <select id="ae-type" onchange="onTypeChangeGuarded(this)" style="flex:1;"></select>
           <button type="button" onclick="showTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Show entry description">?</button>
+          <button type="button" onclick="openTemplateMenu()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Templates — save / load reusable entry presets">📋</button>
         </div>
       </div>
       <div id="ae-type-hint" class="type-hint" style="display:none;"></div>
@@ -1530,6 +1532,96 @@ function entries(){return book()?.entries||[];}
 // that referenced _dc inline).
 function _dcMap(){return book()?.deletedChars||{};}
 function _dcBadge(name){return _dcMap()[name]?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':'';}
+
+// #388 — Entry-form templates: save current form fields as a named template.
+// Templates are stored per book at book().entryTemplates = [{name, type, fields:{id:value,...}, involved:[]}]
+// Capture the visible/relevant input fields by ID. Apply them by writing back into the form.
+const TEMPLATE_FIELDS=[
+  'ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg',
+  'ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc',
+  'ae-evdate','ae-evdate-year','ae-evdate-month','ae-evdate-day','ae-medate',
+  'ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg',
+  'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes',
+  'ae-trait-type','ae-imp','ae-event-sig','ae-loc-type','ae-ref-type'
+];
+function openTemplateMenu(){
+  const tpls=(book()&&book().entryTemplates)||[];
+  let html='<div style="font-size:14px;font-weight:600;margin-bottom:10px;">Entry templates</div>';
+  html+='<div style="font-size:11px;color:var(--t2);margin-bottom:12px;line-height:1.45;">Templates save the entry type + the fields you\'ve typed in (content, characters, location, page, chapter, etc.) so you can re-use them. They DON\'T save photos, dates, or one-off fields.</div>';
+  html+='<button class="btn btn-primary btn-sm" onclick="saveCurrentAsTemplate()" style="margin-bottom:10px;">＋ Save current entry as template</button>';
+  if(!tpls.length){
+    html+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:10px 0;">No saved templates yet. Fill in an entry, tap the button above, give it a name.</div>';
+  } else {
+    html+='<div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Saved</div>';
+    tpls.forEach((t,i)=>{
+      const inv=(t.involved||[]).length;
+      html+=`<div style="display:flex;gap:6px;align-items:center;padding:8px;border:0.5px solid var(--cb);border-radius:var(--r);margin-bottom:6px;background:var(--bg2);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">${t.name||'Untitled'}</div>
+          <div style="font-size:10px;color:var(--t3);">${t.type||'(any type)'}${inv?' · '+inv+' char'+(inv>1?'s':''):''}</div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="applyTemplate(${i})" style="padding:5px 10px;">Apply</button>
+        <button class="btn btn-sm" onclick="deleteTemplate(${i})" style="padding:5px 8px;color:#e74c3c;">×</button>
+      </div>`;
+    });
+  }
+  const body=document.getElementById('tpl-menu-body');
+  if(!body){
+    // Build the overlay if not yet present
+    const ov=document.createElement('div');
+    ov.className='sheet-overlay';ov.id='tpl-menu-overlay';
+    ov.onclick=function(ev){if(ev.target===ov)closeSheet('tpl-menu-overlay');};
+    ov.innerHTML=`<div class="sheet" style="max-width:480px;"><div class="sheet-handle"></div><button class="sheet-x" onclick="closeSheet('tpl-menu-overlay')">×</button><div id="tpl-menu-body" style="padding-top:6px;"></div></div>`;
+    document.body.appendChild(ov);
+  }
+  document.getElementById('tpl-menu-body').innerHTML=html;
+  openSheet('tpl-menu-overlay');
+}
+function saveCurrentAsTemplate(){
+  const type=document.getElementById('ae-type')?.value||'';
+  const name=prompt('Name this template (e.g. "Duel scene", "Dinner conversation", "Quick character sketch"):');
+  if(!name||!name.trim())return;
+  const fields={};
+  TEMPLATE_FIELDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.value)fields[id]=el.value;
+  });
+  // Capture characters involved (cdd multi-select)
+  let involved=[];
+  try{const inv=document.getElementById('ae-inv-tags');if(inv){involved=[...inv.querySelectorAll('.cdd-chip')].map(c=>c.dataset.val||c.textContent.replace(/×$/,'').trim()).filter(Boolean);}}catch(_){}
+  if(!book().entryTemplates)book().entryTemplates=[];
+  book().entryTemplates.push({name:name.trim(),type,fields,involved});
+  save();
+  alert('Template saved.');
+  openTemplateMenu();
+}
+function applyTemplate(i){
+  const tpls=(book()&&book().entryTemplates)||[];
+  const t=tpls[i];if(!t)return;
+  // Set type first (so the right section shows)
+  if(t.type){
+    const sel=document.getElementById('ae-type');
+    if(sel&&sel.value!==t.type){sel.value=t.type;onTypeChange();}
+  }
+  // Apply fields after a brief delay so the section is visible
+  setTimeout(()=>{
+    Object.entries(t.fields||{}).forEach(([id,val])=>{
+      const el=document.getElementById(id);
+      if(el)el.value=val;
+    });
+    // Apply characters involved
+    if(t.involved&&t.involved.length){
+      try{cddSet('ae-inv',t.involved);}catch(_){}
+    }
+    closeSheet('tpl-menu-overlay');
+  },80);
+}
+function deleteTemplate(i){
+  if(!confirm('Delete this template?'))return;
+  if(book().entryTemplates)book().entryTemplates.splice(i,1);
+  save();
+  openTemplateMenu();
+}
 function getCC(name){
   if(!currentId)return CP[0];
   if(!ccMap[currentId])ccMap[currentId]={};
@@ -4199,6 +4291,10 @@ function editEntry(id){
         if(evSel)evSel.value=e.timeOffsetFrom;
       }
       const t=document.getElementById('ae-offset-toggle');if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
+      // #309 — Re-run anchor calc so the year/era field is auto-filled with the calculated date,
+      // not left blank. Done after offset fields are restored. Slight delay so the offset-event
+      // dropdown is fully populated by buildOffsetEventList() before we read it.
+      setTimeout(()=>{try{anchorChanged();}catch(_){}},80);
     }
     if(e.eventSig)document.getElementById('ae-event-sig').value=e.eventSig;
     if(e.eventTypes?.length){setTimeout(()=>e.eventTypes.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${t}"]`);if(chip)chip.classList.add('sel');}),60);}
@@ -5382,7 +5478,7 @@ function renderTimeline(){
     const icons=isEvent?(item.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌':'';
     // #218-C — inline "+" between entries to insert
     const plusBtn=i<arr.length-1?`<div style="text-align:center;margin:4px 0;"><button class="btn btn-sm" onclick="insertTimelineBetween('${esc(item.content||'')}','${esc(arr[i+1].content||'')}','${esc(item.evdate||'')}','${esc(arr[i+1].evdate||'')}')" style="font-size:11px;padding:2px 10px;background:var(--bg2);color:var(--t2);border-radius:10px;">+ insert here</button></div>`:'';
-    return`<div class="titem">
+    return`<div class="titem" draggable="true" data-tl-id="${item.id}" ondragstart="tlDragStart(event,${item.id})" ondragover="tlDragOver(event)" ondragleave="tlDragLeave(event)" ondrop="tlDragDrop(event,${item.id})" ondragend="tlDragEnd(event)" ontouchstart="tlTouchStart(event,${item.id})" ontouchmove="tlTouchMove(event)" ontouchend="tlTouchEnd(event,${item.id})">
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
@@ -5392,7 +5488,7 @@ function renderTimeline(){
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
         ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div class="ec quote" style="margin-top:7px;margin-bottom:0;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
-        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
+        <div class="eactions"><span class="tl-drag-handle" title="Long-press / drag to reorder" style="padding:4px 6px;cursor:grab;color:var(--t3);font-size:14px;user-select:none;touch-action:none;">☰</span><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
   };
@@ -5443,15 +5539,9 @@ function moveTlEntry(id, dir){
   sorted[idx].sortKey=sorted[swapIdx].sortKey;
   sorted[swapIdx].sortKey=tmp;
   save();
-  // Suggest date update
-  const moved=sorted.find(e=>e.id===id);
-  const neighbour=sorted.find(e=>e.id===sorted[swapIdx].id)||sorted[idx];
-  if(moved&&neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
-    const nDate=neighbour.evdate||'';
-    if(nDate&&confirm(`Entry moved. Would you like to update its date to align with its new position?\n\nNeighbour date: ${nDate}\n\nTap OK to open and edit, or Cancel to keep as-is.`)){
-      editEntry(id);
-    }
-  }
+  // #218-C — cleaner date-suggest UX (inline prompt with neighbour date pre-filled)
+  const newIdx=sorted.findIndex(e=>e.id===id);
+  suggestDateUpdateAfterMove(id,sorted,newIdx);
   renderTimeline();
 }
 
@@ -5473,13 +5563,34 @@ function moveTlEntryPrompt(id){
   // Build choice list of other events
   const others=sorted.filter(e=>e.id!==id).map((e,i)=>({e,i:sorted.indexOf(e),label:e.content||(e.evdate||'untitled')}));
   const listStr=others.map((o,i)=>`${i+1}. ${o.label.slice(0,50)}`).join('\n');
-  const input=prompt(`Move "${entry.content||'this entry'}" before or after which event?
+  const input=prompt(`Move "${entry.content||'this entry'}"
 
-Enter a number, or type "before N" or "after N":
+Options:
+  • Type a NUMBER OF POSITIONS to shift (e.g. "+5" moves 5 down, "-3" moves 3 up)
+  • Or type "before N" or "after N" to place relative to a listed event below
+  • Or just type the number N to place before that event
 
 ${listStr}`);
   if(!input)return;
   const inp=input.trim().toLowerCase();
+  // ── New: pure +/- delta shift
+  const deltaMatch=inp.match(/^([+\-])(\d+)$/);
+  if(deltaMatch){
+    const dir=deltaMatch[1]==='-'?-1:1;
+    const n=parseInt(deltaMatch[2],10);
+    if(!n){alert('Enter a non-zero number of positions.');return;}
+    let newIdx=idx+(dir*n);
+    newIdx=Math.max(0,Math.min(sorted.length-1,newIdx));
+    if(newIdx===idx)return;
+    sorted.forEach((e,i)=>{e.sortKey=i*10;});
+    const moved=sorted.splice(idx,1)[0];
+    sorted.splice(newIdx,0,moved);
+    sorted.forEach((e,i)=>{e.sortKey=i*10;});
+    save();
+    suggestDateUpdateAfterMove(id,sorted,newIdx);
+    renderTimeline();
+    return;
+  }
   let targetIdx=-1, insertBefore=true;
   const afterMatch=inp.match(/^after\s+(\d+)$/);
   const beforeMatch=inp.match(/^before\s+(\d+)$/);
@@ -5487,7 +5598,7 @@ ${listStr}`);
   if(afterMatch){const n=parseInt(afterMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=false;}}
   else if(beforeMatch){const n=parseInt(beforeMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
   else if(numMatch){const n=parseInt(numMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
-  if(targetIdx<0){alert('Not a valid number.');return;}
+  if(targetIdx<0){alert('Not a valid input. Try a number, "before N", "after N", "+N", or "-N".');return;}
   // Assign sort keys
   sorted.forEach((e,i)=>{e.sortKey=i*10;});
   // Remove entry from sorted, insert at target
@@ -5497,15 +5608,137 @@ ${listStr}`);
   sorted.splice(insertAt,0,moved);
   sorted.forEach((e,i)=>{e.sortKey=i*10;});
   save();
-  const neighbour=sorted[insertAt===0?1:insertAt-1]||sorted[insertAt+1];
-  if(neighbour&&(neighbour.evdate||neighbour.computedSortNum!=null)){
-    const nDate=neighbour.evdate||'';
-    if(nDate&&confirm(`Entry moved. Update its date to align with new position?
+  suggestDateUpdateAfterMove(id,sorted,insertAt);
+  renderTimeline();
+}
 
-Neighbour date: ${nDate}
+// #218-C — cleaner date-suggest after a move. Inline prompt with the neighbour's date pre-filled.
+function suggestDateUpdateAfterMove(id,sortedArr,insertAt){
+  const moved=sortedArr.find(e=>e.id===id);if(!moved)return;
+  const prev=sortedArr[insertAt-1];
+  const next=sortedArr[insertAt+1];
+  // Find the closest dated neighbour
+  const neighbour=(prev&&(prev.evdateYear||prev.evdate))?prev:((next&&(next.evdateYear||next.evdate))?next:null);
+  if(!neighbour)return;
+  const nDate=neighbour.evdateYear||neighbour.evdate||'';
+  if(!nDate)return;
+  const currentDate=moved.evdateYear||moved.evdate||'(none)';
+  const newDate=prompt(`Entry moved to a new position.\n\nNeighbour ("${(neighbour.content||'').slice(0,40)}") is dated:  ${nDate}\nThis entry is currently dated:  ${currentDate}\n\nUpdate this entry's date? (Leave blank or press Cancel to keep as-is.)`,nDate);
+  if(newDate==null)return; // cancelled
+  const trimmed=newDate.trim();
+  if(!trimmed||trimmed===currentDate)return;
+  moved.evdateYear=trimmed;
+  moved.evdate=trimmed;
+  save();
+}
 
-OK = open to edit, Cancel = keep as-is`))editEntry(id);
+// #387 — Timeline drag-and-drop reorder
+let _tlDragId=null,_tlTouchId=null,_tlTouchStartY=0,_tlLongPressTimer=null,_tlTouchActive=false,_tlTouchEl=null;
+
+function tlDragStart(ev,id){
+  _tlDragId=id;
+  try{ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',String(id));}catch(_){}
+  ev.currentTarget.style.opacity='0.5';
+}
+function tlDragEnd(ev){
+  ev.currentTarget.style.opacity='';
+  document.querySelectorAll('.titem').forEach(el=>el.classList.remove('tl-drop-target'));
+  _tlDragId=null;
+}
+function tlDragOver(ev){
+  if(_tlDragId==null)return;
+  ev.preventDefault();
+  try{ev.dataTransfer.dropEffect='move';}catch(_){}
+  // Highlight target
+  document.querySelectorAll('.titem').forEach(el=>el.classList.remove('tl-drop-target'));
+  const target=ev.currentTarget;if(target&&+target.dataset.tlId!==+_tlDragId)target.classList.add('tl-drop-target');
+}
+function tlDragLeave(ev){
+  ev.currentTarget.classList.remove('tl-drop-target');
+}
+function tlDragDrop(ev,targetId){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('tl-drop-target');
+  if(_tlDragId==null||_tlDragId===targetId)return;
+  reorderTimelineDragDrop(_tlDragId,targetId);
+  _tlDragId=null;
+}
+
+// Mobile: long-press to start drag
+function tlTouchStart(ev,id){
+  // Only start long-press on the drag handle, not on the whole item
+  const t=ev.target;
+  if(!t||!t.classList||!t.classList.contains('tl-drag-handle'))return;
+  _tlTouchId=id;_tlTouchActive=false;_tlTouchEl=ev.currentTarget;
+  _tlTouchStartY=ev.touches[0].clientY;
+  clearTimeout(_tlLongPressTimer);
+  _tlLongPressTimer=setTimeout(()=>{
+    _tlTouchActive=true;
+    if(_tlTouchEl){_tlTouchEl.style.opacity='0.5';_tlTouchEl.style.boxShadow='0 4px 12px rgba(0,0,0,0.25)';}
+    if(navigator.vibrate)navigator.vibrate(20);
+  },350);
+}
+function tlTouchMove(ev){
+  if(_tlTouchId==null)return;
+  if(!_tlTouchActive){
+    // If user moved before long-press fired, cancel — they're scrolling
+    const dy=Math.abs(ev.touches[0].clientY-_tlTouchStartY);
+    if(dy>8)clearTimeout(_tlLongPressTimer);
+    return;
   }
+  ev.preventDefault();
+  // Find the .titem under the touch point
+  const tch=ev.touches[0];
+  const el=document.elementFromPoint(tch.clientX,tch.clientY);
+  if(!el)return;
+  const titem=el.closest('.titem');
+  document.querySelectorAll('.titem').forEach(t=>t.classList.remove('tl-drop-target'));
+  if(titem&&+titem.dataset.tlId!==+_tlTouchId)titem.classList.add('tl-drop-target');
+}
+function tlTouchEnd(ev,id){
+  clearTimeout(_tlLongPressTimer);
+  if(_tlTouchEl){_tlTouchEl.style.opacity='';_tlTouchEl.style.boxShadow='';}
+  if(_tlTouchActive&&_tlTouchId!=null){
+    const tch=ev.changedTouches[0];
+    const el=document.elementFromPoint(tch.clientX,tch.clientY);
+    const titem=el?el.closest('.titem'):null;
+    if(titem){
+      const targetId=+titem.dataset.tlId;
+      if(targetId&&targetId!==_tlTouchId){
+        reorderTimelineDragDrop(_tlTouchId,targetId);
+      }
+    }
+  }
+  document.querySelectorAll('.titem').forEach(t=>t.classList.remove('tl-drop-target'));
+  _tlTouchId=null;_tlTouchActive=false;_tlTouchEl=null;
+}
+
+// Shared: actually perform the reorder
+function reorderTimelineDragDrop(draggedId,targetId){
+  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  function localSort(a,b){
+    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+    if(sa!==sb)return sa-sb;
+    const da=a.computedSortNum!=null?a.computedSortNum:evdateToNum(a.evdate,a.evdateMonth,a.evdateDay);
+    const db=b.computedSortNum!=null?b.computedSortNum:evdateToNum(b.evdate,b.evdateMonth,b.evdateDay);
+    if(da!==null&&db!==null)return da-db;
+    return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  }
+  const sorted=[...all].sort(localSort);
+  const fromIdx=sorted.findIndex(e=>e.id===draggedId);
+  const toIdx=sorted.findIndex(e=>e.id===targetId);
+  if(fromIdx<0||toIdx<0)return;
+  // Drop ON target = insert before target (or after if dragged from above)
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  const moved=sorted.splice(fromIdx,1)[0];
+  let insertAt=toIdx;
+  if(fromIdx<toIdx)insertAt=toIdx-1; // account for removal
+  // If dragging downward, drop AFTER target; upward, drop BEFORE
+  if(fromIdx<toIdx)insertAt=toIdx;
+  sorted.splice(insertAt,0,moved);
+  sorted.forEach((e,i)=>{e.sortKey=i*10;});
+  save();
+  suggestDateUpdateAfterMove(draggedId,sorted,insertAt);
   renderTimeline();
 }
 
@@ -7116,7 +7349,7 @@ function suggestFamilyConnections(){
         if(step===name)return;
         if(myParents.includes(step))return; // they're already a parent
         if(!hasRel(name,step)){
-          suggestions.push({label:`${parent}'s spouse ${step} → ${step} is ${name}'s step-parent?`,a:step,b:name,type:'Step-parent'});
+          suggestions.push({label:`${parent}'s spouse ${step} → step-parent of ${name}? (or actually a co-parent / mother / father?)`,a:step,b:name,type:'Step-parent'});
         }
       });
     });
@@ -7318,7 +7551,7 @@ function suggestFamilyConnectionsForChar(charName){
     const parentSpouses=rels.filter(r=>['Spouse','Husband','Wife','Partner'].includes(r.relType)&&(r.relA===parent||r.relB===parent)).map(r=>r.relA===parent?r.relB:r.relA);
     parentSpouses.forEach(step=>{
       if(step===charName||myParents.includes(step)||hasRel(charName,step))return;
-      suggestions.push({label:`${parent}'s spouse ${step} → ${step} is ${charName}'s step-parent?`,a:step,b:charName,type:'Step-parent'});
+      suggestions.push({label:`${parent}'s spouse ${step} → step-parent of ${charName}? (or actually a co-parent / mother / father?)`,a:step,b:charName,type:'Step-parent'});
     });
   });
 
@@ -7378,7 +7611,14 @@ function acceptFamSuggestion(i){
   } else if(sug.type==='Great aunt or uncle'){
     addRelEntry(sug.a,'Uncle or Aunt',sug.b,'Auto-suggested (great)');
   } else if(sug.type==='Step-parent'){
-    addRelEntry(sug.a,'Step-parent',sug.b,'Auto-suggested');
+    // #185 (per app #315) — Don't railroad into step-parent. Ask if this is actually the
+    // OTHER biological/adoptive parent. Default to step-parent if user just hits OK.
+    const pick=prompt(`How is ${sug.a} related to ${sug.b}?\n\nThe suggester sees ${sug.a} as the spouse of one of ${sug.b}'s parents. They might be:\n  • A step-parent\n  • Actually the OTHER parent (mother / father / parent)\n  • Adoptive parent\n\nType one of:\n  step\n  mother\n  father\n  parent\n  adoptive\n\n(or leave blank / cancel to skip)`,'step');
+    if(!pick)return;
+    const p=pick.trim().toLowerCase();
+    const map={step:'Step-parent','step-parent':'Step-parent',stepparent:'Step-parent',mother:'Mother',father:'Father',parent:'Parent',adoptive:'Adoptive parent','adoptive-parent':'Adoptive parent'};
+    const rt=map[p]||'Step-parent';
+    addRelEntry(sug.a,rt,sug.b,rt==='Step-parent'?'Auto-suggested':'Auto-suggested (co-parent)');
   } else if(sug.type==='Step-sibling'){
     addRelEntry(sug.a,'Step-sibling',sug.b,'Auto-suggested');
   } else if(sug.type==='Spouse-coparent'){
