@@ -53,7 +53,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--am);}
 input[type=number]{-moz-appearance:textfield;}
 textarea{resize:none;min-height:68px;}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
-.r2{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end;}
+/* #328 follow-up — wrap-friendly two-column labels so a longer one (e.g. "State / Province (optional)") doesn't push its input row below the sibling input. */
+.r2 .fg label{min-height:2.4em;display:flex;align-items:flex-end;flex-wrap:wrap;line-height:1.2;}
+/* #400 — post-save highlight pulse. Briefly outlines a card so the user can spot
+   which entry they just edited after the destination tab renders. */
+@keyframes justSavedPulse{0%{box-shadow:0 0 0 0 rgba(83,74,183,0.55),0 0 0 0 rgba(83,74,183,0.25);background-color:rgba(83,74,183,0.10);}60%{box-shadow:0 0 0 6px rgba(83,74,183,0),0 0 14px 8px rgba(83,74,183,0.10);background-color:rgba(83,74,183,0.04);}100%{box-shadow:0 0 0 0 rgba(83,74,183,0),0 0 0 0 rgba(83,74,183,0);background-color:transparent;}}
+.just-saved{animation:justSavedPulse 1.2s ease-out;outline:2px solid var(--accent);outline-offset:1px;border-radius:var(--rl2);}
+/* #328 — keep paired labels visually aligned even when one has "(optional)" or other inline annotations that wrap. */
+.r2 .fg label{min-height:14px;}
 .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
 .fa{display:flex;gap:8px;margin-top:6px;}
 .fa .btn{flex:1;padding:13px 11px;font-size:14px;min-height:48px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
@@ -775,8 +783,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;" oninput="anchorChanged()"/>
           <select id="ae-offset-unit" style="flex:1;" onchange="anchorChanged()"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
-        <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(most recent first)</span></label>
-          <select id="ae-offset-event" style="font-size:16px;" onchange="anchorChanged(this.value)"><option value="">— free text / unspecified —</option></select>
+        <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(searchable — type to filter)</span></label>
+          <!-- #342 follow-up — replaced native <select> with a searchable
+               text-input + filtered dropdown. The hidden #ae-offset-event keeps
+               the same id so existing read/write code (anchorChanged, save flow,
+               populate logic in onTypeChange) doesn't need to know it's been
+               restructured. -->
+          <div style="position:relative;">
+            <input type="text" id="ae-offset-event-search" autocomplete="off" placeholder="— free text / unspecified —" style="font-size:16px;padding-right:34px;" oninput="_oeFilter()" onfocus="_oeFilter()"/>
+            <input type="hidden" id="ae-offset-event"/>
+            <button type="button" onclick="_oeClear()" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
+            <div id="ae-offset-event-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+          </div>
         </div>
       </div>
       <!-- #253 — Supporting quote + speaker auto-tag + quote page (flows to Quote page display) -->
@@ -805,13 +823,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <strong>Event-specific fields.</strong> The Year/Month/Day, Importance, ± offset, and supporting quote fields above are shared with Timeline so events sort consistently on the Timeline tab.
       </div>
       <div class="fg"><label>Significance</label>
-        <!-- #342 — added major + lifechanging to match the labels rendered on
-             the entry card (ecHTML's sigLabel map already expected these). -->
+        <!-- #342 follow-up — collapse to two user-facing options per request.
+             Older entries with 'major' / 'lifechanging' still render correctly
+             via the sigLabel map in ecHTML — they just aren't selectable on
+             new entries. -->
         <select id="ae-event-sig">
           <option value="minor">Minor — small but notable</option>
           <option value="significant">Significant — changes something</option>
-          <option value="major">Major — big turning point</option>
-          <option value="lifechanging">Life-changing — never the same after</option>
         </select>
       </div>
       <div class="fg"><label>Event type(s) <span style="font-weight:400;">(tap to select multiple)</span></label>
@@ -1368,6 +1386,7 @@ function onOffsetToggleChange(toggleEl){
     const onEl=document.getElementById('ae-offset-num');if(onEl)onEl.value='';
     const ouEl=document.getElementById('ae-offset-unit');if(ouEl)ouEl.value='days';
     const oeEl=document.getElementById('ae-offset-event');if(oeEl)oeEl.value='';
+    const oeSearch=document.getElementById('ae-offset-event-search');if(oeSearch)oeSearch.value='';
     // Only clear year/era if we know we auto-filled it (don't trash user-typed values)
     if(_yearAutoFilled){
       const yEl=document.getElementById('ae-evdate-year');if(yEl)yEl.value='';
@@ -2034,12 +2053,14 @@ function cddQuickAdd(prefix){
   if(!currentId)return;
   // Don't duplicate — but if existing is a draft, promote it.
   const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  let createdNew=false;
   if(!existing){
     // #339 — quick-added chars are real; save as non-draft so they show in
     // the Log filter chip and Characters tab without needing further editing.
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);
     getCC(name);save();
+    createdNew=true;
   } else {
     // #339 — promote draft to real if previously a draft.
     if(existing.isDraft){existing.isDraft=false;if(!existing.note)existing.note='Quick-added';save();}
@@ -2048,6 +2069,46 @@ function cddQuickAdd(prefix){
   }
   cddChoose(prefix,name);
   if(cfg.onQuickAdd)cfg.onQuickAdd(name);
+  // #393 follow-up — for newly-created quick-add characters, prompt for gender
+  // immediately so the user doesn't have to come back to fill it in.
+  if(createdNew)_quickPromptGender(name);
+}
+// #393 follow-up — Show a small gender prompt sheet right after a quick-add
+// character is created. Updates the underlying Character entry's `gender` field
+// without forcing the user into the full Edit Character flow.
+function _quickPromptGender(name){
+  if(!name)return;
+  const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
+  if(!ce||ce.gender)return; // skip if a gender was already set somehow
+  // Lazy-build a single shared prompt overlay.
+  let ov=document.getElementById('quick-gender-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='quick-gender-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    ov.innerHTML='<div style="background:var(--card);border-radius:var(--rl2);padding:18px;max-width:340px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.3);">'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px;">Set gender for <span id="qg-name" style="color:var(--accent);"></span>?</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Optional — saves you a trip back to edit later.</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="qg-opts"></div>'
+      +'<div style="display:flex;gap:6px;justify-content:flex-end;"><button onclick="_quickGenderClose()" class="btn btn-sm" style="font-size:12px;">Skip</button></div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{if(e.target===ov)_quickGenderClose();});
+  }
+  document.getElementById('qg-name').textContent=name;
+  const opts=document.getElementById('qg-opts');
+  const choices=['Female','Male','Non-binary','Other / unspecified'];
+  opts.innerHTML=choices.map(c=>`<button class="btn btn-sm" onclick="_quickGenderSet('${esc(name)}','${esc(c==='Other / unspecified'?'':c)}')" style="font-size:12px;flex:1 0 calc(50% - 6px);">${c}</button>`).join('');
+  ov._target=name;
+  ov.style.display='flex';
+}
+function _quickGenderSet(name,g){
+  const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
+  if(ce){ce.gender=g||'';save();renderAll();}
+  _quickGenderClose();
+}
+function _quickGenderClose(){
+  const ov=document.getElementById('quick-gender-overlay');if(ov)ov.style.display='none';
 }
 // Register dropdowns once at startup. Called from onTypeChange before each use.
 function _cddEnsureRegistered(){
@@ -2248,11 +2309,12 @@ async function elocAutofillAddress(){
     const d=await r.json();
     if(d&&d[0]?.address){
       const a=d[0].address;
-      const sugCity=a.city||a.town||a.village||a.state||'';
+      const sugCity=a.city||a.town||a.village||'';
+      const sugState=a.state||a.region||a.province||'';
       const sugCountry=a.country||'';
-      if(!sugCity&&!sugCountry)return;
-      _elocAutofillData={city:sugCity,country:sugCountry};
-      const parts=[sugCity,sugCountry].filter(Boolean).join(', ');
+      if(!sugCity&&!sugCountry&&!sugState)return;
+      _elocAutofillData={city:sugCity,state:sugState,country:sugCountry};
+      const parts=[sugCity,sugState,sugCountry].filter(Boolean).join(', ');
       document.getElementById('eloc-autofill-msg').textContent=`Found: ${parts}`;
       document.getElementById('eloc-autofill-hint').style.display='';
     }
@@ -2260,8 +2322,9 @@ async function elocAutofillAddress(){
 }
 function elocApplyAutofill(){
   if(!_elocAutofillData)return;
-  const cityEl=document.getElementById('eloc-city');const countryEl=document.getElementById('eloc-country');
+  const cityEl=document.getElementById('eloc-city');const stateEl=document.getElementById('eloc-state');const countryEl=document.getElementById('eloc-country');
   if(cityEl&&!cityEl.value.trim())cityEl.value=_elocAutofillData.city||'';
+  if(stateEl&&!stateEl.value.trim())stateEl.value=_elocAutofillData.state||'';
   if(countryEl&&!countryEl.value.trim())countryEl.value=_elocAutofillData.country||'';
   document.getElementById('eloc-autofill-hint').style.display='none';
   _elocAutofillData=null;
@@ -2290,14 +2353,15 @@ async function quickLocAutofill(){
         const houseAndRoad=[a.house_number,a.road].filter(Boolean).join(' ');
         return{
           street:houseAndRoad,
-          city:a.city||a.town||a.village||a.suburb||a.state||'',
+          city:a.city||a.town||a.village||a.suburb||'',
+          state:a.state||a.region||a.province||'',
           country:a.country||''
         };
-      }).filter(x=>x.city||x.country||x.street);
+      }).filter(x=>x.city||x.country||x.street||x.state);
       if(!results.length)return;
       _quickLocAutofillData=results;
       const picks=results.slice(0,4).map((res,i)=>{
-        const label=[res.street,res.city,res.country].filter(Boolean).join(', ').slice(0,55);
+        const label=[res.street,res.city,res.state,res.country].filter(Boolean).join(', ').slice(0,70);
         return `<button class="btn btn-sm" onclick="quickLocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin:3px 0;font-size:11px;padding:6px 8px;line-height:1.35;">${label||'(unknown)'}</button>`;
       }).join('');
       document.getElementById('ae-new-loc-autofill-msg').innerHTML=`<div style="margin-bottom:4px;font-weight:600;">Which match?</div>${picks}`;
@@ -2309,9 +2373,12 @@ function quickLocApplyAutofill(idx){
   if(!_quickLocAutofillData)return;
   const res=_quickLocAutofillData[idx||0];
   const streetEl=document.getElementById('ae-new-loc-street');
-  const cityEl=document.getElementById('ae-new-loc-city');const countryEl=document.getElementById('ae-new-loc-country');
+  const cityEl=document.getElementById('ae-new-loc-city');
+  const stateEl=document.getElementById('ae-new-loc-state');
+  const countryEl=document.getElementById('ae-new-loc-country');
   if(streetEl&&!streetEl.value.trim()&&res.street)streetEl.value=res.street;
   if(cityEl&&!cityEl.value.trim()&&res.city)cityEl.value=res.city;
+  if(stateEl&&!stateEl.value.trim()&&res.state)stateEl.value=res.state;
   if(countryEl&&!countryEl.value.trim()&&res.country)countryEl.value=res.country;
   document.getElementById('ae-new-loc-autofill-hint').style.display='none';
   _quickLocAutofillData=null;
@@ -2547,14 +2614,28 @@ function onLocTypeChange(){
 async function geocodeCity(cityId,countryId){
   const city=document.getElementById(cityId)?.value.trim();
   const countryEl=document.getElementById(countryId);
-  if(!city||!countryEl||countryEl.value.trim())return; // don't overwrite existing country
+  if(!city||!countryEl)return;
+  // #328 follow-up — even if country is already filled, still try to fill State and Street
+  // (when a sibling state/street field exists and is empty). Previously we bailed out
+  // unconditionally if Country had a value, so users who typed a country first never got
+  // state/street autofilled from the City lookup.
   try{
     const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&addressdetails=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
     const d=await r.json();
     if(d&&d[0]?.address){
       const a=d[0].address;
       const country=a.country||'';
-      if(country)countryEl.value=country;
+      if(country&&!countryEl.value.trim())countryEl.value=country;
+      // State autofill — derive sibling State id from the City id (ae-loc-city → ae-loc-state, ae-new-loc-city → ae-new-loc-state)
+      const stateId=cityId.replace(/-city$/,'-state');
+      const stateEl=document.getElementById(stateId);
+      const stateVal=a.state||a.region||a.province||'';
+      if(stateEl&&stateVal&&!stateEl.value.trim())stateEl.value=stateVal;
+      // Street autofill — derive sibling Street id; only fill if user typed a city specific enough to return a road.
+      const streetId=cityId.replace(/-city$/,'-street');
+      const streetEl=document.getElementById(streetId);
+      const houseAndRoad=[a.house_number,a.road].filter(Boolean).join(' ');
+      if(streetEl&&houseAndRoad&&!streetEl.value.trim())streetEl.value=houseAndRoad;
     }
   }catch(e){} // silent fail — geocoding is best-effort
 }
@@ -2587,14 +2668,15 @@ async function stdLocAutofill(){
       return{
         display:item.display_name||'',
         street:houseAndRoad,
-        city:a.city||a.town||a.village||a.suburb||a.state||'',
+        city:a.city||a.town||a.village||a.suburb||'',
+        state:a.state||a.region||a.province||'',
         country:a.country||''
       };
-    }).filter(x=>x.city||x.country||x.street);
+    }).filter(x=>x.city||x.country||x.street||x.state);
     if(!results.length)return;
     _stdLocAutofillData=results;
     const picks=results.slice(0,4).map((res,i)=>{
-      const label=[res.street,res.city,res.country].filter(Boolean).join(', ').slice(0,55);
+      const label=[res.street,res.city,res.state,res.country].filter(Boolean).join(', ').slice(0,70);
       return `<button class="btn btn-sm" onclick="stdLocApplyAutofill(${i})" style="display:block;width:100%;text-align:left;margin:3px 0;font-size:11px;padding:6px 8px;line-height:1.35;">${label||'(unknown)'}</button>`;
     }).join('');
     const hint=document.getElementById('ae-loc-autofill-hint');
@@ -2610,9 +2692,11 @@ function stdLocApplyAutofill(idx){
   const res=_stdLocAutofillData[idx||0];
   const streetEl=document.getElementById('ae-loc-street');
   const cityEl=document.getElementById('ae-loc-city');
+  const stateEl=document.getElementById('ae-loc-state');
   const countryEl=document.getElementById('ae-loc-country');
   if(streetEl&&!streetEl.value.trim()&&res.street)streetEl.value=res.street;
   if(cityEl&&!cityEl.value.trim()&&res.city)cityEl.value=res.city;
+  if(stateEl&&!stateEl.value.trim()&&res.state)stateEl.value=res.state;
   if(countryEl&&!countryEl.value.trim()&&res.country)countryEl.value=res.country;
   const hint=document.getElementById('ae-loc-autofill-hint');if(hint)hint.style.display='none';
   _stdLocAutofillData=null;
@@ -3050,18 +3134,22 @@ function quickRelNewChar(btn){
   if(!name)return;
   // #339 fix — check existing first; promote if draft. Otherwise create non-draft.
   const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  let createdNew=false;
   if(existing){
     if(existing.isDraft){existing.isDraft=false;if(!existing.note)existing.note='Quick-added from relationship';save();}
     name=existing.cn||existing.content;
   } else {
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from relationship',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
+    createdNew=true;
   }
   // Set this row's value
   row.querySelector('.qr-char-search').value=name;
   row.querySelector('.qr-char').value=name;
   const list=row.querySelector('.qr-char-list');if(list)list.style.display='none';
   checkSuggestions();
+  // #393 follow-up — gender prompt for newly-created quick-rel characters
+  if(createdNew)_quickPromptGender(name);
 }
 function buildRelTypeOpts(sel){
   const groups=[
@@ -3148,8 +3236,35 @@ function saveQuickAddChar(){
 // ═══════════════════════════════════════════════════════════════
 function populateEventTypePicks(){
   const row=document.getElementById('event-type-picks');if(!row)return;
-  row.innerHTML=EVENT_TYPES.map(t=>`<span class="cpick" data-val="${t}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}</span>`).join('');
+  // #342 follow-up — combine the standard EVENT_TYPES list with any custom types
+  // saved on the current book (book.customEventTypes[]). Provides an inline
+  // "+ Add custom" button that prompts for a new label and stores it on the book.
+  const custom=(book()?.customEventTypes||[]).filter(Boolean);
+  const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))];
+  row.innerHTML=all.map(t=>`<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}</span>`).join('')
+    +`<span class="cpick" onclick="addCustomEventType()" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;">+ Add custom</span>`;
 }
+// #342 follow-up — prompt for a new event-type label, save on book, re-render picks.
+function addCustomEventType(){
+  if(!currentId)return;
+  const v=(prompt('Add a custom event type (e.g. "Time travel", "Magic spell")')||'').trim();
+  if(!v)return;
+  if(!book().customEventTypes)book().customEventTypes=[];
+  if(!book().customEventTypes.includes(v)&&!EVENT_TYPES.includes(v)){
+    book().customEventTypes.push(v);save();
+  }
+  // remember currently-picked types and restore + select the new one
+  const picked=getPickedEventTypes();
+  populateEventTypePicks();
+  setTimeout(()=>{
+    [...picked,v].forEach(t=>{
+      const chip=document.querySelector(`#event-type-picks .cpick[data-val="${cssEsc(t)}"]`);
+      if(chip)chip.classList.add('sel');
+    });
+  },10);
+}
+// Tiny attribute-safe selector escape (not full CSS.escape but enough for our chip vals).
+function cssEsc(s){return (s||'').replace(/["\\]/g,'\\$&');}
 function getPickedEventTypes(){return[...document.querySelectorAll('#event-type-picks .cpick.sel')].map(e=>e.dataset.val);}
 
 // ═══════════════════════════════════════════════════════════════
@@ -3258,14 +3373,12 @@ function onTypeChange(){
   // #342 — Populate timeline event picker from existing timeline/event entries (most recent first).
   // Bidirectional: shown for both Timeline AND Event entries (the Event form reuses the
   // same offset-event picker via #ae-tl-ex, exposed in onTypeChange's tl-ex toggle).
+  // #342 follow-up — searchable picker. Cache the entry list in window._oeOptions
+  // and let _oeFilter() render filtered results into #ae-offset-event-list.
   if(isTL||isEvent){
-    const evSel=document.getElementById('ae-offset-event');
-    if(evSel){
-      // Exclude the entry being edited so it doesn't reference itself.
-      const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
-      const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
-      evSel.innerHTML=`<option value="">— free text / unspecified —</option>`+evEntries.map(e=>{const tag=e.type==='Event'?'⭐ ':'🕒 ';return `<option value="${esc(e.content)}">${tag}${e.evdate?e.evdate+' — ':''}${(e.content||'').slice(0,50)}</option>`;}).join('');
-    }
+    const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
+    const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
+    window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
   }
   if(isRel&&chars.length){
     // #217 — Both blank, user picks A and B explicitly
@@ -3790,24 +3903,106 @@ function clearAEForm(){
   _lastAutoTaggedSpeaker='';_lastAutoTaggedWordSpeaker='';_lastAutoTaggedTraitSpeaker='';_lastAutoTaggedTlSpeaker='';
 }
 
+// #342 follow-up — Searchable offset-event picker. Populated by onTypeChange
+// into window._oeOptions; this function filters & renders, _oePick commits.
+function _oeFilter(){
+  const list=document.getElementById('ae-offset-event-list');
+  const search=document.getElementById('ae-offset-event-search');
+  if(!list||!search)return;
+  const q=(search.value||'').toLowerCase().trim();
+  const opts=window._oeOptions||[];
+  const filtered=q?opts.filter(o=>(o.val+' '+(o.date||'')+' '+o.label).toLowerCase().includes(q)):opts;
+  // Always include a "free text / unspecified" option at the top.
+  let html=`<div onclick="_oePick('','')" style="padding:7px 10px;cursor:pointer;font-size:13px;color:var(--t3);border-bottom:0.5px solid var(--cb);">— free text / unspecified —</div>`;
+  html+=filtered.slice(0,40).map(o=>{
+    const dateStr=o.date?o.date+' — ':'';
+    return `<div onclick="_oePick(this.dataset.v,this.dataset.label)" data-v="${esc(o.val)}" data-label="${esc(o.val)}" style="padding:7px 10px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--cb);"><span style="margin-right:5px;">${o.tag}</span>${dateStr}${o.label}</div>`;
+  }).join('');
+  list.innerHTML=html;
+  list.style.display='';
+}
+function _oePick(val,label){
+  const search=document.getElementById('ae-offset-event-search');
+  const hid=document.getElementById('ae-offset-event');
+  const list=document.getElementById('ae-offset-event-list');
+  if(hid)hid.value=val||'';
+  if(search)search.value=val||'';
+  if(list)list.style.display='none';
+  if(typeof anchorChanged==='function'){try{anchorChanged(val||'');}catch(_){}}
+}
+function _oeClear(){_oePick('','');}
+// Close offset event list when tapping outside.
+document.addEventListener('click',function(e){
+  const list=document.getElementById('ae-offset-event-list');
+  if(!list)return;
+  const wrap=list.parentElement;
+  if(wrap&&!wrap.contains(e.target))list.style.display='none';
+},true);
 function addThemeQuote(){
   const list=document.getElementById('ae-theme-quotes-list');
   const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
   const div=document.createElement('div');
   div.style.cssText='background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);padding:8px;margin-bottom:7px;';
+  // #396 — speaker is now a searchable text input + filtered dropdown (matches the pattern used for quick-rels).
+  // #396 — page input now triggers an auto chapter resolve via _tqAutoCh on blur, rendered as a small ch hint badge.
+  const tqId='tq-'+Date.now()+'-'+Math.floor(Math.random()*9999);
+  div.dataset.tqId=tqId;
   div.innerHTML=`
     <div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;">
-      <input type="text" placeholder="pg(s)" title="Page or pages where this quote appears" style="font-size:16px;width:80px;flex-shrink:0;" class="tq-page"/>
-      <select class="tq-speaker" style="font-size:16px;flex:1;min-width:0;">
-        <option value="">Narrator / Author</option>
-        ${chars.map(c=>`<option>${c}</option>`).join('')}
-      </select>
+      <div style="display:flex;flex-direction:column;width:80px;flex-shrink:0;">
+        <input type="text" placeholder="pg(s)" title="Page or pages where this quote appears" style="font-size:16px;width:100%;" class="tq-page" oninput="_tqAutoCh('${tqId}')" onblur="_tqAutoCh('${tqId}')"/>
+        <span class="tq-ch-hint" style="font-size:9px;color:var(--t3);margin-top:2px;text-align:center;display:none;"></span>
+      </div>
+      <div style="position:relative;flex:1;min-width:0;">
+        <input type="text" class="tq-speaker-search" placeholder="Speaker (Narrator)" autocomplete="off" style="font-size:16px;width:100%;" oninput="_tqSpeakerFilter('${tqId}')" onfocus="_tqSpeakerFilter('${tqId}')"/>
+        <input type="hidden" class="tq-speaker"/>
+        <div class="tq-speaker-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      </div>
       <button type="button" class="btn btn-sm" onclick="themeQuoteAddNewChar(this)" style="flex-shrink:0;padding:4px 8px;font-size:11px;" title="Quick-add a new character and select them as the speaker">+ New</button>
     </div>
     <textarea class="tq-text" placeholder="Quote text…" style="min-height:44px;font-size:16px;width:100%;font-style:italic;"></textarea>
-    <button onclick="this.closest('div').remove()" style="background:transparent;color:var(--t3);font-size:12px;padding:2px;float:right;">× Remove</button>`;
+    <button onclick="this.closest('[data-tq-id]').remove()" style="background:transparent;color:var(--t3);font-size:12px;padding:2px;float:right;">× Remove</button>`;
   list.appendChild(div);
 }
+// #396 — page → chapter resolver for theme quote rows. Reuses the existing
+// pageToChapters helper to find the chapter for the entered page.
+function _tqAutoCh(tqId){
+  const row=document.querySelector(`[data-tq-id="${tqId}"]`);if(!row)return;
+  const pgEl=row.querySelector('.tq-page');const hint=row.querySelector('.tq-ch-hint');
+  if(!pgEl||!hint)return;
+  const v=(pgEl.value||'').trim();
+  if(!v){hint.style.display='none';return;}
+  try{
+    const chs=pageToChapters(v)||[];
+    if(chs.length){hint.textContent='Ch.'+chs.join(',');hint.style.display='';}
+    else{hint.style.display='none';}
+  }catch(_){hint.style.display='none';}
+}
+// #396 — Searchable speaker dropdown for theme-quote rows.
+function _tqSpeakerFilter(tqId){
+  const row=document.querySelector(`[data-tq-id="${tqId}"]`);if(!row)return;
+  const search=row.querySelector('.tq-speaker-search');const list=row.querySelector('.tq-speaker-list');
+  if(!search||!list)return;
+  const q=(search.value||'').toLowerCase().trim();
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
+  const opts=['Narrator / Author',...chars];
+  const filtered=q?opts.filter(o=>o.toLowerCase().includes(q)):opts;
+  if(!filtered.length){list.style.display='none';return;}
+  list.innerHTML=filtered.slice(0,30).map(o=>`<div onclick="_tqSpeakerPick('${tqId}',this.dataset.v)" data-v="${esc(o)}" style="padding:7px 10px;cursor:pointer;font-size:14px;border-bottom:0.5px solid var(--cb);">${o==='Narrator / Author'?'🎙 ':''}${o}</div>`).join('');
+  list.style.display='';
+}
+function _tqSpeakerPick(tqId,val){
+  const row=document.querySelector(`[data-tq-id="${tqId}"]`);if(!row)return;
+  row.querySelector('.tq-speaker-search').value=val||'';
+  row.querySelector('.tq-speaker').value=val==='Narrator / Author'?'':(val||'');
+  row.querySelector('.tq-speaker-list').style.display='none';
+}
+// Close any open speaker list when tapping outside.
+document.addEventListener('click',function(e){
+  document.querySelectorAll('[data-tq-id] .tq-speaker-list').forEach(l=>{
+    if(!l.parentElement.contains(e.target))l.style.display='none';
+  });
+},true);
 // #237 — Quick-add new character from a theme supporting-quote row;
 // auto-selects them as speaker AND tags them into the theme's Characters Involved.
 function themeQuoteAddNewChar(btn){
@@ -3820,27 +4015,35 @@ function themeQuoteAddNewChar(btn){
   } else {
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from theme quote',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
+    // #393 follow-up — prompt for gender immediately for newly-created quick-add characters
+    // so the user doesn't have to come back later.
+    _quickPromptGender(name);
   }
-  // Repopulate every speaker dropdown in this list, preserving existing selections
-  const list=document.getElementById('ae-theme-quotes-list');
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  list.querySelectorAll('.tq-speaker').forEach(sel=>{
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Narrator / Author</option>'+chars.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
-  });
-  // Set THIS row's speaker to the new character
-  const row=btn.closest('div');const sel=row?row.querySelector('.tq-speaker'):null;
-  if(sel){const opt=[...sel.options].find(o=>o.value===name);if(opt)sel.value=name;}
+  // Set THIS row's speaker to the new character (now a hidden input + searchable text).
+  const row=btn.closest('[data-tq-id]');
+  if(row){
+    const sH=row.querySelector('.tq-speaker');const sS=row.querySelector('.tq-speaker-search');
+    if(sH)sH.value=name;
+    if(sS)sS.value=name;
+    const list=row.querySelector('.tq-speaker-list');if(list)list.style.display='none';
+  }
   // #238 — Auto-tag the new character in the theme's Characters Involved
   const current=cddGet('ae-inv')||[];
   if(!current.includes(name))cddSet('ae-inv',[...current,name]);
 }
 function getThemeQuotes(){
-  return[...document.querySelectorAll('#ae-theme-quotes-list > div')].map(d=>({
-    page:d.querySelector('.tq-page').value.trim(),
-    speaker:d.querySelector('.tq-speaker').value,
-    text:d.querySelector('.tq-text').value.trim()
-  })).filter(q=>q.text);
+  // #396 — speaker is a hidden input populated by the searchable picker.
+  // Fall back to the visible search input value (so a typed-but-unconfirmed name still saves).
+  return[...document.querySelectorAll('#ae-theme-quotes-list > div')].map(d=>{
+    const hidden=(d.querySelector('.tq-speaker')?.value||'').trim();
+    const typed=(d.querySelector('.tq-speaker-search')?.value||'').trim();
+    const speaker=hidden||(typed&&typed!=='Narrator / Author'?typed:'');
+    return{
+      page:d.querySelector('.tq-page').value.trim(),
+      speaker:speaker,
+      text:d.querySelector('.tq-text').value.trim()
+    };
+  }).filter(q=>q.text);
 }
 function renderThemeQuotes(quotes,listEl){
   if(!listEl)return;
@@ -3848,13 +4051,30 @@ function renderThemeQuotes(quotes,listEl){
   (quotes||[]).forEach(q=>{
     addThemeQuote();
     const last=listEl.lastChild;
-    if(last){last.querySelector('.tq-page').value=q.page||'';last.querySelector('.tq-speaker').value=q.speaker||'';last.querySelector('.tq-text').value=q.text||'';}
+    if(last){
+      last.querySelector('.tq-page').value=q.page||'';
+      const sH=last.querySelector('.tq-speaker');const sS=last.querySelector('.tq-speaker-search');
+      if(sH)sH.value=q.speaker||'';
+      if(sS)sS.value=q.speaker||'';
+      last.querySelector('.tq-text').value=q.text||'';
+      // re-resolve chapter hint for restored page values
+      const tqId=last.dataset.tqId;if(tqId&&typeof _tqAutoCh==='function')_tqAutoCh(tqId);
+    }
   });
 }
 // #191-A / #242 — Build the nested quote block for a Theme card
+// #395 — sort by page number ascending; entries without a page sink to the end.
 function buildThemeQuoteBlock(allTqs){
   if(!allTqs.length)return'';
-  var rows=allTqs.map(function(q){
+  var sorted=allTqs.slice().sort(function(a,b){
+    var pa=a.page?parseInt(String(a.page).split('-')[0],10):NaN;
+    var pb=b.page?parseInt(String(b.page).split('-')[0],10):NaN;
+    if(isNaN(pa)&&isNaN(pb))return 0;
+    if(isNaN(pa))return 1;
+    if(isNaN(pb))return -1;
+    return pa-pb;
+  });
+  var rows=sorted.map(function(q){
     var spkrCC=q.speaker&&q.speaker!=='Narrator / Author'?getCC(q.speaker):null;
     var spkrHtml=q.speaker
       ?(spkrCC
@@ -4035,7 +4255,9 @@ function submitEntry(){
     if(!spk){reqFail('ae-speaker-search','Please select a speaker');validationFail=true;}
   }
   if(isChar){
-    if(!document.getElementById('ae-crole').value){reqFail('ae-crole');validationFail=true;}
+    // #397 — Role no longer blocks submission. Missing role is still surfaced on
+    // the To-do tab (see todoFields[Character] -> charRole), so users can complete
+    // it later instead of being stopped at submit.
     if(!document.getElementById('ae-cstatus').value||document.getElementById('ae-cstatus').value==='unknown'){/* status unknown is ok */}
   }
   if(type==='Characteristic'){
@@ -4193,11 +4415,21 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isTheme){
     entry.themeQuotes=getThemeQuotes();
     entry.attachedQuoteIds=getAttachedQuoteIds();
-    // #191-A / #329 — auto-tag speakers from free-text and attached quotes into Involved
-    const inv=new Set(entry.involved||[]);
+    // #191-A / #329 / #399 — Rebuild Involved from CURRENT quote speakers + user's
+    // explicit Involved picks. Previously this seeded from entry.involved which kept
+    // any old speaker (A) on edit even after the user changed the quote speaker to B.
+    const _userInv=cddGet('ae-inv')||[];
+    const inv=new Set(_userInv);
     entry.themeQuotes.forEach(q=>{if(q.speaker&&q.speaker.trim())inv.add(q.speaker.trim());});
     entry.attachedQuoteIds.forEach(id=>{const q=entries().find(e=>e.id===id);if(q?.speaker&&q.speaker!=='Narrator / Author')inv.add(q.speaker);});
     entry.involved=[...inv];
+    // #339 — if any speaker referenced from theme quotes is a draft Character,
+    // promote them out of drafts so they show up in Log/Character filters.
+    entry.themeQuotes.forEach(q=>{
+      if(!q.speaker||q.speaker==='Narrator / Author')return;
+      const ce=entries().find(x=>CT.includes(x.type)&&((x.cn||x.content||'').toLowerCase()===q.speaker.toLowerCase()));
+      if(ce&&ce.isDraft){ce.isDraft=false;if(!ce.note)ce.note='Quick-added from theme quote';}
+    });
   }
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
   if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locState=(document.getElementById('ae-loc-state')?.value||'').trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
@@ -4303,10 +4535,12 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   // #340 — Save extra Quick Relationships from the Relationship form, anchored
   // on Character A. Each row becomes its own Relationship entry tagged
   // "Quick-added" so it appears in the main log with a distinguishing label.
+  // #340 follow-up — fall back to typed search-input values when the user typed a
+  // name/type but didn't tap an option, so rows still save instead of silently dropping.
   if(isRel&&!editId&&entry.relA){
     [...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')].forEach(row=>{
-      const rt=row.querySelector('.qr-type').value;
-      const ch=row.querySelector('.qr-char').value;
+      const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+      const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch||ch===entry.relA)return; // skip empty rows and self-rels
       addRelEntry(entry.relA,rt,ch,'Quick-added',true);
     });
@@ -4354,6 +4588,8 @@ function postSaveNavigate(entry,type){
   const wasEdit=document.getElementById('ae-edit-id')?.value!=='';
   // (The edit-id is already cleared by close, so detect via a flag we set before close — fall back to entry.id comparison)
   // Simpler: always navigate on save. If user was editing a character, opening the character profile is still a sensible result.
+  // #400 — schedule a scroll-to + highlight pulse after the destination tab has rendered.
+  if(entry?.id)setTimeout(()=>_pulseEntryById(entry.id),180);
   if(CT.includes(type)){
     // Character → open their profile
     setTimeout(()=>openCharDetail(entry.cn||entry.content,false),60);
@@ -4376,7 +4612,31 @@ function postSaveNavigate(entry,type){
   // All other types: stay on current tab
 }
 
-// ── Recycle bin ───────────────────────────────────────────────
+// #400 — Post-save scroll + highlight pulse. Looks for any rendered card whose
+// onclick references editEntry(<id>) and scrolls it into view, briefly outlining it.
+// This works across the log, timeline, quotes, characters, questions, refs, etc.
+function _pulseEntryById(id){
+  if(!id)return;
+  // Try a few times — destination tab's render may be slightly async.
+  let tries=0;
+  const tick=()=>{
+    tries++;
+    // Find the card by matching the onclick attribute, the data attribute, or the
+    // closest .ec / .titem ancestor of any element with editEntry(id).
+    const sel=`[onclick*="editEntry(${id})"],[onclick*="editEntry(${id} "],[data-tl-id="${id}"],[data-entry-id="${id}"]`;
+    let target=document.querySelector(sel);
+    if(target){
+      // climb to the card root
+      target=target.closest('.ec,.titem,.book-card,.q-card,.ref-card')||target;
+      try{target.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){target.scrollIntoView();}
+      target.classList.add('just-saved');
+      setTimeout(()=>target.classList.remove('just-saved'),1400);
+      return;
+    }
+    if(tries<6)setTimeout(tick,160);
+  };
+  tick();
+}
 function getRecycleBin(){if(!book().recycleBin)book().recycleBin=[];return book().recycleBin;}
 function deleteEntry(id){
   const e=entries().find(x=>x.id===id);if(!e)return;
@@ -4707,12 +4967,11 @@ function editEntry(id){
         document.getElementById('ae-offset-unit').value=m[3];
       }
       if(e.timeOffsetFrom){
-        const evSel=document.getElementById('ae-offset-event');
-        // Add option if not present, then select
-        if(evSel&&![...evSel.options].some(o=>o.value===e.timeOffsetFrom)){
-          const opt=document.createElement('option');opt.value=e.timeOffsetFrom;opt.textContent=e.timeOffsetFrom;evSel.appendChild(opt);
-        }
-        if(evSel)evSel.value=e.timeOffsetFrom;
+        // #342 follow-up — picker is now an input + hidden field, not a <select>.
+        const evHid=document.getElementById('ae-offset-event');
+        const evSearch=document.getElementById('ae-offset-event-search');
+        if(evHid)evHid.value=e.timeOffsetFrom;
+        if(evSearch)evSearch.value=e.timeOffsetFrom;
       }
       const t=document.getElementById('ae-offset-toggle');if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
       // #309 — Re-run anchor calc so the year/era field is auto-filled with the calculated date,
@@ -4831,6 +5090,16 @@ function filterDraftsForTab(){
   // #206 — when a type filter is active, also return matching drafts for that type
   if(activeFilter==='all'||activeFilter.startsWith('ch:'))return[];
   return entries().filter(e=>e.type===activeFilter&&e.isDraft);
+}
+// #398 — Build a generic drafts <details> block for any per-type tab. Returns
+// '' when there are no drafts for the requested type predicate. Used by
+// renderChars / renderTimeline / renderQuotes / renderQuestions / renderRefs /
+// renderMap so drafts always surface at the top, not just on the Log tab.
+function _draftsBlockHTML(typePredicate){
+  const drafts=entries().filter(e=>e.isDraft&&typePredicate(e));
+  if(!drafts.length)return'';
+  const items=drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:11px;color:var(--t3);flex-shrink:0;">'+(e.type||'')+'</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.cn||e.content||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('');
+  return '\x3Cdetails open style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+items+'</div>\x3C/details>';
 }
 
 function renderEntries(){
@@ -5036,8 +5305,11 @@ function setQuoteFilter(f){activeQuoteFilter=f;renderQuotes();}
 // ═══════════════════════════════════════════════════════════════
 function renderChars(){
   const list=document.getElementById('chars-list');const empty=document.getElementById('chars-empty');
-  const chars=entries().filter(e=>CT.includes(e.type));
-  if(!chars.length){list.innerHTML='';empty.style.display='';return;}
+  // #398 — non-draft chars only in the main list; drafts get their own section above.
+  const chars=entries().filter(e=>CT.includes(e.type)&&!e.isDraft);
+  // #398 — drafts block (Characters)
+  const draftHTML=_draftsBlockHTML(e=>CT.includes(e.type));
+  if(!chars.length&&!draftHTML){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   // #338 — main characters on top, the rest alphabetical
   const roleOrder={main:0,antagonist:1,side:1,narrator:1,minor:2,stranger:2,'':3};
@@ -5054,7 +5326,7 @@ function renderChars(){
   const escText=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const charsQ=(document.getElementById('chars-search')?.value||'').toLowerCase().trim();
   const filteredChars=charsQ?chars.filter(c=>{const n=(c.cn||c.content||'').toLowerCase();const nick=(c.nickname||'').toLowerCase();const desc=(c.charDesc||'').toLowerCase();return n.includes(charsQ)||nick.includes(charsQ)||desc.includes(charsQ);}):chars;
-  if(!filteredChars.length&&charsQ){list.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No characters match "'+charsQ+'"</div>';return;}
+  if(!filteredChars.length&&charsQ){list.innerHTML=draftHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No characters match "'+charsQ+'"</div>';return;}
   list.innerHTML=filteredChars.map(c=>{
     const name=c.cn||c.content;const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -5081,6 +5353,8 @@ function renderChars(){
       </div>
     </div>`;
   }).join('');
+  // #398 — prepend drafts block (or render only it if there are no real chars)
+  list.innerHTML=draftHTML+list.innerHTML;
   // Delegated handler — runs for any tap inside the list
   list.onclick=function(e){
     const editBtn=e.target.closest('.char-list-edit');
@@ -5845,7 +6119,9 @@ function setWebFilter(f){activeWebFilter=f;renderWeb();}
 // ═══════════════════════════════════════════════════════════════
 function renderTimeline(){
   const list=document.getElementById('timeline-list');const empty=document.getElementById('tl-empty');
-  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
+  // #398 — non-draft entries in the main timeline; drafts get their own header section above.
+  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&!e.isDraft);
+  const draftHTML=_draftsBlockHTML(e=>['Timeline','Event','Date/Period'].includes(e.type));
 
   // #314 — build location filter chips
   const tlLocFilter=document.getElementById('tl-loc-filter');
@@ -5880,8 +6156,12 @@ function renderTimeline(){
   }
 
   // #270 — split dated vs undated (computedSortNum counts as dated)
-  const dated=filtered.filter(e=>e.evdate||e.computedSortNum!=null||(e.sortKey!=null));
-  const undated=filtered.filter(e=>!e.evdate&&e.computedSortNum==null&&e.sortKey==null);
+  // #342 follow-up — events/timeline items with chapNum/pageNum but no evdate
+  // also count as "dated" so they intermix in book-reading order instead of
+  // being dumped at the bottom of the timeline.
+  const _hasBookOrder=e=>(+e.chapNum||+e.pageNum);
+  const dated=filtered.filter(e=>e.evdate||e.computedSortNum!=null||(e.sortKey!=null)||_hasBookOrder(e));
+  const undated=filtered.filter(e=>!e.evdate&&e.computedSortNum==null&&e.sortKey==null&&!_hasBookOrder(e));
 
   // #303/#325 — sort: explicit sortKey first, then parsed evdate (numeric), then ch/page tiebreak
   dated.sort((a,b)=>{
@@ -5900,7 +6180,7 @@ function renderTimeline(){
   });
 
   const items=[...dated,...undated];
-  if(!items.length){list.innerHTML='';empty.style.display='';return;}
+  if(!items.length&&!draftHTML){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780',significant:'#378ADD',lifechanging:'#D4537E'};
   const renderItem=(item,i,arr)=>{
@@ -5937,7 +6217,8 @@ function renderTimeline(){
     html+=undated.map((item,i)=>renderItem(item,i,undated)).join('');
   }
   html+='</div>';
-  list.innerHTML=html;
+  // #398 — drafts block at top
+  list.innerHTML=draftHTML+html;
 }
 // #314 — timeline location filter
 function setTlLocFilter(loc){
@@ -6255,12 +6536,15 @@ function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
     setTimeout(()=>{
       const t=document.getElementById('ae-offset-toggle');
       if(t){t.checked=true;const blk=document.getElementById('ae-offset-block');if(blk)blk.style.display='';}
-      const evSel=document.getElementById('ae-offset-event');
+      // #342 follow-up — picker is now an input + hidden field. Set the hidden value
+      // and the visible search input together if we can resolve the anchor by name.
+      const evHidIB=document.getElementById('ae-offset-event');
+      const evSearchIB=document.getElementById('ae-offset-event-search');
       const anchorName=useAfter?prevName:nextName;
       const anchorDate=useAfter?prevDate:nextDate;
-      if(evSel&&(anchorName||anchorDate)){
-        const opt=[...evSel.options].find(o=>(anchorName&&(o.value.includes(anchorName)||o.text.includes(anchorName)))||(anchorDate&&(o.value.includes(anchorDate)||o.text.includes(anchorDate))));
-        if(opt)evSel.value=opt.value;
+      if(evHidIB&&(anchorName||anchorDate)){
+        const val=anchorName||anchorDate||'';
+        if(val){evHidIB.value=val;if(evSearchIB)evSearchIB.value=val;}
       }
       const dir=document.getElementById('ae-offset-dir');if(dir)dir.value=useAfter?'+':'-';
       const sk=document.getElementById('ae-sortkey');if(sk&&newSort!=null)sk.value=newSort;
@@ -6664,11 +6948,13 @@ function wordCard(e){
 // ═══════════════════════════════════════════════════════════════
 function renderQuestions(){
   const list=document.getElementById('questions-list');const empty=document.getElementById('q-empty');
-  const all=entries().filter(e=>e.type==='Question');
-  if(!all.length){list.innerHTML='';empty.style.display='';return;}
+  // #398 — non-draft questions in main list; drafts surface in their own header section.
+  const all=entries().filter(e=>e.type==='Question'&&!e.isDraft);
+  const draftHTML=_draftsBlockHTML(e=>e.type==='Question');
+  if(!all.length&&!draftHTML){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const u=all.filter(q=>!q.answered),a=all.filter(q=>q.answered);
-  let html='';
+  let html=draftHTML;
   if(u.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:7px;">Open (${u.length})</div>`+u.map(qHTML).join('');
   if(a.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin:12px 0 7px;">Answered (${a.length})</div>`+a.map(qHTML).join('');
   list.innerHTML=html;
@@ -6681,8 +6967,10 @@ function qHTML(q){
   const gm=q.qguess?guessMap[q.qguess]:null;
   const guessBadge=gm?`<span class="pbadge" style="background:${gm.bg};color:${gm.color};font-weight:700;margin-left:6px;">${gm.label}</span>`:'';
   const hypBlock=q.qhyp?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid var(--am);"><strong style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Your hypothesis${guessBadge}</strong>${q.qhyp}</div>`:'';
-  return`<div class="q-card ec question" style="${checked?'opacity:0.6;':''}">
-    <div style="display:flex;align-items:flex-start;gap:9px;">
+  // #236 — opacity on the wrapper made the red swipe-delete backplate visible through the card.
+  // Move opacity to the inner content only so the card background stays opaque.
+  return`<div class="q-card ec question">
+    <div style="display:flex;align-items:flex-start;gap:9px;${checked?'opacity:0.6;':''}">
       <div onclick="toggleQ(${q.id})" style="cursor:pointer;flex-shrink:0;margin-top:0;padding:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
         <div style="width:26px;height:26px;border-radius:50%;border:2.5px solid ${checked?'#1D9E75':'var(--am)'};background:${checked?'#1D9E75':'transparent'};display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:background 0.15s;">${checked?'✓':''}</div>
       </div>
@@ -6712,11 +7000,13 @@ function onQAnswerInput(){
 // ═══════════════════════════════════════════════════════════════
 function renderRefs(){
   const list=document.getElementById('refs-list');const empty=document.getElementById('refs-empty');
-  let all=entries().filter(e=>e.type==='Reference');
+  // #398 — keep drafts visible at the top of the References tab.
+  let all=entries().filter(e=>e.type==='Reference'&&!e.isDraft);
+  const draftHTML=_draftsBlockHTML(e=>e.type==='Reference');
   const types=[...new Set(all.map(e=>e.refType||'book'))];
   document.getElementById('ref-filter-bar').innerHTML=`<button class="chip${activeRefFilter==='all'?' active':''}" onclick="setRefFilter('all')">All</button>`+types.map(t=>`<button class="chip${activeRefFilter===t?' active':''}" onclick="setRefFilter('${t}')">${{book:'📚 Books',article:'📰 Articles',watch:'🎬 Watch',research:'🔍 Research',podcast:'🎙 Podcasts'}[t]||t}</button>`).join('');
   if(activeRefFilter!=='all')all=all.filter(e=>e.refType===activeRefFilter);
-  if(!all.length){list.innerHTML='';empty.style.display='';return;}
+  if(!all.length&&!draftHTML){list.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   const undone=all.filter(r=>!r.refDone),done=all.filter(r=>r.refDone);
   const rtI={book:'📚',article:'📰',watch:'🎬',research:'🔍',podcast:'🎙'};
@@ -6739,7 +7029,7 @@ function renderRefs(){
       </div>
     </div>
   </div>`;
-  let html='';
+  let html=draftHTML;
   if(undone.length)html+=`<div style="font-size:10px;font-weight:700;color:#BA7517;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:7px;">To explore (${undone.length}) 🟡</div>`+undone.map(rc).join('');
   if(done.length)html+=`<div style="font-size:10px;font-weight:700;color:#1D9E75;letter-spacing:0.06em;text-transform:uppercase;margin:12px 0 7px;">Done (${done.length}) 🟢</div>`+done.map(rc).join('');
   list.innerHTML=html;
@@ -8768,7 +9058,7 @@ function _swipeConfirmDelete(card){
 // new cards appended by render functions get swipe handlers too.
 function _swipeInit(){
   _swipeWrapAll();
-  const targets=['log-list','quotes-list','characters-list','questions-list','refs-list','tl-list','map-list','library-list'].map(id=>document.getElementById(id)).filter(Boolean);
+  const targets=['log-list','quotes-list','chars-list','questions-list','refs-list','timeline-list','map-list','library-list'].map(id=>document.getElementById(id)).filter(Boolean);
   targets.forEach(el=>{
     new MutationObserver(()=>{_swipeWrapAll();}).observe(el,{childList:true,subtree:true});
   });
