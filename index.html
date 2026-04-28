@@ -501,6 +501,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <select id="ae-type" onchange="onTypeChangeGuarded(this)" style="flex:1;"></select>
           <button type="button" onclick="showTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Show entry description">?</button>
           <button type="button" onclick="openTemplateMenu()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Templates — save / load reusable entry presets">📋</button>
+          <!-- #394 follow-up — re-summon the templates hint on demand. -->
+          <button type="button" onclick="reshowTemplateHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="What is the 📋 templates button for?">?</button>
         </div>
       </div>
       <div id="ae-type-hint" class="type-hint" style="display:none;"></div>
@@ -777,13 +779,27 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- EVENT EXTRAS (renamed from Major Event) -->
     <div id="ae-event-ex" style="display:none">
+      <div style="font-size:11px;color:var(--t2);background:var(--al);border-radius:var(--r);padding:7px 9px;margin-bottom:9px;">
+        <strong>Event-specific fields.</strong> The Year/Month/Day, Importance, ± offset, and supporting quote fields above are shared with Timeline so events sort consistently on the Timeline tab.
+      </div>
       <div class="fg"><label>Significance</label>
-        <select id="ae-event-sig"><option value="minor">Minor — small but notable</option><option value="significant">Significant — changes something</option></select>
+        <!-- #342 — added major + lifechanging to match the labels rendered on
+             the entry card (ecHTML's sigLabel map already expected these). -->
+        <select id="ae-event-sig">
+          <option value="minor">Minor — small but notable</option>
+          <option value="significant">Significant — changes something</option>
+          <option value="major">Major — big turning point</option>
+          <option value="lifechanging">Life-changing — never the same after</option>
+        </select>
       </div>
       <div class="fg"><label>Event type(s) <span style="font-weight:400;">(tap to select multiple)</span></label>
         <div class="cpick-row" id="event-type-picks" style="margin-top:5px;"></div>
       </div>
-      <div class="fg"><label>When <span style="font-weight:400;">(chapter, page, or narrative time — feeds into Timeline)</span></label><input type="text" id="ae-medate" placeholder="e.g. Ch.7 · p.134 · Year 1823"/></div>
+      <!-- #342 — removed redundant "When" free-text input. The structured
+           Year/Month/Day in the Timeline section above replaces it. The
+           ae-medate hidden input is kept for backward-compatibility and is
+           populated from the structured fields on save. -->
+      <input type="hidden" id="ae-medate"/>
       <!-- #281 — removed "Also add to Timeline" checkbox; Events already appear in Timeline view, so the duplicate Timeline twin entry was causing every Event to show twice. Hidden checkbox kept for backward-compatibility with existing form refs. -->
       <input type="checkbox" id="ae-event-to-tl" style="display:none"/>
     </div>
@@ -885,6 +901,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div class="fg"><label>Description</label><textarea id="ae-reldesc" style="min-height:50px;" placeholder="Describe the relationship…"></textarea></div>
+      <!-- #340 — Quick relationships (multiple in one go). Each row creates an
+           extra Relationship entry on save, anchored on Character A. -->
+      <div class="divider"></div>
+      <div class="slabel">More relationships for <span id="ae-rel-qr-anchor" style="color:var(--accent);">A</span> <span style="font-size:10px;font-weight:400;color:var(--t3);">— optional, add more in one go</span></div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:7px;">Each row saves another relationship anchored on Character A above. Pick a type and a target character. Useful for entering "A is mother of X, sister of Y, daughter of Z" all at once.</div>
+      <div id="ae-rel-quick-rels-list"></div>
+      <button class="btn" onclick="addRelQuickRelRow()" style="margin-bottom:8px;width:100%;background:var(--al);color:var(--accent);border-color:var(--am);font-size:13px;padding:9px;touch-action:manipulation;">+ Add another relationship</button>
     </div>
 
     <!-- LOCATION -->
@@ -907,6 +930,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <span id="ae-loc-autofill-msg"></span>
       </div>
       <div class="fg"><label>Era / Time period at book</label><input type="text" id="ae-loc-era" placeholder="e.g. 1940s wartime London"/></div>
+      <!-- #328 — parent location selector inside the standard entry form so
+           hierarchy can be set without going through Edit Location separately. -->
+      <div class="fg"><label>Parent location <span style="font-weight:400;color:var(--t3);">(optional — e.g. "Diagon Alley" lives inside "London")</span></label>
+        <select id="ae-loc-parent"><option value="">— None —</option></select>
+      </div>
       <div class="fg"><label>Notes on location</label><textarea id="ae-loc-notes" placeholder="Atmosphere, significance, what happened here…" style="min-height:50px;"></textarea></div>
       <div style="margin-bottom:6px;"><button class="btn btn-sm" onclick="stdLocFindPhoto()" title="Find photo on Google Images">🖼 Find photo</button></div>
     </div>
@@ -1972,7 +2000,9 @@ function cddQuickAdd(prefix){
   if(!currentId)return;
   // Don't duplicate
   if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
-    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    // #339 — quick-added chars are real; save as non-draft so they show in
+    // the Log filter chip and Characters tab without needing further editing.
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);
     getCC(name);save();
   } else {
@@ -1997,6 +2027,8 @@ function _cddRelChanged(){
   // Fire the existing checkExistingRel logic via the rel form handler (defined in onTypeChange)
   const fn=window._cddRelChangeHook;
   if(typeof fn==='function')fn();
+  // #340 — keep the "More relationships for X" anchor label in sync with relA
+  if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2812,6 +2844,40 @@ function addQuickRelRow(relType,charName){
   list.appendChild(row);
   // qr-type is now a hidden input; checkSuggestions is called from qrTypePick
 }
+// #340 — Same row markup as addQuickRelRow but appended to the Relationship
+// form's separate list (#ae-rel-quick-rels-list). Re-uses every qr-* helper
+// (qrCharFilter, qrTypePick, etc.) since they look up rows by data-qr-id.
+function addRelQuickRelRow(relType,charName){
+  const list=document.getElementById('ae-rel-quick-rels-list');if(!list)return;
+  const rowId='qr-'+Date.now()+'-'+Math.floor(Math.random()*9999);
+  const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
+  row.dataset.qrId=rowId;
+  row.innerHTML=`<div style="margin-bottom:6px;position:relative;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="text" class="qr-type-search" placeholder="Search relationship type…" autocomplete="off" value="${relType||''}" style="flex:1;font-size:14px;" oninput="qrTypeFilter('${rowId}')" onclick="qrTypeOpen('${rowId}')"/>
+        <input type="hidden" class="qr-type" value="${relType||''}"/>
+        <button onclick="this.closest('[data-qr-id]').remove()" style="background:transparent;color:var(--t3);font-size:17px;padding:2px 6px;flex-shrink:0;" title="Remove">×</button>
+      </div>
+      <div class="qr-type-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+    </div>
+    <div style="position:relative;margin-bottom:6px;">
+      <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:34px;"/>
+      <input type="hidden" class="qr-char" value="${charName||''}"/>
+      <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
+      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+    </div>
+    <div style="text-align:right;">
+      <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
+    </div>`;
+  list.appendChild(row);
+}
+// #340 — Keep the "More relationships for X" anchor label updated to whatever
+// is currently in Character A. Called from cdd onChange + on form open.
+function _refreshRelQRAnchor(){
+  const el=document.getElementById('ae-rel-qr-anchor');if(!el)return;
+  const a=(document.getElementById('ae-rela')?.value||'').trim()||'A';
+  el.textContent=a;
+}
 function qrCharClear(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
   row.querySelector('.qr-char-search').value='';
@@ -2934,7 +3000,10 @@ function quickRelNewChar(btn){
   if(!name)return;
   // Create if not exists
   if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
-    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    // #339 — quick-added chars are real (user explicitly named them while
+    // adding a relationship). Save as non-draft so they show up in the main
+    // Log filter and the Characters tab without needing further editing.
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from relationship',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
   }
   // Set this row's value
@@ -3106,7 +3175,7 @@ function onTypeChange(){
   document.getElementById('ae-char-ex').style.display=isTrait?'':'none';
   const qex=document.getElementById('ae-q-ex');if(qex)qex.style.display=isQuestion?'':'none';
   document.getElementById('ae-word-ex').style.display=isWord?'':'none';
-  document.getElementById('ae-tl-ex').style.display=isTL?'':'none';
+  document.getElementById('ae-tl-ex').style.display=(isTL||isEvent)?'':'none';
   document.getElementById('ae-event-ex').style.display=isEvent?'':'none';
   document.getElementById('ae-ref-ex').style.display=isRef?'':'none';
   document.getElementById('ae-rel-ex').style.display=isRel?'':'none';
@@ -3184,8 +3253,21 @@ function onTypeChange(){
     }
   }
   if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
+  // #340 — when entering a Relationship-type form, clear any prior quick-rels
+  // and refresh the "More relationships for X" anchor label.
+  if(isRel){const _rqr2=document.getElementById('ae-rel-quick-rels-list');if(_rqr2)_rqr2.innerHTML='';_refreshRelQRAnchor();}
   if(isDial&&!document.getElementById('ae-dial-lines').children.length)addDialogueLine();
   buildLocSelect();
+  // #328 — populate the parent-location dropdown for the Location entry form
+  if(isLoc){
+    const psel=document.getElementById('ae-loc-parent');
+    if(psel){
+      const here=(document.getElementById('ae-content')?.value||'').trim().toLowerCase();
+      const names=getLocations().map(l=>l.name).filter(n=>n.toLowerCase()!==here).sort((a,b)=>a.localeCompare(b));
+      const cur=psel.value;
+      psel.innerHTML='<option value="">— None —</option>'+names.map(n=>`<option${n===cur?' selected':''}>${n}</option>`).join('');
+    }
+  }
 }
 function sortedChars(){
   // Returns [{name, role, label, nickname}] — main chars first (★), then side/antagonist (◆), then others
@@ -3595,9 +3677,19 @@ function dismissTemplateHint(){
   const b=book();if(b){b.templateHintDismissed=true;save();}
   const hint=document.getElementById('ae-template-hint');if(hint)hint.style.display='none';
 }
+// #394 follow-up — explicit re-summon. Does NOT touch templateHintDismissed
+// so the auto-suppression rules still apply on the next sheet open. Scrolls
+// the entry sheet so the hint is visible if user invoked it from far down.
+function reshowTemplateHint(){
+  const hint=document.getElementById('ae-template-hint');if(!hint)return;
+  hint.style.display='';
+  const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
+}
 function clearAEForm(){
   ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
+  // #328 — reset parent-location dropdown
+  const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
   // Clear all searchable character dropdowns
   _cddEnsureRegistered();
   ['ae-inv','ae-speaker','ae-word-speaker','ae-rela','ae-relb','ae-tl-speaker'].forEach(p=>cddClear(p));
@@ -3608,7 +3700,9 @@ function clearAEForm(){
   document.getElementById('ae-char-photo-data').value='';setCharPhotos([]);
   document.getElementById('ae-photo-data').value='';setEntryPhotos([]);
   document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';
-  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
+  // #340 — also clear the Relationship-form quick-rels list and reset anchor.
+  const _rqr=document.getElementById('ae-rel-quick-rels-list');if(_rqr)_rqr.innerHTML='';
+  if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
   clearTraitQuotes();
   clearAttachedQuotes();
   // #250 — Discard draft button hidden until editEntry decides to show it
@@ -3664,7 +3758,8 @@ function themeQuoteAddNewChar(btn){
   const name=(prompt('New character name:')||'').trim();if(!name)return;
   // Create if not exists
   if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
-    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:true};
+    // #339 — quick-added chars are real; save as non-draft.
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from theme quote',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
   }
   // Repopulate every speaker dropdown in this list, preserving existing selections
@@ -3946,11 +4041,11 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
   if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
-  if(type==='Timeline'){
+  if(type==='Timeline'||type==='Event'){
     // #309 — warn on duplicate timeline name (only on NEW entries, not edits).
     // Soft warning (confirm) so the user can override — same name across batches
     // can be intentional ("Year 1815" used twice in different sections).
-    if(!editId){
+    if(!editId&&type==='Timeline'){
       const dupName=(content||'').trim();
       if(dupName){
         const dup=entries().find(x=>x.type==='Timeline'&&(x.content||'').trim().toLowerCase()===dupName.toLowerCase());
@@ -3968,8 +4063,8 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const ou=document.getElementById('ae-offset-unit').value;
     const oe=document.getElementById('ae-offset-event').value;
     const offsetActive=document.getElementById('ae-offset-toggle')?.checked && on;
-    // Year required ONLY if no offset anchor
-    if(!evYear && !offsetActive){alert('Please enter a year or era, OR connect this entry to another event.');return;}
+    // Year required ONLY for Timeline entries with no offset anchor; Event can save without it.
+    if(type==='Timeline' && !evYear && !offsetActive){alert('Please enter a year or era, OR connect this entry to another event.');return;}
     // Build evdate string
     let assembled=evYear;
     if(evMon&&evYear){assembled+='-'+evMon;if(evDay&&!isNaN(evDay))assembled+='-'+String(evDay).padStart(2,'0');}
@@ -4005,7 +4100,18 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
     entry.eventTypes=getPickedEventTypes();
-    entry.evdate=document.getElementById('ae-medate').value.trim();
+    // #342 — Event now uses the structured Year/Month/Day from the Timeline
+    // section. ae-evdate is assembled by the same buildEvdate helper as
+    // Timeline. Mirror it into ae-medate (hidden) for backward-compat.
+    const medateEl=document.getElementById('ae-medate');
+    const evdate=(document.getElementById('ae-evdate')?.value||'').trim();
+    entry.evdate=evdate;
+    if(medateEl)medateEl.value=evdate;
+    // Also persist the same supporting-quote / offset fields Timeline saves so
+    // events anchor on the same timeline correctly.
+    entry.tlSq=document.getElementById('ae-tl-sq').value.trim();
+    entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';
+    entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
     if(!editId&&document.getElementById('ae-event-to-tl').checked){
       const tlEntry={id:Date.now()+1,type:'Timeline',content:content,evdate:entry.evdate,importance:entry.eventSig==='lifechanging'?'major':entry.eventSig==='minor'?'minor':'normal',chapNum,pageNum:pgVal,date:entry.date,location:locSel,involved:entry.involved,note:'From Event: '+content};
       book().entries.push(tlEntry);
@@ -4036,12 +4142,14 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
   if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
+    // #328 — parent location captured from standard form
+    entry.locParent=(document.getElementById('ae-loc-parent')?.value||'').trim();
     // Save to locations list
     const locName=content||entry.locBuilding||entry.locCity;
     // #110/#334 — also push the entry's photo into the registry so the Locations
     // tab card shows the same image without an extra Edit-Location step.
     const entryPhoto=entry.photo||(entry.photos&&entry.photos[0])||'';
-    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,country:entry.locCountry,era:entry.locEra,notes:entry.locNotes},entryPhoto?{photo:entryPhoto}:{}));
+    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
   }
   if(type==='Chapter'&&pgVal){
     // Sync chapSetup
@@ -4122,8 +4230,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     [...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')].forEach(row=>{
       const rt=row.querySelector('.qr-type').value;const ch=row.querySelector('.qr-char').value;if(!rt||!ch)return;
       addRelEntry(cn,rt,ch,'',true);
-    });
-    // #248 — Save quick characteristics as separate Characteristic entries tagged to this character
+    });    // #248 — Save quick characteristics as separate Characteristic entries tagged to this character
     [...document.querySelectorAll('#ae-quick-traits-list [data-qt-id]')].forEach(row=>{
       const tt=row.querySelector('.qt-type').value;
       const text=row.querySelector('.qt-text').value.trim();
@@ -4132,6 +4239,16 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       const sqText=(row.querySelector('.qt-sq')?.value||'').trim();
       if(sqText){traitEntry.traitQuotes=[{text:sqText,pg:(row.querySelector('.qt-sqp')?.value||'').trim(),ch:'',speaker:(row.querySelector('.qt-speaker')?.value||'').trim()}];}
       book().entries.unshift(traitEntry);
+    });
+  }
+  // #340 — Save extra Quick Relationships from the Relationship form, anchored
+  // on Character A. Each row becomes its own Relationship entry.
+  if(isRel&&!editId&&entry.relA){
+    [...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')].forEach(row=>{
+      const rt=row.querySelector('.qr-type').value;
+      const ch=row.querySelector('.qr-char').value;
+      if(!rt||!ch||ch===entry.relA)return; // skip empty rows and self-rels
+      addRelEntry(entry.relA,rt,ch,'',true);
     });
   }
 
@@ -4441,12 +4558,19 @@ function editEntry(id){
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}
       // #303 — populate structured fields
-      if(e.type==='Timeline'){
+      // #342 — also populate for Event (was Timeline-only)
+      if(e.type==='Timeline'||e.type==='Event'){
         const hasOffset=!!(e.timeOffset&&e.timeOffsetFrom);
         document.getElementById('ae-evdate-year').value=hasOffset?'':(e.evdateYear||e.evdate||'');
         const evMonEl=document.getElementById('ae-evdate-month');if(evMonEl)evMonEl.value=e.evdateMonth||'';
         document.getElementById('ae-evdate-day').value=e.evdateDay||'';
       }
+    }
+    // #342 — restore tl-* fields for Event (Timeline already restored above implicitly)
+    if(e.type==='Event'||e.type==='Timeline'){
+      const sq=document.getElementById('ae-tl-sq');if(sq)sq.value=e.tlSq||'';
+      const sqpg=document.getElementById('ae-tl-sq-pg');if(sqpg)sqpg.value=e.tlSqPg||'';
+      if(e.tlSpeaker)cddSet('ae-tl-speaker',e.tlSpeaker);
     }
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
     if(e.importance)document.getElementById('ae-imp').value=e.importance;
@@ -4478,6 +4602,13 @@ function editEntry(id){
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
     if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
+    // #328 — restore parent. Pull from registry if entry didn't store one.
+    const _psel=document.getElementById('ae-loc-parent');
+    if(_psel){
+      let parentName=e.locParent||'';
+      if(!parentName){const reg=getLocations().find(l=>l.name===(e.content||e.locBuilding));if(reg&&reg.parent)parentName=reg.parent;}
+      if(parentName){if(![..._psel.options].some(o=>o.value===parentName)){const opt=document.createElement('option');opt.value=parentName;opt.textContent=parentName;_psel.appendChild(opt);}_psel.value=parentName;}
+    }
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
     if(e.type==='Theme'){setTimeout(()=>{populateAttachQuoteSel();loadAttachedQuotes(e.attachedQuoteIds||[]);},60);}
@@ -6053,6 +6184,14 @@ function backfillTimelineSortNums(){
   }
   if(changed)save();
 }
+// #328 — toggle a single chip; re-render
+function _mapToggleFilter(group,val){
+  if(!window._mapFilters)window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
+  const set=window._mapFilters[group];if(!set)return;
+  if(set.has(val))set.delete(val);else set.add(val);
+  renderMap();
+}
+function _mapClearFilters(){window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};renderMap();}
 function renderMap(){
   const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
   const locEntries=entries().filter(e=>e.type==='Location');
@@ -6082,9 +6221,49 @@ function renderMap(){
   }
 
   const mapQ=(document.getElementById('map-search')?.value||'').toLowerCase().trim();
-  const filteredLocNames=mapQ?locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return loc.toLowerCase().includes(mapQ)||(d.city||'').toLowerCase().includes(mapQ)||(d.country||'').toLowerCase().includes(mapQ)||(d.building||'').toLowerCase().includes(mapQ);}):locNames;
-  if(!filteredLocNames.length&&mapQ){list.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match "'+mapQ+'"</div>';return;}
-  list.innerHTML=locDraftHTML+headerHTML+filteredLocNames.map(loc=>{
+  // #328 — filter chips. Toggle by tapping; multiple chips = OR within group, AND across groups.
+  // State stored on window so re-renders preserve selection.
+  if(!window._mapFilters)window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
+  const F=window._mapFilters;
+  // Build option lists from registry entries that match the (possibly empty) search
+  const allLocData=locNames.map(n=>Object.assign({_name:n},getLocations().find(l=>l.name===n)||{},(()=>{const le=entries().find(e=>e.type==='Location'&&!e.isDraft&&e.content===n);return le?{_eCity:le.locCity,_eCountry:le.locCountry,_eBuilding:le.locBuilding,_eParent:le.locParent}:{};})()));
+  const _countries=[...new Set(allLocData.map(l=>l.country||l._eCountry||'').filter(Boolean))].sort();
+  const _cities=[...new Set(allLocData.map(l=>l.city||l._eCity||'').filter(Boolean))].sort();
+  const _buildings=[...new Set(allLocData.map(l=>l.building||l._eBuilding||'').filter(Boolean))].sort();
+  const _parents=[...new Set(allLocData.map(l=>l.parent||l._eParent||'').filter(Boolean))].sort();
+  const _chip=(group,val,label)=>{
+    const sel=F[group].has(val);
+    // val may contain spaces, apostrophes, etc. Encode for inline onclick: use single quotes outside, escape inner single quotes.
+    const safeVal=String(val).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<span class="pbadge" style="cursor:pointer;font-size:11px;padding:3px 8px;${sel?'background:var(--accent);color:#fff;':''}" onclick="event.stopPropagation();_mapToggleFilter('${group}','${safeVal}')">${esc(label)}${sel?' ✓':''}</span>`;
+  };
+  let chipsHTML='';
+  if(_countries.length||_cities.length||_buildings.length||_parents.length){
+    chipsHTML='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;font-size:11px;">';
+    if(_countries.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Country</span>${_countries.map(c=>_chip('countries',c,c)).join('')}</div>`;
+    if(_cities.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">City</span>${_cities.map(c=>_chip('cities',c,c)).join('')}</div>`;
+    if(_buildings.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Building</span>${_buildings.map(c=>_chip('buildings',c,c)).join('')}</div>`;
+    if(_parents.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Within</span>${_parents.map(c=>_chip('parents',c,c)).join('')}</div>`;
+    if(F.countries.size||F.cities.size||F.buildings.size||F.parents.size)chipsHTML+=`<div style="margin-top:2px;"><button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="_mapClearFilters()">Clear filters</button></div>`;
+    chipsHTML+='</div>';
+  }
+  const _chipMatch=(loc)=>{
+    if(!F.countries.size&&!F.cities.size&&!F.buildings.size&&!F.parents.size)return true;
+    const d=allLocData.find(x=>x._name===loc)||{};
+    const country=d.country||d._eCountry||'';
+    const city=d.city||d._eCity||'';
+    const building=d.building||d._eBuilding||'';
+    const parent=d.parent||d._eParent||'';
+    if(F.countries.size&&!F.countries.has(country))return false;
+    if(F.cities.size&&!F.cities.has(city))return false;
+    if(F.buildings.size&&!F.buildings.has(building))return false;
+    if(F.parents.size&&!F.parents.has(parent))return false;
+    return true;
+  };
+  const filteredLocNames=(mapQ?locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return loc.toLowerCase().includes(mapQ)||(d.city||'').toLowerCase().includes(mapQ)||(d.country||'').toLowerCase().includes(mapQ)||(d.building||'').toLowerCase().includes(mapQ);}):locNames).filter(_chipMatch);
+  if(!filteredLocNames.length&&mapQ){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match "'+mapQ+'"</div>';return;}
+  if(!filteredLocNames.length){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match the active filters.</div>';return;}
+  list.innerHTML=locDraftHTML+headerHTML+chipsHTML+filteredLocNames.map(loc=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
@@ -6305,12 +6484,23 @@ function renderWords(){
   list.innerHTML=html;
 }
 function wordCard(e){
+  // #192-A — surface speaker directly on the vocab card (was only on the
+  // character profile via the Involved list). Render as a coloured cbadge so
+  // tapping jumps to the speaker's profile.
+  const spk=e.speaker;
+  const isNarr=spk==='Narrator / Author';
+  const spkBadge=spk
+    ?(isNarr
+      ?`<span class="pbadge" style="font-weight:600;">🎙 Narrator / Author</span>`
+      :(()=>{const cc=getCC(spk);return `<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(spk)}',false)">${spk}</span>`;})())
+    :'';
   return `<div class="citem">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
       <div>
         <div style="font-size:14px;font-weight:700;color:var(--accent);">${e.content}</div>
         ${e.definition?`<div style="font-size:12px;margin-top:2px;">${e.definition}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;">Not yet defined</div>'}
         ${e.wordContext?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">"${e.wordContext}"</div>`:''}
+        ${spkBadge?`<div style="margin-top:4px;font-size:10px;color:var(--t3);">Spoken by: ${spkBadge}</div>`:''}
         ${e.wordTrans?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">🌐 ${e.wordTrans}</div>`:''}
         ${e.wsrc?`<div style="font-size:10px;color:var(--t3);">Source: ${e.wsrc}</div>`:''}
         ${e.photo?`<img src="${e.photo}" style="width:80px;height:60px;object-fit:cover;border-radius:5px;margin-top:4px;"/>`:''}
