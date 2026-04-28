@@ -78,6 +78,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .status-reading{background:#1D9E75;}.status-finished{background:#378ADD;}.status-want{background:#888780;}
 /* entry cards */
 .ec{background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);padding:10px 12px;margin-bottom:7px;border-left:3px solid var(--am);}
+/* #236 — slide-to-delete: card sits on a red "Delete" backplate. Touch-drag left
+   reveals it; a long swipe triggers delete with confirm. */
+.swipe-wrap{position:relative;margin-bottom:7px;border-radius:var(--rl2);overflow:hidden;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;}
+.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card{transition:none;}
+.swipe-del-bg{position:absolute;top:0;right:0;bottom:0;width:90px;background:linear-gradient(90deg,#A32D2D,#7a1f1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;cursor:pointer;z-index:0;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card{position:relative;z-index:1;}
 .ec.quote{border-left-color:#1D9E75;}.ec.character,.ec.person,.ec.suspect{border-left-color:#D85A30;}
 .ec.theme{border-left-color:#378ADD;}.ec.chapter{border-left-color:#BA7517;}
 .ec.setting{border-left-color:#D4537E;}.ec.relationship{border-left-color:#888780;}
@@ -519,9 +526,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="checkDuplicateChar(this.value.trim())"/></div>
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
+      <!-- #393 — patrilineal last-name suggester -->
+      <div id="ae-patri-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:6px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);"></div>
       <div class="r3">
         <div class="fg"><label>Gender</label>
           <select id="ae-gender"><option value="">Unknown</option><option>Male</option><option>Female</option><option>Nonbinary</option><option>Transgender male</option><option>Transgender female</option><option>Genderfluid</option><option>Agender</option><option>Other</option></select>
@@ -603,9 +612,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-attached-quotes-list"></div>
     </div>
 
-    <!-- QUESTION ANSWER -->
+    <!-- QUESTION EXTRAS — #225 reworked: Hypothesis (your guess) + Guess-correct toggle + Answer -->
     <div id="ae-q-ex" style="display:none">
-      <div class="fg"><label>Answer (fill in when resolved)</label><textarea id="ae-qanswer" placeholder="Answer or resolution…" style="min-height:50px;"></textarea></div>
+      <div class="fg"><label>Your hypothesis / guess <span style="font-weight:400;color:var(--t3);">(optional — what you think the answer might be)</span></label>
+        <textarea id="ae-qhyp" placeholder="What you think the answer is, or a guess…" style="min-height:44px;" oninput="onQAnswerInput()"></textarea>
+      </div>
+      <div class="fg" id="ae-qguess-row" style="display:none;"><label>Was your guess correct?</label>
+        <select id="ae-qguess">
+          <option value="">— not yet known —</option>
+          <option value="yes">Yes — I was right</option>
+          <option value="partial">Partly — close but not exact</option>
+          <option value="no">No — I was wrong</option>
+        </select>
+      </div>
+      <div class="fg"><label>Answer <span style="font-weight:400;color:var(--t3);">(fill in when resolved — moves question to Answered section)</span></label>
+        <textarea id="ae-qanswer" placeholder="Answer or resolution from the book…" style="min-height:50px;" oninput="onQAnswerInput()"></textarea>
+      </div>
     </div>
 
     <!-- QUOTE EXTRAS -->
@@ -924,7 +946,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="r2">
         <div class="fg"><label>City / Region</label><input type="text" id="ae-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-loc-city','ae-loc-country')"/></div>
+        <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-loc-state" placeholder="e.g. California"/></div>
+      </div>
+      <div class="r2">
         <div class="fg"><label>Country</label><input type="text" id="ae-loc-country" placeholder="e.g. England"/></div>
+        <div></div>
       </div>
       <div id="ae-loc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:4px 0 8px;padding:7px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);">
         <span id="ae-loc-autofill-msg"></span>
@@ -970,9 +996,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="fg"><label>Street address <span style="font-weight:400;color:var(--t3);">(real places)</span></label><input type="text" id="ae-new-loc-street" placeholder="e.g. 221B Baker Street"/></div>
           <div class="r2">
             <div class="fg"><label>City / region</label><input type="text" id="ae-new-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-new-loc-city','ae-new-loc-country')"/></div>
+            <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-new-loc-state" placeholder="e.g. California"/></div>
+          </div>
+          <div class="r2">
             <div class="fg"><label>Country</label><input type="text" id="ae-new-loc-country" placeholder="e.g. England"/></div>
+            <div></div>
           </div>
           <div class="fg"><label>Era / time period</label><input type="text" id="ae-new-loc-era" placeholder="e.g. 1940s wartime, medieval, present day"/></div>
+          <!-- #328 part 4 — parent nesting preserved when adding inline -->
+          <div class="fg"><label>Parent location <span style="font-weight:400;color:var(--t3);">(optional — nest under another place)</span></label>
+            <select id="ae-new-loc-parent"><option value="">— None —</option></select>
+          </div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
             <button class="btn btn-sm btn-primary" onclick="saveQuickLoc()">Save location</button>
             <button class="btn btn-sm" onclick="quickLocFindPhoto()" title="Find photo on Google Images">🖼 Find photo</button>
@@ -1598,7 +1632,7 @@ const TEMPLATE_FIELDS=[
   'ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc',
   'ae-evdate','ae-evdate-year','ae-evdate-month','ae-evdate-day','ae-medate',
   'ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg',
-  'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes',
+  'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-era','ae-loc-notes',
   'ae-trait-type','ae-imp','ae-event-sig','ae-loc-type','ae-ref-type'
 ];
 function openTemplateMenu(){
@@ -1998,17 +2032,19 @@ function cddQuickAdd(prefix){
   let name=(document.getElementById(prefix+'-search')?.value||'').trim();
   if(!name){name=prompt('New character name:');if(!name||!name.trim())return;name=name.trim();}
   if(!currentId)return;
-  // Don't duplicate
-  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
+  // Don't duplicate — but if existing is a draft, promote it.
+  const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  if(!existing){
     // #339 — quick-added chars are real; save as non-draft so they show in
     // the Log filter chip and Characters tab without needing further editing.
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);
     getCC(name);save();
   } else {
+    // #339 — promote draft to real if previously a draft.
+    if(existing.isDraft){existing.isDraft=false;if(!existing.note)existing.note='Quick-added';save();}
     // Match the canonical capitalisation if it already exists
-    const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
-    if(existing)name=existing.cn||existing.content;
+    name=existing.cn||existing.content;
   }
   cddChoose(prefix,name);
   if(cfg.onQuickAdd)cfg.onQuickAdd(name);
@@ -2112,6 +2148,7 @@ function openEditLocSheet(name){
   document.getElementById('eloc-type').value=d.type||'unknown';
   document.getElementById('eloc-building').value=d.building||'';
   document.getElementById('eloc-city').value=d.city||'';
+  {const _es=document.getElementById('eloc-state');if(_es)_es.value=d.state||'';}
   document.getElementById('eloc-country').value=d.country||'';
   document.getElementById('eloc-era').value=d.era||'';
   document.getElementById('eloc-notes').value=d.notes||'';
@@ -2133,7 +2170,7 @@ function saveEditLoc(){
   const origName=document.getElementById('eloc-orig-name').value;
   const newName=document.getElementById('eloc-name').value.trim();
   if(!newName)return;
-  const data={name:newName,type:document.getElementById('eloc-type').value,building:document.getElementById('eloc-building').value.trim(),city:document.getElementById('eloc-city').value.trim(),country:document.getElementById('eloc-country').value.trim(),era:document.getElementById('eloc-era').value.trim(),notes:document.getElementById('eloc-notes').value.trim(),
+  const data={name:newName,type:document.getElementById('eloc-type').value,building:document.getElementById('eloc-building').value.trim(),city:document.getElementById('eloc-city').value.trim(),state:(document.getElementById('eloc-state')?.value||'').trim(),country:document.getElementById('eloc-country').value.trim(),era:document.getElementById('eloc-era').value.trim(),notes:document.getElementById('eloc-notes').value.trim(),
     photo:document.getElementById('eloc-photo-data').value||'', // #334
     parent:document.getElementById('eloc-parent').value||'' // #328
   };
@@ -2303,7 +2340,15 @@ function onLocSelChange(){}
 function filterLocSelect(q){
   showLocDropdown();
 }
-function showQuickAddLoc(){document.getElementById('ae-quick-loc').style.display='';}
+function showQuickAddLoc(){
+  document.getElementById('ae-quick-loc').style.display='';
+  // #328 part 4 — populate parent dropdown with all existing locations
+  const psel=document.getElementById('ae-new-loc-parent');
+  if(psel){
+    const locs=[...new Set([...getLocations().map(l=>l.name),...entries().filter(e=>e.type==='Location'&&!e.isDraft).map(e=>e.content)])].filter(Boolean).sort();
+    psel.innerHTML=`<option value="">— None —</option>`+locs.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }
+}
 function saveQuickLoc(){
   const name=document.getElementById('ae-new-loc-name').value.trim();if(!name)return;
   const locData={
@@ -2311,12 +2356,17 @@ function saveQuickLoc(){
     building:document.getElementById('ae-new-loc-building').value.trim(),
     street:document.getElementById('ae-new-loc-street')?.value.trim()||'',
     city:document.getElementById('ae-new-loc-city').value.trim(),
+    state:(document.getElementById('ae-new-loc-state')?.value||'').trim(),
     country:document.getElementById('ae-new-loc-country').value.trim(),
     era:document.getElementById('ae-new-loc-era').value.trim(),
+    // #328 part 4 — preserve parent nesting when added inline so the
+    // hierarchy is visible from the Locations tab when tapping the name.
+    parent:(document.getElementById('ae-new-loc-parent')?.value||'').trim(),
   };
   saveLocation(name,locData);selectLocOption(name,name);
   document.getElementById('ae-quick-loc').style.display='none';
-  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-state','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const _np=document.getElementById('ae-new-loc-parent');if(_np)_np.value='';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2664,7 +2714,7 @@ function bookCardHTML(b,i){
   let progHTML='';
   if(b.progressPage&&b.totalPages){const pct=Math.min(100,Math.round((+b.progressPage/+b.totalPages)*100));progHTML=`<div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col};"></div></div><div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${b.progressPage}/${b.totalPages} · ${pct}%</div>`;}
   const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
-  return `<div class="book-card" onclick="openBook('${b.id}')">
+  return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
       <div class="book-title">${b.title}</div>
@@ -2998,11 +3048,12 @@ function quickRelNewChar(btn){
   let name=seedName;
   if(!name){name=(prompt('New character name:')||'').trim();}
   if(!name)return;
-  // Create if not exists
-  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
-    // #339 — quick-added chars are real (user explicitly named them while
-    // adding a relationship). Save as non-draft so they show up in the main
-    // Log filter and the Characters tab without needing further editing.
+  // #339 fix — check existing first; promote if draft. Otherwise create non-draft.
+  const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  if(existing){
+    if(existing.isDraft){existing.isDraft=false;if(!existing.note)existing.note='Quick-added from relationship';save();}
+    name=existing.cn||existing.content;
+  } else {
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from relationship',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
   }
@@ -3204,12 +3255,16 @@ function onTypeChange(){
   if(isWord&&chars.length){cddFilter('ae-word-speaker');}
   // Reset word translation toggle when switching types
   if(!isWord){const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='none';const wtb=document.getElementById('ae-word-trans-btn');if(wtb)wtb.textContent='＋ Add full translation details';}
-  // Populate timeline event picker from existing timeline/event entries (most recent first)
-  if(isTL){
+  // #342 — Populate timeline event picker from existing timeline/event entries (most recent first).
+  // Bidirectional: shown for both Timeline AND Event entries (the Event form reuses the
+  // same offset-event picker via #ae-tl-ex, exposed in onTypeChange's tl-ex toggle).
+  if(isTL||isEvent){
     const evSel=document.getElementById('ae-offset-event');
     if(evSel){
-      const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
-      evSel.innerHTML=`<option value="">— free text / unspecified —</option>`+evEntries.map(e=>`<option value="${esc(e.content)}">${e.evdate?e.evdate+' — ':''}${(e.content||'').slice(0,50)}</option>`).join('');
+      // Exclude the entry being edited so it doesn't reference itself.
+      const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
+      const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
+      evSel.innerHTML=`<option value="">— free text / unspecified —</option>`+evEntries.map(e=>{const tag=e.type==='Event'?'⭐ ':'🕒 ';return `<option value="${esc(e.content)}">${tag}${e.evdate?e.evdate+' — ':''}${(e.content||'').slice(0,50)}</option>`;}).join('');
     }
   }
   if(isRel&&chars.length){
@@ -3686,7 +3741,7 @@ function reshowTemplateHint(){
   const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -3725,6 +3780,8 @@ function clearAEForm(){
   document.getElementById('ae-loc-type').value='real';onLocTypeChange();
   document.getElementById('ae-event-to-tl').checked=false;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
+  const qh=document.getElementById('ae-qhyp');if(qh)qh.value='';
+  const qg=document.getElementById('ae-qguess');if(qg)qg.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
   // Reset draft toggle
   const di=document.getElementById('ae-is-draft');if(di)di.value='false';
@@ -3756,9 +3813,11 @@ function addThemeQuote(){
 function themeQuoteAddNewChar(btn){
   if(!currentId)return;
   const name=(prompt('New character name:')||'').trim();if(!name)return;
-  // Create if not exists
-  if(!entries().some(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase())){
-    // #339 — quick-added chars are real; save as non-draft.
+  // #339 fix — check existing first; if it's a draft, promote it. Otherwise create non-draft.
+  const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
+  if(existing){
+    if(existing.isDraft){existing.isDraft=false;if(!existing.note)existing.note='Quick-added from theme quote';save();}
+  } else {
     const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:'',charStatus:'unknown',gender:'',pronouns:'',lang:'',charIntroCh:'',charIntroPg:'',charIntro:'',nickname:'',charDesc:'',charPhys:'',photo:'',note:'Quick-added from theme quote',date:localDate(),pageNum:'',chapNum:'',location:'',involved:[],isDraft:false};
     book().entries.unshift(entry);getCC(name);save();
   }
@@ -4040,7 +4099,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.wordTransTranslator=document.getElementById('ae-word-trans-translator').value.trim();
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
-  if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.answered=!!(entry.qanswer);}
+  if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.qhyp=(document.getElementById('ae-qhyp')?.value||'').trim();entry.qguess=(document.getElementById('ae-qguess')?.value||'').trim();entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'||type==='Event'){
     // #309 — warn on duplicate timeline name (only on NEW entries, not edits).
     // Soft warning (confirm) so the user can override — same name across batches
@@ -4141,7 +4200,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.involved=[...inv];
   }
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
-  if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
+  if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locState=(document.getElementById('ae-loc-state')?.value||'').trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
     // #328 — parent location captured from standard form
     entry.locParent=(document.getElementById('ae-loc-parent')?.value||'').trim();
     // Save to locations list
@@ -4149,7 +4208,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     // #110/#334 — also push the entry's photo into the registry so the Locations
     // tab card shows the same image without an extra Edit-Location step.
     const entryPhoto=entry.photo||(entry.photos&&entry.photos[0])||'';
-    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
+    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,state:entry.locState||'',country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
   }
   if(type==='Chapter'&&pgVal){
     // Sync chapSetup
@@ -4242,13 +4301,14 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     });
   }
   // #340 — Save extra Quick Relationships from the Relationship form, anchored
-  // on Character A. Each row becomes its own Relationship entry.
+  // on Character A. Each row becomes its own Relationship entry tagged
+  // "Quick-added" so it appears in the main log with a distinguishing label.
   if(isRel&&!editId&&entry.relA){
     [...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')].forEach(row=>{
       const rt=row.querySelector('.qr-type').value;
       const ch=row.querySelector('.qr-char').value;
       if(!rt||!ch||ch===entry.relA)return; // skip empty rows and self-rels
-      addRelEntry(entry.relA,rt,ch,'',true);
+      addRelEntry(entry.relA,rt,ch,'Quick-added',true);
     });
   }
 
@@ -4409,6 +4469,65 @@ function checkDuplicateChar(name){
   }
   return false;
 }
+// #393 — Suggest a patrilineal last name when this character has a known
+// father / paternal grandparent / etc. Per locked decision #331 (option b),
+// surfaces a hint with "Use this / Keep different" buttons rather than auto-applying.
+function suggestPatriLastName(){
+  if(!currentId)return;
+  const hint=document.getElementById('ae-patri-hint');if(!hint)return;
+  const cnEl=document.getElementById('ae-cn');if(!cnEl)return;
+  const cn=(cnEl.value||'').trim();
+  hint.style.display='none';hint.innerHTML='';
+  if(!cn)return;
+  // Find a father (or other patrilineal ancestor) for THIS character.
+  // Patrilineal types in priority order:
+  const PATRI=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather'];
+  // Need this character's name as it appears in Relationship rows. The name in the
+  // form may be a "first" name only at this point — match by best-effort full name match.
+  const fatherEntry=(()=>{
+    const rels=entries().filter(e=>e.type==='Relationship');
+    // Look for an existing rel where this char is B (child of someone) — but this
+    // char may not yet be in any Relationship if it's brand-new. So instead, scan all
+    // characters and check if any FATHER-type rel points to a char whose name MATCHES cn.
+    // We take an approximate match: if the rel's relB matches cn (case-insensitive) and
+    // the type is in PATRI, return the relA's character entry.
+    for(const t of PATRI){
+      const r=rels.find(rl=>rl.relType===t&&((rl.relB||'').toLowerCase()===cn.toLowerCase()));
+      if(r&&r.relA){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===r.relA);
+        if(cEnt)return cEnt;
+      }
+    }
+    return null;
+  })();
+  if(!fatherEntry)return;
+  // Extract the last token (assumed surname) from the father.
+  const fatherFull=(fatherEntry.cn||fatherEntry.content||'').trim();
+  const parts=fatherFull.split(/\s+/);
+  if(parts.length<2)return; // father has no last name to suggest
+  const fatherLast=parts[parts.length-1];
+  // Don't suggest if cn already ends with that surname.
+  if(cn.toLowerCase().endsWith(' '+fatherLast.toLowerCase()))return;
+  // Build a suggested full name: keep what's typed, append fatherLast.
+  // If cn has more than one token already, replace the last token.
+  let suggested;
+  const cnParts=cn.split(/\s+/);
+  if(cnParts.length===1){suggested=cn+' '+fatherLast;}
+  else{suggested=cnParts.slice(0,-1).join(' ')+' '+fatherLast;}
+  hint.innerHTML=`💡 ${esc(fatherFull)} (${esc(fatherEntry.charRole||'parent')}) has the surname <strong>${esc(fatherLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>"?
+    <div style="margin-top:5px;display:flex;gap:5px;">
+      <button class="btn btn-sm btn-primary" onclick="_patriApply('${esc(suggested)}')">Use this</button>
+      <button class="btn btn-sm" onclick="document.getElementById('ae-patri-hint').style.display='none';">Keep different</button>
+    </div>`;
+  hint.style.display='';
+}
+function _patriApply(name){
+  const cnEl=document.getElementById('ae-cn');if(!cnEl)return;
+  cnEl.value=name;
+  // Also update the content field so save uses the new name
+  const ctEl=document.getElementById('ae-content');if(ctEl)ctEl.value=name;
+  document.getElementById('ae-patri-hint').style.display='none';
+}
 // ── Recycle bin rendering ─────────────────────────────────────
 let recycleBinSort='category';
 function setRecycleBinSort(mode){recycleBinSort=mode;renderRecycleBin();}
@@ -4556,6 +4675,10 @@ function editEntry(id){
       if(e.wordTransWhy)document.getElementById('ae-word-trans-why').value=e.wordTransWhy;
     }
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
+    const _qh=document.getElementById('ae-qhyp');if(_qh)_qh.value=e.qhyp||'';
+    const _qg=document.getElementById('ae-qguess');if(_qg)_qg.value=e.qguess||'';
+    // Show guess-correct row only when both a hypothesis AND an answer exist
+    onQAnswerInput();
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}
       // #303 — populate structured fields
       // #342 — also populate for Event (was Timeline-only)
@@ -4601,7 +4724,7 @@ function editEntry(id){
     if(e.eventTypes?.length){setTimeout(()=>e.eventTypes.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${t}"]`);if(chip)chip.classList.add('sel');}),60);}
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
     if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;
-    if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
+    if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;{const _ls=document.getElementById('ae-loc-state');if(_ls)_ls.value=e.locState||'';}if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     // #328 — restore parent. Pull from registry if entry didn't store one.
     const _psel=document.getElementById('ae-loc-parent');
     if(_psel){
@@ -4750,9 +4873,11 @@ function ecHTML(e,compact,fromTab){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     // #244 — Format as "A is [relType] of B" so direction is unambiguous
     const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong> of</span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
+    // #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
+    const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
     const linkedQBlock=linkedQs.length?`<div style="margin-top:5px;border-left:2px solid var(--am);padding-left:7px;">${linkedQs.map(q=>`<div style="margin-bottom:3px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.pageNum?' · p.'+q.pageNum:''}</span><div style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry(${q.id})">"${(q.content||'').slice(0,80)}${q.content?.length>80?'…':''}"</div></div>`).join('')}</div>`:'';
-    body=`<div class="econtent"><strong class="cbadge" style="background:${ac?.bg||'transparent'};color:${ac?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relA||'')}',false)">${e.relA||'?'}</strong> ${relPhrase} <strong class="cbadge" style="background:${bc?.bg||'transparent'};color:${bc?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relB||'')}',false)">${e.relB||'?'}</strong>${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}${linkedQBlock}</div>`;
+    body=`<div class="econtent"><strong class="cbadge" style="background:${ac?.bg||'transparent'};color:${ac?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relA||'')}',false)">${e.relA||'?'}</strong> ${relPhrase} <strong class="cbadge" style="background:${bc?.bg||'transparent'};color:${bc?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relB||'')}',false)">${e.relB||'?'}</strong>${qaBadge}${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}${linkedQBlock}</div>`;
   } else if(e.type==='Word / Vocabulary'){
     body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.definition}</div>`:''}</div>`;
   } else if(e.type==='Characteristic'){
@@ -5187,10 +5312,10 @@ function renderCharDetail(name){
   html+=`</div></div>`;
 
   // #192 — Vocabulary section: words where char is speaker
-  const vocabForChar=all.filter(e=>e.type==='Word / Vocabulary'&&(e.speaker===name||(e.involved||[]).includes(name)));
+  const vocabForChar=all.filter(e=>e.type==='Word / Vocabulary'&&((e.wordSpeaker||e.speaker)===name||(e.involved||[]).includes(name)));
   if(vocabForChar.length){
     html+=`<div class="csec">${secHdr('char-vocab','Vocabulary',vocabForChar.length,'Word / Vocabulary','Word')}<div id="char-vocab">`;
-    html+=sortByPage(vocabForChar).map(w=>`<div class="citem"><div class="ilabel" style="color:${col.text};">📖 Word</div><strong>${w.content}</strong>${w.charDesc?`<div style="font-size:12px;color:var(--t2);margin-top:2px;">${w.charDesc}</div>`:''}<div style="font-size:11px;color:var(--t3);">${w.speaker&&w.speaker!==name?`Speaker: ${w.speaker} · `:''}${w.pageNum?'p.'+w.pageNum:''}</div>${act(w)}</div>`).join('');
+    html+=sortByPage(vocabForChar).map(w=>{const sp=w.wordSpeaker||w.speaker;return `<div class="citem"><div class="ilabel" style="color:${col.text};">📖 Word</div><strong>${w.content}</strong>${w.charDesc?`<div style="font-size:12px;color:var(--t2);margin-top:2px;">${w.charDesc}</div>`:''}<div style="font-size:11px;color:var(--t3);">${sp&&sp!==name?`Speaker: ${sp} · `:''}${w.pageNum?'p.'+w.pageNum:''}</div>${act(w)}</div>`;}).join('');
     html+=`</div></div>`;
   }
   if(clues.length)html+=csecBlock(col,'Clues & red herrings',clues,pgT,nT,act,'char-clues',sortByPage);
@@ -6186,12 +6311,12 @@ function backfillTimelineSortNums(){
 }
 // #328 — toggle a single chip; re-render
 function _mapToggleFilter(group,val){
-  if(!window._mapFilters)window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
+  if(!window._mapFilters)window._mapFilters={countries:new Set(),states:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
   const set=window._mapFilters[group];if(!set)return;
   if(set.has(val))set.delete(val);else set.add(val);
   renderMap();
 }
-function _mapClearFilters(){window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};renderMap();}
+function _mapClearFilters(){window._mapFilters={countries:new Set(),states:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};renderMap();}
 function renderMap(){
   const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
   const locEntries=entries().filter(e=>e.type==='Location');
@@ -6223,11 +6348,12 @@ function renderMap(){
   const mapQ=(document.getElementById('map-search')?.value||'').toLowerCase().trim();
   // #328 — filter chips. Toggle by tapping; multiple chips = OR within group, AND across groups.
   // State stored on window so re-renders preserve selection.
-  if(!window._mapFilters)window._mapFilters={countries:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
+  if(!window._mapFilters)window._mapFilters={countries:new Set(),states:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};
   const F=window._mapFilters;
   // Build option lists from registry entries that match the (possibly empty) search
-  const allLocData=locNames.map(n=>Object.assign({_name:n},getLocations().find(l=>l.name===n)||{},(()=>{const le=entries().find(e=>e.type==='Location'&&!e.isDraft&&e.content===n);return le?{_eCity:le.locCity,_eCountry:le.locCountry,_eBuilding:le.locBuilding,_eParent:le.locParent}:{};})()));
+  const allLocData=locNames.map(n=>Object.assign({_name:n},getLocations().find(l=>l.name===n)||{},(()=>{const le=entries().find(e=>e.type==='Location'&&!e.isDraft&&e.content===n);return le?{_eCity:le.locCity,_eState:le.locState,_eCountry:le.locCountry,_eBuilding:le.locBuilding,_eParent:le.locParent}:{};})()));
   const _countries=[...new Set(allLocData.map(l=>l.country||l._eCountry||'').filter(Boolean))].sort();
+  const _states=[...new Set(allLocData.map(l=>l.state||l._eState||'').filter(Boolean))].sort();
   const _cities=[...new Set(allLocData.map(l=>l.city||l._eCity||'').filter(Boolean))].sort();
   const _buildings=[...new Set(allLocData.map(l=>l.building||l._eBuilding||'').filter(Boolean))].sort();
   const _parents=[...new Set(allLocData.map(l=>l.parent||l._eParent||'').filter(Boolean))].sort();
@@ -6238,29 +6364,48 @@ function renderMap(){
     return `<span class="pbadge" style="cursor:pointer;font-size:11px;padding:3px 8px;${sel?'background:var(--accent);color:#fff;':''}" onclick="event.stopPropagation();_mapToggleFilter('${group}','${safeVal}')">${esc(label)}${sel?' ✓':''}</span>`;
   };
   let chipsHTML='';
-  if(_countries.length||_cities.length||_buildings.length||_parents.length){
+  if(_countries.length||_states.length||_cities.length||_buildings.length||_parents.length){
     chipsHTML='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;font-size:11px;">';
     if(_countries.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Country</span>${_countries.map(c=>_chip('countries',c,c)).join('')}</div>`;
+    if(_states.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">State</span>${_states.map(c=>_chip('states',c,c)).join('')}</div>`;
     if(_cities.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">City</span>${_cities.map(c=>_chip('cities',c,c)).join('')}</div>`;
     if(_buildings.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Building</span>${_buildings.map(c=>_chip('buildings',c,c)).join('')}</div>`;
     if(_parents.length)chipsHTML+=`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"><span style="color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;width:60px;flex-shrink:0;">Within</span>${_parents.map(c=>_chip('parents',c,c)).join('')}</div>`;
-    if(F.countries.size||F.cities.size||F.buildings.size||F.parents.size)chipsHTML+=`<div style="margin-top:2px;"><button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="_mapClearFilters()">Clear filters</button></div>`;
+    if(F.countries.size||F.states.size||F.cities.size||F.buildings.size||F.parents.size)chipsHTML+=`<div style="margin-top:2px;"><button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="_mapClearFilters()">Clear filters</button></div>`;
     chipsHTML+='</div>';
   }
   const _chipMatch=(loc)=>{
-    if(!F.countries.size&&!F.cities.size&&!F.buildings.size&&!F.parents.size)return true;
+    if(!F.countries.size&&!F.states.size&&!F.cities.size&&!F.buildings.size&&!F.parents.size)return true;
     const d=allLocData.find(x=>x._name===loc)||{};
     const country=d.country||d._eCountry||'';
+    const state=d.state||d._eState||'';
     const city=d.city||d._eCity||'';
     const building=d.building||d._eBuilding||'';
     const parent=d.parent||d._eParent||'';
     if(F.countries.size&&!F.countries.has(country))return false;
+    if(F.states.size&&!F.states.has(state))return false;
     if(F.cities.size&&!F.cities.has(city))return false;
     if(F.buildings.size&&!F.buildings.has(building))return false;
     if(F.parents.size&&!F.parents.has(parent))return false;
     return true;
   };
-  const filteredLocNames=(mapQ?locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return loc.toLowerCase().includes(mapQ)||(d.city||'').toLowerCase().includes(mapQ)||(d.country||'').toLowerCase().includes(mapQ)||(d.building||'').toLowerCase().includes(mapQ);}):locNames).filter(_chipMatch);
+  let filteredLocNames=(mapQ?locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return loc.toLowerCase().includes(mapQ)||(d.city||'').toLowerCase().includes(mapQ)||(d.state||'').toLowerCase().includes(mapQ)||(d.country||'').toLowerCase().includes(mapQ)||(d.building||'').toLowerCase().includes(mapQ);}):locNames).filter(_chipMatch);
+  // #328 — alpha sort with parent grouping. Top-level (no parent) alphabetised; children grouped
+  // immediately after their parent and alpha-sorted within each parent group.
+  const _parentOf=(name)=>{const d=allLocData.find(x=>x._name===name)||{};return d.parent||d._eParent||'';};
+  const _isPresent=(name)=>filteredLocNames.includes(name);
+  // top-level = no parent OR parent not in current filtered set
+  const tops=[...filteredLocNames].filter(n=>{const p=_parentOf(n);return !p||!_isPresent(p);}).sort((a,b)=>a.localeCompare(b));
+  const childrenByParent={};
+  filteredLocNames.forEach(n=>{const p=_parentOf(n);if(p&&_isPresent(p)){(childrenByParent[p]=childrenByParent[p]||[]).push(n);}});
+  Object.keys(childrenByParent).forEach(k=>childrenByParent[k].sort((a,b)=>a.localeCompare(b)));
+  // Walk top→child→grandchild via DFS so deeper nesting still groups correctly.
+  const ordered=[];
+  const _visit=(name)=>{ordered.push(name);(childrenByParent[name]||[]).forEach(_visit);};
+  tops.forEach(_visit);
+  // Catch any orphaned items that didn't get visited (cycle safety).
+  filteredLocNames.forEach(n=>{if(!ordered.includes(n))ordered.push(n);});
+  filteredLocNames=ordered;
   if(!filteredLocNames.length&&mapQ){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match "'+mapQ+'"</div>';return;}
   if(!filteredLocNames.length){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match the active filters.</div>';return;}
   list.innerHTML=locDraftHTML+headerHTML+chipsHTML+filteredLocNames.map(loc=>{
@@ -6282,6 +6427,7 @@ function renderMap(){
     const locEntry=entries().find(e=>e.type==='Location'&&!e.isDraft&&e.content===loc);
     const photoSrc=locData.photo||locEntry?.photo||(locEntry?.photos&&locEntry.photos[0])||'';
     const cityFB=locData.city||locEntry?.locCity||'';
+    const stateFB=locData.state||locEntry?.locState||'';
     const countryFB=locData.country||locEntry?.locCountry||'';
     const eraFB=locData.era||locEntry?.locEra||'';
     const realFB=isReal||locEntry?.locType==='real';
@@ -6296,7 +6442,7 @@ function renderMap(){
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;font-size:13px;">${photoSrc?'':typeIcon+' '}${loc}</div>
             ${locData.parent?`<div style="font-size:10px;color:var(--t3);">↳ ${locData.parent}</div>`:''}
-            ${cityFB||countryFB?`<div style="font-size:10px;color:var(--t2);">${[cityFB,countryFB].filter(Boolean).join(', ')}</div>`:''}
+            ${cityFB||stateFB||countryFB?`<div style="font-size:10px;color:var(--t2);">${[cityFB,stateFB,countryFB].filter(Boolean).join(', ')}</div>`:''}
             ${eraFB?`<div style="font-size:10px;color:var(--t3);">${eraFB}</div>`:''}
           </div>
         </div>
@@ -6484,10 +6630,9 @@ function renderWords(){
   list.innerHTML=html;
 }
 function wordCard(e){
-  // #192-A — surface speaker directly on the vocab card (was only on the
-  // character profile via the Involved list). Render as a coloured cbadge so
-  // tapping jumps to the speaker's profile.
-  const spk=e.speaker;
+  // #192-A — surface speaker directly on the vocab card. Field is `wordSpeaker`
+  // (saved from #ae-word-speaker), with `speaker` as a legacy fallback.
+  const spk=e.wordSpeaker||e.speaker;
   const isNarr=spk==='Narrator / Author';
   const spkBadge=spk
     ?(isNarr
@@ -6531,6 +6676,11 @@ function renderQuestions(){
 function qHTML(q){
   const checked=q.answered;
   const invB=(q.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('');
+  // #225 — surface hypothesis + guess-correct outcome on the question card.
+  const guessMap={yes:{label:'✅ Right',bg:'#dcfce7',color:'#15803d'},partial:{label:'≈ Partly right',bg:'#fef3c7',color:'#92400e'},no:{label:'✗ Wrong',bg:'#fee2e2',color:'#991b1b'}};
+  const gm=q.qguess?guessMap[q.qguess]:null;
+  const guessBadge=gm?`<span class="pbadge" style="background:${gm.bg};color:${gm.color};font-weight:700;margin-left:6px;">${gm.label}</span>`:'';
+  const hypBlock=q.qhyp?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid var(--am);"><strong style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Your hypothesis${guessBadge}</strong>${q.qhyp}</div>`:'';
   return`<div class="q-card ec question" style="${checked?'opacity:0.6;':''}">
     <div style="display:flex;align-items:flex-start;gap:9px;">
       <div onclick="toggleQ(${q.id})" style="cursor:pointer;flex-shrink:0;margin-top:0;padding:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
@@ -6538,6 +6688,7 @@ function qHTML(q){
       </div>
       <div style="flex:1;">
         <div class="econtent" style="${checked?'text-decoration:line-through;color:var(--t2);':''}">${q.content}</div>
+        ${hypBlock}
         ${q.qanswer?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid #1D9E75;"><strong style="font-size:9px;color:#0F6E56;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Answer</strong>${q.qanswer}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:4px;">${invB}</div>`:''}
         ${q.chapNum||q.pageNum?`<div style="margin-top:3px;">${q.chapNum?`<span class="pbadge">Ch.${q.chapNum}</span>`:''} ${q.pageNum?`<span class="pbadge">p.${q.pageNum}</span>`:''}</div>`:''}
@@ -6548,6 +6699,13 @@ function qHTML(q){
   </div>`;
 }
 function toggleQ(id){const e=entries().find(x=>x.id===id);if(!e)return;e.answered=!e.answered;save();renderQuestions();}
+// #225 — Show "was your guess correct?" only when there's both a hypothesis AND an answer.
+function onQAnswerInput(){
+  const hyp=(document.getElementById('ae-qhyp')?.value||'').trim();
+  const ans=(document.getElementById('ae-qanswer')?.value||'').trim();
+  const row=document.getElementById('ae-qguess-row');
+  if(row)row.style.display=(hyp&&ans)?'':'none';
+}
 
 // ═══════════════════════════════════════════════════════════════
 // REFERENCES
@@ -8525,6 +8683,100 @@ function copyClosedReports(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// #236 — Slide-to-delete on book and entry cards
+// ═══════════════════════════════════════════════════════════════
+// Wraps every .ec/.book-card with a .swipe-wrap that has a red "Delete"
+// backplate. Touch-drag left reveals it; lift past threshold = delete with confirm.
+function _swipeWrapAll(){
+  // entry cards: any .ec inside common containers, plus book-cards
+  const sel='.ec, .book-card';
+  document.querySelectorAll(sel).forEach(card=>{
+    if(card.closest('.swipe-wrap'))return; // already wrapped
+    if(card.closest('.sheet-overlay'))return; // skip cards inside sheets/forms (e.g. preview cards in pickers)
+    // Some cards live deep inside profiles or recipes — only wrap top-level list/feed cards.
+    const wrap=document.createElement('div');
+    wrap.className='swipe-wrap';
+    const bg=document.createElement('div');
+    bg.className='swipe-del-bg';
+    bg.textContent='🗑 Delete';
+    bg.onclick=function(ev){ev.stopPropagation();_swipeConfirmDelete(card);};
+    card.parentNode.insertBefore(wrap,card);
+    wrap.appendChild(bg);
+    wrap.appendChild(card);
+    _swipeBind(wrap,card);
+  });
+}
+function _swipeBind(wrap,card){
+  let startX=0,curX=0,startY=0,active=false,moved=false;
+  const REVEAL=90; // matches CSS width of .swipe-del-bg
+  const onStart=(e)=>{
+    const t=e.touches?e.touches[0]:e;
+    startX=t.clientX;startY=t.clientY;curX=0;active=true;moved=false;
+    wrap.classList.add('swiping');
+  };
+  const onMove=(e)=>{
+    if(!active)return;
+    const t=e.touches?e.touches[0]:e;
+    const dx=t.clientX-startX;const dy=t.clientY-startY;
+    if(!moved&&Math.abs(dy)>Math.abs(dx)){active=false;wrap.classList.remove('swiping');return;} // vertical scroll wins
+    if(Math.abs(dx)>5)moved=true;
+    curX=Math.min(0,Math.max(-REVEAL*1.5,dx));
+    card.style.transform='translateX('+curX+'px)';
+  };
+  const onEnd=()=>{
+    if(!active)return;
+    active=false;wrap.classList.remove('swiping');
+    if(curX<=-REVEAL*0.6){
+      // snap open
+      card.style.transform='translateX(-'+REVEAL+'px)';
+    } else {
+      card.style.transform='';
+    }
+  };
+  card.addEventListener('touchstart',onStart,{passive:true});
+  card.addEventListener('touchmove',onMove,{passive:true});
+  card.addEventListener('touchend',onEnd);
+  card.addEventListener('touchcancel',onEnd);
+  // Tap elsewhere closes
+  card.addEventListener('click',(e)=>{
+    if(card.style.transform&&card.style.transform!==''){
+      // If open, first tap closes
+      const m=card.style.transform.match(/-?\d+/);
+      if(m&&parseInt(m[0])<=-30){card.style.transform='';e.stopPropagation();e.preventDefault();}
+    }
+  },true);
+}
+function _swipeConfirmDelete(card){
+  // Find an entry id from a Delete button or onclick attr in the card.
+  // Entries: btn.btn-del onclick="deleteEntry(NN)". Books: book-card onclick="openBook('id')" — handle via dataset attr if present.
+  const btn=card.querySelector('.btn-del[onclick*="deleteEntry"]');
+  if(btn){btn.click();card.style.transform='';return;}
+  // Book card path (no built-in delete button — fall back to a generic confirm + dispatch)
+  const bookId=card.getAttribute('data-book-id');
+  if(bookId){
+    if(confirm('Delete this book? Entries and registry data will be removed.')){
+      const idx=(window._books||[]).findIndex(b=>String(b.id)===String(bookId));
+      if(idx>=0&&typeof deleteBook==='function'){deleteBook(bookId);}
+    }
+    card.style.transform='';return;
+  }
+  alert('Delete not available on this card.');
+  card.style.transform='';
+}
+// Re-wrap after every render. Use a MutationObserver on the screen containers so
+// new cards appended by render functions get swipe handlers too.
+function _swipeInit(){
+  _swipeWrapAll();
+  const targets=['log-list','quotes-list','characters-list','questions-list','refs-list','tl-list','map-list','library-list'].map(id=>document.getElementById(id)).filter(Boolean);
+  targets.forEach(el=>{
+    new MutationObserver(()=>{_swipeWrapAll();}).observe(el,{childList:true,subtree:true});
+  });
+}
+// Hook into init
+window.addEventListener('load',()=>{setTimeout(_swipeInit,300);});
+
+// ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
 // serviceWorker registration removed for preview
@@ -8674,7 +8926,11 @@ function copyClosedReports(){
       </div>
       <div class="r2">
         <div class="fg"><label>City / region</label><input type="text" id="eloc-city" placeholder="e.g. London" onblur="geocodeCity('eloc-city','eloc-country')"/></div>
+        <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="eloc-state" placeholder="e.g. California"/></div>
+      </div>
+      <div class="r2">
         <div class="fg"><label>Country</label><input type="text" id="eloc-country" placeholder="e.g. England"/></div>
+        <div></div>
       </div>
       <!-- #333 — autofill hint -->
       <div id="eloc-autofill-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 <span id="eloc-autofill-msg"></span> <button class="btn btn-sm" onclick="elocApplyAutofill()" style="margin-left:4px;font-size:11px;">Apply</button></div>
