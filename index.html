@@ -504,6 +504,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div id="ae-type-hint" class="type-hint" style="display:none;"></div>
+      <!-- #394 — one-time hint card explaining what 📋 does, dismissible -->
+      <div id="ae-template-hint" style="display:none;margin-top:6px;padding:8px 10px;background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);font-size:11px;line-height:1.45;color:var(--t2);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div><strong style="color:var(--accent);">📋 Templates</strong> save the current entry's type + filled-in fields (content, characters, location, ch/pg) so you can re-use them. Great for repeating entry shapes — "duel scene", "dinner conversation", "quick character sketch". Photos and dates aren't saved.</div>
+          <button onclick="dismissTemplateHint()" style="background:transparent;border:0;color:var(--t3);font-size:16px;padding:0 2px;cursor:pointer;line-height:1;flex-shrink:0;" title="Got it">×</button>
+        </div>
+      </div>
     </div>
     <input type="hidden" id="ae-edit-id"/>
 
@@ -901,6 +908,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="fg"><label>Era / Time period at book</label><input type="text" id="ae-loc-era" placeholder="e.g. 1940s wartime London"/></div>
       <div class="fg"><label>Notes on location</label><textarea id="ae-loc-notes" placeholder="Atmosphere, significance, what happened here…" style="min-height:50px;"></textarea></div>
+      <div style="margin-bottom:6px;"><button class="btn btn-sm" onclick="stdLocFindPhoto()" title="Find photo on Google Images">🖼 Find photo</button></div>
     </div>
 
     <!-- COMMON FIELDS -->
@@ -937,7 +945,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <div class="fg"><label>Country</label><input type="text" id="ae-new-loc-country" placeholder="e.g. England"/></div>
           </div>
           <div class="fg"><label>Era / time period</label><input type="text" id="ae-new-loc-era" placeholder="e.g. 1940s wartime, medieval, present day"/></div>
-          <button class="btn btn-sm btn-primary" onclick="saveQuickLoc()" style="margin-top:4px;">Save location</button>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+            <button class="btn btn-sm btn-primary" onclick="saveQuickLoc()">Save location</button>
+            <button class="btn btn-sm" onclick="quickLocFindPhoto()" title="Find photo on Google Images">🖼 Find photo</button>
+          </div>
         </div>
       </div>
       <div class="fg"><label>Photos (optional) <span style="font-weight:400;color:var(--t3);">— add multiple</span></label>
@@ -1145,6 +1156,17 @@ const GENDER_REL_MAP={
   'Nonbinary':{'Husband':'Spouse','Wife':'Spouse','Father':'Parent','Mother':'Parent','Son':'Child','Daughter':'Child','Brother':'Sibling','Sister':'Sibling','Grandfather':'Grandparent','Grandmother':'Grandparent','Uncle':'Uncle or Aunt','Aunt':'Uncle or Aunt','Nephew':'Niece or Nephew','Niece':'Niece or Nephew','Spouse':'Spouse','Parent':'Parent','Child':'Child','Sibling':'Sibling','Grandparent':'Grandparent'},
   'Unknown':{}
 };
+// #214 deep-trace — alias gender values from the dropdown that aren't keys in
+// GENDER_REL_MAP back to one that is. Without this, Char A=Transgender male
+// (or Genderfluid, Agender, Other) would NEVER pick up gendered labels in
+// renderCharDetail because RELTYPE_TRUNK lookup succeeds but
+// GENDER_REL_MAP[g] is undefined → falls through to the neutral trunk.
+const GENDER_ALIAS={
+  'Transgender male':'Male','Trans male':'Male','Transmasculine':'Male','Transmasc':'Male',
+  'Transgender female':'Female','Trans female':'Female','Transfeminine':'Female','Transfem':'Female',
+  'Genderfluid':'Nonbinary','Agender':'Nonbinary','Other':'Nonbinary',''  :'Unknown'
+};
+function _normaliseGender(g){return GENDER_ALIAS[g]!==undefined?GENDER_ALIAS[g]:(g||'Unknown');}
 // Set of ungendered relationship types that imply a gender question. Picked from
 // the type list, these will trigger the per-character gender sheet flow.
 const GENDERABLE_RELTYPES=new Set([
@@ -1170,7 +1192,10 @@ const RELTYPE_TRUNK={
 };
 function _trunkOf(rt){return RELTYPE_TRUNK[rt]||rt;}
 function _labelForGender(trunk,gender){
-  const g=gender||'Unknown';
+  // #214 deep-trace — normalise unmapped values (Transgender male, Genderfluid,
+  // Agender, Other, '') to a canonical Male/Female/Nonbinary/Unknown so the
+  // renderCharDetail label lookup actually has a hit.
+  const g=_normaliseGender(gender);
   // Nonbinary/Unknown → keep the neutral trunk
   if(g==='Nonbinary'||g==='Unknown')return trunk;
   return (GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][trunk])||trunk;
@@ -2111,6 +2136,35 @@ function elocPhotoClear(){
   document.getElementById('eloc-photo-clear').style.display='none';
   document.getElementById('eloc-photo-input').value='';
 }
+// #114-B — open Google Images for the current location name + city/country (real places)
+function elocFindPhoto(){
+  const name=(document.getElementById('eloc-name')?.value||'').trim();
+  const city=(document.getElementById('eloc-city')?.value||'').trim();
+  const country=(document.getElementById('eloc-country')?.value||'').trim();
+  if(!name){alert('Type a location name first.');return;}
+  const q=[name,city,country].filter(Boolean).join(' ');
+  openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent(q));
+}
+// #114 — Find photo from quick-add form
+function quickLocFindPhoto(){
+  const name=(document.getElementById('ae-new-loc-name')?.value||'').trim();
+  const city=(document.getElementById('ae-new-loc-city')?.value||'').trim();
+  const country=(document.getElementById('ae-new-loc-country')?.value||'').trim();
+  if(!name){alert('Type a location name first.');return;}
+  const q=[name,city,country].filter(Boolean).join(' ');
+  openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent(q));
+}
+// #114 — Find photo from standard entry form (Location type)
+function stdLocFindPhoto(){
+  const content=(document.getElementById('ae-content')?.value||'').trim();
+  const building=(document.getElementById('ae-loc-building')?.value||'').trim();
+  const city=(document.getElementById('ae-loc-city')?.value||'').trim();
+  const country=(document.getElementById('ae-loc-country')?.value||'').trim();
+  const name=content||building;
+  if(!name){alert('Type a location name first.');return;}
+  const q=[name,city,country].filter(Boolean).join(' ');
+  openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent(q));
+}
 // #333 — autofill address from location name
 let _elocAutofillData=null;
 async function elocAutofillAddress(){
@@ -2832,6 +2886,24 @@ function qrTypePick(rowId,val,label){
       row.querySelector('.qr-type-search').value=v;
       checkSuggestions();
     };
+    // #214 deep-trace — when in the char form, A's gender is already known from
+    // the form dropdown. Apply it directly so the label updates immediately
+    // without popping the sheet for the very character the user is creating.
+    // The sheet still pops for B if B has no gender on file.
+    const formGender=(document.getElementById('ae-gender')?.value||'').trim();
+    if(formGender){
+      const trunk=_trunkOf(val);
+      const aLabel=_labelForGender(trunk,formGender);
+      setLabel(aLabel);
+      // Then ask B separately if needed — reuse the existing flow but bypass A
+      setTimeout(()=>{
+        if(!bName)return;
+        const existingB=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===bName);
+        if(existingB&&existingB.gender)return; // already known; B's reciprocal renders live
+        pickGenderSheet(bName,()=>{});
+      },80);
+      return;
+    }
     runGenderFlowForRel(val,aName,bName,setLabel,original);
   }
 }
@@ -2925,7 +2997,11 @@ function acceptSug(i){
 }
 function addRelEntry(a,rt,b,note,autoInvolved){
   const recip=RECIPROCAL[rt]||rt;
-  book().entries.push({id:Date.now()+Math.random(),type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:autoInvolved?[a,b].filter(Boolean):[],note:note||''});
+  // #214 deep-trace — use a safe integer ID. Date.now()+Math.random() produced
+  // floats which broke editEntry(Number(id)) lookups and could collide when
+  // saveQuickRels iterates several rows in the same tick.
+  const newId=Date.now()+Math.floor(Math.random()*100000);
+  book().entries.push({id:newId,type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:autoInvolved?[a,b].filter(Boolean):[],note:note||''});
   save();renderAll();
 }
 
@@ -3311,7 +3387,7 @@ function openAddTypeForChar(type){
     if(type==='Relationship'){cddSet('ae-rela',name);}
     else{cddSet('ae-inv',[name]);}
   },60);
-  openSheet('ae-overlay');
+  openSheet('ae-overlay');maybeShowTemplateHint();
   const _si=document.querySelector('#ae-overlay .sheet');if(_si)_si.scrollTop=0;
 }
 // #241 — Category-level Add buttons on location profile
@@ -3323,7 +3399,7 @@ function openAddTypeForLoc(type){
   document.getElementById('ae-type').value=type;onTypeChange();
   // #241 loc — pre-fill location searchable dropdown
   setTimeout(()=>{ prefillLocDropdown(name); },150);
-  openSheet('ae-overlay');
+  openSheet('ae-overlay');maybeShowTemplateHint();
   const _si=document.querySelector('#ae-overlay .sheet');if(_si)_si.scrollTop=0;
 }
 // #241 loc — helper that reliably sets both the hidden select and the visible search input
@@ -3503,6 +3579,21 @@ function openAddSheet(preType){
   }
   openSheet('ae-overlay');onTypeChange();
   const _si=document.querySelector('#ae-overlay .sheet');if(_si)_si.scrollTop=0;
+  maybeShowTemplateHint();
+}
+// #394 — one-time hint for the 📋 templates button. Stored per-book so each
+// book gets exactly one explanation; user can dismiss with × at any time.
+function maybeShowTemplateHint(){
+  const b=book();if(!b)return;
+  const hint=document.getElementById('ae-template-hint');if(!hint)return;
+  // Hidden once dismissed, OR once the user has saved at least one template
+  // (they clearly know what it does at that point).
+  if(b.templateHintDismissed||(b.entryTemplates&&b.entryTemplates.length)){hint.style.display='none';return;}
+  hint.style.display='';
+}
+function dismissTemplateHint(){
+  const b=book();if(b){b.templateHintDismissed=true;save();}
+  const hint=document.getElementById('ae-template-hint');if(hint)hint.style.display='none';
 }
 function clearAEForm(){
   ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
@@ -3947,7 +4038,10 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
     // Save to locations list
     const locName=content||entry.locBuilding||entry.locCity;
-    if(locName)saveLocation(locName,{type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,country:entry.locCountry,era:entry.locEra,notes:entry.locNotes});
+    // #110/#334 — also push the entry's photo into the registry so the Locations
+    // tab card shows the same image without an extra Edit-Location step.
+    const entryPhoto=entry.photo||(entry.photos&&entry.photos[0])||'';
+    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,country:entry.locCountry,era:entry.locEra,notes:entry.locNotes},entryPhoto?{photo:entryPhoto}:{}));
   }
   if(type==='Chapter'&&pgVal){
     // Sync chapSetup
@@ -4428,7 +4522,7 @@ function editEntry(id){
       },90);
     }
   },40);
-  openSheet('ae-overlay');
+  openSheet('ae-overlay');maybeShowTemplateHint();
   const _si=document.querySelector('#ae-overlay .sheet');if(_si)_si.scrollTop=0;
 }
 
@@ -5915,7 +6009,7 @@ function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
       const dir=document.getElementById('ae-offset-dir');if(dir)dir.value=useAfter?'+':'-';
       const sk=document.getElementById('ae-sortkey');if(sk&&newSort!=null)sk.value=newSort;
     },80);
-    openSheet('ae-overlay');
+    openSheet('ae-overlay');maybeShowTemplateHint();
   };
   document.getElementById('tl-ins-after').onclick=()=>pick(true);
   document.getElementById('tl-ins-before').onclick=()=>pick(false);
@@ -6000,25 +6094,37 @@ function renderMap(){
     // #328 — indent child locations
     const isChild=!!locData.parent;
     const indentStyle=isChild?'margin-left:16px;border-left:2px solid var(--cb);padding-left:8px;':'';
+    // #110/#334 — fall back to the Location ENTRY's photo when the registry has none.
+    // This was the bug: a Location-type entry could have a photo, but renderMap only
+    // looked at locData.photo, so cards rendered with the generic 📍 icon and the
+    // entry's actual photo never appeared. Also surface entry-level locType so the
+    // "real place" classification carries over to entries that haven't been
+    // separately registered via the Edit Location sheet.
+    const locEntry=entries().find(e=>e.type==='Location'&&!e.isDraft&&e.content===loc);
+    const photoSrc=locData.photo||locEntry?.photo||(locEntry?.photos&&locEntry.photos[0])||'';
+    const cityFB=locData.city||locEntry?.locCity||'';
+    const countryFB=locData.country||locEntry?.locCountry||'';
+    const eraFB=locData.era||locEntry?.locEra||'';
+    const realFB=isReal||locEntry?.locType==='real';
     // #334 — location photo avatar
-    const photoHtml=locData.photo
-      ?`<div style="width:40px;height:40px;border-radius:var(--r);overflow:hidden;flex-shrink:0;"><img src="${locData.photo}" style="width:100%;height:100%;object-fit:cover;"/></div>`
+    const photoHtml=photoSrc
+      ?`<div style="width:40px;height:40px;border-radius:var(--r);overflow:hidden;flex-shrink:0;"><img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;"/></div>`
       :`<div style="width:40px;height:40px;border-radius:var(--r);background:var(--bg2);border:0.5px solid var(--cb);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">${typeIcon}</div>`;
     return `<div class="loccard" style="${indentStyle}">
       <div class="loccard-header" onclick="openLocDetail('${esc(loc)}')">
         <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">
           ${photoHtml}
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:13px;">${locData.photo?'':typeIcon+' '}${loc}</div>
+            <div style="font-weight:600;font-size:13px;">${photoSrc?'':typeIcon+' '}${loc}</div>
             ${locData.parent?`<div style="font-size:10px;color:var(--t3);">↳ ${locData.parent}</div>`:''}
-            ${locData.city||locData.country?`<div style="font-size:10px;color:var(--t2);">${[locData.city,locData.country].filter(Boolean).join(', ')}</div>`:''}
-            ${locData.era?`<div style="font-size:10px;color:var(--t3);">${locData.era}</div>`:''}
+            ${cityFB||countryFB?`<div style="font-size:10px;color:var(--t2);">${[cityFB,countryFB].filter(Boolean).join(', ')}</div>`:''}
+            ${eraFB?`<div style="font-size:10px;color:var(--t3);">${eraFB}</div>`:''}
           </div>
         </div>
         <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
-          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(loc)}'))" style="font-size:11px;padding:3px 7px;" title="Wikipedia">📖</button>`:''}
-          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(loc)} history ${esc(locData.era||'')}'))" style="font-size:11px;padding:3px 7px;" title="Search history">🔍</button>`:''}
-          ${isReal?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${locData.city?', '+esc(locData.city):''}${locData.country?', '+esc(locData.country):''}'))" style="font-size:11px;padding:3px 7px;" title="Maps">🗺️</button>`:''}
+          ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(loc)}'))" style="font-size:11px;padding:3px 7px;" title="Wikipedia">📖</button>`:''}
+          ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(loc)} history ${esc(eraFB||'')}'))" style="font-size:11px;padding:3px 7px;" title="Search history">🔍</button>`:''}
+          ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${cityFB?', '+esc(cityFB):''}${countryFB?', '+esc(countryFB):''}'))" style="font-size:11px;padding:3px 7px;" title="Maps">🗺️</button>`:''}
           <button class="btn btn-sm" onclick="event.stopPropagation();openEditLocSheet('${esc(loc)}')" style="font-size:11px;padding:3px 7px;">Edit</button>
           <button class="btn btn-sm" onclick="event.stopPropagation();deleteLocCard('${esc(loc)}')" style="font-size:11px;padding:3px 7px;color:var(--red);">Delete</button>
           <span style="color:var(--t3);font-size:16px;">›</span>
@@ -6114,6 +6220,7 @@ function renderLocDetail(name){
     ${isReal?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
       <button class="btn btn-sm" onclick="openLink('${mapsUrl}')">🗺️ Google Maps</button>
       <button class="btn btn-sm" onclick="openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(name)}'))">📖 Wikipedia</button>
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)}${locData.city?' '+esc(locData.city):''}${locData.country?' '+esc(locData.country):''}'))">🖼 Find photo</button>
       ${locData.era?`<button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} history ${esc(locData.era||'')}'))">🔍 History (${esc(locData.era)})</button>
       <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} border changes history what country today'))">🌍 Modern borders</button>`:''}
     </div>
@@ -6122,6 +6229,7 @@ function renderLocDetail(name){
     ${isImaginary?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
       <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} map fictional ${esc(book()?.title||'')}'))">🗺️ Search for map</button>
       <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')} wiki'))">📖 Fan wiki</button>
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')}'))">🖼 Find photo</button>
     </div>`:''}
     ${locData.notes?`<div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:8px;border-left:2px solid var(--am);padding-left:7px;">${locData.notes}</div>`:''}
   </div>`;
@@ -6274,7 +6382,7 @@ function renderRefs(){
         <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="font-size:13px;">${rtI[r.refType||'book']||'📚'}</span><span style="font-size:13px;font-weight:600;${r.refDone?'text-decoration:line-through;color:var(--t2);':''}">${r.content}</span></div>
         ${r.refAuthor?`<div style="font-size:11px;color:var(--t2);">by ${r.refAuthor}</div>`:''}
         ${r.refLength?`<div style="font-size:10px;color:var(--t3);">${r.refType==='watch'||r.refType==='podcast'?r.refLength+' min':r.refLength+' pages'}</div>`:''}
-        ${(r.pageNum||r.chapNum)?`<div style="font-size:10px;color:var(--t3);">Logged: ${r.pageNum?'p.'+r.pageNum:''}${r.chapNum?' Ch.'+r.chapNum:''}</div>`:''}
+        ${(r.pageNum||r.chapNum)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin:3px 0 1px;">${r.chapNum?`<span class="pbadge" onclick="event.stopPropagation();setFilter('ch:${r.chapNum}');forceTab('log');" style="cursor:pointer;font-size:10px;">Ch.${r.chapNum}</span>`:''}${r.pageNum?`<span class="pbadge" style="font-size:10px;">p.${r.pageNum}</span>`:''}</div>`:''}
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${doneLabel[r.refType]||'Done'}</div>`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
         ${r.refType==='book'&&!r.refDone?`<div style="font-size:10px;margin-top:2px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent('${esc(r.content)}'))">+ Add to Goodreads</span></div>`:''}
@@ -7676,7 +7784,7 @@ function acceptSameNameSuggestion(i){
   document.getElementById('ae-sheet-title').textContent=`Relationship: ${sug.a} & ${sug.b}`;
   document.getElementById('ae-type').value='Relationship';onTypeChange();
   setTimeout(()=>{cddSet('ae-rela',sug.a);cddSet('ae-relb',sug.b);},60);
-  closeSheet('fam-suggestions-overlay');openSheet('ae-overlay');
+  closeSheet('fam-suggestions-overlay');openSheet('ae-overlay');maybeShowTemplateHint();
 }
 function snoozeSameNameSuggestion(i,btn){
   const sug=document.getElementById('fam-suggestions-body')._suggestions[i];if(!sug)return;
@@ -8362,6 +8470,8 @@ function copyClosedReports(){
             <input type="file" id="eloc-photo-input" accept="image/*" style="display:none;" onchange="elocPhotoChanged(this)"/>
             <input type="hidden" id="eloc-photo-data"/>
             <button class="btn btn-sm" onclick="document.getElementById('eloc-photo-input').click()" style="margin-bottom:4px;">📷 Upload photo</button>
+            <!-- #114-B — Find photo (Google Images) -->
+            <button class="btn btn-sm" onclick="elocFindPhoto()" style="margin-bottom:4px;">🖼 Find photo</button>
             <button class="btn btn-sm" id="eloc-photo-clear" style="display:none;color:var(--red);" onclick="elocPhotoClear()">Remove</button>
           </div>
         </div>
