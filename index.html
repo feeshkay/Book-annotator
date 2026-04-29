@@ -89,10 +89,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* #236 — slide-to-delete: card sits on a red "Delete" backplate. Touch-drag left
    reveals it; a long swipe triggers delete with confirm. */
 .swipe-wrap{position:relative;margin-bottom:7px;border-radius:var(--rl2);overflow:hidden;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;}
-.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card, .swipe-wrap.swiping > .clcard{transition:none;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard, .swipe-wrap > .loccard, .swipe-wrap > .q-card{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;background:var(--card);}
+.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card, .swipe-wrap.swiping > .clcard, .swipe-wrap.swiping > .loccard, .swipe-wrap.swiping > .q-card{transition:none;}
 .swipe-del-bg{position:absolute;top:0;right:0;bottom:0;width:90px;background:linear-gradient(90deg,#A32D2D,#7a1f1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;cursor:pointer;z-index:0;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard{position:relative;z-index:1;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard, .swipe-wrap > .loccard, .swipe-wrap > .q-card{position:relative;z-index:1;}
 .ec.quote{border-left-color:#1D9E75;}.ec.character,.ec.person,.ec.suspect{border-left-color:#D85A30;}
 .ec.theme{border-left-color:#378ADD;}.ec.chapter{border-left-color:#BA7517;}
 .ec.setting{border-left-color:#D4537E;}.ec.relationship{border-left-color:#888780;}
@@ -315,12 +315,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="web-panel" class="panel" style="padding:8px 10px 85px;">
       <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Tap a character · Drag to reposition · Pinch / scroll to zoom</div>
       <div class="fscroll" id="web-filter-bar"></div>
+      <!-- xlsx #408 — search bar: typing pans/zooms to the matching node + spotlights it -->
+      <div style="position:relative;margin-bottom:6px;">
+        <input type="text" id="web-search" placeholder="🔍 Search character on web…" oninput="webSearchOn()" onkeydown="if(event.key==='Enter'){webSearchPick();event.preventDefault();}" style="width:100%;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/>
+        <button onclick="document.getElementById('web-search').value='';webSearchOn();webSpotlightClear();" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+        <div id="web-search-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      </div>
       <div style="display:flex;justify-content:center;gap:4px;margin-bottom:6px;">
         <button class="btn btn-sm" onclick="webZoom(-1)" title="Zoom out" style="padding:4px 10px;font-size:14px;">−</button>
         <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
         <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
       </div>
-      <div class="web-wrap" id="web-wrap"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg></div>
+      <div class="web-wrap" id="web-wrap" style="position:relative;"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 60%,rgba(0,0,0,0.55) 70%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
 
@@ -328,6 +334,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
+      <!-- xlsx #342 — sort toggle: Story chronology (default, by evdate) vs Reading order (strict chap/page) -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;">
+        <span style="color:var(--t3);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Sort:</span>
+        <div style="display:flex;background:var(--bg2);border-radius:14px;padding:2px;border:0.5px solid var(--cb);flex:1;">
+          <button id="tl-sort-story" onclick="setTlSortMode('story')" style="flex:1;background:transparent;border:0;padding:5px 10px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">Story chronology</button>
+          <button id="tl-sort-reading" onclick="setTlSortMode('reading')" style="flex:1;background:transparent;border:0;padding:5px 10px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">Reading order</button>
+        </div>
+      </div>
       <div style="position:relative;margin-bottom:8px;"><input type="text" id="tl-search" placeholder="🔍 Search timeline…" oninput="renderTimeline()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('tl-search').value='';renderTimeline();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div id="timeline-list"></div>
       <div id="tl-empty" class="empty" style="display:none"><div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div></div>
@@ -824,7 +838,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- EVENT EXTRAS (renamed from Major Event) -->
     <div id="ae-event-ex" style="display:none">
       <div style="font-size:11px;color:var(--t2);background:var(--al);border-radius:var(--r);padding:7px 9px;margin-bottom:9px;">
-        <strong>Event-specific fields.</strong> The Year/Month/Day, Importance, ± offset, and supporting quote fields above are shared with Timeline so events sort consistently on the Timeline tab.
+        <strong>Event-specific fields.</strong> The Year/Month/Day, Significance, ± offset, and supporting quote fields above are shared with Timeline so events sort consistently on the Timeline tab.
       </div>
       <div class="fg"><label>Significance</label>
         <!-- #342 follow-up — collapse to two user-facing options per request.
@@ -2852,6 +2866,128 @@ function goLib(){currentId=null;currentCharName=null;currentLocName=null;show('l
 function openBookSettings(){openSheet('settings-overlay');}
 // #274/285 — Library-wide settings menu (gear icon in library topbar)
 function openLibSettings(){openSheet('lib-settings-overlay');}
+
+// xlsx #401 — Library usage stats. Tells the user which features and answer-options
+// they've used (and haven't) across ALL books in their library.
+function openLibStats(){
+  openSheet('lib-stats-overlay');
+  const body=document.getElementById('lib-stats-body');
+  if(!body)return;
+  // Aggregate across every book in the library
+  const allBooks=Object.values(library).filter(b=>b&&b.entries);
+  const allEntries=allBooks.flatMap(b=>b.entries||[]);
+  if(!allEntries.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No entries yet across your library.</div>';return;}
+  // Type counts (entry type usage)
+  const typeCounts={};
+  allEntries.forEach(e=>{const t=e.type||'(unknown)';typeCounts[t]=(typeCounts[t]||0)+1;});
+  // Known full type list (matches buildTypeSelect's union)
+  const KNOWN_TYPES=['Chapter','Character','Person','Figure','Suspect','Characteristic','Dialogue','Event','Line/stanza','Location','Narrator quote','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary'];
+  const typesUsed=KNOWN_TYPES.filter(t=>typeCounts[t]).sort((a,b)=>typeCounts[b]-typeCounts[a]);
+  const typesUnused=KNOWN_TYPES.filter(t=>!typeCounts[t]).sort((a,b)=>a.localeCompare(b));
+  // Relationship-type counts
+  const relCounts={};
+  allEntries.filter(e=>e.type==='Relationship'&&e.relType).forEach(e=>{relCounts[e.relType]=(relCounts[e.relType]||0)+1;});
+  const ALL_REL_TYPES=[...new Set(REL_GROUPS.flatMap(g=>g.items).filter(t=>t!=='Custom…'))];
+  const relUsed=ALL_REL_TYPES.filter(t=>relCounts[t]).sort((a,b)=>relCounts[b]-relCounts[a]);
+  const relUnused=ALL_REL_TYPES.filter(t=>!relCounts[t]).sort((a,b)=>a.localeCompare(b));
+  // Event-type counts (multi-select on each Event entry, plus library customs)
+  const evCounts={};
+  allEntries.filter(e=>e.type==='Event'&&Array.isArray(e.eventTypes)).forEach(e=>e.eventTypes.forEach(et=>{if(et)evCounts[et]=(evCounts[et]||0)+1;}));
+  const ALL_EV_TYPES=[...new Set([...EVENT_TYPES,...((library.customEventTypes)||[])])];
+  const evUsed=ALL_EV_TYPES.filter(t=>evCounts[t]).sort((a,b)=>evCounts[b]-evCounts[a]);
+  const evUnused=ALL_EV_TYPES.filter(t=>!evCounts[t]).sort((a,b)=>a.localeCompare(b));
+  // Character role counts
+  const ROLES=['main','antagonist','side','narrator','minor','stranger'];
+  const roleCounts={};
+  allEntries.filter(e=>CT.includes(e.type)).forEach(e=>{const r=e.charRole||'(unset)';roleCounts[r]=(roleCounts[r]||0)+1;});
+  // Trait-type counts
+  const TRAIT_TYPES=['personality','physical','behavioral','emotional','intellectual'];
+  const traitCounts={};
+  allEntries.filter(e=>e.type==='Characteristic').forEach(e=>{const t=e.traitType||'(unset)';traitCounts[t]=(traitCounts[t]||0)+1;});
+  // Helper to render a "Used N · Never used M" block with collapsible chip lists
+  const usedBadge=(n)=>`<span style="font-size:10px;font-weight:700;background:var(--al);color:var(--accent);border-radius:10px;padding:2px 7px;margin-left:5px;">${n}</span>`;
+  const renderBlock=(title,used,unused,countMap,emptyMsg)=>{
+    const usedChips=used.map(t=>`<span style="display:inline-block;background:var(--bg2);border:0.5px solid var(--cb);color:var(--text);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${t} <span style="color:var(--accent);font-weight:700;">${countMap[t]}</span></span>`).join('');
+    const unusedChips=unused.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${t}</span>`).join('');
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:5px;">${title}${usedBadge(used.length)}</div>
+      ${used.length?`<div style="margin-bottom:6px;">${usedChips}</div>`:`<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:6px;">${emptyMsg||'None used yet.'}</div>`}
+      ${unused.length?`<details style="margin-top:4px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Show ${unused.length} never used</summary><div style="margin-top:6px;">${unusedChips}</div></details>`:''}
+    </div>`;
+  };
+  const totalChars=allEntries.filter(e=>CT.includes(e.type)).length;
+  const totalLocs=[...new Set(allEntries.filter(e=>e.location).map(e=>e.location).concat(allEntries.filter(e=>e.type==='Location').map(e=>e.content)))].length;
+  body.innerHTML=`
+    <div style="background:var(--bg2);border-radius:var(--rl2);padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:6px;">Library overview</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:12px;">
+        <div><strong>${allBooks.length}</strong> book${allBooks.length===1?'':'s'}</div>
+        <div><strong>${allEntries.length}</strong> entries</div>
+        <div><strong>${totalChars}</strong> characters</div>
+        <div><strong>${totalLocs}</strong> locations</div>
+      </div>
+    </div>
+    ${renderBlock('Entry types',typesUsed,typesUnused,typeCounts,'No entries logged yet.')}
+    ${renderBlock('Relationship types',relUsed,relUnused,relCounts,'No relationships logged yet.')}
+    ${renderBlock('Event types',evUsed,evUnused,evCounts,'No events tagged yet.')}
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:5px;">Character roles</div>
+      <div>${ROLES.map(r=>`<span style="display:inline-block;background:${roleCounts[r]?'var(--bg2)':'transparent'};border:0.5px ${roleCounts[r]?'solid':'dashed'} var(--cb);color:${roleCounts[r]?'var(--text)':'var(--t3)'};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${r} ${roleCounts[r]?`<span style="color:var(--accent);font-weight:700;">${roleCounts[r]}</span>`:''}</span>`).join('')}</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:5px;">Trait types</div>
+      <div>${TRAIT_TYPES.map(t=>`<span style="display:inline-block;background:${traitCounts[t]?'var(--bg2)':'transparent'};border:0.5px ${traitCounts[t]?'solid':'dashed'} var(--cb);color:${traitCounts[t]?'var(--text)':'var(--t3)'};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${t} ${traitCounts[t]?`<span style="color:var(--accent);font-weight:700;">${traitCounts[t]}</span>`:''}</span>`).join('')}</div>
+    </div>
+    <div style="font-size:11px;color:var(--t3);text-align:center;padding:8px;background:var(--bg2);border-radius:var(--r);">Solid chips = used · Dashed chips = never used</div>
+  `;
+}
+
+// xlsx #401 — Manage answer lists. Lets the user add/remove items from any
+// library-level "choice list" the app uses. Currently exposes Custom event types
+// (the only library-level list today) with hooks to add more (rel types, char
+// roles, trait types) once those move from constants → library.lists.*.
+function openLibLists(){
+  openSheet('lib-lists-overlay');
+  renderLibLists();
+}
+function renderLibLists(){
+  const body=document.getElementById('lib-lists-body');if(!body)return;
+  if(!library.customEventTypes)library.customEventTypes=[];
+  const evCustom=(library.customEventTypes||[]).slice().sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+  const renderListBlock=(title,subtitle,items,builtin,addFn,removeFn)=>{
+    const builtinChips=builtin.map(t=>`<span style="display:inline-block;background:var(--bg2);border:0.5px solid var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${t}</span>`).join('');
+    const customChips=items.map(t=>`<span style="display:inline-block;background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:600;">${t} <span onclick="${removeFn}('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`).join('');
+    return `<div style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:3px;">${title}</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">${subtitle}</div>
+      ${items.length?`<div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Your custom additions</div>${customChips}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No custom additions yet.</div>'}
+      <button class="btn btn-sm btn-primary" onclick="${addFn}()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
+      <details style="margin-top:4px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Show built-in defaults (${builtin.length})</summary><div style="margin-top:6px;">${builtinChips}</div></details>
+    </div>`;
+  };
+  body.innerHTML=`
+    <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:14px;line-height:1.45;">Add or remove options that appear in entry forms throughout the app. Built-in defaults can't be removed — they're always available. Your custom additions are shared across every book in your library.</div>
+    ${renderListBlock(
+      'Event types',
+      'Used in the Event entry form (multi-select chip picker).',
+      evCustom,
+      EVENT_TYPES.slice().sort((a,b)=>a.localeCompare(b)),
+      'addCustomEventType',
+      'libListsRemoveEv'
+    )}
+    <div style="font-size:11px;color:var(--t3);text-align:center;padding:8px;background:var(--bg2);border-radius:var(--r);">More lists coming: relationship types, character roles, trait types.</div>
+  `;
+}
+// xlsx #401 — wrapper to remove a custom event type and re-render the lists overlay.
+function libListsRemoveEv(name){
+  if(!name||!library.customEventTypes)return;
+  if(!confirm(`Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`))return;
+  library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
+  save();
+  renderLibLists();
+  // Also refresh the in-form picker if it's open
+  if(document.getElementById('event-type-picks'))populateEventTypePicks();
+}
 function openNewBookSheet(){
   document.getElementById('nb-edit-id').value='';
   document.getElementById('nb-sheet-title').textContent='New book';
@@ -3037,9 +3173,46 @@ function qrCharFilter(rowId){
   const matches=q?chars.filter(c=>c.name.toLowerCase().includes(q)||c.nick.includes(q)):chars;
   const exact=chars.find(c=>c.name.toLowerCase()===q||c.nick===q);
   hidden.value=exact?.name||'';
-  if(!matches.length){list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — tap "+ New" to create.</div>`;}
-  else{list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');}
+  // xlsx #403 — when the user has typed something AND no exact match exists,
+  // show a clear inline "Character isn't in your system — add them?" banner
+  // with [Add] [Cancel] buttons. Replaces the cramped "No match — tap +New" line.
+  if(q&&!exact){
+    const safeQ=esc(q.replace(/'/g,"’")); // single-quote-safe for the inline onclick
+    const banner=`<div style="padding:9px 11px;background:var(--al);border-bottom:0.5px solid var(--am);font-size:12px;color:var(--text);">
+      <div style="margin-bottom:6px;line-height:1.4;">"<strong>${esc(input.value.trim())}</strong>" isn't in your system yet — add them?</div>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="btn btn-sm btn-primary" onclick="qrCharAddFromBanner('${rowId}')" style="font-size:12px;padding:5px 12px;">+ Add as new character</button>
+        <button type="button" class="btn btn-sm" onclick="qrCharCancelBanner('${rowId}')" style="font-size:12px;padding:5px 12px;">Cancel</button>
+      </div>
+    </div>`;
+    if(matches.length){
+      list.innerHTML=banner+matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');
+    } else {
+      list.innerHTML=banner;
+    }
+  } else if(!matches.length){
+    list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — tap "+ New" to create.</div>`;
+  } else {
+    list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');
+  }
   list.style.display='block';
+}
+// xlsx #403 — Add-from-banner triggers the existing quickRelNewChar flow
+// using the typed value as the seed name.
+function qrCharAddFromBanner(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const newBtn=row.querySelector('button[onclick*="quickRelNewChar"]');
+  if(newBtn){newBtn.click();return;}
+  // Fallback: synthesize the same flow inline.
+  quickRelNewChar(row.querySelector('.qr-char-search'));
+}
+function qrCharCancelBanner(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const list=row.querySelector('.qr-char-list');
+  const input=row.querySelector('.qr-char-search');
+  if(input)input.value='';
+  if(list){list.style.display='none';list.innerHTML='';}
+  row.querySelector('.qr-char').value='';
 }
 function qrCharPick(rowId,name){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -3254,10 +3427,28 @@ function populateEventTypePicks(){
     delete book().customEventTypes;
     save();
   }
-  const custom=library.customEventTypes.filter(Boolean);
+  const custom=library.customEventTypes.filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+  // Re-persist sorted order so it sticks
+  library.customEventTypes=custom.slice();
   const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))];
-  row.innerHTML=all.map(t=>`<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}</span>`).join('')
+  // #342 follow-up — custom types get a long-press delete (small × on hover/touch).
+  // Standard EVENT_TYPES are not deletable.
+  row.innerHTML=all.map(t=>{
+    const isCustom=custom.includes(t)&&!EVENT_TYPES.includes(t);
+    const delBtn=isCustom?` <span onclick="event.stopPropagation();deleteCustomEventType('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;" title="Delete custom type">×</span>`:'';
+    return `<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}${delBtn}</span>`;
+  }).join('')
     +`<span class="cpick" onclick="addCustomEventType()" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;">+ Add custom</span>`;
+}
+// #342 follow-up — delete a library-level custom event type.
+function deleteCustomEventType(name){
+  if(!name||!library.customEventTypes)return;
+  if(!confirm(`Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`))return;
+  library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
+  save();
+  const picked=getPickedEventTypes().filter(t=>t!==name);
+  populateEventTypePicks();
+  setTimeout(()=>{picked.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${cssEsc(t)}"]`);if(chip)chip.classList.add('sel');});},10);
 }
 // #342 follow-up — prompt for a new event-type label, save at LIBRARY level, re-render picks.
 function addCustomEventType(){
@@ -3268,14 +3459,18 @@ function addCustomEventType(){
     library.customEventTypes.push(v);save();
   }
   // remember currently-picked types and restore + select the new one
-  const picked=getPickedEventTypes();
-  populateEventTypePicks();
-  setTimeout(()=>{
-    [...picked,v].forEach(t=>{
-      const chip=document.querySelector(`#event-type-picks .cpick[data-val="${cssEsc(t)}"]`);
-      if(chip)chip.classList.add('sel');
-    });
-  },10);
+  const picked=document.getElementById('event-type-picks')?getPickedEventTypes():[];
+  if(document.getElementById('event-type-picks')){
+    populateEventTypePicks();
+    setTimeout(()=>{
+      [...picked,v].forEach(t=>{
+        const chip=document.querySelector(`#event-type-picks .cpick[data-val="${cssEsc(t)}"]`);
+        if(chip)chip.classList.add('sel');
+      });
+    },10);
+  }
+  // xlsx #401 — refresh the manage-lists overlay if it's open
+  if(document.getElementById('lib-lists-overlay')?.classList.contains('open'))renderLibLists();
 }
 // Tiny attribute-safe selector escape (not full CSS.escape but enough for our chip vals).
 function cssEsc(s){return (s||'').replace(/["\\]/g,'\\$&');}
@@ -4474,12 +4669,19 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.themeQuotes=getThemeQuotes();
     entry.attachedQuoteIds=getAttachedQuoteIds();
     // #191-A / #329 / #399 — Rebuild Involved from CURRENT quote speakers + user's
-    // explicit Involved picks. Previously this seeded from entry.involved which kept
-    // any old speaker (A) on edit even after the user changed the quote speaker to B.
+    // explicit Involved picks, MINUS any prior quote-speakers that are no longer present.
+    // This ensures changing a quote's speaker A→B drops A from Involved (unless the user
+    // separately re-added A as an Involved pick during the same edit, which we can't
+    // distinguish — a known edge case noted in BATCH_27 checklist).
     const _userInv=cddGet('ae-inv')||[];
-    const inv=new Set(_userInv);
-    entry.themeQuotes.forEach(q=>{if(q.speaker&&q.speaker.trim())inv.add(q.speaker.trim());});
-    entry.attachedQuoteIds.forEach(id=>{const q=entries().find(e=>e.id===id);if(q?.speaker&&q.speaker!=='Narrator / Author')inv.add(q.speaker);});
+    const _prior=new Set(window._priorThemeSpeakers||[]);
+    const _currSpeakers=new Set();
+    entry.themeQuotes.forEach(q=>{if(q.speaker&&q.speaker.trim())_currSpeakers.add(q.speaker.trim());});
+    entry.attachedQuoteIds.forEach(id=>{const q=entries().find(e=>e.id===id);if(q?.speaker&&q.speaker!=='Narrator / Author')_currSpeakers.add(q.speaker);});
+    // Drop any prior speaker from the user-picks set if they're no longer a current speaker.
+    const filteredPicks=_userInv.filter(c=>!_prior.has(c)||_currSpeakers.has(c));
+    const inv=new Set(filteredPicks);
+    _currSpeakers.forEach(s=>inv.add(s));
     entry.involved=[...inv];
     // #339 — if any speaker referenced from theme quotes is a draft Character,
     // promote them out of drafts so they show up in Log/Character filters.
@@ -4645,33 +4847,42 @@ function postSaveNavigate(entry,type){
   if(!entry)return;
   // Skip navigation when editing — keep the user where they were
   const wasEdit=document.getElementById('ae-edit-id')?.value!=='';
-  // (The edit-id is already cleared by close, so detect via a flag we set before close — fall back to entry.id comparison)
-  // Simpler: always navigate on save. If user was editing a character, opening the character profile is still a sensible result.
-  // #400 — schedule a scroll-to + highlight pulse after the destination tab has rendered.
-  if(entry?.id){
+  // #400 fix — schedule pulse AFTER forceTab (longer delay so destination tab DOM exists),
+  // and use rAF chain so paint completes before scrollIntoView runs.
+  const schedulePulse=()=>{
+    if(!entry?.id)return;
     window._pendingPulseId=entry.id;
-    setTimeout(()=>{const id=window._pendingPulseId;if(id){_pulseEntryById(id);window._pendingPulseId=null;}},420);
-  }
+    setTimeout(()=>{
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        const id=window._pendingPulseId;if(id){_pulseEntryById(id);window._pendingPulseId=null;}
+      }));
+    },650);
+  };
   if(CT.includes(type)){
     // Character → open their profile
     setTimeout(()=>openCharDetail(entry.cn||entry.content,false),60);
+    schedulePulse();
     return;
   }
-  if(type==='Relationship'){forceTab('web');return;}
+  // #340 — Relationship saves go to LOG filtered to Relationship so the user
+  // sees the new entry (and any quick-rels) as individual cards. Web tab still
+  // shows them but doesn't surface the per-rel cards.
+  if(type==='Relationship'){activeFilter='Relationship';forceTab('log');schedulePulse();return;}
   if(type==='Characteristic'){
     const target=(entry.involved||[])[0];
     if(target)setTimeout(()=>openCharDetail(target,false),60);
+    schedulePulse();
     return;
   }
-  if(type==='Theme'){activeFilter='Theme';forceTab('log');return;}
-  if(['Quote','Line/stanza','Narrator quote'].includes(type)){forceTab('quotes');return;}
-  if(type==='Chapter'){activeFilter='Chapter';forceTab('log');return;}
-  if(type==='Word / Vocabulary'){forceTab('words');return;}
-  if(type==='Location'){forceTab('map');return;}
-  if(['Event','Timeline'].includes(type)){forceTab('timeline');return;}
-  if(type==='Reference'){forceTab('refs');return;}
-  if(type==='Question'){forceTab('questions');return;}
-  // All other types: stay on current tab
+  if(type==='Theme'){activeFilter='Theme';forceTab('log');schedulePulse();return;}
+  if(['Quote','Line/stanza','Narrator quote'].includes(type)){forceTab('quotes');schedulePulse();return;}
+  if(type==='Chapter'){activeFilter='Chapter';forceTab('log');schedulePulse();return;}
+  if(type==='Word / Vocabulary'){forceTab('words');schedulePulse();return;}
+  if(type==='Location'){forceTab('map');schedulePulse();return;}
+  if(['Event','Timeline'].includes(type)){forceTab('timeline');schedulePulse();return;}
+  if(type==='Reference'){forceTab('refs');schedulePulse();return;}
+  if(type==='Question'){forceTab('questions');schedulePulse();return;}
+  schedulePulse();
 }
 
 // #400 — Post-save scroll + highlight pulse. Looks for any rendered card whose
@@ -4822,6 +5033,19 @@ function suggestPatriLastName(){
     // without having saved yet.
     const inProgressRows=[...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')];
     for(const row of inProgressRows){
+      const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+      const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
+      if(!rt||!ch)continue;
+      if(PATRI.includes(rt)){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
+        if(cEnt)return cEnt;
+      }
+    }
+    // #393 follow-up — also scan the Character form's quick-rels list.
+    // Those rows describe rels FROM the new character's perspective, so a row
+    // with type=Father + char=A means "A is the Father (of this new char)".
+    const charFormRows=[...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')];
+    for(const row of charFormRows){
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch)continue;
@@ -5908,7 +6132,11 @@ function renderWeb(){
   svg.style.minWidth=W+'px';svg.style.width=W+'px';
 
   // ── Draw edges first ──────────────────────────────────────────
-  dedupedRels.forEach(r=>{
+  // xlsx #408 — Reduce edge overlap by converting straight lines to gently curved
+  // paths. Each edge gets a small perpendicular curvature offset that varies by
+  // edge index, so lines that would otherwise stack on top of each other (multiple
+  // edges between the same vicinity) fan out visually.
+  dedupedRels.forEach((r,edgeIdx)=>{
     const A=nameToChar[r.relA],B=nameToChar[r.relB];
     if(!A||!B)return;
     const dx=B.x-A.x,dy=B.y-A.y;
@@ -5916,14 +6144,24 @@ function renderWeb(){
     // Shorten line to stop at node edge
     const x1=A.x+(dx/d)*NR,y1=A.y+(dy/d)*NR;
     const x2=B.x-(dx/d)*NR,y2=B.y-(dy/d)*NR;
-    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
-    line.setAttribute('stroke',A.col.stroke+'66');line.setAttribute('stroke-width','1.5');
-    svg.appendChild(line);
+    // Perpendicular unit vector + curvature amount that alternates direction
+    // and grows with edge index. Caps so far-apart edges don't curve absurdly.
+    const px=-dy/d, py=dx/d;
+    const curveAmt=Math.min(28,12+(edgeIdx%5)*4)*((edgeIdx%2)?-1:1);
+    const cx=(x1+x2)/2+px*curveAmt, cy=(y1+y2)/2+py*curveAmt;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M${x1},${y1} Q${cx},${cy} ${x2},${y2}`);
+    path.setAttribute('stroke',A.col.stroke+'66');
+    path.setAttribute('stroke-width','1.5');
+    path.setAttribute('fill','none');
+    path.setAttribute('data-edge-a',A.name);
+    path.setAttribute('data-edge-b',B.name);
+    svg.appendChild(path);
 
     // #216 — Show both perspectives: "A's-label | B's-label"
     if(r.relType){
-      const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+      // Position label at the curve midpoint (same as Bezier midpoint).
+      const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
       const recip=RECIPROCAL[r.relType];
       const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
       const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
@@ -6065,25 +6303,33 @@ function setupWebDrag(){
   function redrawEdges(){
     const st=svg._webState;if(!st)return;
     const nameMap={};st.chars.forEach(c=>nameMap[c.name]=c);
-    // Rebuild edge layer by clearing all <line> and the label <rect>/<text> pairs, then redrawing
-    // Simpler: leave text labels/rects alone for now and only move the <line>s that match.
-    // Find lines — they were appended before nodes. We rebuild them all from rels:
+    // Rebuild edge layer by clearing all <line>/<path> edges and label <rect>/<text> pairs, then redrawing.
+    // xlsx #408 — edges are <path> now (curved) but legacy <line> elements may still exist on first
+    // post-update redraw, so clear both for safety.
     [...svg.querySelectorAll('line')].forEach(l=>l.remove());
+    [...svg.querySelectorAll('path[data-edge-a]')].forEach(p=>p.remove());
     [...svg.querySelectorAll('rect')].forEach(r=>r.remove());
     // Remove label <text> that aren't inside a node group
     [...svg.querySelectorAll(':scope > text')].forEach(t=>t.remove());
-    // Redraw edges + labels
+    // Redraw edges + labels (matches the initial-render curve formula in renderWeb).
     const NR=st.NR;
-    st.rels.forEach(r=>{
+    st.rels.forEach((r,edgeIdx)=>{
       const A=nameMap[r.relA],B=nameMap[r.relB];if(!A||!B)return;
       const dx=B.x-A.x,dy=B.y-A.y;const d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
       const x1=A.x+(dx/d)*NR,y1=A.y+(dy/d)*NR;const x2=B.x-(dx/d)*NR,y2=B.y-(dy/d)*NR;
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
-      line.setAttribute('stroke',A.col.stroke+'66');line.setAttribute('stroke-width','1.5');
-      svg.insertBefore(line,svg.firstChild); // draw below nodes
+      const px=-dy/d, py=dx/d;
+      const curveAmt=Math.min(28,12+(edgeIdx%5)*4)*((edgeIdx%2)?-1:1);
+      const cx=(x1+x2)/2+px*curveAmt, cy=(y1+y2)/2+py*curveAmt;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',`M${x1},${y1} Q${cx},${cy} ${x2},${y2}`);
+      path.setAttribute('stroke',A.col.stroke+'66');
+      path.setAttribute('stroke-width','1.5');
+      path.setAttribute('fill','none');
+      path.setAttribute('data-edge-a',A.name);
+      path.setAttribute('data-edge-b',B.name);
+      svg.insertBefore(path,svg.firstChild); // draw below nodes
       if(r.relType){
-        const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+        const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
         const recip=RECIPROCAL[r.relType];
         const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
         const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
@@ -6125,17 +6371,29 @@ function setupWebDrag(){
     wrap.style.cursor='grabbing';
     return false;
   }
+  // xlsx #408 — rAF-coalesce pan + drag updates so the SVG only recomputes once
+  // per animation frame even if pointermove fires more often. Smooths out the
+  // pan/scroll on the relationship web on mobile.
+  let _panRafPending=false, _panRafLast=null;
   function onMoveStart(clientX,clientY){
-    if(dragNode){
-      const p=clientToSvg(clientX,clientY);
-      dragNode.data.x=p.x;dragNode.data.y=p.y;
-      redrawNode(dragNode.data);
-      movedPx+=2;
-    } else if(panStart){
-      const dx=clientX-panStart.x,dy=clientY-panStart.y;
-      wrap.scrollLeft=panStart.sl-dx;wrap.scrollTop=panStart.st-dy;
-      movedPx+=Math.abs(dx)+Math.abs(dy);
-    }
+    _panRafLast={clientX,clientY};
+    if(_panRafPending)return;
+    _panRafPending=true;
+    requestAnimationFrame(()=>{
+      _panRafPending=false;
+      if(!_panRafLast)return;
+      const cx=_panRafLast.clientX, cy=_panRafLast.clientY;
+      if(dragNode){
+        const p=clientToSvg(cx,cy);
+        dragNode.data.x=p.x;dragNode.data.y=p.y;
+        redrawNode(dragNode.data);
+        movedPx+=2;
+      } else if(panStart){
+        const dx=cx-panStart.x,dy=cy-panStart.y;
+        wrap.scrollLeft=panStart.sl-dx;wrap.scrollTop=panStart.st-dy;
+        movedPx+=Math.abs(dx)+Math.abs(dy);
+      }
+    });
   }
   function onUpEnd(){
     if(dragNode){
@@ -6212,6 +6470,59 @@ function webZoom(dir){
 }
 function setWebFilter(f){activeWebFilter=f;renderWeb();}
 
+// xlsx #408 — Relationship-web search: filter list under input, on pick
+// pan/scroll-into-view to that node and apply a spotlight overlay until tap.
+function webSearchOn(){
+  const inp=document.getElementById('web-search');const list=document.getElementById('web-search-list');
+  if(!inp||!list)return;
+  const q=(inp.value||'').toLowerCase().trim();
+  const svg=document.getElementById('web-svg');const st=svg?._webState;
+  if(!st||!st.chars||!q){list.style.display='none';list.innerHTML='';return;}
+  const matches=st.chars.filter(c=>c.name.toLowerCase().includes(q)).slice(0,10);
+  if(!matches.length){list.innerHTML='<div style="padding:7px 10px;font-size:12px;color:var(--t3);">No characters match "'+esc(q)+'"</div>';list.style.display='';return;}
+  list.innerHTML=matches.map(c=>`<div onclick="webSearchPick('${esc(c.name)}')" style="padding:7px 10px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c.col.stroke};flex-shrink:0;"></span>${c.name}</div>`).join('');
+  list.style.display='';
+}
+function webSearchPick(name){
+  const list=document.getElementById('web-search-list');
+  const inp=document.getElementById('web-search');
+  const svg=document.getElementById('web-svg');const st=svg?._webState;
+  if(!st)return;
+  // If no name passed (Enter key), use the first match
+  if(!name){
+    const q=(inp?.value||'').toLowerCase().trim();
+    const m=st.chars.find(c=>c.name.toLowerCase().includes(q));
+    if(!m)return;
+    name=m.name;
+  }
+  if(inp)inp.value=name;
+  if(list){list.style.display='none';list.innerHTML='';}
+  webSpotlightOn(name);
+}
+function webSpotlightOn(name){
+  const wrap=document.getElementById('web-wrap');
+  const svg=document.getElementById('web-svg');const st=svg?._webState;
+  const ov=document.getElementById('web-spotlight-overlay');
+  if(!wrap||!svg||!st||!ov)return;
+  const node=st.chars.find(c=>c.name===name);if(!node)return;
+  // Convert SVG viewBox coords → wrap-relative pixels
+  const svgRect=svg.getBoundingClientRect();
+  const wrapRect=wrap.getBoundingClientRect();
+  const px=(node.x/st.viewW)*svgRect.width+(svgRect.left-wrapRect.left);
+  const py=(node.y/st.viewH)*svgRect.height+(svgRect.top-wrapRect.top);
+  // Scroll the node into view inside wrap
+  const targetScrollLeft=Math.max(0,svgRect.left-wrapRect.left+(node.x/st.viewW)*svgRect.width-wrap.clientWidth/2);
+  wrap.scrollTo({left:targetScrollLeft,top:0,behavior:'smooth'});
+  // Apply spotlight (radial gradient hole at node position)
+  ov.style.setProperty('--spot-x',px+'px');
+  ov.style.setProperty('--spot-y',py+'px');
+  ov.style.setProperty('--spot-r',(st.NR*1.6)+'px');
+  ov.style.display='';
+}
+function webSpotlightClear(){
+  const ov=document.getElementById('web-spotlight-overlay');if(ov)ov.style.display='none';
+}
+
 // ═══════════════════════════════════════════════════════════════
 // TIMELINE
 // ═══════════════════════════════════════════════════════════════
@@ -6254,28 +6565,61 @@ function renderTimeline(){
   }
 
   // #270 — split dated vs undated (computedSortNum counts as dated)
-  // #342 follow-up — events/timeline items with chapNum/pageNum but no evdate
-  // also count as "dated" so they intermix in book-reading order instead of
-  // being dumped at the bottom of the timeline.
-  const _hasBookOrder=e=>(+e.chapNum||+e.pageNum);
-  const dated=filtered.filter(e=>e.evdate||e.computedSortNum!=null||(e.sortKey!=null)||_hasBookOrder(e));
-  const undated=filtered.filter(e=>!e.evdate&&e.computedSortNum==null&&e.sortKey==null&&!_hasBookOrder(e));
-
-  // #303/#325 — sort: explicit sortKey first, then parsed evdate (numeric), then ch/page tiebreak
-  dated.sort((a,b)=>{
-    const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
-    if(sa!==sb)return sa-sb;
-    const da=evdateSort(a),db=evdateSort(b);
-    if(da!==null&&db!==null){
-      if(typeof da==='number'&&typeof db==='number'){
-        if(da!==db)return da-db;
-        return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+  // #342 follow-up — REVERTED per user feedback. Events/timeline items with
+  // chapNum/pageNum but no evdate now go to the UNDATED bucket so they don't
+  // mess up the timeline (books can jump around chronologically). The dated
+  // stream is reserved for entries with an actual date or sortKey.
+  // xlsx #342 — sort mode: 'story' (default, by evdate) vs 'reading' (strict chap/page).
+  const tlSortMode=window._tlSortMode||'story';
+  // Update segment-toggle button styles to reflect active mode.
+  const _tlsStory=document.getElementById('tl-sort-story');
+  const _tlsReading=document.getElementById('tl-sort-reading');
+  if(_tlsStory&&_tlsReading){
+    const onCss='background:var(--accent);color:#fff;';
+    const offCss='background:transparent;color:var(--text);';
+    _tlsStory.style.cssText=(tlSortMode==='story'?onCss:offCss)+'border:0;padding:5px 10px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;flex:1;';
+    _tlsReading.style.cssText=(tlSortMode==='reading'?onCss:offCss)+'border:0;padding:5px 10px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;flex:1;';
+  }
+  let dated, undated;
+  if(tlSortMode==='reading'){
+    // Reading order: ALL items with chap/page sort by chap/page in one stream.
+    // Undated bucket holds only entries with neither chap/page NOR evdate.
+    const _hasOrder=e=>(+e.chapNum||+e.pageNum||e.evdate||e.computedSortNum!=null||e.sortKey!=null);
+    dated=filtered.filter(_hasOrder);
+    undated=filtered.filter(e=>!_hasOrder(e));
+    // Strict chap/page sort. Items missing chap/page fall back to evdate-derived sort.
+    dated.sort((a,b)=>{
+      const ca=+a.chapNum||9999, cb=+b.chapNum||9999;
+      if(ca!==cb)return ca-cb;
+      const pa=+a.pageNum||9999, pb=+b.pageNum||9999;
+      if(pa!==pb)return pa-pb;
+      // Tie-break by evdate when chap/page are identical or both missing.
+      const da=evdateSort(a), db=evdateSort(b);
+      if(typeof da==='number'&&typeof db==='number')return da-db;
+      return 0;
+    });
+  } else {
+    // Story chronology (default).
+    dated=filtered.filter(e=>e.evdate||e.computedSortNum!=null||(e.sortKey!=null));
+    undated=filtered.filter(e=>!e.evdate&&e.computedSortNum==null&&e.sortKey==null);
+    // Sort the undated bucket by chap/page so book-order entries cluster sensibly.
+    undated.sort((a,b)=>(+a.chapNum||9999)-(+b.chapNum||9999)||(+a.pageNum||9999)-(+b.pageNum||9999));
+    // #303/#325 — sort: explicit sortKey first, then parsed evdate (numeric), then ch/page tiebreak
+    dated.sort((a,b)=>{
+      const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
+      if(sa!==sb)return sa-sb;
+      const da=evdateSort(a),db=evdateSort(b);
+      if(da!==null&&db!==null){
+        if(typeof da==='number'&&typeof db==='number'){
+          if(da!==db)return da-db;
+          return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+        }
+        return String(da).localeCompare(String(db));
       }
-      return String(da).localeCompare(String(db));
-    }
-    if(da!==null)return -1;if(db!==null)return 1;
-    return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
-  });
+      if(da!==null)return -1;if(db!==null)return 1;
+      return (+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
+    });
+  }
 
   const items=[...dated,...undated];
   if(!items.length&&!draftHTML){list.innerHTML='';empty.style.display='';return;}
@@ -6322,6 +6666,11 @@ function renderTimeline(){
 function setTlLocFilter(loc){
   const bar=document.getElementById('tl-loc-filter');
   if(bar)bar.dataset.active=loc;
+  renderTimeline();
+}
+// xlsx #342 — switch the timeline sort mode between Story chronology and Reading order.
+function setTlSortMode(mode){
+  window._tlSortMode=(mode==='reading')?'reading':'story';
   renderTimeline();
 }
 // #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
@@ -6817,7 +7166,7 @@ function renderMap(){
     const photoHtml=photoSrc
       ?`<div style="width:40px;height:40px;border-radius:var(--r);overflow:hidden;flex-shrink:0;"><img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover;"/></div>`
       :`<div style="width:40px;height:40px;border-radius:var(--r);background:var(--bg2);border:0.5px solid var(--cb);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">${typeIcon}</div>`;
-    return `<div class="loccard" style="${indentStyle}">
+    return `<div class="loccard" data-loc-name="${esc(loc)}" style="${indentStyle}background:var(--card);">
       <div class="loccard-header" onclick="openLocDetail('${esc(loc)}')">
         <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0;">
           ${photoHtml}
@@ -6833,7 +7182,7 @@ function renderMap(){
           ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(loc)} history ${esc(eraFB||'')}'))" style="font-size:11px;padding:3px 7px;" title="Search history">🔍</button>`:''}
           ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${cityFB?', '+esc(cityFB):''}${countryFB?', '+esc(countryFB):''}'))" style="font-size:11px;padding:3px 7px;" title="Maps">🗺️</button>`:''}
           <button class="btn btn-sm" onclick="event.stopPropagation();openEditLocSheet('${esc(loc)}')" style="font-size:11px;padding:3px 7px;">Edit</button>
-          <button class="btn btn-sm" onclick="event.stopPropagation();deleteLocCard('${esc(loc)}')" style="font-size:11px;padding:3px 7px;color:var(--red);">Delete</button>
+          <!-- #236 follow-up — Delete button removed; use swipe-to-delete on .loccard -->
           <span style="color:var(--t3);font-size:16px;">›</span>
         </div>
       </div>
@@ -9083,8 +9432,8 @@ function copyClosedReports(){
 // backplate. Touch-drag left reveals it; lift past threshold = delete with confirm.
 function _swipeWrapAll(){
   // entry cards: any .ec inside common containers, plus book-cards
-  // #236 follow-up — include character cards (.clcard) so swipe-to-delete works on Characters tab.
-  const sel='.ec, .book-card, .clcard';
+  // #236 follow-up — include character cards (.clcard) + location cards (.loccard) so swipe-to-delete works on those tabs.
+  const sel='.ec, .book-card, .clcard, .loccard';
   document.querySelectorAll(sel).forEach(card=>{
     if(card.closest('.swipe-wrap'))return; // already wrapped
     if(card.closest('.sheet-overlay'))return; // skip cards inside sheets/forms (e.g. preview cards in pickers)
@@ -9152,6 +9501,20 @@ function _swipeConfirmDelete(card){
     if(confirm('Delete this book? Entries and registry data will be removed.')){
       const idx=(window._books||[]).findIndex(b=>String(b.id)===String(bookId));
       if(idx>=0&&typeof deleteBook==='function'){deleteBook(bookId);}
+    }
+    card.style.transform='';return;
+  }
+  // #236 follow-up — Location card path.
+  const locName=card.getAttribute('data-loc-name');
+  if(locName&&typeof deleteLocCard==='function'){
+    deleteLocCard(locName);
+    card.style.transform='';return;
+  }
+  // #236 follow-up — Character card path (clcard has data-char-id).
+  const charId=card.getAttribute('data-char-id');
+  if(charId&&typeof deleteEntry==='function'){
+    if(confirm('Delete this character? Their relationships and quotes will be moved to the recycle bin.')){
+      deleteEntry(+charId);
     }
     card.style.transform='';return;
   }
@@ -9407,6 +9770,12 @@ window.addEventListener('load',()=>{setTimeout(_swipeInit,300);});
     </div>
     <div class="sheet-inner" style="padding-bottom:24px;">
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">Library-wide settings. Per-book settings stay inside each book (tap ⚙ inside a book).</div>
+      <!-- xlsx #401 — Library stats + manage answer lists -->
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Library stats &amp; lists</label>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibStats()" style="width:100%;margin-bottom:6px;">📊 Library usage stats</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibLists()" style="width:100%;">📋 Manage answer lists</button>
+      </div>
+      <div class="divider"></div>
       <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Backup &amp; sync</label>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');exportAllData()" style="width:100%;margin-bottom:6px;">⬇ Export all books (backup)</button>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openSync()" style="width:100%;margin-bottom:6px;">☁️ iCloud sync</button>
@@ -9423,6 +9792,28 @@ window.addEventListener('load',()=>{setTimeout(_swipeInit,300);});
       <div class="divider"></div>
       <div style="font-size:10px;color:var(--t3);text-align:center;padding:4px 0;">Book Annotator · Data lives on this device only</div>
     </div>
+  </div>
+</div>
+
+<!-- xlsx #401 — Library stats overlay -->
+<div class="sheet-overlay" id="lib-stats-overlay" onclick="mc('lib-stats-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">📊 Library stats</div>
+      <button class="sheet-x" onclick="closeSheet('lib-stats-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" id="lib-stats-body" style="padding-bottom:24px;"></div>
+  </div>
+</div>
+
+<!-- xlsx #401 — Manage answer lists overlay -->
+<div class="sheet-overlay" id="lib-lists-overlay" onclick="mc('lib-lists-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">📋 Manage answer lists</div>
+      <button class="sheet-x" onclick="closeSheet('lib-lists-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" id="lib-lists-body" style="padding-bottom:24px;"></div>
   </div>
 </div>
 </body>
