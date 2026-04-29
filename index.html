@@ -89,10 +89,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* #236 — slide-to-delete: card sits on a red "Delete" backplate. Touch-drag left
    reveals it; a long swipe triggers delete with confirm. */
 .swipe-wrap{position:relative;margin-bottom:7px;border-radius:var(--rl2);overflow:hidden;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;}
-.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card{transition:none;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;}
+.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card, .swipe-wrap.swiping > .clcard{transition:none;}
 .swipe-del-bg{position:absolute;top:0;right:0;bottom:0;width:90px;background:linear-gradient(90deg,#A32D2D,#7a1f1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;cursor:pointer;z-index:0;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card{position:relative;z-index:1;}
+.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard{position:relative;z-index:1;}
 .ec.quote{border-left-color:#1D9E75;}.ec.character,.ec.person,.ec.suspect{border-left-color:#D85A30;}
 .ec.theme{border-left-color:#378ADD;}.ec.chapter{border-left-color:#BA7517;}
 .ec.setting{border-left-color:#D4537E;}.ec.relationship{border-left-color:#888780;}
@@ -357,6 +357,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <div id="todo-panel" class="panel" style="padding:10px 11px 85px;">
       <div id="todo-progress" style="margin-bottom:10px;"></div>
+      <!-- #405 — search input for To-do items. Filters by item text and category. -->
+      <div style="position:relative;margin-bottom:8px;"><input type="text" id="todo-search" placeholder="🔍 Search to-do items…" oninput="renderTodo()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('todo-search').value='';renderTodo();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div style="margin-bottom:10px;">
         <button class="btn btn-sm" onclick="scanMissingFields()" style="width:100%;padding:9px;font-size:12px;touch-action:manipulation;">🔍 Scan entries for missing fields</button>
         <div id="scan-results" style="display:none;margin-top:8px;background:var(--bg2);border-radius:var(--r);padding:10px 12px;font-size:12px;"></div>
@@ -755,7 +757,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-evdate-day" inputmode="numeric" placeholder="e.g. 14" min="1" max="31"/>
         </div>
       </div>
-      <div class="r2" style="margin-top:-4px;">
+      <!-- #342 follow-up — Importance hidden (duplicated Significance). Hidden control
+           preserved for legacy save/edit code. -->
+      <div class="r2" style="display:none;">
         <div class="fg"><label>Importance</label>
           <select id="ae-imp"><option value="normal">Normal</option><option value="major">Major</option><option value="minor">Minor</option></select>
         </div>
@@ -833,6 +837,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </select>
       </div>
       <div class="fg"><label>Event type(s) <span style="font-weight:400;">(tap to select multiple)</span></label>
+        <!-- #402 — searchable event-type picker -->
+        <input type="text" id="event-type-search" placeholder="🔍 Search event types…" oninput="filterEventTypePicks()" style="font-size:13px;padding:6px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);margin-top:5px;"/>
         <div class="cpick-row" id="event-type-picks" style="margin-top:5px;"></div>
       </div>
       <!-- #342 — removed redundant "When" free-text input. The structured
@@ -2694,7 +2700,8 @@ function stdLocApplyAutofill(idx){
   const cityEl=document.getElementById('ae-loc-city');
   const stateEl=document.getElementById('ae-loc-state');
   const countryEl=document.getElementById('ae-loc-country');
-  if(streetEl&&!streetEl.value.trim()&&res.street)streetEl.value=res.street;
+  // #328 follow-up — user explicitly confirmed match → overwrite stale street.
+  if(streetEl&&res.street)streetEl.value=res.street;
   if(cityEl&&!cityEl.value.trim()&&res.city)cityEl.value=res.city;
   if(stateEl&&!stateEl.value.trim()&&res.state)stateEl.value=res.state;
   if(countryEl&&!countryEl.value.trim()&&res.country)countryEl.value=res.country;
@@ -3236,22 +3243,29 @@ function saveQuickAddChar(){
 // ═══════════════════════════════════════════════════════════════
 function populateEventTypePicks(){
   const row=document.getElementById('event-type-picks');if(!row)return;
-  // #342 follow-up — combine the standard EVENT_TYPES list with any custom types
-  // saved on the current book (book.customEventTypes[]). Provides an inline
-  // "+ Add custom" button that prompts for a new label and stores it on the book.
-  const custom=(book()?.customEventTypes||[]).filter(Boolean);
+  // #342 follow-up — combine the standard EVENT_TYPES list with library-level
+  // custom types (library.customEventTypes[]). Moved from book-level so a
+  // custom type made annotating Book A is reusable across the library.
+  if(!library.customEventTypes)library.customEventTypes=[];
+  // Backfill: pull any legacy book-level custom types up to library level once.
+  const legacy=(book()?.customEventTypes||[]).filter(Boolean);
+  if(legacy.length){
+    legacy.forEach(t=>{if(!library.customEventTypes.includes(t)&&!EVENT_TYPES.includes(t))library.customEventTypes.push(t);});
+    delete book().customEventTypes;
+    save();
+  }
+  const custom=library.customEventTypes.filter(Boolean);
   const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))];
   row.innerHTML=all.map(t=>`<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}</span>`).join('')
     +`<span class="cpick" onclick="addCustomEventType()" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;">+ Add custom</span>`;
 }
-// #342 follow-up — prompt for a new event-type label, save on book, re-render picks.
+// #342 follow-up — prompt for a new event-type label, save at LIBRARY level, re-render picks.
 function addCustomEventType(){
-  if(!currentId)return;
-  const v=(prompt('Add a custom event type (e.g. "Time travel", "Magic spell")')||'').trim();
+  const v=(prompt('Add a custom event type (e.g. "Time travel", "Magic spell")\nThis will be available across all books in your library.')||'').trim();
   if(!v)return;
-  if(!book().customEventTypes)book().customEventTypes=[];
-  if(!book().customEventTypes.includes(v)&&!EVENT_TYPES.includes(v)){
-    book().customEventTypes.push(v);save();
+  if(!library.customEventTypes)library.customEventTypes=[];
+  if(!library.customEventTypes.includes(v)&&!EVENT_TYPES.includes(v)){
+    library.customEventTypes.push(v);save();
   }
   // remember currently-picked types and restore + select the new one
   const picked=getPickedEventTypes();
@@ -3266,6 +3280,16 @@ function addCustomEventType(){
 // Tiny attribute-safe selector escape (not full CSS.escape but enough for our chip vals).
 function cssEsc(s){return (s||'').replace(/["\\]/g,'\\$&');}
 function getPickedEventTypes(){return[...document.querySelectorAll('#event-type-picks .cpick.sel')].map(e=>e.dataset.val);}
+// #402 — Filter event-type chips by search input. Selected chips remain visible.
+function filterEventTypePicks(){
+  const q=(document.getElementById('event-type-search')?.value||'').toLowerCase().trim();
+  document.querySelectorAll('#event-type-picks .cpick').forEach(chip=>{
+    if(!chip.dataset.val){chip.style.display=q?'none':'';return;}
+    const isSel=chip.classList.contains('sel');
+    const matches=!q||chip.dataset.val.toLowerCase().includes(q);
+    chip.style.display=(isSel||matches)?'':'none';
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ENTRY FORM
@@ -3816,11 +3840,20 @@ function openAddSheet(preType){
   document.getElementById('ae-edit-id').value='';
   document.getElementById('ae-sheet-title').textContent='Add annotation';
   document.getElementById('ae-date').value=localDate();
+  // #399 — clear prior-speakers stash on every new-entry open
+  window._priorThemeSpeakers=null;
   clearAEForm();
   // If no explicit type, infer from current tab
   if(!preType){
-    const tabTypeMap={quotes:'Quote',chars:'Character',web:'Relationship',timeline:'Timeline',map:'Location',words:'Word / Vocabulary',questions:'Question',refs:'Reference',todo:'Reference',log:'Chapter'};
-    preType=tabTypeMap[activeTab]||null;
+    // #407 — when on Log tab with a single-type filter active, prefer that as
+    // the pre-selected type so the form opens directly into the matching type.
+    if(activeTab==='log'&&typeof activeFilter==='string'&&activeFilter&&activeFilter!=='all'&&!activeFilter.startsWith('ch:')&&!activeFilter.startsWith('ch ')&&!activeFilter.startsWith('chars:')){
+      preType=activeFilter;
+    }
+    if(!preType){
+      const tabTypeMap={quotes:'Quote',chars:'Character',web:'Relationship',timeline:'Timeline',map:'Location',words:'Word / Vocabulary',questions:'Question',refs:'Reference',todo:'Reference',log:'Chapter'};
+      preType=tabTypeMap[activeTab]||null;
+    }
   }
   if(preType){
     const sel=document.getElementById('ae-type');
@@ -3854,7 +3887,7 @@ function reshowTemplateHint(){
   const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -3890,12 +3923,18 @@ function clearAEForm(){
   document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';
   const skEl=document.getElementById('ae-sortkey');if(skEl)skEl.value='';
   const offTog=document.getElementById('ae-offset-toggle');if(offTog){offTog.checked=false;document.getElementById('ae-offset-block').style.display='none';}
+  // #342 follow-up — clear offset-event picker (hidden field, search input, panel).
+  const _oeH=document.getElementById('ae-offset-event');if(_oeH)_oeH.value='';
+  const _oeS=document.getElementById('ae-offset-event-search');if(_oeS)_oeS.value='';
+  const _oeL=document.getElementById('ae-offset-event-list');if(_oeL)_oeL.style.display='none';
   document.getElementById('ae-loc-type').value='real';onLocTypeChange();
   document.getElementById('ae-event-to-tl').checked=false;
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
   const qh=document.getElementById('ae-qhyp');if(qh)qh.value='';
   const qg=document.getElementById('ae-qguess');if(qg)qg.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
+  // #402 — clear event-type filter on form reset
+  const _ets=document.getElementById('event-type-search');if(_ets)_ets.value='';
   // Reset draft toggle
   const di=document.getElementById('ae-is-draft');if(di)di.value='false';
   const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent='☐';
@@ -4082,13 +4121,24 @@ function buildThemeQuoteBlock(allTqs){
         :'<span style="font-weight:700;color:var(--t2);">'+q.speaker+'</span>')
       :'<span style="color:var(--t3);">Narrator</span>';
     var pgHtml=q.page?' · p.'+q.page:'';
+    // #396 follow-up — derive Ch.X from page via book chapSetup.
+    var chHtml='';
+    if(q.page){try{var _chs=pageToChapters(q.page)||[];if(_chs.length)chHtml=' · Ch.'+_chs.join(',');}catch(_){}}
     var thId=q._themeId||'';
     var qOpen=q._entryId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+q._entryId+')">'
                         :(thId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+thId+')">'
                                :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">');
-    return'<div style="margin-bottom:5px;"><div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
+    return'<div style="margin-bottom:5px;"><div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+chHtml+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
   });
-  return'<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">'+rows.join('')+'</div>';
+  // #396 follow-up — aggregate ALL chapters across the theme's quotes.
+  var allChs=new Set();
+  sorted.forEach(function(q){if(q.page){try{(pageToChapters(q.page)||[]).forEach(function(c){allChs.add(c);});}catch(_){}}});
+  var chSummary='';
+  if(allChs.size){
+    var sortedChs=[...allChs].sort(function(a,b){return (+a)-(+b);});
+    chSummary='<div style="font-size:10px;color:var(--t3);margin-top:4px;margin-bottom:2px;">📖 Appears in: Ch.'+sortedChs.join(', Ch.')+'</div>';
+  }
+  return'<div style="margin-top:6px;border-left:2px solid var(--am);padding-left:8px;">'+chSummary+rows.join('')+'</div>';
 }
 // #242 — Attach existing Quote entries to a Theme
 let _attachedQuoteIds=[];
@@ -4259,6 +4309,14 @@ function submitEntry(){
     // the To-do tab (see todoFields[Character] -> charRole), so users can complete
     // it later instead of being stopped at submit.
     if(!document.getElementById('ae-cstatus').value||document.getElementById('ae-cstatus').value==='unknown'){/* status unknown is ok */}
+  }
+  // #404 — Relationship entries must have a relationship type selected.
+  if(isRel){
+    const rt=(document.getElementById('ae-reltype')?.value||'').trim();
+    if(!rt){
+      reqFail('ae-reltype-search','Please select a relationship type');
+      validationFail=true;
+    }
   }
   if(type==='Characteristic'){
     if(!getPicked().length){
@@ -4537,7 +4595,8 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   // "Quick-added" so it appears in the main log with a distinguishing label.
   // #340 follow-up — fall back to typed search-input values when the user typed a
   // name/type but didn't tap an option, so rows still save instead of silently dropping.
-  if(isRel&&!editId&&entry.relA){
+  // #340 follow-up — drop !editId so quick-rel rows save on edits too.
+  if(isRel&&entry.relA){
     [...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')].forEach(row=>{
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
@@ -4589,7 +4648,10 @@ function postSaveNavigate(entry,type){
   // (The edit-id is already cleared by close, so detect via a flag we set before close — fall back to entry.id comparison)
   // Simpler: always navigate on save. If user was editing a character, opening the character profile is still a sensible result.
   // #400 — schedule a scroll-to + highlight pulse after the destination tab has rendered.
-  if(entry?.id)setTimeout(()=>_pulseEntryById(entry.id),180);
+  if(entry?.id){
+    window._pendingPulseId=entry.id;
+    setTimeout(()=>{const id=window._pendingPulseId;if(id){_pulseEntryById(id);window._pendingPulseId=null;}},420);
+  }
   if(CT.includes(type)){
     // Character → open their profile
     setTimeout(()=>openCharDetail(entry.cn||entry.content,false),60);
@@ -4617,23 +4679,20 @@ function postSaveNavigate(entry,type){
 // This works across the log, timeline, quotes, characters, questions, refs, etc.
 function _pulseEntryById(id){
   if(!id)return;
-  // Try a few times — destination tab's render may be slightly async.
   let tries=0;
   const tick=()=>{
     tries++;
-    // Find the card by matching the onclick attribute, the data attribute, or the
-    // closest .ec / .titem ancestor of any element with editEntry(id).
-    const sel=`[onclick*="editEntry(${id})"],[onclick*="editEntry(${id} "],[data-tl-id="${id}"],[data-entry-id="${id}"]`;
-    let target=document.querySelector(sel);
+    const sel=`[data-entry-id="${id}"],[data-tl-id="${id}"],[data-char-id="${id}"],[onclick*="editEntry(${id})"],[onclick*="editEntry(${id} "],[onclick*="editEntry(${id},"]`;
+    let target=null;
+    document.querySelectorAll(sel).forEach(el=>{if(!target||el.offsetParent)target=el;});
     if(target){
-      // climb to the card root
-      target=target.closest('.ec,.titem,.book-card,.q-card,.ref-card')||target;
+      target=target.closest('.ec,.titem,.book-card,.q-card,.ref-card,.clcard,.tlitem,.char-list-card')||target;
       try{target.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){target.scrollIntoView();}
       target.classList.add('just-saved');
       setTimeout(()=>target.classList.remove('just-saved'),1400);
       return;
     }
-    if(tries<6)setTimeout(tick,160);
+    if(tries<10)setTimeout(tick,180);
   };
   tick();
 }
@@ -4757,6 +4816,27 @@ function suggestPatriLastName(){
         const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===r.relA);
         if(cEnt)return cEnt;
       }
+    }
+    // #393 follow-up — also scan in-progress quick-rel rows on the form,
+    // because the user may be entering "B is son of A" in the Relationship form
+    // without having saved yet.
+    const inProgressRows=[...document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]')];
+    for(const row of inProgressRows){
+      const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+      const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
+      if(!rt||!ch)continue;
+      if(PATRI.includes(rt)){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
+        if(cEnt)return cEnt;
+      }
+    }
+    // Also scan the main Relationship form (relA/relB/relType).
+    const formRelType=(document.getElementById('ae-reltype')?.value||'').trim();
+    const formRelA=(cddGet('ae-rela')||'').trim();
+    const formRelB=(cddGet('ae-relb')||'').trim();
+    if(PATRI.includes(formRelType)&&formRelB.toLowerCase()===cn.toLowerCase()&&formRelA){
+      const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===formRelA);
+      if(cEnt)return cEnt;
     }
     return null;
   })();
@@ -4993,7 +5073,17 @@ function editEntry(id){
     }
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
-    if(e.type==='Theme'){setTimeout(()=>{populateAttachQuoteSel();loadAttachedQuotes(e.attachedQuoteIds||[]);},60);}
+    if(e.type==='Theme'){
+      setTimeout(()=>{populateAttachQuoteSel();loadAttachedQuotes(e.attachedQuoteIds||[]);},60);
+      // #399 follow-up — stash prior quote-speakers so save can subtract them
+      // before re-merging current speakers (drops A when speaker A→B).
+      window._priorThemeSpeakers=[...new Set([...(e.themeQuotes||[]).map(q=>q.speaker).filter(Boolean)])];
+      // Restore Involved chips with only the user's intentional picks (not prior speakers).
+      setTimeout(()=>{
+        const userPicks=(e.involved||[]).filter(c=>!window._priorThemeSpeakers.includes(c));
+        cddSet('ae-inv',userPicks);
+      },70);
+    }
     // #253 — Restore Timeline supporting quote + speaker
     if(e.tlSq)document.getElementById('ae-tl-sq').value=e.tlSq;
     if(e.tlSqPg){const el=document.getElementById('ae-tl-sq-pg');if(el)el.value=e.tlSqPg;}
@@ -5099,7 +5189,7 @@ function _draftsBlockHTML(typePredicate){
   const drafts=entries().filter(e=>e.isDraft&&typePredicate(e));
   if(!drafts.length)return'';
   const items=drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:11px;color:var(--t3);flex-shrink:0;">'+(e.type||'')+'</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.cn||e.content||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('');
-  return '\x3Cdetails open style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+items+'</div>\x3C/details>';
+  return '\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+items+'</div>\x3C/details>';
 }
 
 function renderEntries(){
@@ -5110,7 +5200,15 @@ function renderEntries(){
   empty.style.display='none';
   const draftHTML=drafts.length?('\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.content||e.cn||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('')+'</div>\x3C/details>'):'';
   const logQ=(document.getElementById('log-search')?.value||'').toLowerCase().trim();
-  const filteredLog=logQ?filtered.filter(e=>(e.content||e.cn||'').toLowerCase().includes(logQ)||(e.note||'').toLowerCase().includes(logQ)||(e.speaker||'').toLowerCase().includes(logQ)||(e.location||'').toLowerCase().includes(logQ)):filtered;
+  // #406 — Cross-reference search across all string-bearing fields + involved[].
+  const filteredLog=logQ?filtered.filter(e=>{
+    const haystack=[e.content,e.cn,e.note,e.speaker,e.location,e.relA,e.relB,e.relType,e.relDesc,e.tlSpeaker,e.tlSq,e.refAuthor,e.refUrl,e.refType,e.evdate,e.charDesc,e.charPhys,e.charBg,e.nickname,
+      ...(e.involved||[]),...(e.eventTypes||[]),
+      ...((e.themeQuotes||[]).flatMap(q=>[q.speaker,q.text,q.page])),
+      ...((e.dialogueLines||[]).flatMap(l=>[l.speaker,l.text]))
+    ].filter(Boolean).map(v=>String(v).toLowerCase());
+    return haystack.some(s=>s.includes(logQ));
+  }):filtered;
   list.innerHTML=draftHTML+filteredLog.map(e=>ecHTML(e,false)).join('');
 }
 
@@ -5205,7 +5303,7 @@ function ecHTML(e,compact,fromTab){
     ${e.qtRendered?`<div style="font-size:12px;color:var(--text);margin-top:3px;">Translation: ${e.qtRendered}</div>`:''}
     ${e.qtTranslator?`<div style="font-size:10px;color:var(--t3);">Translator: ${e.qtTranslator}</div>`:''}
   </div>`:'';
-  return `<div class="ec ${k}" ${clickAttr}>
+  return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
     <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
@@ -5348,7 +5446,7 @@ function renderChars(){
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
         <button class="btn-edit char-list-edit" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;">Edit</button>
-        <button class="btn-del char-list-del" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;">Delete</button>
+        <!-- #236 follow-up — Delete button removed; swipe-to-delete on .clcard -->
         <span style="color:var(--accent);font-size:18px;padding:0 6px;font-weight:700;">›</span>
       </div>
     </div>`;
@@ -6969,7 +7067,8 @@ function qHTML(q){
   const hypBlock=q.qhyp?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid var(--am);"><strong style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Your hypothesis${guessBadge}</strong>${q.qhyp}</div>`:'';
   // #236 — opacity on the wrapper made the red swipe-delete backplate visible through the card.
   // Move opacity to the inner content only so the card background stays opaque.
-  return`<div class="q-card ec question">
+  // #236 follow-up — explicit opaque bg so swipe-delete plate doesn't show through.
+  return`<div class="q-card ec question" data-entry-id="${q.id}" style="background:var(--card);">
     <div style="display:flex;align-items:flex-start;gap:9px;${checked?'opacity:0.6;':''}">
       <div onclick="toggleQ(${q.id})" style="cursor:pointer;flex-shrink:0;margin-top:0;padding:4px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
         <div style="width:26px;height:26px;border-radius:50%;border:2.5px solid ${checked?'#1D9E75':'var(--am)'};background:${checked?'#1D9E75':'transparent'};display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;transition:background 0.15s;">${checked?'✓':''}</div>
@@ -7100,13 +7199,17 @@ function renderTodo(){
     <div style="font-size:10px;color:var(--t3);text-align:right;margin-top:2px;">${pct}% complete</div>`;
 
   const list=document.getElementById('todo-list');
-  if(!visibleTodos.length){
-    list.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Tap "Scan entries" above to check for missing fields</div></div>`;
+  // #405 — apply search filter across todo text + category labels.
+  const todoQ=(document.getElementById('todo-search')?.value||'').toLowerCase().trim();
+  let displayTodos=visibleTodos;
+  if(todoQ)displayTodos=visibleTodos.filter(t=>(t.text||'').toLowerCase().includes(todoQ)||(t.cat||'').toLowerCase().includes(todoQ));
+  if(!displayTodos.length){
+    list.innerHTML=todoQ?`<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No to-do items match "${esc(todoQ)}"</div>`:`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">All caught up!</div><div class="empty-sub">Tap "Scan entries" above to check for missing fields</div></div>`;
     return;
   }
 
   const cats={};
-  visibleTodos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
+  displayTodos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
   const catOrder=['Drafts','Characters','Missing pages','Vocabulary','Questions','References'];
   const orderedCats=[...catOrder.filter(c=>cats[c]),...Object.keys(cats).filter(c=>!catOrder.includes(c))];
 
@@ -8980,7 +9083,8 @@ function copyClosedReports(){
 // backplate. Touch-drag left reveals it; lift past threshold = delete with confirm.
 function _swipeWrapAll(){
   // entry cards: any .ec inside common containers, plus book-cards
-  const sel='.ec, .book-card';
+  // #236 follow-up — include character cards (.clcard) so swipe-to-delete works on Characters tab.
+  const sel='.ec, .book-card, .clcard';
   document.querySelectorAll(sel).forEach(card=>{
     if(card.closest('.swipe-wrap'))return; // already wrapped
     if(card.closest('.sheet-overlay'))return; // skip cards inside sheets/forms (e.g. preview cards in pickers)
