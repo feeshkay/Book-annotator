@@ -313,7 +313,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="web-panel" class="panel" style="padding:8px 10px 85px;">
-      <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Tap a character · Drag to reposition · Pinch / scroll to zoom</div>
+      <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Drag empty space to pan · Drag a node to reposition · Tap to focus · Pinch / scroll to zoom</div>
       <div class="fscroll" id="web-filter-bar"></div>
       <!-- xlsx #408 — search bar: typing pans/zooms to the matching node + spotlights it -->
       <div style="position:relative;margin-bottom:6px;">
@@ -550,7 +550,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this)" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this);_patriDebounced();" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
       <!-- #393 — patrilineal last-name suggester -->
@@ -1335,6 +1335,20 @@ function pickGenderSheet(charName,callback){
       if(pick!=='Unknown'){
         const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===charName);
         if(e){e.gender=pick;save();}
+        // xlsx #340/#393 follow-up (Batch 31) — if the form is currently open for THIS
+        // same character (matching ae-cn), update the form's gender dropdown so the
+        // picked value carries through the form's save. Otherwise the form's blank
+        // dropdown will overwrite the just-set gender. ALSO: if the character doesn't
+        // yet exist as an entry (being created on this very form), the dropdown is the
+        // only place the gender can live until save.
+        const formCn=(document.getElementById('ae-cn')?.value||'').trim();
+        const gEl=document.getElementById('ae-gender');
+        if(gEl&&formCn&&formCn===charName){
+          gEl.value=pick;
+        }
+        // Also update any qr-row labels that show this character's gender-derived rel-type.
+        // (Lightweight: trigger a checkSuggestions which re-evaluates qr-rel labels.)
+        if(typeof checkSuggestions==='function')try{checkSuggestions();}catch(_){ }
       }
       callback(pick,charName);
     });
@@ -1491,6 +1505,9 @@ function rtpPick(val){
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
   // #185 — ask gender for each char if relType implies one and gender not set
   offerGenderFromRelType(val);
+  // xlsx #393 follow-up (Batch 31) — surfacing a Father/Son rel on the rel form should
+  // immediately re-evaluate the patrilineal last-name hint (if any char form is also open).
+  if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
 }
 function rtpClear(){
   document.getElementById('ae-reltype').value='';
@@ -2127,6 +2144,12 @@ function _quickPromptGender(name){
 function _quickGenderSet(name,g){
   const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
   if(ce){ce.gender=g||'';save();renderAll();}
+  // xlsx #340/#393 follow-up (Batch 31) — if the entry form is open for this same
+  // character (matching ae-cn), also push the picked gender into the dropdown so
+  // the form's save doesn't blank it back out.
+  const formCn=(document.getElementById('ae-cn')?.value||'').trim();
+  const gEl=document.getElementById('ae-gender');
+  if(gEl&&formCn&&formCn===name&&g){gEl.value=g;}
   _quickGenderClose();
 }
 function _quickGenderClose(){
@@ -2148,6 +2171,12 @@ function _cddRelChanged(){
   if(typeof fn==='function')fn();
   // #340 — keep the "More relationships for X" anchor label in sync with relA
   if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();
+  // xlsx #393 follow-up (Batch 31) — also re-run patrilineal suggester. The rel form
+  // can be the entry point where "B is Son of A" gets typed, and the suggester needs
+  // to scan that form's state to produce a hint on B's char-form (if open in another flow)
+  // OR on the cn field of any char being created via this form. The suggester is a no-op
+  // if no ae-cn / ae-patri-hint exists (i.e. no char form is open), so it's safe to call.
+  if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3232,6 +3261,10 @@ function qrCharPick(rowId,name){
   row.querySelector('.qr-char').value=name;
   row.querySelector('.qr-char-list').style.display='none';
   checkSuggestions();
+  // xlsx #393 follow-up (Batch 31) — re-run the patrilineal last-name suggester so
+  // picking a parent on a quick-rel row immediately surfaces the surname hint
+  // (without waiting for the user to blur the name field).
+  if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
 }
 function qrTypeOpen(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -3298,6 +3331,9 @@ function qrTypePick(rowId,val,label){
     }
     runGenderFlowForRel(val,aName,bName,setLabel,original);
   }
+  // xlsx #393 follow-up (Batch 31) — re-run the patrilineal last-name suggester so
+  // picking a Father/Son/etc rel-type immediately surfaces the surname hint.
+  if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
 }
 // Close any open qr-char-list and rtp panel when clicking outside
 if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
@@ -3342,6 +3378,11 @@ function quickRelNewChar(btn){
   checkSuggestions();
   // #393 follow-up — gender prompt for newly-created quick-rel characters
   if(createdNew)_quickPromptGender(name);
+  // xlsx #393 follow-up (Batch 31) — also re-run patrilineal suggester. Creating a
+  // new quick-rel character can mean THIS new character has the surname (if the rel-type
+  // is Father/Son etc. and direction matches), so the form's main name field may need
+  // the suggestion shown.
+  if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
 }
 function buildRelTypeOpts(sel){
   const groups=[
@@ -3448,9 +3489,9 @@ function populateEventTypePicks(){
   const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))]
     .filter(t=>!deleted.has(t))
     .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  row.innerHTML=all.map(t=>{
+  row.innerHTML=`<div style="font-size:10px;color:var(--t3);margin-bottom:4px;width:100%;flex-basis:100%;">Tap a label to select/deselect for this event · Tap × to delete from your library</div>`+all.map(t=>{
     // ALL types now deletable — no special-case for built-ins.
-    const delBtn=` <span onclick="event.stopPropagation();deleteEventType('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;" title="Delete this event type">×</span>`;
+    const delBtn=` <span onclick="event.stopPropagation();deleteEventType('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;" title="Delete this event type from your library">×</span>`;
     return `<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}${delBtn}</span>`;
   }).join('')
     +`<span class="cpick" onclick="addCustomEventType()" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;">+ Add custom</span>`;
@@ -3463,9 +3504,12 @@ function deleteEventType(name){
   if(!library.customEventTypes)library.customEventTypes=[];
   if(!library.deletedEventTypes)library.deletedEventTypes=[];
   const isCustom=library.customEventTypes.includes(name)&&!EVENT_TYPES.includes(name);
+  // xlsx #426 — clearer destructive warning. User can confuse the chip X (= delete
+  // from the LIBRARY) with deselecting (= tap the pill body). Spell out the difference
+  // explicitly and use a destructive verb so accidental taps don't slip through.
   const msg=isCustom
-    ? `Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`
-    : `Hide built-in event type "${name}" from the picker?\n\nExisting entries already tagged with this type will keep the tag. You can restore it later from Settings → Manage answer lists.`;
+    ? `⚠️ DELETE "${name}" from your event-type LIBRARY?\n\n• This removes the label from the picker on every book.\n• Existing entries already tagged with "${name}" will keep their tag.\n\nIf you only want to UNTAG this label from the current event, tap the pill itself (not the ×) to deselect.\n\nDelete from library?`
+    : `⚠️ HIDE built-in label "${name}" from the picker?\n\n• It will disappear from the chip list across every book.\n• Existing entries already tagged with "${name}" will keep their tag.\n• You can restore it later from Settings → Manage answer lists.\n\nIf you only want to UNTAG this label from the current event, tap the pill itself (not the ×) to deselect.\n\nHide from picker?`;
   if(!confirm(msg))return;
   if(isCustom){
     library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
@@ -4576,7 +4620,22 @@ function submitEntry(){
     entry.nickname=document.getElementById('ae-nick').value.trim();
     entry.charRole=document.getElementById('ae-crole').value;
     entry.charStatus=document.getElementById('ae-cstatus').value;
-    entry.gender=document.getElementById('ae-gender').value;
+    // xlsx #340/#393 follow-up (Batch 31) — preserve existing gender if dropdown is blank.
+    // Previously this line unconditionally wrote the dropdown value, which BLANKED OUT
+    // a gender that had been set via the gender popup (during a quick-rel flow) when the
+    // user hadn't also picked it from the dropdown. The popup writes through to the
+    // form dropdown now, but as a defence-in-depth we also refuse to overwrite a non-empty
+    // existing gender with a blank one on edits of pre-existing entries.
+    const _formGender=document.getElementById('ae-gender').value;
+    if(_formGender){
+      entry.gender=_formGender;
+    } else if(editId){
+      // Editing an existing entry with a blank dropdown → keep the prior value rather than blanking.
+      const _prev=book().entries.find(x=>x.id===Number(editId));
+      entry.gender=_prev?.gender||'';
+    } else {
+      entry.gender='';
+    }
     entry.pronouns=document.getElementById('ae-pronouns').value.trim();
     entry.lang=document.getElementById('ae-clang').value.trim();
     const ich=document.getElementById('ae-cintro-ch').value;
@@ -4698,6 +4757,36 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isTheme){
     entry.themeQuotes=getThemeQuotes();
     entry.attachedQuoteIds=getAttachedQuoteIds();
+    // xlsx #413 follow-up (Batch 31) — bidirectional cross-link. When user attaches
+    // an EXISTING quote to this theme via the Theme form's "Attach quote" picker,
+    // also push this theme's name into the linked quote's attachedThemes[] array
+    // so the quote's log card shows the theme pill (and the quote correctly reflects
+    // its membership in this theme). Conversely, removing a quote from the theme
+    // here drops this theme from that quote's attachedThemes[].
+    const themeName=entry.content||'';
+    if(themeName){
+      // Find what was attached BEFORE the edit (if editing an existing theme entry)
+      const prevTheme=editId?book().entries.find(t=>t.id===Number(editId)):null;
+      const prevAttached=new Set(prevTheme?.attachedQuoteIds||[]);
+      const nowAttached=new Set(entry.attachedQuoteIds||[]);
+      // ADD: for each currently-attached quote, ensure attachedThemes[] includes themeName
+      nowAttached.forEach(qid=>{
+        const qe=book().entries.find(x=>x.id===qid);
+        if(!qe)return;
+        if(!Array.isArray(qe.attachedThemes))qe.attachedThemes=qe.attachedTheme?[qe.attachedTheme]:[];
+        if(!qe.attachedThemes.includes(themeName))qe.attachedThemes.push(themeName);
+        // Keep legacy single-theme field in sync (first theme wins for backward compat)
+        if(!qe.attachedTheme)qe.attachedTheme=themeName;
+      });
+      // REMOVE: any quote that was previously attached but no longer is — strip themeName
+      prevAttached.forEach(qid=>{
+        if(nowAttached.has(qid))return;
+        const qe=book().entries.find(x=>x.id===qid);
+        if(!qe||!Array.isArray(qe.attachedThemes))return;
+        qe.attachedThemes=qe.attachedThemes.filter(t=>t!==themeName);
+        if(qe.attachedTheme===themeName)qe.attachedTheme=qe.attachedThemes[0]||'';
+      });
+    }
     // #191-A / #329 / #399 — Rebuild Involved from CURRENT quote speakers + user's
     // explicit Involved picks, MINUS any prior quote-speakers that are no longer present.
     // This ensures changing a quote's speaker A→B drops A from Involved (unless the user
@@ -4744,25 +4833,42 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   // attachedTheme string was set, but theme cards read from attachedQuoteIds, so the
   // attachment didn't surface on the theme card.)
   if(['Quote','Narrator quote','Line/stanza'].includes(type)){
-    // First: if this quote was previously attached to a DIFFERENT theme, remove its id from that theme.
-    if(editId){
-      const prevQ=book().entries.find(x=>x.id===Number(editId));
-      const prevTheme=prevQ?.attachedTheme;
-      if(prevTheme&&prevTheme!==entry.attachedTheme){
-        const oldThemeEntry=entries().find(t=>t.type==='Theme'&&t.content===prevTheme);
-        if(oldThemeEntry?.attachedQuoteIds){
-          oldThemeEntry.attachedQuoteIds=oldThemeEntry.attachedQuoteIds.filter(id=>id!==entry.id);
-        }
+    // xlsx #413 follow-up (Batch 31) — promote attachedTheme (single string) to
+    // attachedThemes[] array. The form picker still writes to attachedTheme; we
+    // mirror it into attachedThemes here. (When the multi-picker UI lands, this
+    // block will instead read directly from a multi-select element.)
+    const prevQ=editId?book().entries.find(x=>x.id===Number(editId)):null;
+    const prevThemesArr=Array.isArray(prevQ?.attachedThemes)?prevQ.attachedThemes:(prevQ?.attachedTheme?[prevQ.attachedTheme]:[]);
+    // Build the new array: union of any previously-attached-from-Theme-side themes (preserved)
+    // PLUS the currently-picked single theme from the dropdown.
+    const newThemes=new Set();
+    // Preserve themes that were attached to this quote from THE THEME side (i.e. the
+    // theme has this quote in its attachedQuoteIds[]) — those should NOT be dropped just
+    // because the user didn't re-pick them in this Quote-form save.
+    entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(entry.id))
+      .forEach(t=>{if(t.content)newThemes.add(t.content);});
+    if(entry.attachedTheme)newThemes.add(entry.attachedTheme);
+    entry.attachedThemes=[...newThemes];
+    // Keep legacy single-theme field as the FIRST in the array (or empty)
+    if(!entry.attachedTheme&&entry.attachedThemes.length)entry.attachedTheme=entry.attachedThemes[0];
+
+    // Theme-side cross-link maintenance:
+    // (a) For any theme REMOVED from the quote (was in prevThemesArr but not in attachedThemes),
+    //     pull this quote's id out of that theme's attachedQuoteIds[].
+    prevThemesArr.forEach(t=>{
+      if(entry.attachedThemes.includes(t))return;
+      const themeEntry=entries().find(x=>x.type==='Theme'&&x.content===t);
+      if(themeEntry?.attachedQuoteIds){
+        themeEntry.attachedQuoteIds=themeEntry.attachedQuoteIds.filter(id=>id!==entry.id);
       }
-    }
-    // Then: add to the new theme's attachedQuoteIds (if any).
-    if(entry.attachedTheme){
-      const themeEntry=entries().find(t=>t.type==='Theme'&&t.content===entry.attachedTheme);
-      if(themeEntry){
-        if(!Array.isArray(themeEntry.attachedQuoteIds))themeEntry.attachedQuoteIds=[];
-        if(!themeEntry.attachedQuoteIds.includes(entry.id))themeEntry.attachedQuoteIds.push(entry.id);
-      }
-    }
+    });
+    // (b) For any theme ADDED, push this quote's id into the theme's attachedQuoteIds[].
+    entry.attachedThemes.forEach(t=>{
+      const themeEntry=entries().find(x=>x.type==='Theme'&&x.content===t);
+      if(!themeEntry)return;
+      if(!Array.isArray(themeEntry.attachedQuoteIds))themeEntry.attachedQuoteIds=[];
+      if(!themeEntry.attachedQuoteIds.includes(entry.id))themeEntry.attachedQuoteIds.push(entry.id);
+    });
   }
 
   if(isChar)getCC(cn);
@@ -5181,6 +5287,15 @@ function _patriApply(name){
   // Also update the content field so save uses the new name
   const ctEl=document.getElementById('ae-content');if(ctEl)ctEl.value=name;
   document.getElementById('ae-patri-hint').style.display='none';
+}
+// xlsx #393 follow-up (Batch 31) — debounced wrapper used from oninput on the name field.
+// Lets the suggestion appear as the user types ("B" → typed → 350ms later, suggester scans
+// quick-rels and surfaces the surname hint) instead of requiring a blur. Cheap enough to
+// run on each keystroke debounced.
+let _patriDeb=null;
+function _patriDebounced(){
+  if(_patriDeb)clearTimeout(_patriDeb);
+  _patriDeb=setTimeout(()=>{try{suggestPatriLastName();}catch(_){ }},350);
 }
 // ── Recycle bin rendering ─────────────────────────────────────
 let recycleBinSort='category';
@@ -5633,8 +5748,27 @@ function ecHTML(e,compact,fromTab){
     ${e.qtRendered?`<div style="font-size:12px;color:var(--text);margin-top:3px;">Translation: ${e.qtRendered}</div>`:''}
     ${e.qtTranslator?`<div style="font-size:10px;color:var(--t3);">Translator: ${e.qtTranslator}</div>`:''}
   </div>`:'';
+  // xlsx #413 follow-up — Theme pill on quote log card. Shows "🎯 Theme" when one
+  // theme is attached, "🎯 Themes (n)" for multiple. Tap → quote profile (opens edit).
+  // Reads from e.attachedThemes[] (new multi-theme array, Batch 31) OR falls back to
+  // legacy single-theme e.attachedTheme. Also reverse-scans Theme entries' attachedQuoteIds[]
+  // to surface attachments made FROM the Theme side that haven't yet been mirrored on the quote.
+  let themePill='';
+  if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
+    const themeNames=new Set();
+    if(Array.isArray(e.attachedThemes))e.attachedThemes.forEach(t=>{if(t)themeNames.add(t);});
+    if(e.attachedTheme)themeNames.add(e.attachedTheme);
+    // Reverse scan: themes that include this quote in their attachedQuoteIds[]
+    entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(e.id))
+      .forEach(t=>{if(t.content)themeNames.add(t.content);});
+    if(themeNames.size){
+      const label=themeNames.size===1?'🎯 Theme':`🎯 Themes (${themeNames.size})`;
+      const themeList=[...themeNames].map(t=>esc(t)).join(', ');
+      themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${e.id});" title="${themeList}">${label}</span>`;
+    }
+  }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}</div>${body}${qtrans}${photosStrip}${invB}
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
@@ -5653,8 +5787,26 @@ function setQSort(mode){
 function renderQuotes(){
   const list=document.getElementById('quotes-list');const empty=document.getElementById('quotes-empty');
   const qFilter=activeQuoteFilter||'all';
-  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-  // Build filter
+  // xlsx #413 follow-up — only show character chips for chars who actually HAVE
+  // a quote/dialogue line/theme-quote/timeline-supporting-quote attached. Alpha sort.
+  const charsWithQuotes=new Set();
+  entries().forEach(e=>{
+    if(['Quote','Line/stanza','Narrator quote'].includes(e.type)&&!e.isDraft){
+      if(e.speaker&&e.speaker!=='Narrator / Author')charsWithQuotes.add(e.speaker);
+      (e.involved||[]).forEach(c=>{if(c)charsWithQuotes.add(c);});
+    } else if(e.type==='Dialogue'&&!e.isDraft){
+      (e.dialogueLines||[]).forEach(l=>{if(l.speaker&&l.speaker!=='Narrator / Author')charsWithQuotes.add(l.speaker);});
+      (e.involved||[]).forEach(c=>{if(c)charsWithQuotes.add(c);});
+    } else if(['Timeline','Event'].includes(e.type)&&e.tlSq){
+      if(e.tlSpeaker&&e.tlSpeaker!=='Narrator / Author')charsWithQuotes.add(e.tlSpeaker);
+    } else if(e.type==='Theme'){
+      (e.themeQuotes||[]).forEach(q=>{if(q?.speaker&&q.speaker!=='Narrator / Author')charsWithQuotes.add(q.speaker);});
+    }
+  });
+  // Filter: only chars in charsWithQuotes AND that exist as actual character entries.
+  const chars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content)
+    .filter(c=>charsWithQuotes.has(c))
+    .sort((a,b)=>a.localeCompare(b));
   const qbar=document.getElementById('quote-filter');
   qbar.innerHTML=`<button class="chip${qFilter==='all'?' active':''}" onclick="setQuoteFilter('all')">All</button>`
     +chars.map(c=>`<button class="chip${qFilter===c?' active':''}" onclick="setQuoteFilter('${esc(c)}')">${c}</button>`).join('')
@@ -6537,7 +6689,7 @@ function setupWebDrag(){
   // per animation frame even if pointermove fires more often. Smooths out the
   // pan/scroll on the relationship web on mobile.
   let _panRafPending=false, _panRafLast=null;
-  const NODE_DRAG_THRESHOLD=8; // px of movement before a node-touch becomes a drag
+  const NODE_DRAG_THRESHOLD=14; // px of movement before a node-touch becomes a drag (Batch 31: bumped 8→14 so panning over a node area is more forgiving)
   function onMoveStart(clientX,clientY){
     _panRafLast={clientX,clientY};
     if(_panRafPending)return;
