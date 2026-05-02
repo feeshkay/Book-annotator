@@ -691,11 +691,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="divider" style="margin:10px 0 8px;"></div>
       <div class="fg">
-        <label>Attached to theme? <span style="font-weight:400;">(optional)</span></label>
-        <div style="display:flex;gap:6px;">
-          <select id="ae-quote-theme" style="flex:1;"><option value="">— none —</option></select>
+        <label>Attached to theme(s)? <span style="font-weight:400;">(optional — tap multiple)</span></label>
+        <!-- xlsx #429 (Batch 33) — multi-theme picker. Replaces single-select. -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="ae-quote-theme" style="flex:1;"><option value="">— pick a theme to add —</option></select>
+          <button type="button" class="btn btn-sm" onclick="addQuoteTheme()" style="flex-shrink:0;">+ Attach</button>
           <button type="button" class="btn btn-sm" onclick="quickAddThemeForQuote()" style="flex-shrink:0;">+ New</button>
         </div>
+        <div id="ae-quote-themes-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       </div>
       <div class="fg">
         <label>Linked to relationship? <span style="font-weight:400;">(optional)</span></label>
@@ -3253,6 +3256,12 @@ function qrCharFilter(rowId){
     list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');
   }
   list.style.display='block';
+  // xlsx #393 follow-up (Batch 33) — debounced fire of the per-QR-row suggester
+  // as the user types in the char field. Cheap; uses the same pattern as _patriDeb.
+  try{
+    if(window._qrPatriDeb)clearTimeout(window._qrPatriDeb);
+    window._qrPatriDeb=setTimeout(()=>{try{suggestPatriForQRRow(row);}catch(_){ }},300);
+  }catch(_){ }
 }
 // xlsx #403 — Add-from-banner triggers the existing quickRelNewChar flow
 // using the typed value as the seed name.
@@ -3281,6 +3290,9 @@ function qrCharPick(rowId,name){
   // picking a parent on a quick-rel row immediately surfaces the surname hint
   // (without waiting for the user to blur the name field).
   if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
+  // xlsx #393 follow-up (Batch 33) — also fire the per-QR-row suggester targeting
+  // this row's char, in case the QR target needs a surname (form's main char is parent/sibling).
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
 }
 function qrTypeOpen(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -3350,6 +3362,10 @@ function qrTypePick(rowId,val,label){
   // xlsx #393 follow-up (Batch 31) — re-run the patrilineal last-name suggester so
   // picking a Father/Son/etc rel-type immediately surfaces the surname hint.
   if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
+  // xlsx #393 follow-up (Batch 33) — also fire the per-QR-row suggester for THIS row,
+  // so picking "Son"/"Daughter"/sibling type on the QR row surfaces the surname hint
+  // for the QR target name.
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
 }
 // Close any open qr-char-list and rtp panel when clicking outside
 if(typeof window!=='undefined'&&!window._qrGlobalCloseAttached){
@@ -3399,6 +3415,10 @@ function quickRelNewChar(btn){
   // is Father/Son etc. and direction matches), so the form's main name field may need
   // the suggestion shown.
   if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
+  // xlsx #393 follow-up (Batch 33) — fire the per-QR-row suggester. When the user
+  // is on the FATHER's entry and types a new char "B" in a "Son" QR row, this surfaces
+  // the surname hint for that QR-row target (B → "B Smith").
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
 }
 function buildRelTypeOpts(sel){
   const groups=[
@@ -4195,6 +4215,8 @@ function clearAEForm(){
   if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
   clearTraitQuotes();
   clearAttachedQuotes();
+  // xlsx #429 — also reset multi-theme state on form clear.
+  if(typeof clearAttachedThemes==='function')clearAttachedThemes();
   // #250 — Discard draft button hidden until editEntry decides to show it
   const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
   // xlsx #427 — Delete button hidden until editEntry sets editId
@@ -4536,16 +4558,41 @@ function populateQuoteRelSelect(currentVal){
 function populateQuoteThemeSelect(currentVal){
   const sel=document.getElementById('ae-quote-theme');if(!sel)return;
   const themes=entries().filter(e=>e.type==='Theme').map(e=>e.content).filter(Boolean);
-  sel.innerHTML='<option value="">— none —</option>'+themes.map(t=>`<option value="${t}">${t}</option>`).join('');
-  if(currentVal)sel.value=currentVal;
+  sel.innerHTML='<option value="">— pick a theme to add —</option>'+themes.map(t=>`<option value="${t}">${t}</option>`).join('');
+  // xlsx #429 — multi-theme: don't pre-select, themes are tracked in _attachedThemeNames.
+  if(currentVal&&!Array.isArray(currentVal))sel.value=currentVal;
 }
 function quickAddThemeForQuote(){
   const name=prompt('New theme name:');if(!name||!name.trim())return;
   const n=name.trim();
   const entry={id:Date.now(),type:'Theme',content:n,note:'',pageNum:'',chapNum:'',date:localDate(),location:'',involved:[],themeQuotes:[]};
   book().entries.unshift(entry);save();
-  populateQuoteThemeSelect(n);
+  populateQuoteThemeSelect();
+  // xlsx #429 — auto-attach the just-created theme.
+  if(!_attachedThemeNames.includes(n))_attachedThemeNames.push(n);
+  renderQuoteThemesList();
 }
+// xlsx #429 (Batch 33) — multi-theme attach state for the Quote form.
+let _attachedThemeNames=[];
+function addQuoteTheme(){
+  const sel=document.getElementById('ae-quote-theme');if(!sel||!sel.value)return;
+  const v=sel.value;
+  if(!_attachedThemeNames.includes(v))_attachedThemeNames.push(v);
+  sel.value='';
+  renderQuoteThemesList();
+}
+function detachQuoteTheme(name){
+  _attachedThemeNames=_attachedThemeNames.filter(n=>n!==name);
+  renderQuoteThemesList();
+}
+function renderQuoteThemesList(){
+  const list=document.getElementById('ae-quote-themes-list');if(!list)return;
+  if(!_attachedThemeNames.length){list.innerHTML='';return;}
+  list.innerHTML=_attachedThemeNames.map(n=>`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">🎯 ${esc(n)}<button type="button" onclick="detachQuoteTheme('${esc(n)}')" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`).join('');
+}
+function getAttachedThemeNames(){return[..._attachedThemeNames];}
+function clearAttachedThemes(){_attachedThemeNames=[];renderQuoteThemesList();}
+function loadAttachedThemes(names){_attachedThemeNames=(names||[]).filter(Boolean);renderQuoteThemesList();}
 
 function submitEntry(){
   try {
@@ -4723,7 +4770,13 @@ function submitEntry(){
     // #251 — Background / history
     const bgEl=document.getElementById('ae-cbg');entry.charBg=bgEl?bgEl.value.trim():'';
   }
-  if(['Quote','Narrator quote','Line/stanza'].includes(type)){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;const qtTheme=document.getElementById('ae-quote-theme')?.value;entry.attachedTheme=qtTheme||'';const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
+  if(['Quote','Narrator quote','Line/stanza'].includes(type)){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;
+    // xlsx #429 (Batch 33) — multi-theme. Read from _attachedThemeNames.
+    // For backward-compat, also sync legacy single-string entry.attachedTheme to first item.
+    const _multi=getAttachedThemeNames();
+    entry.attachedThemes=[..._multi];
+    entry.attachedTheme=_multi[0]||'';
+    const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
   if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.traitQuotes=getTraitQuotes();// backward-compat legacy fields cleared
 entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(type==='Word / Vocabulary'){
@@ -4832,6 +4885,15 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isDial){entry.dialogueLines=getDialogueLines();}
   if(isTheme){
     entry.themeQuotes=getThemeQuotes();
+    // xlsx #413 follow-up (Batch 33) — defensive capture: if the user picked a quote
+    // in #ae-attach-quote-sel but never tapped the "Attach" button, treat their pick
+    // as a pending attach and include it. This was a frequent failure mode where the
+    // theme save proceeded with no attached quote even though the user had selected one.
+    try{
+      const _pendingSel=document.getElementById('ae-attach-quote-sel');
+      const _pendingVal=_pendingSel?Number(_pendingSel.value||0):0;
+      if(_pendingVal&&!_attachedQuoteIds.includes(_pendingVal))_attachedQuoteIds.push(_pendingVal);
+    }catch(_){ }
     entry.attachedQuoteIds=getAttachedQuoteIds();
     // xlsx #413 follow-up (Batch 32) — self-healing reverse scan. Scan all quotes;
     // any quote whose attachedTheme OR attachedThemes[] points to THIS theme by name
@@ -4919,29 +4981,20 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const ch=+chapNum;if(ch){const parts=pgVal.replace('–','-').split('-');const idx=cs.findIndex(c=>c.ch===ch);if(idx<0)book().chapSetup.push({ch,title:content,start:+parts[0]||0,end:+parts[1]||+parts[0]||0});}
   }
 
-  // xlsx #413 (Batch 30) — Cross-link Quote → Theme. When user attaches a quote to
-  // a theme via the quote form's "Attach to theme" picker, ALSO push the quote's id
-  // into the theme's attachedQuoteIds[] array. (Previously only the quote-side
-  // attachedTheme string was set, but theme cards read from attachedQuoteIds, so the
-  // attachment didn't surface on the theme card.)
   if(['Quote','Narrator quote','Line/stanza'].includes(type)){
-    // xlsx #413 follow-up (Batch 31) — promote attachedTheme (single string) to
-    // attachedThemes[] array. The form picker still writes to attachedTheme; we
-    // mirror it into attachedThemes here. (When the multi-picker UI lands, this
-    // block will instead read directly from a multi-select element.)
+    // xlsx #413 follow-up (Batch 31) + xlsx #429 (Batch 33) — entry.attachedThemes was
+    // already set above from _attachedThemeNames (the multi-picker). Here we union it
+    // with themes that have this quote attached from THE THEME side, then maintain
+    // the bidirectional cross-link.
     const prevQ=editId?book().entries.find(x=>x.id===Number(editId)):null;
     const prevThemesArr=Array.isArray(prevQ?.attachedThemes)?prevQ.attachedThemes:(prevQ?.attachedTheme?[prevQ.attachedTheme]:[]);
-    // Build the new array: union of any previously-attached-from-Theme-side themes (preserved)
-    // PLUS the currently-picked single theme from the dropdown.
-    const newThemes=new Set();
+    const newThemes=new Set(entry.attachedThemes||[]);
     // Preserve themes that were attached to this quote from THE THEME side (i.e. the
     // theme has this quote in its attachedQuoteIds[]) — those should NOT be dropped just
     // because the user didn't re-pick them in this Quote-form save.
     entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(entry.id))
       .forEach(t=>{if(t.content)newThemes.add(t.content);});
-    if(entry.attachedTheme)newThemes.add(entry.attachedTheme);
     entry.attachedThemes=[...newThemes];
-    // Keep legacy single-theme field as the FIRST in the array (or empty)
     if(!entry.attachedTheme&&entry.attachedThemes.length)entry.attachedTheme=entry.attachedThemes[0];
 
     // Theme-side cross-link maintenance:
@@ -5282,6 +5335,99 @@ function checkDuplicateChar(name){
 // #393 — Suggest a patrilineal last name when this character has a known
 // father / paternal grandparent / etc. Per locked decision #331 (option b),
 // surfaces a hint with "Use this / Keep different" buttons rather than auto-applying.
+// xlsx #393 follow-up (Batch 33) — Per-QR-row patrilineal suggester. The main-form
+// suggester (suggestPatriLastName) targets ae-cn (the form's main char). When the
+// user is on the FATHER's character entry and creates a new QR-row child (or sibling)
+// with a single-token name, the SUGGESTION needs to fire on the QR-row's name field —
+// proposing the form's main char's surname. This function inspects a single QR row,
+// determines whether the rel-type+the form's main char qualifies for surname inheritance,
+// and renders a small inline hint with "Use this" / "Keep different" buttons.
+function suggestPatriForQRRow(row){
+  if(!row)return;
+  const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
+  const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
+  const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
+  // Find or create the hint container for this row.
+  let hint=row.querySelector('.qr-patri-hint');
+  if(!hint){
+    hint=document.createElement('div');
+    hint.className='qr-patri-hint';
+    hint.style.cssText='display:none;background:var(--al);color:var(--accent);border-radius:var(--r);padding:6px 8px;margin:4px 0;font-size:12px;';
+    // Place after the char field's wrapping div (the second child of the row's main wrapper).
+    const charWrap=row.querySelector('.qr-char-search')?.parentElement;
+    if(charWrap)charWrap.parentElement.insertBefore(hint,charWrap.nextSibling);
+    else row.appendChild(hint);
+  }
+  hint.style.display='none';hint.innerHTML='';
+  const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+  const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
+  if(!relType||!charName)return;
+  // Determine the SOURCE of the surname:
+  // - If relType is a CHILD type ("Son", "Daughter", etc.) → the form's main char IS the parent
+  //   (the user is on the father's entry, adding "Son: B"). Surname source = main form char.
+  // - If relType is a SIBLING type → the form's main char shares the surname (siblings share surnames).
+  //   Surname source = main form char.
+  // - If relType is a PARENT type ("Father", "Mother", etc.) → the QR-row char IS the parent of
+  //   the form's main char (less common path, but supported). Surname source = QR-row char itself.
+  //   In that case, the suggestion should fire on the FORM'S main char (already handled by
+  //   suggestPatriLastName) — not on the QR-row char. So skip here.
+  let sourceFull='';
+  let sourceLabel='';
+  if(PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType)){
+    const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
+    if(!mainCn)return;
+    const parts=mainCn.split(/\s+/);
+    if(parts.length<2)return; // main char has no surname to inherit
+    sourceFull=mainCn;
+    sourceLabel=PATRI_CHILD.includes(relType)?'parent':'sibling';
+  } else {
+    return; // PARENT_TYPES handled by main-form suggester
+  }
+  const sourceLast=sourceFull.split(/\s+/).slice(-1)[0];
+  // Don't suggest if the QR char already ends with that surname.
+  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase()))return;
+  // Don't suggest if the QR char is an EXISTING entry that already has a surname (don't override saved data).
+  const existingChar=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
+  if(existingChar){
+    const exParts=(existingChar.cn||existingChar.content||'').trim().split(/\s+/);
+    if(exParts.length>1)return;
+  }
+  let suggested;
+  const charParts=charName.split(/\s+/);
+  if(charParts.length===1){suggested=charName+' '+sourceLast;}
+  else{suggested=charParts.slice(0,-1).join(' ')+' '+sourceLast;}
+  const rowId=row.dataset.qrId||'';
+  hint.innerHTML=`💡 ${esc(sourceFull)} (${sourceLabel}) has the surname <strong>${esc(sourceLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>" for ${esc(charName)}?
+    <div style="margin-top:4px;display:flex;gap:5px;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="_qrPatriApply('${rowId}','${esc(suggested)}')">Use this</button>
+      <button type="button" class="btn btn-sm" onclick="this.closest('.qr-patri-hint').style.display='none';">Keep different</button>
+    </div>`;
+  hint.style.display='';
+}
+function _qrPatriApply(rowId,name){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
+  const search=row.querySelector('.qr-char-search');
+  const hidden=row.querySelector('.qr-char');
+  if(search)search.value=name;
+  if(hidden)hidden.value=name;
+  // If a Character entry exists for the OLD name, rename it to the new full name.
+  const oldName=(search?.value||'').trim();
+  // Note: search.value was just set to `name` above — to find the OLD char, look it up by current rel info.
+  // Better: scan for any character whose name is a single-token prefix that matches `name`.
+  const newLast=name.split(/\s+/).slice(-1)[0];
+  const newFirst=name.split(/\s+/).slice(0,-1).join(' ');
+  const target=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===newFirst);
+  if(target){
+    target.cn=name;target.content=name;save();
+    // Rename in any relationships involving this char.
+    entries().filter(e=>e.type==='Relationship').forEach(r=>{
+      if(r.relA===newFirst)r.relA=name;
+      if(r.relB===newFirst)r.relB=name;
+    });
+    save();
+  }
+  const hint=row.querySelector('.qr-patri-hint');if(hint)hint.style.display='none';
+}
 function suggestPatriLastName(){
   if(!currentId)return;
   const hint=document.getElementById('ae-patri-hint');if(!hint)return;
@@ -5560,7 +5706,17 @@ function editEntry(id){
     setEntryPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));
     if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;if(e.speaker)cddSet('ae-speaker',e.speaker);
     if(e.qtOrig){document.getElementById('ae-qt-orig').value=e.qtOrig;document.getElementById('ae-qt-from').value=e.qtFrom||'';document.getElementById('ae-qt-to').value=e.qtTo||'';document.getElementById('ae-qt-rendered').value=e.qtRendered||'';document.getElementById('ae-qt-translator').value=e.qtTranslator||'';document.getElementById('ae-quote-trans').style.display='';document.getElementById('ae-qt-btn').textContent='− Hide translation';}
-    if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){setTimeout(()=>{populateQuoteThemeSelect(e.attachedTheme||'');populateQuoteRelSelect(e.linkedRelId||'');},40);}
+    if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){setTimeout(()=>{populateQuoteThemeSelect();populateQuoteRelSelect(e.linkedRelId||'');
+      // xlsx #429 (Batch 33) — load multi-theme attachments. Reads from attachedThemes[]
+      // (new) or falls back to legacy single attachedTheme. ALSO reverse-scans Theme entries
+      // that include this quote in their attachedQuoteIds[] (for self-healing display).
+      const _ts=new Set();
+      if(Array.isArray(e.attachedThemes))e.attachedThemes.forEach(t=>{if(t)_ts.add(t);});
+      if(e.attachedTheme)_ts.add(e.attachedTheme);
+      entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(e.id))
+        .forEach(t=>{if(t.content)_ts.add(t.content);});
+      loadAttachedThemes([..._ts]);
+    },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
