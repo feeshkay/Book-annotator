@@ -88,11 +88,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ec{background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);padding:10px 12px;margin-bottom:7px;border-left:3px solid var(--am);}
 /* #236 — slide-to-delete: card sits on a red "Delete" backplate. Touch-drag left
    reveals it; a long swipe triggers delete with confirm. */
-.swipe-wrap{position:relative;margin-bottom:7px;border-radius:var(--rl2);overflow:hidden;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard, .swipe-wrap > .loccard, .swipe-wrap > .q-card{margin-bottom:0;transition:transform 0.18s ease-out;will-change:transform;touch-action:pan-y;background:var(--card);}
-.swipe-wrap.swiping > .ec, .swipe-wrap.swiping > .book-card, .swipe-wrap.swiping > .clcard, .swipe-wrap.swiping > .loccard, .swipe-wrap.swiping > .q-card{transition:none;}
-.swipe-del-bg{position:absolute;top:0;right:0;bottom:0;width:90px;background:linear-gradient(90deg,#A32D2D,#7a1f1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;cursor:pointer;z-index:0;}
-.swipe-wrap > .ec, .swipe-wrap > .book-card, .swipe-wrap > .clcard, .swipe-wrap > .loccard, .swipe-wrap > .q-card{position:relative;z-index:1;}
+/* #236 — Swipe-to-delete REMOVED in Batch 30. CSS no-ops kept only so any
+ * legacy classes don't accidentally break layout. Inline Delete buttons
+ * restored on cards directly. */
+.swipe-wrap{display:contents;}
+.swipe-del-bg{display:none !important;}
 .ec.quote{border-left-color:#1D9E75;}.ec.character,.ec.person,.ec.suspect{border-left-color:#D85A30;}
 .ec.theme{border-left-color:#378ADD;}.ec.chapter{border-left-color:#BA7517;}
 .ec.setting{border-left-color:#D4537E;}.ec.relationship{border-left-color:#888780;}
@@ -637,7 +637,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <!-- QUESTION EXTRAS — #225 reworked: Hypothesis (your guess) + Guess-correct toggle + Answer -->
+    <!-- xlsx #415 (Batch 30) — added a section header so user can see the hypothesis area is present. -->
     <div id="ae-q-ex" style="display:none">
+      <div style="font-size:11px;color:var(--accent);background:var(--al);border-radius:var(--r);padding:7px 10px;margin-bottom:9px;font-weight:600;">💭 Hypothesis &amp; outcome</div>
       <div class="fg"><label>Your hypothesis / guess <span style="font-weight:400;color:var(--t3);">(optional — what you think the answer might be)</span></label>
         <textarea id="ae-qhyp" placeholder="What you think the answer is, or a guess…" style="min-height:44px;" oninput="onQAnswerInput()"></textarea>
       </div>
@@ -2953,39 +2955,50 @@ function openLibLists(){
 function renderLibLists(){
   const body=document.getElementById('lib-lists-body');if(!body)return;
   if(!library.customEventTypes)library.customEventTypes=[];
-  const evCustom=(library.customEventTypes||[]).slice().sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  const renderListBlock=(title,subtitle,items,builtin,addFn,removeFn)=>{
-    const builtinChips=builtin.map(t=>`<span style="display:inline-block;background:var(--bg2);border:0.5px solid var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;">${t}</span>`).join('');
-    const customChips=items.map(t=>`<span style="display:inline-block;background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:600;">${t} <span onclick="${removeFn}('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`).join('');
-    return `<div style="margin-bottom:18px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:3px;">${title}</div>
-      <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">${subtitle}</div>
-      ${items.length?`<div style="margin-bottom:8px;"><div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Your custom additions</div>${customChips}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No custom additions yet.</div>'}
-      <button class="btn btn-sm btn-primary" onclick="${addFn}()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
-      <details style="margin-top:4px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Show built-in defaults (${builtin.length})</summary><div style="margin-top:6px;">${builtinChips}</div></details>
-    </div>`;
-  };
+  if(!library.deletedEventTypes)library.deletedEventTypes=[];
+  // xlsx #342 (Batch 30) — Per user: merge customs + built-ins into ONE alpha-sorted list
+  // and allow deleting BOTH. Built-in deletions are stored in library.deletedEventTypes[]
+  // and can be restored from this screen.
+  const evCustom=(library.customEventTypes||[]).slice();
+  const deleted=new Set(library.deletedEventTypes||[]);
+  // ACTIVE = built-ins not deleted + customs (all merged)
+  const activeBuiltins=EVENT_TYPES.filter(t=>!deleted.has(t));
+  const activeCustoms=evCustom.filter(t=>!deleted.has(t));
+  const allActive=[...activeBuiltins,...activeCustoms.filter(c=>!EVENT_TYPES.includes(c))]
+    .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+  const deletedBuiltins=EVENT_TYPES.filter(t=>deleted.has(t)).sort();
   body.innerHTML=`
-    <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:14px;line-height:1.45;">Add or remove options that appear in entry forms throughout the app. Built-in defaults can't be removed — they're always available. Your custom additions are shared across every book in your library.</div>
-    ${renderListBlock(
-      'Event types',
-      'Used in the Event entry form (multi-select chip picker).',
-      evCustom,
-      EVENT_TYPES.slice().sort((a,b)=>a.localeCompare(b)),
-      'addCustomEventType',
-      'libListsRemoveEv'
-    )}
+    <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:14px;line-height:1.45;">Add or remove options that appear in entry forms throughout the app. ALL entries — including built-in defaults — can be removed; deleted built-ins can be restored below. Your custom additions are shared across every book in your library.</div>
+
+    <div style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Event types</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in the Event entry form (multi-select chip picker). Custom additions show in accent color.</div>
+      ${allActive.length?`<div style="margin-bottom:10px;">${allActive.map(t=>{
+        const isCustom=activeCustoms.includes(t)&&!EVENT_TYPES.includes(t);
+        const bg=isCustom?'var(--al)':'var(--bg2)';
+        const border=isCustom?'var(--am)':'var(--cb)';
+        const color=isCustom?'var(--accent)':'var(--text)';
+        const fw=isCustom?'600':'400';
+        return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${t} <span onclick="libListsRemoveEv('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
+      }).join('')}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No active event types.</div>'}
+      <button class="btn btn-sm btn-primary" onclick="addCustomEventType()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
+      ${deletedBuiltins.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Restore deleted built-ins (${deletedBuiltins.length})</summary><div style="margin-top:6px;">${deletedBuiltins.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;text-decoration:line-through;">${t}</span> <button class="btn btn-sm" onclick="libListsRestoreEv('${esc(t)}')" style="font-size:10px;padding:2px 6px;margin:1px 4px 1px 0;">Restore</button>`).join(' ')}</div></details>`:''}
+    </div>
     <div style="font-size:11px;color:var(--t3);text-align:center;padding:8px;background:var(--bg2);border-radius:var(--r);">More lists coming: relationship types, character roles, trait types.</div>
   `;
 }
-// xlsx #401 — wrapper to remove a custom event type and re-render the lists overlay.
+// xlsx #401 / #342 (Batch 30) — wrapper that delegates to deleteEventType (which
+// handles both custom-removal and built-in soft-deletion).
 function libListsRemoveEv(name){
-  if(!name||!library.customEventTypes)return;
-  if(!confirm(`Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`))return;
-  library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
+  deleteEventType(name);
+  renderLibLists();
+}
+// xlsx #342 (Batch 30) — restore a soft-deleted built-in event type.
+function libListsRestoreEv(name){
+  if(!library.deletedEventTypes)return;
+  library.deletedEventTypes=library.deletedEventTypes.filter(t=>t!==name);
   save();
   renderLibLists();
-  // Also refresh the in-form picker if it's open
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
 }
 function openNewBookSheet(){
@@ -3113,7 +3126,7 @@ function addQuickRelRow(relType,charName){
       <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:34px;"/>
       <input type="hidden" class="qr-char" value="${charName||''}"/>
       <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
-      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
     </div>
     <div style="text-align:right;">
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
@@ -3141,7 +3154,7 @@ function addRelQuickRelRow(relType,charName){
       <input type="text" class="qr-char-search" placeholder="Search character…" autocomplete="off" value="${charName||''}" oninput="qrCharFilter('${rowId}')" onfocus="qrCharFilter('${rowId}')" style="font-size:16px;width:100%;padding-right:34px;"/>
       <input type="hidden" class="qr-char" value="${charName||''}"/>
       <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
-      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
     </div>
     <div style="text-align:right;">
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
@@ -3173,16 +3186,15 @@ function qrCharFilter(rowId){
   const matches=q?chars.filter(c=>c.name.toLowerCase().includes(q)||c.nick.includes(q)):chars;
   const exact=chars.find(c=>c.name.toLowerCase()===q||c.nick===q);
   hidden.value=exact?.name||'';
-  // xlsx #403 — when the user has typed something AND no exact match exists,
-  // show a clear inline "Character isn't in your system — add them?" banner
-  // with [Add] [Cancel] buttons. Replaces the cramped "No match — tap +New" line.
+  // xlsx #403 (Batch 30 follow-up) — banner reportedly not appearing for the user.
+  // Make it MORE prominent: thicker accent border, larger text, primary button styling.
+  // Trigger: any time user has typed text AND no exact match exists.
   if(q&&!exact){
-    const safeQ=esc(q.replace(/'/g,"’")); // single-quote-safe for the inline onclick
-    const banner=`<div style="padding:9px 11px;background:var(--al);border-bottom:0.5px solid var(--am);font-size:12px;color:var(--text);">
-      <div style="margin-bottom:6px;line-height:1.4;">"<strong>${esc(input.value.trim())}</strong>" isn't in your system yet — add them?</div>
+    const banner=`<div style="padding:11px 12px;background:var(--al);border-bottom:2px solid var(--accent);font-size:13px;color:var(--text);">
+      <div style="margin-bottom:8px;line-height:1.45;font-weight:500;">⚡ "<strong>${esc(input.value.trim())}</strong>" isn't in your character list yet — add them?</div>
       <div style="display:flex;gap:6px;">
-        <button type="button" class="btn btn-sm btn-primary" onclick="qrCharAddFromBanner('${rowId}')" style="font-size:12px;padding:5px 12px;">+ Add as new character</button>
-        <button type="button" class="btn btn-sm" onclick="qrCharCancelBanner('${rowId}')" style="font-size:12px;padding:5px 12px;">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="qrCharAddFromBanner('${rowId}')" style="font-size:12px;padding:6px 14px;font-weight:600;">+ Add as new character</button>
+        <button type="button" class="btn btn-sm" onclick="qrCharCancelBanner('${rowId}')" style="font-size:12px;padding:6px 14px;">Cancel</button>
       </div>
     </div>`;
     if(matches.length){
@@ -3191,7 +3203,7 @@ function qrCharFilter(rowId){
       list.innerHTML=banner;
     }
   } else if(!matches.length){
-    list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No match — tap "+ New" to create.</div>`;
+    list.innerHTML=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);font-style:italic;">No characters in your roster yet — type a name and tap "+ Add as new character" when the prompt appears.</div>`;
   } else {
     list.innerHTML=matches.map(c=>`<div onclick="qrCharPick('${rowId}','${esc(c.name)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);">${c.name}${c.nick?` <span style="font-size:10px;color:var(--t3);">(${c.nick})</span>`:''}</div>`).join('');
   }
@@ -3420,6 +3432,8 @@ function populateEventTypePicks(){
   // custom types (library.customEventTypes[]). Moved from book-level so a
   // custom type made annotating Book A is reusable across the library.
   if(!library.customEventTypes)library.customEventTypes=[];
+  // xlsx #342 (Batch 30) — track deletions of built-in event types too.
+  if(!library.deletedEventTypes)library.deletedEventTypes=[];
   // Backfill: pull any legacy book-level custom types up to library level once.
   const legacy=(book()?.customEventTypes||[]).filter(Boolean);
   if(legacy.length){
@@ -3427,29 +3441,45 @@ function populateEventTypePicks(){
     delete book().customEventTypes;
     save();
   }
-  const custom=library.customEventTypes.filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  // Re-persist sorted order so it sticks
-  library.customEventTypes=custom.slice();
-  const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))];
-  // #342 follow-up — custom types get a long-press delete (small × on hover/touch).
-  // Standard EVENT_TYPES are not deletable.
+  const custom=library.customEventTypes.filter(Boolean);
+  // xlsx #342 (Batch 30) — Per user: merge custom + built-ins into ONE alpha-sorted list,
+  // and ALL types are deletable (built-in deletions tracked in library.deletedEventTypes[]).
+  const deleted=new Set(library.deletedEventTypes||[]);
+  const all=[...EVENT_TYPES,...custom.filter(c=>!EVENT_TYPES.includes(c))]
+    .filter(t=>!deleted.has(t))
+    .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
   row.innerHTML=all.map(t=>{
-    const isCustom=custom.includes(t)&&!EVENT_TYPES.includes(t);
-    const delBtn=isCustom?` <span onclick="event.stopPropagation();deleteCustomEventType('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;" title="Delete custom type">×</span>`:'';
+    // ALL types now deletable — no special-case for built-ins.
+    const delBtn=` <span onclick="event.stopPropagation();deleteEventType('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;" title="Delete this event type">×</span>`;
     return `<span class="cpick" data-val="${esc(t)}" onclick="this.classList.toggle('sel')" style="background:var(--bg2);color:var(--text);border-color:var(--cb);">${t}${delBtn}</span>`;
   }).join('')
     +`<span class="cpick" onclick="addCustomEventType()" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;">+ Add custom</span>`;
 }
-// #342 follow-up — delete a library-level custom event type.
-function deleteCustomEventType(name){
-  if(!name||!library.customEventTypes)return;
-  if(!confirm(`Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`))return;
-  library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
+// xlsx #342 (Batch 30) — universal delete for any event type (built-in or custom).
+// Built-in deletions are stored in library.deletedEventTypes[] (so they hide from the
+// picker but existing entries already tagged with them keep the tag).
+function deleteEventType(name){
+  if(!name)return;
+  if(!library.customEventTypes)library.customEventTypes=[];
+  if(!library.deletedEventTypes)library.deletedEventTypes=[];
+  const isCustom=library.customEventTypes.includes(name)&&!EVENT_TYPES.includes(name);
+  const msg=isCustom
+    ? `Remove custom event type "${name}" from your library?\n\nExisting entries already tagged with this type will keep the tag, but you won't be able to apply it to new entries.`
+    : `Hide built-in event type "${name}" from the picker?\n\nExisting entries already tagged with this type will keep the tag. You can restore it later from Settings → Manage answer lists.`;
+  if(!confirm(msg))return;
+  if(isCustom){
+    library.customEventTypes=library.customEventTypes.filter(t=>t!==name);
+  } else {
+    if(!library.deletedEventTypes.includes(name))library.deletedEventTypes.push(name);
+  }
   save();
   const picked=getPickedEventTypes().filter(t=>t!==name);
   populateEventTypePicks();
   setTimeout(()=>{picked.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${cssEsc(t)}"]`);if(chip)chip.classList.add('sel');});},10);
+  if(document.getElementById('lib-lists-overlay')?.classList.contains('open'))renderLibLists();
 }
+// Legacy alias for older callers
+function deleteCustomEventType(name){return deleteEventType(name);}
 // #342 follow-up — prompt for a new event-type label, save at LIBRARY level, re-render picks.
 function addCustomEventType(){
   const v=(prompt('Add a custom event type (e.g. "Time travel", "Magic spell")\nThis will be available across all books in your library.')||'').trim();
@@ -4708,6 +4738,33 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const ch=+chapNum;if(ch){const parts=pgVal.replace('–','-').split('-');const idx=cs.findIndex(c=>c.ch===ch);if(idx<0)book().chapSetup.push({ch,title:content,start:+parts[0]||0,end:+parts[1]||+parts[0]||0});}
   }
 
+  // xlsx #413 (Batch 30) — Cross-link Quote → Theme. When user attaches a quote to
+  // a theme via the quote form's "Attach to theme" picker, ALSO push the quote's id
+  // into the theme's attachedQuoteIds[] array. (Previously only the quote-side
+  // attachedTheme string was set, but theme cards read from attachedQuoteIds, so the
+  // attachment didn't surface on the theme card.)
+  if(['Quote','Narrator quote','Line/stanza'].includes(type)){
+    // First: if this quote was previously attached to a DIFFERENT theme, remove its id from that theme.
+    if(editId){
+      const prevQ=book().entries.find(x=>x.id===Number(editId));
+      const prevTheme=prevQ?.attachedTheme;
+      if(prevTheme&&prevTheme!==entry.attachedTheme){
+        const oldThemeEntry=entries().find(t=>t.type==='Theme'&&t.content===prevTheme);
+        if(oldThemeEntry?.attachedQuoteIds){
+          oldThemeEntry.attachedQuoteIds=oldThemeEntry.attachedQuoteIds.filter(id=>id!==entry.id);
+        }
+      }
+    }
+    // Then: add to the new theme's attachedQuoteIds (if any).
+    if(entry.attachedTheme){
+      const themeEntry=entries().find(t=>t.type==='Theme'&&t.content===entry.attachedTheme);
+      if(themeEntry){
+        if(!Array.isArray(themeEntry.attachedQuoteIds))themeEntry.attachedQuoteIds=[];
+        if(!themeEntry.attachedQuoteIds.includes(entry.id))themeEntry.attachedQuoteIds.push(entry.id);
+      }
+    }
+  }
+
   if(isChar)getCC(cn);
 
   // Gender-aware: rename gender-neutral relationship labels when gender is known
@@ -4777,10 +4834,15 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   else book().entries.unshift(entry);
 
   // Save quick relationships
-  if(isChar&&!editId){
+  // #340 follow-up (Batch 30) — fall back to typed search-input values when user
+  // typed but didn't tap a dropdown option, so rows don't silently drop. Also drop
+  // !editId so quick-rels also save on edits (mirrors the rel-form behaviour).
+  if(isChar){
     [...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')].forEach(row=>{
-      const rt=row.querySelector('.qr-type').value;const ch=row.querySelector('.qr-char').value;if(!rt||!ch)return;
-      addRelEntry(cn,rt,ch,'',true);
+      const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+      const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
+      if(!rt||!ch||ch===cn)return; // skip empty rows and self-rels
+      addRelEntry(cn,rt,ch,'Quick-added',true);
     });    // #248 — Save quick characteristics as separate Characteristic entries tagged to this character
     [...document.querySelectorAll('#ae-quick-traits-list [data-qt-id]')].forEach(row=>{
       const tt=row.querySelector('.qt-type').value;
@@ -5012,6 +5074,11 @@ function suggestPatriLastName(){
   // Find a father (or other patrilineal ancestor) for THIS character.
   // Patrilineal types in priority order:
   const PATRI=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather'];
+  // #393 follow-up (Batch 30) — user clarified: when entering B's record the user
+  // writes the rel FROM B's perspective ("B is Son of A"). So a CHILD-type rel
+  // where THIS char is the subject means the OTHER char is the parent.
+  // Patrilineal child-side types (mapped roughly to their parent counterparts).
+  const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
   // Need this character's name as it appears in Relationship rows. The name in the
   // form may be a "first" name only at this point — match by best-effort full name match.
   const fatherEntry=(()=>{
@@ -5028,6 +5095,15 @@ function suggestPatriLastName(){
         if(cEnt)return cEnt;
       }
     }
+    // #393 follow-up (Batch 30) — also scan saved rels where THIS char is relA
+    // and the rel type is a CHILD_TYPE (i.e. user wrote "I am Son of X").
+    for(const t of PATRI_CHILD){
+      const r=rels.find(rl=>rl.relType===t&&((rl.relA||'').toLowerCase()===cn.toLowerCase()));
+      if(r&&r.relB){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===r.relB);
+        if(cEnt)return cEnt;
+      }
+    }
     // #393 follow-up — also scan in-progress quick-rel rows on the form,
     // because the user may be entering "B is son of A" in the Relationship form
     // without having saved yet.
@@ -5036,20 +5112,28 @@ function suggestPatriLastName(){
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch)continue;
+      // Either patrilineal-parent type (other char IS the parent)…
       if(PATRI.includes(rt)){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
+        if(cEnt)return cEnt;
+      }
+      // …or patrilineal-child type (other char IS the parent — this char is the child).
+      if(PATRI_CHILD.includes(rt)){
         const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
         if(cEnt)return cEnt;
       }
     }
     // #393 follow-up — also scan the Character form's quick-rels list.
     // Those rows describe rels FROM the new character's perspective, so a row
-    // with type=Father + char=A means "A is the Father (of this new char)".
+    // with type=Father + char=A means "A is the Father (of this new char)" AND
+    // (Batch 30) a row with type=Son + char=A also means "A is the parent" because
+    // user typed it as "[this new char] is Son of A".
     const charFormRows=[...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')];
     for(const row of charFormRows){
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch)continue;
-      if(PATRI.includes(rt)){
+      if(PATRI.includes(rt)||PATRI_CHILD.includes(rt)){
         const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
         if(cEnt)return cEnt;
       }
@@ -5058,8 +5142,14 @@ function suggestPatriLastName(){
     const formRelType=(document.getElementById('ae-reltype')?.value||'').trim();
     const formRelA=(cddGet('ae-rela')||'').trim();
     const formRelB=(cddGet('ae-relb')||'').trim();
+    // PARENT semantic: "X is Father of cn" → relA=X parent, relB=cn child.
     if(PATRI.includes(formRelType)&&formRelB.toLowerCase()===cn.toLowerCase()&&formRelA){
       const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===formRelA);
+      if(cEnt)return cEnt;
+    }
+    // CHILD semantic (Batch 30): "cn is Son of X" → relA=cn child, relB=X parent.
+    if(PATRI_CHILD.includes(formRelType)&&formRelA.toLowerCase()===cn.toLowerCase()&&formRelB){
+      const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===formRelB);
       if(cEnt)return cEnt;
     }
     return null;
@@ -5209,7 +5299,13 @@ function permanentDelete(i){
 function openRecycleBin(){renderRecycleBin();openSheet('recycle-bin-overlay');}
 function editEntry(id){
   const e=entries().find(x=>x.id===id);if(!e)return;
+  // xlsx #412 (Batch 30) — clear the form FIRST so stale values from a prior
+  // session don't bleed into this edit. Specifically fixes the "Edit Event A
+  // shows 'Reference event A' as offset-from" bug: previously editEntry only
+  // overwrote fields it explicitly set, leaving any prior offset-event picker
+  // value lingering in the input/hidden field.
   buildTypeSelect();populateEventTypePicks();
+  clearAEForm();
   document.getElementById('ae-edit-id').value=id;
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
   document.getElementById('ae-type').value=e.type;onTypeChange();
@@ -5425,7 +5521,7 @@ function renderEntries(){
   const draftHTML=drafts.length?('\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts ('+drafts.length+')</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">'+drafts.map(e=>'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry('+e.id+')"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.content||e.cn||'(empty)')+'</span><span style="font-size:11px;color:var(--accent);">Edit \u203a</span></div>').join('')+'</div>\x3C/details>'):'';
   const logQ=(document.getElementById('log-search')?.value||'').toLowerCase().trim();
   // #406 — Cross-reference search across all string-bearing fields + involved[].
-  const filteredLog=logQ?filtered.filter(e=>{
+  let filteredLog=logQ?filtered.filter(e=>{
     const haystack=[e.content,e.cn,e.note,e.speaker,e.location,e.relA,e.relB,e.relType,e.relDesc,e.tlSpeaker,e.tlSq,e.refAuthor,e.refUrl,e.refType,e.evdate,e.charDesc,e.charPhys,e.charBg,e.nickname,
       ...(e.involved||[]),...(e.eventTypes||[]),
       ...((e.themeQuotes||[]).flatMap(q=>[q.speaker,q.text,q.page])),
@@ -5433,6 +5529,11 @@ function renderEntries(){
     ].filter(Boolean).map(v=>String(v).toLowerCase());
     return haystack.some(s=>s.includes(logQ));
   }):filtered;
+  // xlsx #410 (Batch 30) — Chapter filter: sort 1, 2, 3 ascending instead of
+  // reverse-chronological. Within the same chapter, sort by page asc.
+  if(activeFilter==='Chapter'){
+    filteredLog=[...filteredLog].sort((a,b)=>(+a.chapNum||9999)-(+b.chapNum||9999)||(+a.pageNum||9999)-(+b.pageNum||9999));
+  }
   list.innerHTML=draftHTML+filteredLog.map(e=>ecHTML(e,false)).join('');
 }
 
@@ -5470,7 +5571,12 @@ function ecHTML(e,compact,fromTab){
     const linkedQBlock=linkedQs.length?`<div style="margin-top:5px;border-left:2px solid var(--am);padding-left:7px;">${linkedQs.map(q=>`<div style="margin-bottom:3px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.pageNum?' · p.'+q.pageNum:''}</span><div style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry(${q.id})">"${(q.content||'').slice(0,80)}${q.content?.length>80?'…':''}"</div></div>`).join('')}</div>`:'';
     body=`<div class="econtent"><strong class="cbadge" style="background:${ac?.bg||'transparent'};color:${ac?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relA||'')}',false)">${e.relA||'?'}</strong> ${relPhrase} <strong class="cbadge" style="background:${bc?.bg||'transparent'};color:${bc?.text||'inherit'};cursor:pointer;" onclick="openCharDetail('${esc(e.relB||'')}',false)">${e.relB||'?'}</strong>${qaBadge}${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${e.content}</div>`:''}${linkedQBlock}</div>`;
   } else if(e.type==='Word / Vocabulary'){
-    body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.definition}</div>`:''}</div>`;
+    // xlsx #422 (Batch 30) — also surface wordContext (the source quote/sentence) and
+    // wordSpeaker (the character who said it) on the vocab log card. User asked for
+    // the quote and speaker context so the word stays anchored to its in-book usage.
+    const ctxBlock=e.wordContext?`<div style="font-size:11px;color:var(--t2);margin-top:4px;border-left:2px solid var(--am);padding-left:6px;font-style:italic;">"${e.wordContext}"</div>`:'';
+    const spkrChip=e.wordSpeaker?(()=>{const cc=getCC(e.wordSpeaker);return `<div style="margin-top:4px;"><span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;font-size:10px;" onclick="event.stopPropagation();openCharDetail('${esc(e.wordSpeaker)}',false)">🗣 ${e.wordSpeaker}</span></div>`;})():'';
+    body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.definition}</div>`:''}${ctxBlock}${spkrChip}</div>`;
   } else if(e.type==='Characteristic'){
     const tLabel={personality:'Personality',physical:'Physical',behavioral:'Behavioral',emotional:'Emotional',intellectual:'Intellectual'}[e.traitType]||'';
     body=`<div class="econtent">${tLabel?`<span class="tag" style="background:var(--bg2);color:var(--t2);margin-right:4px;">${tLabel}</span>`:''}${e.content}${(()=>{const qs=e.traitQuotes?.length?e.traitQuotes:(e.sq?[{text:e.sq,pg:e.sqp||'',speaker:''}]:[]);return qs.map(q=>`<div style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${q.text}"${q.pg?` — p.${q.pg}`:''}</div>`).join('');})()}</div>`;
@@ -5670,7 +5776,7 @@ function renderChars(){
       </div>
       <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
         <button class="btn-edit char-list-edit" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;">Edit</button>
-        <!-- #236 follow-up — Delete button removed; swipe-to-delete on .clcard -->
+        <button class="btn-del char-list-del" data-char-id="${c.id}" style="font-size:11px;padding:3px 8px;color:var(--red);">Delete</button>
         <span style="color:var(--accent);font-size:18px;padding:0 6px;font-weight:700;">›</span>
       </div>
     </div>`;
@@ -5682,7 +5788,11 @@ function renderChars(){
     const editBtn=e.target.closest('.char-list-edit');
     if(editBtn){e.stopPropagation();editEntry(+editBtn.getAttribute('data-char-id'));return;}
     const delBtn=e.target.closest('.char-list-del');
-    if(delBtn){e.stopPropagation();deleteEntry(+delBtn.getAttribute('data-char-id'));return;}
+    if(delBtn){e.stopPropagation();
+      if(confirm('Delete this character? Their relationships and quotes will be moved to the recycle bin.')){
+        deleteEntry(+delBtn.getAttribute('data-char-id'));
+      }
+      return;}
     const card=e.target.closest('.char-list-card');
     if(card){const nm=card.getAttribute('data-char-name');if(nm)openCharDetail(nm,false);}
   };
@@ -6120,6 +6230,39 @@ function renderWeb(){
     });
   }
 
+  // xlsx #408 follow-up (Batch 30) — collision-resolution pass. After the force
+  // sim, sweep through every pair of characters that ended up too close on the
+  // SAME row (similar y) and push them apart along x. Pinned nodes don't move.
+  // This eliminates the "characters hiding along others" bug the user reported.
+  const COLLIDE_MIN_X=NR*2+8; // min x-spacing between node centers on the same row
+  const SAME_ROW_Y_TOL=NR*1.2;
+  for(let pass=0;pass<6;pass++){
+    let moved=false;
+    for(let i=0;i<chars.length;i++){
+      for(let j=i+1;j<chars.length;j++){
+        const a=chars[i],b=chars[j];
+        if(Math.abs(a.y-b.y)>SAME_ROW_Y_TOL)continue;
+        const dx=b.x-a.x;
+        const adx=Math.abs(dx);
+        if(adx>=COLLIDE_MIN_X)continue;
+        const overlap=COLLIDE_MIN_X-adx;
+        const push=overlap/2+0.5;
+        // Move each by half the overlap (or full amount if one is pinned)
+        if(a.pinned&&b.pinned)continue;
+        if(a.pinned){b.x+=(dx>=0?1:-1)*overlap;}
+        else if(b.pinned){a.x-=(dx>=0?1:-1)*overlap;}
+        else{
+          if(dx>=0){a.x-=push;b.x+=push;}
+          else{a.x+=push;b.x-=push;}
+        }
+        a.x=Math.max(PAD,Math.min(viewW-PAD,a.x));
+        b.x=Math.max(PAD,Math.min(viewW-PAD,b.x));
+        moved=true;
+      }
+    }
+    if(!moved)break;
+  }
+
   // 7. Compute final bounding box
   const xs=chars.map(c=>c.x);
   const minX=Math.min(...xs)-PAD,maxX=Math.max(...xs)+PAD;
@@ -6365,7 +6508,26 @@ function setupWebDrag(){
     if(nodeEl){
       const name=nodeEl.getAttribute('data-node-name');
       const nd=getNodeData(name);
-      if(nd){dragNode={name,data:nd};dragStartPt=clientToSvg(clientX,clientY);nodeEl.style.cursor='grabbing';return true;}
+      if(nd){
+        // xlsx #408 follow-up (Batch 30) — capture the offset between pointer and
+        // node center at drag-start so the node doesn't JUMP to put its center under
+        // the finger. The pointer can grab anywhere on the node and the node moves
+        // by the pointer delta, not snapping its center to the pointer.
+        const startSvg=clientToSvg(clientX,clientY);
+        dragNode={
+          name,
+          data:nd,
+          // offset from pointer to node center, in SVG coords (sign: pointer + offset = nodeCenter)
+          offX:nd.x-startSvg.x,
+          offY:nd.y-startSvg.y,
+          startClientX:clientX,
+          startClientY:clientY,
+          activated:false, // becomes true after movedPx > threshold
+        };
+        dragStartPt=startSvg;
+        nodeEl.style.cursor='grabbing';
+        return true;
+      }
     }
     panStart={x:clientX,y:clientY,sl:wrap.scrollLeft,st:wrap.scrollTop};
     wrap.style.cursor='grabbing';
@@ -6375,6 +6537,7 @@ function setupWebDrag(){
   // per animation frame even if pointermove fires more often. Smooths out the
   // pan/scroll on the relationship web on mobile.
   let _panRafPending=false, _panRafLast=null;
+  const NODE_DRAG_THRESHOLD=8; // px of movement before a node-touch becomes a drag
   function onMoveStart(clientX,clientY){
     _panRafLast={clientX,clientY};
     if(_panRafPending)return;
@@ -6384,10 +6547,18 @@ function setupWebDrag(){
       if(!_panRafLast)return;
       const cx=_panRafLast.clientX, cy=_panRafLast.clientY;
       if(dragNode){
+        // Threshold gate: don't actually move the node until the user has moved
+        // far enough to clearly intend a drag. Counts toward movedPx so onUpEnd
+        // can still distinguish tap (movedPx<5) vs drag.
+        const totalDelta=Math.abs(cx-dragNode.startClientX)+Math.abs(cy-dragNode.startClientY);
+        movedPx=totalDelta;
+        if(!dragNode.activated&&totalDelta<NODE_DRAG_THRESHOLD)return;
+        dragNode.activated=true;
         const p=clientToSvg(cx,cy);
-        dragNode.data.x=p.x;dragNode.data.y=p.y;
+        // Apply offset (pointer + offset = nodeCenter)
+        dragNode.data.x=p.x+dragNode.offX;
+        dragNode.data.y=p.y+dragNode.offY;
         redrawNode(dragNode.data);
-        movedPx+=2;
       } else if(panStart){
         const dx=cx-panStart.x,dy=cy-panStart.y;
         wrap.scrollLeft=panStart.sl-dx;wrap.scrollTop=panStart.st-dy;
@@ -6398,7 +6569,9 @@ function setupWebDrag(){
   function onUpEnd(){
     if(dragNode){
       const nodeEl=getNodeEl(dragNode.name);if(nodeEl)nodeEl.style.cursor='grab';
-      if(movedPx<5){onNodeTap(dragNode.name);}
+      // Tap = movedPx<NODE_DRAG_THRESHOLD (also catches the threshold-gate case);
+      // drag = anything past that AND the gate was crossed.
+      if(!dragNode.activated){onNodeTap(dragNode.name);}
       else{saveNodePos(dragNode.data);}
       dragNode=null;
     }
@@ -7182,7 +7355,7 @@ function renderMap(){
           ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(loc)} history ${esc(eraFB||'')}'))" style="font-size:11px;padding:3px 7px;" title="Search history">🔍</button>`:''}
           ${realFB?`<button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://www.google.com/maps/search/'+encodeURIComponent('${esc(loc)}${cityFB?', '+esc(cityFB):''}${countryFB?', '+esc(countryFB):''}'))" style="font-size:11px;padding:3px 7px;" title="Maps">🗺️</button>`:''}
           <button class="btn btn-sm" onclick="event.stopPropagation();openEditLocSheet('${esc(loc)}')" style="font-size:11px;padding:3px 7px;">Edit</button>
-          <!-- #236 follow-up — Delete button removed; use swipe-to-delete on .loccard -->
+          <button class="btn btn-sm" onclick="event.stopPropagation();deleteLocCard('${esc(loc)}')" style="font-size:11px;padding:3px 7px;color:var(--red);">Delete</button>
           <span style="color:var(--t3);font-size:16px;">›</span>
         </div>
       </div>
@@ -7435,12 +7608,16 @@ function qHTML(q){
   </div>`;
 }
 function toggleQ(id){const e=entries().find(x=>x.id===id);if(!e)return;e.answered=!e.answered;save();renderQuestions();}
-// #225 — Show "was your guess correct?" only when there's both a hypothesis AND an answer.
+// xlsx #415 (Batch 30) — REGRESSION FIX. User: "I want this back. With the same
+// features it had before where it asked if my hypothesis was right or wrong and
+// everything!" The hypothesis textarea was still in the form, but the right/wrong
+// guess row was gated on (hyp && ans), so it was hidden until both fields filled.
+// Now: show the guess row whenever there's a hypothesis (the user can record their
+// guess outcome before/independently of writing out the full answer).
 function onQAnswerInput(){
   const hyp=(document.getElementById('ae-qhyp')?.value||'').trim();
-  const ans=(document.getElementById('ae-qanswer')?.value||'').trim();
   const row=document.getElementById('ae-qguess-row');
-  if(row)row.style.display=(hyp&&ans)?'':'none';
+  if(row)row.style.display=hyp?'':'none';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -8019,7 +8196,16 @@ function saveSession(){
     book().sessions.push(sessionData);
   }
   if(pEnd)book().progressPage=pEnd;
-  save();closeSheet('timer-overlay');renderStats();renderLibrary();
+  save();
+  // xlsx #420 (Batch 30) — clear out the timer fields after saving so the next
+  // session starts fresh (was: previous values lingered, requiring manual reset).
+  resetTimers();
+  document.getElementById('timer-pg-start').value=book()?.progressPage||'';
+  document.getElementById('timer-pg-end').value='';
+  document.getElementById('timer-read-min').value='';
+  document.getElementById('timer-synth-min').value='';
+  document.getElementById('timer-edit-idx').value='';
+  closeSheet('timer-overlay');renderStats();renderLibrary();
 }
 
 function deleteSession(idx){
@@ -9426,112 +9612,18 @@ function copyClosedReports(){
 
 // ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
-// #236 — Slide-to-delete on book and entry cards
+// #236 — Slide-to-delete on book and entry cards [REMOVED in Batch 30]
 // ═══════════════════════════════════════════════════════════════
-// Wraps every .ec/.book-card with a .swipe-wrap that has a red "Delete"
-// backplate. Touch-drag left reveals it; lift past threshold = delete with confirm.
-function _swipeWrapAll(){
-  // entry cards: any .ec inside common containers, plus book-cards
-  // #236 follow-up — include character cards (.clcard) + location cards (.loccard) so swipe-to-delete works on those tabs.
-  const sel='.ec, .book-card, .clcard, .loccard';
-  document.querySelectorAll(sel).forEach(card=>{
-    if(card.closest('.swipe-wrap'))return; // already wrapped
-    if(card.closest('.sheet-overlay'))return; // skip cards inside sheets/forms (e.g. preview cards in pickers)
-    // Some cards live deep inside profiles or recipes — only wrap top-level list/feed cards.
-    const wrap=document.createElement('div');
-    wrap.className='swipe-wrap';
-    const bg=document.createElement('div');
-    bg.className='swipe-del-bg';
-    bg.textContent='🗑 Delete';
-    bg.onclick=function(ev){ev.stopPropagation();_swipeConfirmDelete(card);};
-    card.parentNode.insertBefore(wrap,card);
-    wrap.appendChild(bg);
-    wrap.appendChild(card);
-    _swipeBind(wrap,card);
-  });
-}
-function _swipeBind(wrap,card){
-  let startX=0,curX=0,startY=0,active=false,moved=false;
-  const REVEAL=90; // matches CSS width of .swipe-del-bg
-  const onStart=(e)=>{
-    const t=e.touches?e.touches[0]:e;
-    startX=t.clientX;startY=t.clientY;curX=0;active=true;moved=false;
-    wrap.classList.add('swiping');
-  };
-  const onMove=(e)=>{
-    if(!active)return;
-    const t=e.touches?e.touches[0]:e;
-    const dx=t.clientX-startX;const dy=t.clientY-startY;
-    if(!moved&&Math.abs(dy)>Math.abs(dx)){active=false;wrap.classList.remove('swiping');return;} // vertical scroll wins
-    if(Math.abs(dx)>5)moved=true;
-    curX=Math.min(0,Math.max(-REVEAL*1.5,dx));
-    card.style.transform='translateX('+curX+'px)';
-  };
-  const onEnd=()=>{
-    if(!active)return;
-    active=false;wrap.classList.remove('swiping');
-    if(curX<=-REVEAL*0.6){
-      // snap open
-      card.style.transform='translateX(-'+REVEAL+'px)';
-    } else {
-      card.style.transform='';
-    }
-  };
-  card.addEventListener('touchstart',onStart,{passive:true});
-  card.addEventListener('touchmove',onMove,{passive:true});
-  card.addEventListener('touchend',onEnd);
-  card.addEventListener('touchcancel',onEnd);
-  // Tap elsewhere closes
-  card.addEventListener('click',(e)=>{
-    if(card.style.transform&&card.style.transform!==''){
-      // If open, first tap closes
-      const m=card.style.transform.match(/-?\d+/);
-      if(m&&parseInt(m[0])<=-30){card.style.transform='';e.stopPropagation();e.preventDefault();}
-    }
-  },true);
-}
-function _swipeConfirmDelete(card){
-  // Find an entry id from a Delete button or onclick attr in the card.
-  // Entries: btn.btn-del onclick="deleteEntry(NN)". Books: book-card onclick="openBook('id')" — handle via dataset attr if present.
-  const btn=card.querySelector('.btn-del[onclick*="deleteEntry"]');
-  if(btn){btn.click();card.style.transform='';return;}
-  // Book card path (no built-in delete button — fall back to a generic confirm + dispatch)
-  const bookId=card.getAttribute('data-book-id');
-  if(bookId){
-    if(confirm('Delete this book? Entries and registry data will be removed.')){
-      const idx=(window._books||[]).findIndex(b=>String(b.id)===String(bookId));
-      if(idx>=0&&typeof deleteBook==='function'){deleteBook(bookId);}
-    }
-    card.style.transform='';return;
-  }
-  // #236 follow-up — Location card path.
-  const locName=card.getAttribute('data-loc-name');
-  if(locName&&typeof deleteLocCard==='function'){
-    deleteLocCard(locName);
-    card.style.transform='';return;
-  }
-  // #236 follow-up — Character card path (clcard has data-char-id).
-  const charId=card.getAttribute('data-char-id');
-  if(charId&&typeof deleteEntry==='function'){
-    if(confirm('Delete this character? Their relationships and quotes will be moved to the recycle bin.')){
-      deleteEntry(+charId);
-    }
-    card.style.transform='';return;
-  }
-  alert('Delete not available on this card.');
-  card.style.transform='';
-}
-// Re-wrap after every render. Use a MutationObserver on the screen containers so
-// new cards appended by render functions get swipe handlers too.
-function _swipeInit(){
-  _swipeWrapAll();
-  const targets=['log-list','quotes-list','chars-list','questions-list','refs-list','timeline-list','map-list','library-list'].map(id=>document.getElementById(id)).filter(Boolean);
-  targets.forEach(el=>{
-    new MutationObserver(()=>{_swipeWrapAll();}).observe(el,{childList:true,subtree:true});
-  });
-}
-// Hook into init
-window.addEventListener('load',()=>{setTimeout(_swipeInit,300);});
+// User feedback after several iterations: "let's get rid of all of the delete
+// swipes. I feel like it's causing more problems than not. We'll go ahead a
+// just add the 'delete' button back to those that we removed."
+// All swipe wrapping removed. No-op stubs preserved so any leftover callers
+// don't throw. Inline Delete buttons restored on Character and Location cards
+// (and verified present on Question cards) elsewhere in the file.
+function _swipeWrapAll(){/* removed */}
+function _swipeBind(){/* removed */}
+function _swipeConfirmDelete(){/* removed */}
+function _swipeInit(){/* removed */}
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
