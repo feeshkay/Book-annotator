@@ -1085,6 +1085,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fa">
       <button class="btn" onclick="closeSheet('ae-overlay')">Cancel</button>
       <button class="btn" id="ae-discard-draft-btn" onclick="discardDraft()" style="display:none;color:var(--red);border-color:var(--red);background:var(--rl);">Discard draft</button>
+      <!-- xlsx #427 — Delete button shown only when editing an existing entry (editId set). Confirms then runs deleteEntry(editId). -->
+      <button class="btn" id="ae-delete-btn" onclick="deleteEntryFromForm()" style="display:none;color:var(--red);border-color:var(--red);background:var(--rl);">Delete</button>
       <button class="btn btn-primary" onclick="submitEntry()">Save</button>
     </div>
   </div>
@@ -1680,7 +1682,21 @@ function entries(){return book()?.entries||[];}
 // entire Timeline render (since renderTimeline built items via template strings
 // that referenced _dc inline).
 function _dcMap(){return book()?.deletedChars||{};}
-function _dcBadge(name){return _dcMap()[name]?'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>':'';}
+// xlsx #428 (Batch 32) — only show ⚠️ when the name actually has a deletion record
+// AND no current Character entry exists with that name. Previously a char that was
+// deleted then recreated (or quick-added with the same name) would still show the
+// stale badge. The lazy cleanup also strips the record so it doesn't keep firing.
+function _dcBadge(name){
+  if(!_dcMap()[name])return'';
+  // Stale-record check: if any current Character entry exists with this name, the
+  // deletion record is no longer valid. Drop it lazily and suppress the badge.
+  const stillHere=entries().some(e=>CT.includes(e.type)&&!e.isDraft&&(e.cn||e.content)===name);
+  if(stillHere){
+    try{delete book().deletedChars[name];save();}catch(_){}
+    return'';
+  }
+  return'<span style="font-size:9px;color:#e74c3c;font-weight:700;margin-left:2px;">⚠️</span>';
+}
 
 // #388 — Entry-form templates: save current form fields as a named template.
 // Templates are stored per book at book().entryTemplates = [{name, type, fields:{id:value,...}, involved:[]}]
@@ -3442,7 +3458,11 @@ function addRelEntry(a,rt,b,note,autoInvolved){
   // floats which broke editEntry(Number(id)) lookups and could collide when
   // saveQuickRels iterates several rows in the same tick.
   const newId=Date.now()+Math.floor(Math.random()*100000);
-  book().entries.push({id:newId,type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:autoInvolved?[a,b].filter(Boolean):[],note:note||''});
+  // xlsx #340 follow-up (Batch 32) — was push() (end). Switched to unshift() so
+  // quick-rel entries appear at the TOP of the unfiltered log alongside other
+  // newly-added entries. User reported quick-rels showed under the Relationship
+  // filter but seemed missing from the overall log — they were at the bottom.
+  book().entries.unshift({id:newId,type:'Relationship',content:`${a} — ${rt} — ${b}`,relType:rt,relA:a,relB:b,pageNum:'',chapNum:'',date:localDate(),location:'',involved:autoInvolved?[a,b].filter(Boolean):[],note:note||''});
   save();renderAll();
 }
 
@@ -4177,6 +4197,8 @@ function clearAEForm(){
   clearAttachedQuotes();
   // #250 — Discard draft button hidden until editEntry decides to show it
   const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
+  // xlsx #427 — Delete button hidden until editEntry sets editId
+  const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='none';
   document.getElementById('ae-mw-result').style.display='none';
   document.getElementById('ae-dial-lines').innerHTML='';document.getElementById('ae-goodreads-hint').style.display='none';
   const tql=document.getElementById('ae-theme-quotes-list');if(tql)tql.innerHTML='';
@@ -4397,7 +4419,15 @@ function buildThemeQuoteBlock(allTqs){
     var qOpen=q._entryId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+q._entryId+')">'
                         :(thId?'<div class="theme-q-text" style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry('+thId+')">'
                                :'<div class="theme-q-text" style="font-size:12px;font-style:italic;">');
-    return'<div style="margin-bottom:5px;"><div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+chHtml+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
+    // xlsx #427 — Per-quote "remove from theme" × on the theme card. Only renders for
+    // LINKED quote entries (q._entryId) — free-text themeQuotes get edited via the theme
+    // form. Calls detachQuoteFromTheme which strips the cross-link both directions and
+    // re-renders without deleting the quote entry itself.
+    var detachBtn='';
+    if(q._entryId&&thId){
+      detachBtn='<span onclick="event.stopPropagation();detachQuoteFromTheme('+q._entryId+','+thId+')" style="float:right;color:var(--t3);font-size:14px;cursor:pointer;padding:0 4px;line-height:1;" title="Remove this quote from this theme (does not delete the quote)">×</span>';
+    }
+    return'<div style="margin-bottom:5px;">'+detachBtn+'<div style="font-size:10px;">'+spkrHtml+'<span style="color:var(--t3);">'+chHtml+pgHtml+'</span></div>'+qOpen+'"'+q.text+'"</div></div>';
   });
   // #396 follow-up — aggregate ALL chapters across the theme's quotes.
   var allChs=new Set();
@@ -4440,6 +4470,27 @@ function renderAttachedQuotesList(){
 function getAttachedQuoteIds(){return[..._attachedQuoteIds];}
 function clearAttachedQuotes(){_attachedQuoteIds=[];renderAttachedQuotesList();}
 function loadAttachedQuotes(ids){_attachedQuoteIds=(ids||[]).filter(Boolean);renderAttachedQuotesList();}
+// xlsx #427 — Detach a quote from a theme without deleting either entry. Pulls the
+// quote.id out of theme.attachedQuoteIds[] AND strips the theme name from the quote's
+// attachedThemes[] / attachedTheme. Confirms first; re-renders on success.
+function detachQuoteFromTheme(quoteId,themeId){
+  const t=book().entries.find(x=>x.id===themeId&&x.type==='Theme');
+  const q=book().entries.find(x=>x.id===quoteId);
+  if(!t||!q)return;
+  if(!confirm(`Remove this quote from theme "${t.content||''}"?\n\nThe quote itself stays in your log — only the theme attachment is removed.`))return;
+  // Strip from theme's side
+  if(Array.isArray(t.attachedQuoteIds)){
+    t.attachedQuoteIds=t.attachedQuoteIds.filter(id=>id!==quoteId);
+  }
+  // Strip from quote's side
+  if(Array.isArray(q.attachedThemes)){
+    q.attachedThemes=q.attachedThemes.filter(n=>n!==t.content);
+  }
+  if(q.attachedTheme===t.content){
+    q.attachedTheme=Array.isArray(q.attachedThemes)&&q.attachedThemes.length?q.attachedThemes[0]:'';
+  }
+  save();renderAll();
+}
 
 function buildCharDescFromTraits(){
   const nameEl=document.getElementById('ae-cn');
@@ -4512,6 +4563,31 @@ function submitEntry(){
       const el=document.getElementById('ae-cn');
       el.style.borderColor='#E24B4A';el.focus();
       el.placeholder='Name is required';return;
+    }
+    // xlsx #393 follow-up (Batch 32) — Pre-save patrilineal popup. If the suggester
+    // hint is currently visible AND the name field doesn't already include the
+    // suggested surname, ask the user (blocking confirm) whether to apply it before
+    // saving. User can answer yes (applies + saves), no (saves as-is), or cancel
+    // (returns to form). Only fires once per save attempt — sets a flag to skip
+    // re-prompting on a recursive submitEntry call.
+    if(!window._patriSavePromptShown){
+      const hint=document.getElementById('ae-patri-hint');
+      if(hint&&hint.style.display!=='none'&&hint.innerHTML){
+        // Extract suggested name from the hint markup (the bold inside the second strong).
+        const m=hint.innerHTML.match(/Suggest "<strong>([^<]+)<\/strong>"/);
+        const suggested=m?m[1]:'';
+        if(suggested&&suggested.toLowerCase()!==cn.toLowerCase()){
+          window._patriSavePromptShown=true;
+          const ans=confirm(`Apply suggested last name?\n\n"${cn}" → "${suggested}"\n\nOK = use the suggested name and save\nCancel = save as "${cn}"`);
+          if(ans){
+            document.getElementById('ae-cn').value=suggested;
+            cn=suggested;
+            hint.style.display='none';
+          }
+          // Either way, clear the flag and continue saving.
+          window._patriSavePromptShown=false;
+        }
+      }
     }
     content=cn;
   }
@@ -4757,6 +4833,22 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(isTheme){
     entry.themeQuotes=getThemeQuotes();
     entry.attachedQuoteIds=getAttachedQuoteIds();
+    // xlsx #413 follow-up (Batch 32) — self-healing reverse scan. Scan all quotes;
+    // any quote whose attachedTheme OR attachedThemes[] points to THIS theme by name
+    // gets its id auto-merged into entry.attachedQuoteIds. This way, attaching from
+    // EITHER direction (Quote-form picks Theme T, OR Theme-form picks Quote Q) leaves
+    // the theme card showing the quote — without depending on the picker UI state.
+    const _themeName=entry.content||'';
+    if(_themeName){
+      const reverseIds=new Set(entry.attachedQuoteIds||[]);
+      entries().forEach(q=>{
+        if(!['Quote','Narrator quote','Line/stanza'].includes(q.type))return;
+        const inLegacy=q.attachedTheme===_themeName;
+        const inArr=Array.isArray(q.attachedThemes)&&q.attachedThemes.includes(_themeName);
+        if(inLegacy||inArr)reverseIds.add(q.id);
+      });
+      entry.attachedQuoteIds=[...reverseIds];
+    }
     // xlsx #413 follow-up (Batch 31) — bidirectional cross-link. When user attaches
     // an EXISTING quote to this theme via the Theme form's "Attach quote" picker,
     // also push this theme's name into the linked quote's attachedThemes[] array
@@ -5076,6 +5168,26 @@ function _pulseEntryById(id){
   tick();
 }
 function getRecycleBin(){if(!book().recycleBin)book().recycleBin=[];return book().recycleBin;}
+// xlsx #427 — Universal Delete button on entry forms (edit mode). Reads editId,
+// confirms, runs deleteEntry, then closes the sheet. Wires to the #ae-delete-btn button.
+function deleteEntryFromForm(){
+  const editId=document.getElementById('ae-edit-id')?.value;
+  if(!editId)return;
+  const id=Number(editId);
+  const e=entries().find(x=>x.id===id);
+  if(!e){closeSheet('ae-overlay');return;}
+  // Use a SHORT confirm here; deleteEntry runs its own typed confirmations for
+  // characters with consequential cleanup. For non-character entries, this confirm
+  // is the only one — keep it explicit.
+  const isChar=CT.includes(e.type);
+  const label=e.cn||e.content||'this entry';
+  if(!isChar){
+    if(!confirm(`Delete this ${e.type} entry?\n\n"${(label||'').slice(0,80)}"\n\nIt will move to the Recycle Bin where you can restore it later.`))return;
+  }
+  // Close the form first, then run delete (which itself may pop more confirms for chars).
+  closeSheet('ae-overlay');
+  deleteEntry(id);
+}
 function deleteEntry(id){
   const e=entries().find(x=>x.id===id);if(!e)return;
   if(CT.includes(e.type)){
@@ -5179,12 +5291,14 @@ function suggestPatriLastName(){
   if(!cn)return;
   // Find a father (or other patrilineal ancestor) for THIS character.
   // Patrilineal types in priority order:
+  // xlsx #393 follow-up (Batch 32) — also include SIBLING types. User pointed out
+  // that siblings inherit the family surname too. When B is "Brother of John Smith",
+  // B should also be suggested "Smith" as a surname. Sibling-side: if this char is
+  // a Sibling/Brother/Sister/Half-sibling/Step-sibling of someone with a surname,
+  // the OTHER char is treated as a surname source.
   const PATRI=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather'];
-  // #393 follow-up (Batch 30) — user clarified: when entering B's record the user
-  // writes the rel FROM B's perspective ("B is Son of A"). So a CHILD-type rel
-  // where THIS char is the subject means the OTHER char is the parent.
-  // Patrilineal child-side types (mapped roughly to their parent counterparts).
   const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
+  const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
   // Need this character's name as it appears in Relationship rows. The name in the
   // form may be a "first" name only at this point — match by best-effort full name match.
   const fatherEntry=(()=>{
@@ -5210,6 +5324,18 @@ function suggestPatriLastName(){
         if(cEnt)return cEnt;
       }
     }
+    // xlsx #393 follow-up (Batch 32) — siblings inherit the family surname too.
+    // Scan for rels where this char is relA OR relB and the type is a sibling type.
+    for(const t of PATRI_SIBLING){
+      const r=rels.find(rl=>rl.relType===t&&(((rl.relA||'').toLowerCase()===cn.toLowerCase())||((rl.relB||'').toLowerCase()===cn.toLowerCase())));
+      if(r){
+        const otherName=(r.relA||'').toLowerCase()===cn.toLowerCase()?r.relB:r.relA;
+        if(otherName){
+          const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===otherName);
+          if(cEnt&&((cEnt.cn||cEnt.content||'').trim().split(/\s+/).length>1))return cEnt;
+        }
+      }
+    }
     // #393 follow-up — also scan in-progress quick-rel rows on the form,
     // because the user may be entering "B is son of A" in the Relationship form
     // without having saved yet.
@@ -5218,30 +5344,20 @@ function suggestPatriLastName(){
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch)continue;
-      // Either patrilineal-parent type (other char IS the parent)…
-      if(PATRI.includes(rt)){
+      if(PATRI.includes(rt)||PATRI_CHILD.includes(rt)||PATRI_SIBLING.includes(rt)){
         const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
-        if(cEnt)return cEnt;
-      }
-      // …or patrilineal-child type (other char IS the parent — this char is the child).
-      if(PATRI_CHILD.includes(rt)){
-        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
-        if(cEnt)return cEnt;
+        if(cEnt&&((cEnt.cn||cEnt.content||'').trim().split(/\s+/).length>1))return cEnt;
       }
     }
     // #393 follow-up — also scan the Character form's quick-rels list.
-    // Those rows describe rels FROM the new character's perspective, so a row
-    // with type=Father + char=A means "A is the Father (of this new char)" AND
-    // (Batch 30) a row with type=Son + char=A also means "A is the parent" because
-    // user typed it as "[this new char] is Son of A".
     const charFormRows=[...document.querySelectorAll('#ae-quick-rels-list [data-qr-id]')];
     for(const row of charFormRows){
       const rt=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
       const ch=(row.querySelector('.qr-char')?.value||'').trim()||(row.querySelector('.qr-char-search')?.value||'').trim();
       if(!rt||!ch)continue;
-      if(PATRI.includes(rt)||PATRI_CHILD.includes(rt)){
+      if(PATRI.includes(rt)||PATRI_CHILD.includes(rt)||PATRI_SIBLING.includes(rt)){
         const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===ch);
-        if(cEnt)return cEnt;
+        if(cEnt&&((cEnt.cn||cEnt.content||'').trim().split(/\s+/).length>1))return cEnt;
       }
     }
     // Also scan the main Relationship form (relA/relB/relType).
@@ -5257,6 +5373,14 @@ function suggestPatriLastName(){
     if(PATRI_CHILD.includes(formRelType)&&formRelA.toLowerCase()===cn.toLowerCase()&&formRelB){
       const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===formRelB);
       if(cEnt)return cEnt;
+    }
+    // SIBLING semantic (Batch 32): cn is sibling of the OTHER on the rel form.
+    if(PATRI_SIBLING.includes(formRelType)){
+      const otherName=formRelA.toLowerCase()===cn.toLowerCase()?formRelB:(formRelB.toLowerCase()===cn.toLowerCase()?formRelA:'');
+      if(otherName){
+        const cEnt=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===otherName);
+        if(cEnt&&((cEnt.cn||cEnt.content||'').trim().split(/\s+/).length>1))return cEnt;
+      }
     }
     return null;
   })();
@@ -5423,6 +5547,8 @@ function editEntry(id){
   clearAEForm();
   document.getElementById('ae-edit-id').value=id;
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
+  // xlsx #427 — surface universal Delete button on the form's save bar
+  const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='';
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
@@ -5644,10 +5770,15 @@ function renderEntries(){
     ].filter(Boolean).map(v=>String(v).toLowerCase());
     return haystack.some(s=>s.includes(logQ));
   }):filtered;
-  // xlsx #410 (Batch 30) — Chapter filter: sort 1, 2, 3 ascending instead of
+  // xlsx #410 (Batch 30/32) — Chapter filter: sort 1, 2, 3 ascending instead of
   // reverse-chronological. Within the same chapter, sort by page asc.
+  // (Batch 32) Chapter 0 (front matter / epilogue / author quotes) sorts to the TOP
+  // per user decision. Previously the `||9999` fallback collapsed 0 to 9999 (falsy 0).
+  // Now: parse explicitly; only fall back to 9999 when chapNum is missing/non-numeric.
   if(activeFilter==='Chapter'){
-    filteredLog=[...filteredLog].sort((a,b)=>(+a.chapNum||9999)-(+b.chapNum||9999)||(+a.pageNum||9999)-(+b.pageNum||9999));
+    const _chKey=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:9999;};
+    const _pgKey=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:9999;};
+    filteredLog=[...filteredLog].sort((a,b)=>_chKey(a.chapNum)-_chKey(b.chapNum)||_pgKey(a.pageNum)-_pgKey(b.pageNum));
   }
   list.innerHTML=draftHTML+filteredLog.map(e=>ecHTML(e,false)).join('');
 }
@@ -5667,7 +5798,8 @@ function ecHTML(e,compact,fromTab){
   const emo=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
   const locBadge=e.location?`<span class="pbadge" onclick="openLocDetail('${esc(e.location)}')" style="cursor:pointer;">📍 ${e.location}</span>`:'';
   const _dc=book()?.deletedChars||{};
-  const _dcBadge=(name)=>_dc[name]?'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:2px;">⚠️</span>':'';
+  // xlsx #428 (Batch 32) — use the global _dcBadge which suppresses stale records
+  // (i.e. names that have been recreated since deletion). Local override removed.
   const isNarrator=e.speaker==='Narrator / Author';
   const spk=e.speaker?(isNarrator?`<span class="pbadge" style="font-weight:600;">🎙 Narrator / Author</span>`:`<span class="cbadge" style="background:${getCC(e.speaker)?.bg||'#eee'};color:${getCC(e.speaker)?.text||'#333'};" onclick="event.stopPropagation();openCharDetail('${esc(e.speaker)}',false)">${e.speaker}${_dcBadge(e.speaker)}</span>`):'';
 
@@ -5703,7 +5835,17 @@ function ecHTML(e,compact,fromTab){
   } else if(e.type==='Theme'){
     const tqs=e.themeQuotes||[];
     // Build all quotes to show: themeQuotes (free-text) + attachedQuoteIds (linked entries)
-    const attachedQEntries=(e.attachedQuoteIds||[]).map(id=>entries().find(q=>q.id===id)).filter(Boolean);
+    // xlsx #413 follow-up (Batch 32) — self-healing render. Also pull in any quote whose
+    // attachedTheme/attachedThemes points at this theme by name even if the theme entry's
+    // attachedQuoteIds[] hasn't been backfilled yet.
+    const _attachedSet=new Set(e.attachedQuoteIds||[]);
+    entries().forEach(q=>{
+      if(!['Quote','Narrator quote','Line/stanza'].includes(q.type))return;
+      if(q.attachedTheme===e.content||(Array.isArray(q.attachedThemes)&&q.attachedThemes.includes(e.content))){
+        _attachedSet.add(q.id);
+      }
+    });
+    const attachedQEntries=[..._attachedSet].map(id=>entries().find(q=>q.id===id)).filter(Boolean);
     const allTqs=[...tqs,...attachedQEntries.map(q=>({text:q.content,page:q.pageNum||'',speaker:q.speaker||'',_entryId:q.id}))];
     const allTqsWithId=allTqs.map(q=>({...q,_themeId:e.id}));
     const quoteBlock=buildThemeQuoteBlock(allTqsWithId);
