@@ -3143,6 +3143,29 @@ function saveBook(applyWiki){
     const idx=cs.findIndex(c=>c.ch===ch);
     if(idx<0){const parts=e.pageNum.replace('–','-').split('-');cs.push({ch,title:e.content||'',start:+parts[0]||0,end:+parts[1]||+parts[0]||0});}
   });
+  // xlsx #411 (Batch 37) — REVERSE sync: for each chapSetup row without a
+  // corresponding Chapter log entry, auto-create one. So adding chapters in the
+  // book edit page now produces Chapter entries in the log automatically.
+  const cs2=library[id].chapSetup||[];
+  cs2.forEach(c=>{
+    if(!c||!c.ch)return;
+    const ch=+c.ch;
+    const existing=(library[id].entries||[]).find(e=>e.type==='Chapter'&&+e.chapNum===ch);
+    if(existing)return;
+    const pageNum=c.start?(c.end&&c.end!==c.start?`${c.start}-${c.end}`:String(c.start)):'';
+    const newEntry={
+      id:Date.now()+ch+Math.floor(Math.random()*100),
+      type:'Chapter',
+      content:c.title||`Chapter ${ch}`,
+      chapNum:String(ch),
+      pageNum,
+      date:(typeof localDate==='function'?localDate():new Date().toISOString().slice(0,10)),
+      note:'',
+      involved:[]
+    };
+    library[id].entries=library[id].entries||[];
+    library[id].entries.unshift(newEntry);
+  });
   document.getElementById('nb-edit-id').value='';document.getElementById('nb-cover-data').value='';
   document.getElementById('nb-lookup-hint').style.display='none';
   const wikiBtnEl=document.getElementById('nb-wiki-btn');if(wikiBtnEl)wikiBtnEl.style.display='none';
@@ -3195,12 +3218,9 @@ function addQuickRelRow(relType,charName){
   const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
   row.dataset.qrId=rowId;
   // #239/272/282 — rel-type on its own line; char field full-width on its own line (× clear always visible); +New on its own line below so nothing crowds the char row.
-  // xlsx #393 follow-up (Batch 36) — bake the debug strip directly into the row's
-  // markup at the TOP, with high contrast so the user can't miss it on mobile. ALSO
-  // bake an explicit "Test surname suggester" button so the user can force-fire and
-  // see an alert() with the result regardless of any DOM-injection issues.
-  row.innerHTML=`<div class="qr-patri-debug" style="font-size:10px;font-family:monospace;background:#fff7d6;color:#7a4c00;border:1px solid #d4a700;border-radius:4px;padding:4px 6px;margin-bottom:6px;line-height:1.3;word-break:break-word;">[surname-debug] (waiting…)</div>
-    <div style="margin-bottom:6px;position:relative;">
+  // xlsx #393 (Batch 37) — debug strip and 🧪 test button removed now that the
+  // suggester is confirmed working. Suggester still fires on add/type/pick.
+  row.innerHTML=`<div style="margin-bottom:6px;position:relative;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
         <input type="text" class="qr-type-search" placeholder="Search relationship type…" autocomplete="off" value="${relType||''}" style="flex:1;font-size:14px;" oninput="qrTypeFilter('${rowId}')" onclick="qrTypeOpen('${rowId}')"/>
         <input type="hidden" class="qr-type" value="${relType||''}"/>
@@ -3214,8 +3234,7 @@ function addQuickRelRow(relType,charName){
       <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
       <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
     </div>
-    <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
-      <button type="button" onclick="_qrPatriManualTest('${rowId}')" class="btn btn-sm" style="padding:4px 10px;font-size:12px;background:#fff7d6;border:1px solid #d4a700;color:#7a4c00;">🧪 Test surname suggester</button>
+    <div style="text-align:right;">
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
@@ -3250,6 +3269,9 @@ function addRelQuickRelRow(relType,charName){
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
+  // xlsx #433 (Batch 37) — Relationship form QR rows also get the patri suggester.
+  // Suggester is form-context-aware (reads ae-rela for the Rel form's anchor char).
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
 }
 // #340 — Keep the "More relationships for X" anchor label updated to whatever
 // is currently in Character A. Called from cdd onChange + on form open.
@@ -3257,6 +3279,12 @@ function _refreshRelQRAnchor(){
   const el=document.getElementById('ae-rel-qr-anchor');if(!el)return;
   const a=(document.getElementById('ae-rela')?.value||'').trim()||'A';
   el.textContent=a;
+  // xlsx #433 (Batch 37) — when the rel form's anchor char (ae-rela) changes, re-fire
+  // the patri suggester on all QR rows in the rel form (mainCn changed, so suggestions
+  // need to recalc).
+  document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]').forEach(r=>{
+    if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(r);}catch(_){ }
+  });
 }
 function qrCharClear(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -4535,6 +4563,29 @@ function attachExistingQuote(){
 function detachQuote(id){
   _attachedQuoteIds=_attachedQuoteIds.filter(x=>x!==id);
   renderAttachedQuotesList();
+  // xlsx #431 follow-up (Batch 37) — if we're editing an existing Theme entry, also
+  // persist the detach IMMEDIATELY (before the user taps Save). Without this, users
+  // who tap × then close the form without explicit save lose the detach. Also strip
+  // the corresponding theme name from the Quote's attachedThemes[] / legacy attachedTheme.
+  const editId=Number(document.getElementById('ae-edit-id')?.value||0);
+  const isTheme=document.getElementById('ae-type')?.value==='Theme';
+  if(editId&&isTheme){
+    const themeEntry=entries().find(x=>x.id===editId&&x.type==='Theme');
+    if(themeEntry&&Array.isArray(themeEntry.attachedQuoteIds)){
+      themeEntry.attachedQuoteIds=themeEntry.attachedQuoteIds.filter(qid=>qid!==id);
+      // Quote-side cleanup: drop themeEntry.content from the quote's attachedThemes[].
+      const q=entries().find(x=>x.id===id);
+      if(q&&themeEntry.content){
+        if(Array.isArray(q.attachedThemes)){
+          q.attachedThemes=q.attachedThemes.filter(n=>n!==themeEntry.content);
+        }
+        if(q.attachedTheme===themeEntry.content){
+          q.attachedTheme=Array.isArray(q.attachedThemes)&&q.attachedThemes.length?q.attachedThemes[0]:'';
+        }
+      }
+      save();
+    }
+  }
 }
 function renderAttachedQuotesList(){
   const list=document.getElementById('ae-attached-quotes-list');if(!list)return;
@@ -4661,6 +4712,23 @@ function addQuoteTheme(){
 function detachQuoteTheme(name){
   _attachedThemeNames=_attachedThemeNames.filter(n=>n!==name);
   renderQuoteThemesList();
+  // xlsx #431 follow-up (Batch 37) — persist the detach immediately if editing an
+  // existing Quote entry. Mirror logic to detachQuote (the theme-form side).
+  const editId=Number(document.getElementById('ae-edit-id')?.value||0);
+  const type=document.getElementById('ae-type')?.value;
+  if(editId&&['Quote','Narrator quote','Line/stanza'].includes(type)){
+    const q=entries().find(x=>x.id===editId);
+    if(q){
+      if(Array.isArray(q.attachedThemes))q.attachedThemes=q.attachedThemes.filter(n=>n!==name);
+      if(q.attachedTheme===name)q.attachedTheme=Array.isArray(q.attachedThemes)&&q.attachedThemes.length?q.attachedThemes[0]:'';
+      // Theme-side cleanup: drop the quote.id from that theme's attachedQuoteIds[].
+      const t=entries().find(x=>x.type==='Theme'&&x.content===name);
+      if(t&&Array.isArray(t.attachedQuoteIds)){
+        t.attachedQuoteIds=t.attachedQuoteIds.filter(qid=>qid!==q.id);
+      }
+      save();
+    }
+  }
 }
 function renderQuoteThemesList(){
   const list=document.getElementById('ae-quote-themes-list');if(!list)return;
@@ -5432,14 +5500,6 @@ function suggestPatriForQRRow(row){
   const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
   const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
   const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
-  // xlsx #393 follow-up (Batch 35) — also accept ALL parent types as a trigger.
-  // Originally we skipped PARENT types (handled by main-form suggester). But the user's
-  // repro is "writing father's entry, picking 'Father' in QR" — they think of the
-  // QR row's relType from B's perspective. So when relType is a PARENT type, we
-  // interpret it as: "the QR-row char is the parent of the form's main char" —
-  // and the surname source is the QR-row char. Suggestion fires on the form's main
-  // char (already covered by suggestPatriLastName) AND ALSO on the QR-row char if it
-  // happens to be single-token (rare but valid).
   // Find or create the hint container for this row.
   let hint=row.querySelector('.qr-patri-hint');
   if(!hint){
@@ -5453,56 +5513,44 @@ function suggestPatriForQRRow(row){
   hint.style.display='none';hint.innerHTML='';
   const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
   const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
-  const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
-  // xlsx #393 follow-up (Batch 35) — visible on-screen debug strip. Surfaces the
-  // suggester's state so the user can see what's being read on mobile (where dev
-  // tools aren't accessible). Toggle via window._qrPatriDebug = false to hide.
-  if(window._qrPatriDebug!==false){
-    let dbg=row.querySelector('.qr-patri-debug');
-    if(!dbg){
-      dbg=document.createElement('div');
-      dbg.className='qr-patri-debug';
-      dbg.style.cssText='font-size:10px;color:var(--t3);background:var(--bg);border:0.5px dashed var(--cb);border-radius:var(--r);padding:4px 6px;margin:4px 0;font-family:monospace;line-height:1.3;';
-      const charWrap=row.querySelector('.qr-char-search')?.parentElement;
-      if(charWrap)charWrap.parentElement.insertBefore(dbg,charWrap.nextSibling);
-    }
-    dbg.textContent=`[surname-debug] mainCn="${mainCn}" relType="${relType}" charName="${charName}"`;
+  // xlsx #433 (Batch 37) — form-context aware mainCn lookup. The Character form has
+  // ae-cn; the Relationship form has ae-rela / ae-relb (no ae-cn). Determine mainCn
+  // from whichever form the QR row lives in:
+  // - If row is inside #ae-quick-rels-list (char form) → mainCn = ae-cn
+  // - If row is inside #ae-rel-quick-rels-list (rel form) → mainCn = ae-rela hidden value
+  let mainCn='';
+  if(row.closest('#ae-rel-quick-rels-list')){
+    // Relationship form. Anchor character is ae-rela.
+    const relaCdd=document.getElementById('ae-rela');
+    mainCn=(relaCdd?.value||'').trim();
+  } else {
+    mainCn=(document.getElementById('ae-cn')?.value||'').trim();
   }
-  if(!relType||!charName){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (relType or charName empty)';}return;}
+  if(!relType||!charName)return;
   let sourceFull='';
   let sourceLabel='';
   if(PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType)){
-    if(!mainCn){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (mainCn empty)';}return;}
+    if(!mainCn)return;
     const parts=mainCn.split(/\s+/);
-    if(parts.length<2){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (main char single-token, no surname to share)';}return;}
+    if(parts.length<2)return;
     sourceFull=mainCn;
     sourceLabel=PATRI_CHILD.includes(relType)?'parent':'sibling';
   } else if(PATRI_PARENT.includes(relType)){
-    // xlsx #393 follow-up (Batch 35) — accept PARENT types. The QR-row char IS the
-    // parent. The form's main char inherits the surname (handled by main suggester).
-    // ALSO suggest a surname for the QR-row char itself if main char has multi-token name.
-    if(!mainCn){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (mainCn empty for parent-relType path)';}return;}
+    if(!mainCn)return;
     const parts=mainCn.split(/\s+/);
-    if(parts.length<2){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (main char single-token; for parent-relType, suggester needs main char to have a surname)';}return;}
+    if(parts.length<2)return;
     sourceFull=mainCn;
     sourceLabel='child sharing surname';
   } else {
-    if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=` → skip (relType "${relType}" not familial)`;}
     return;
   }
   const sourceLast=sourceFull.split(/\s+/).slice(-1)[0];
-  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase())){
-    if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (already has the surname)';}
-    return;
-  }
+  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase()))return;
   const existingChar=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
   if(existingChar){
     const exFull=(existingChar.cn||existingChar.content||'').trim();
     const exLast=exFull.split(/\s+/).slice(-1)[0];
-    if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase()){
-      if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (existing char already has family surname)';}
-      return;
-    }
+    if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase())return;
   }
   let suggested;
   const charParts=charName.split(/\s+/);
@@ -5515,41 +5563,11 @@ function suggestPatriForQRRow(row){
       <button type="button" class="btn btn-sm" onclick="this.closest('.qr-patri-hint').style.display='none';">Keep different</button>
     </div>`;
   hint.style.display='';
-  if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → ✓ HINT SHOWN';}
 }
 // xlsx #432 follow-up (Batch 35) — Tap-popover for the theme pill on quote log cards.
 // Safari mobile doesn't surface title-tooltips on tap. This shows a small popover
 // next to the tapped pill listing the full theme names. Tapping anywhere outside
 // the popover closes it.
-// xlsx #393 follow-up (Batch 36) — Manual test button on every QR row. User taps
-// "🧪 Test surname suggester" → fires the suggester immediately AND surfaces an
-// alert() with the full state read. Guaranteed visibility on mobile Safari.
-function _qrPatriManualTest(rowId){
-  const row=document.querySelector(`[data-qr-id="${rowId}"]`);
-  if(!row){alert('[surname-test] Row not found. (rowId='+rowId+')');return;}
-  const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
-  const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
-  const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
-  const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
-  const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
-  const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
-  const isFamily=PATRI_PARENT.includes(relType)||PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType);
-  const mainTokens=mainCn?mainCn.split(/\s+/).length:0;
-  let result='[surname-test]\n';
-  result+=`mainCn = "${mainCn}" (${mainTokens} token${mainTokens===1?'':'s'})\n`;
-  result+=`relType = "${relType}"\n`;
-  result+=`charName = "${charName}"\n`;
-  result+=`relType-is-family = ${isFamily}\n`;
-  result+='\n';
-  if(!mainCn)result+='✗ MAIN char name (ae-cn) is empty. The form must be open on a character whose name has 2+ tokens.\n';
-  else if(mainTokens<2)result+='✗ MAIN char has only 1 token. Need a multi-word name like "John Smith" for surname inheritance.\n';
-  else if(!relType)result+='✗ relType is empty. Pick a relationship type from the dropdown.\n';
-  else if(!isFamily)result+=`✗ relType "${relType}" is not a family type. Use Father/Mother/Son/Daughter/Brother/Sister/etc.\n`;
-  else if(!charName)result+='✗ charName is empty. Type a name in the character field.\n';
-  else result+='✓ All preconditions met — calling suggester now…\n';
-  alert(result);
-  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(err){alert('Error in suggester: '+err.message);}
-}
 function _showThemeListPopover(anchor,namesJoinedNL){
   // Remove any existing popover first.
   const existing=document.getElementById('theme-list-popover');
@@ -5557,8 +5575,18 @@ function _showThemeListPopover(anchor,namesJoinedNL){
   const pop=document.createElement('div');
   pop.id='theme-list-popover';
   const names=namesJoinedNL.split('\n• ');
-  pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached themes</div>'
-    +names.map(n=>`<div style="font-size:13px;padding:2px 0;">🎯 ${esc(n.replace(/^• /,''))}</div>`).join('');
+  // xlsx #431 follow-up (Batch 37) — popover entries are now tappable. Tapping a
+  // theme name navigates to that theme's edit form. Look up each theme's id by name.
+  pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached themes (tap to open)</div>'
+    +names.map(n=>{
+      const cleanName=n.replace(/^• /,'');
+      const themeEntry=entries().find(t=>t.type==='Theme'&&t.content===cleanName);
+      const themeId=themeEntry?.id||0;
+      const onclick=themeId?`onclick="event.stopPropagation();document.getElementById('theme-list-popover')?.remove();editEntry(${themeId});"`:'';
+      const cursor=themeId?'cursor:pointer;':'';
+      const hover=themeId?'transition:background 0.1s;':'';
+      return`<div ${onclick} style="font-size:13px;padding:5px 4px;border-radius:4px;${cursor}${hover}" ${themeId?'onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'"':''}>🎯 ${esc(cleanName)}</div>`;
+    }).join('');
   pop.style.cssText='position:fixed;background:var(--card);border:0.5px solid var(--am);border-radius:var(--rl2);padding:9px 12px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:9999;max-width:260px;';
   document.body.appendChild(pop);
   // Position the popover BELOW the anchor; if it would overflow viewport, position above.
