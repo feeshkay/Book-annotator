@@ -708,6 +708,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <div id="ae-quote-themes-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       </div>
+      <!-- xlsx #425 (Batch 41) — Attach quote to event/timeline entry, parallel
+           to the theme attach above. Multi-pick. Persists into chosen entry's
+           attachedQuoteIds[]. -->
+      <div class="fg">
+        <label>Attached to event/timeline? <span style="font-weight:400;">(optional — tap multiple)</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="ae-quote-event" style="flex:1;"><option value="">— pick an event/timeline to add —</option></select>
+          <button type="button" class="btn btn-sm" onclick="addQuoteEvent()" style="flex-shrink:0;">+ Attach</button>
+        </div>
+        <div id="ae-quote-events-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+      </div>
       <div class="fg">
         <label>Linked to relationship? <span style="font-weight:400;">(optional)</span></label>
         <select id="ae-quote-rel" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
@@ -976,12 +987,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div id="ae-rel-existing-warn" style="display:none;font-size:12px;color:#7F4F24;background:#FEF0D4;border-radius:var(--r);padding:8px 10px;margin-bottom:8px;border:0.5px solid #E8853C;"></div>
-      <!-- xlsx #433 (Batch 40) — Patri suggester hint + debug strip for the MAIN
-           rel form fields (Char A / type / Char B). Was previously only wired to
-           the QR rows below. User wants the same surname suggestion when typing
-           a single-token name into Char B with a relationship type already picked. -->
+      <!-- xlsx #433 (Batch 40) confirmed working — Batch 41: hint container kept,
+           debug strip removed. -->
       <div id="ae-rel-patri-hint" style="display:none;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:13px;line-height:1.4;font-weight:500;"></div>
-      <div id="ae-rel-patri-debug" style="background:#fff3cd;color:#664d03;border:1px solid #ffd966;border-radius:var(--r);padding:6px 8px;margin-bottom:8px;font-size:11px;line-height:1.35;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;">[#433 DEBUG] (waiting for Char A + type + Char B…)</div>
       <div id="ae-quick-add-b" style="display:none">
         <div class="quick-add-char">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">Quick-add new character for B:</div>
@@ -2257,24 +2265,29 @@ function _cddRelChanged(){
 // ═══════════════════════════════════════════════════════════════
 function addChapSetupRow(num,start,end,title){
   const list=document.getElementById('chap-setup-list');
-  const idx=list.children.length;
-  // #222 — when user taps "+ Add chapter" with no args, auto-fill start = prev.end + 1
-  if(start==null&&idx>0){
-    const prevRow=list.children[idx-1];
-    const prevIns=prevRow.querySelectorAll('input');
-    const prevEnd=+prevIns[2].value||+prevIns[1].value||0;
-    if(prevEnd>0)start=prevEnd+1;
+  // xlsx #435 (Batch 41) — page-start autofill: use the MAX end (or start) page
+  // across ALL existing rows, not just the immediately-preceding row. Prevents
+  // pulling a stale "recent" number when the user renumbered/deleted middle rows.
+  // xlsx #411 (Batch 39 / refined Batch 41) — chapter # autofill: max(existing_ch)+1.
+  if(start==null){
+    let maxEnd=0;
+    document.querySelectorAll('#chap-setup-list .chap-row').forEach(r=>{
+      const ins=r.querySelectorAll('input');
+      const e=+ins[3].value||+ins[2].value||0;
+      if(e>maxEnd)maxEnd=e;
+    });
+    if(maxEnd>0)start=maxEnd+1;
   }
-  // xlsx #411 (Batch 39) — preserve the chapter number rather than renumbering on
-  // delete. New rows get max(existing_ch)+1 so middle-row deletion doesn't shift
-  // numbers and break the chapSetup ↔ Chapter-log delete-sync.
   let chNum=num;
   if(chNum==null){
-    let maxCh=0;
+    let maxCh=-1;
     document.querySelectorAll('#chap-setup-list .chap-row').forEach(r=>{
-      const c=+r.dataset.ch||0;if(c>maxCh)maxCh=c;
+      const ins=r.querySelectorAll('input');
+      const v=ins&&ins[0]?(+ins[0].value):NaN;
+      const c=!isNaN(v)?v:(+r.dataset.ch);
+      if(!isNaN(c)&&c>maxCh)maxCh=c;
     });
-    chNum=maxCh+1;
+    chNum=maxCh<0?1:maxCh+1;
   }
   const row=document.createElement('div');row.className='chap-row';
   row.dataset.ch=String(chNum);
@@ -2305,19 +2318,22 @@ function _onChapNumChange(inputEl){
 // for any callers that may still reference it.)
 function renumChaps(){}
 function getChapSetup(){
-  // xlsx #473 (Batch 40) — input layout changed: now [chapnum, title, start, end].
-  // dataset.ch still authoritative (synced via _onChapNumChange) but we also fall
-  // back to ins[0].value if dataset is missing. Allow start=0 to support
-  // front-matter chapter (ch=0 with pages 1-12 for preface, etc.); also keep
-  // rows with start=0 only if chapnum is explicit (not the autogenerated default).
+  // xlsx #473 (Batch 40, refined Batch 41) — input layout: [chapnum, title, start, end].
+  // Read ch from the live input value first (most authoritative since user can edit
+  // it directly); fall back to dataset.ch if input is empty/invalid; final fallback
+  // is i+1 (sequential index).
   return[...document.querySelectorAll('#chap-setup-list .chap-row')].map((r,i)=>{
     const ins=r.querySelectorAll('input');
-    const ch=+r.dataset.ch>=0?+r.dataset.ch:(+ins[0].value>=0?+ins[0].value:(i+1));
+    const inputVal=ins[0].value.trim();
+    let ch;
+    if(inputVal!==''&&!isNaN(+inputVal)){ch=+inputVal;}
+    else if(r.dataset.ch!==''&&!isNaN(+r.dataset.ch)){ch=+r.dataset.ch;}
+    else{ch=i+1;}
     const title=ins[1].value.trim();
     const start=+ins[2].value;
     const end=+ins[3].value;
     return{ch,title,start:isNaN(start)?0:start,end:isNaN(end)?0:end};
-  }).filter(r=>r.start>0||r.ch===0||r.title);// keep rows with title or pages or front-matter (ch=0)
+  }).filter(r=>r.start>0||r.ch===0||r.title);
 }
 function renderChapSetup(s){document.getElementById('chap-setup-list').innerHTML='';(s||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end,c.title));}
 function pageToChapters(pageStr){
@@ -3232,6 +3248,16 @@ function saveBook(applyWiki){
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
   library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value};
+  // xlsx #435 (Batch 41) — duplicate chapter # warning. If two or more chapSetup
+  // rows share the same chapNum, list them and let the user choose: keep going
+  // (will create ambiguous Chapter log entries) or cancel and fix the numbers.
+  const _chCount={};
+  (library[id].chapSetup||[]).forEach(c=>{if(c&&c.ch!=null&&!isNaN(+c.ch)){_chCount[+c.ch]=(_chCount[+c.ch]||0)+1;}});
+  const _dupChs=Object.entries(_chCount).filter(([,n])=>n>1).map(([ch])=>+ch);
+  if(_dupChs.length){
+    const ok=confirm(`⚠️ Duplicate chapter number${_dupChs.length>1?'s':''}: ${_dupChs.join(', ')}.\n\nSaving will produce ambiguous chapter log entries (the auto-create / delete sync won't know which row maps to which Chapter entry).\n\nOK = save anyway · Cancel = go back and renumber.`);
+    if(!ok)return;
+  }
   // xlsx #411 (Batch 39) — Capture which chapNums were INTENTIONALLY removed by
   // comparing the saved (newly-typed) chapSetup against the previous one. Without
   // this snapshot the forward-sync below would re-create chapSetup rows from
@@ -3252,9 +3278,13 @@ function saveBook(applyWiki){
   // xlsx #411 (Batch 37) — REVERSE sync: for each chapSetup row without a
   // corresponding Chapter log entry, auto-create one. So adding chapters in the
   // book edit page now produces Chapter entries in the log automatically.
+  // xlsx #435 (Batch 41) — broaden the guard: allow ch=0 (front-matter), and
+  // allow rows with empty pages (still create the Chapter log entry; user can
+  // add pages later from the log directly). Previously `if(!c||!c.ch)return`
+  // skipped ch=0 entirely; this version allows ch>=0 as long as ch is a number.
   const cs2=library[id].chapSetup||[];
   cs2.forEach(c=>{
-    if(!c||!c.ch)return;
+    if(!c||c.ch==null||isNaN(+c.ch)||+c.ch<0)return;
     const ch=+c.ch;
     const existingCh=(library[id].entries||[]).find(e=>e.type==='Chapter'&&+e.chapNum===ch);
     if(existingCh)return;
@@ -3262,7 +3292,7 @@ function saveBook(applyWiki){
     const newEntry={
       id:Date.now()+ch+Math.floor(Math.random()*100),
       type:'Chapter',
-      content:c.title||`Chapter ${ch}`,
+      content:c.title||(ch===0?'Front matter':`Chapter ${ch}`),
       chapNum:String(ch),
       pageNum,
       date:(typeof localDate==='function'?localDate():new Date().toISOString().slice(0,10)),
@@ -3935,6 +3965,8 @@ function onTypeChange(){
   if(isQ&&chars.length){cddFilter('ae-speaker');}
   if(isQ)populateQuoteThemeSelect('');
   if(isQ)populateQuoteRelSelect('');
+  // xlsx #425 (Batch 41) — also populate the event/timeline attach picker.
+  if(isQ){refreshAttachEventOptions();clearAttachedEvents();}
   if(isTheme){populateAttachQuoteSel();clearAttachedQuotes();}
   if(isWord&&chars.length){cddFilter('ae-word-speaker');}
   // Reset word translation toggle when switching types
@@ -4890,6 +4922,58 @@ function renderQuoteThemesList(){
 function getAttachedThemeNames(){return[..._attachedThemeNames];}
 function clearAttachedThemes(){_attachedThemeNames=[];renderQuoteThemesList();}
 function loadAttachedThemes(names){_attachedThemeNames=(names||[]).filter(Boolean);renderQuoteThemesList();}
+// xlsx #425 (Batch 41) — Attach-to-event/timeline picker on the Quote form.
+// Parallel to the theme attach above. State: _attachedEventIds (numeric ids).
+// Persists into entry.attachedEventIds[] on save AND into target entry's
+// attachedQuoteIds[] for two-way lookup.
+let _attachedEventIds=[];
+function addQuoteEvent(){
+  const sel=document.getElementById('ae-quote-event');if(!sel||!sel.value)return;
+  const id=Number(sel.value);if(!id)return;
+  if(!_attachedEventIds.includes(id))_attachedEventIds.push(id);
+  sel.value='';
+  renderQuoteEventsList();
+}
+function detachQuoteEvent(id){
+  id=Number(id);
+  _attachedEventIds=_attachedEventIds.filter(x=>x!==id);
+  renderQuoteEventsList();
+  const editId=Number(document.getElementById('ae-edit-id')?.value||0);
+  const type=document.getElementById('ae-type')?.value;
+  if(editId&&['Quote','Narrator quote','Line/stanza'].includes(type)){
+    const q=entries().find(x=>x.id===editId);
+    if(q){
+      if(Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(x=>x!==id);
+      const ev=entries().find(x=>x.id===id);
+      if(ev&&Array.isArray(ev.attachedQuoteIds)){
+        ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==q.id);
+      }
+      save();
+    }
+  }
+}
+function renderQuoteEventsList(){
+  const list=document.getElementById('ae-quote-events-list');if(!list)return;
+  if(!_attachedEventIds.length){list.innerHTML='';return;}
+  list.innerHTML=_attachedEventIds.map(id=>{
+    const ev=entries().find(x=>x.id===id);
+    if(!ev)return '';
+    const icon=ev.type==='Event'?'⭐':'📅';
+    const label=(ev.content||'(untitled)').slice(0,30);
+    return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">${icon} ${esc(label)}<button type="button" onclick="detachQuoteEvent(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;
+  }).filter(Boolean).join('');
+}
+function getAttachedEventIds(){return[..._attachedEventIds];}
+function clearAttachedEvents(){_attachedEventIds=[];renderQuoteEventsList();}
+function loadAttachedEvents(ids){_attachedEventIds=(ids||[]).map(Number).filter(Boolean);renderQuoteEventsList();}
+// Populate the event/timeline dropdown when the Quote form opens.
+function refreshAttachEventOptions(){
+  const sel=document.getElementById('ae-quote-event');if(!sel)return;
+  const evs=entries().filter(e=>['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft);
+  evs.sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(a.content||'').localeCompare(b.content||''));
+  sel.innerHTML='<option value="">— pick an event/timeline to add —</option>'
+    +evs.map(e=>{const icon=e.type==='Event'?'⭐':'📅';const d=e.evdate?` · ${e.evdate}`:'';return `<option value="${e.id}">${icon} ${esc((e.content||'(untitled)').slice(0,40))}${d}</option>`;}).join('');
+}
 
 function submitEntry(){
   try {
@@ -5087,6 +5171,8 @@ function submitEntry(){
     const _multi=getAttachedThemeNames();
     entry.attachedThemes=[..._multi];
     entry.attachedTheme=_multi[0]||'';
+    // xlsx #425 (Batch 41) — also persist attached event/timeline ids.
+    entry.attachedEventIds=getAttachedEventIds();
     const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
   if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.traitQuotes=getTraitQuotes();// backward-compat legacy fields cleared
 entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
@@ -5366,6 +5452,28 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       if(!themeEntry)return;
       if(!Array.isArray(themeEntry.attachedQuoteIds))themeEntry.attachedQuoteIds=[];
       if(!themeEntry.attachedQuoteIds.includes(entry.id))themeEntry.attachedQuoteIds.push(entry.id);
+    });
+    // xlsx #425 (Batch 41) — same bidirectional maintenance for Event/Timeline
+    // entries: (a) detach the quote from any event REMOVED, (b) push the quote
+    // id into any event ADDED.
+    const prevEventIds=Array.isArray(prevQ?.attachedEventIds)?prevQ.attachedEventIds.map(Number):[];
+    const newEventIds=new Set((entry.attachedEventIds||[]).map(Number));
+    // Preserve event-side links that aren't picked in this Quote save.
+    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(entry.id))
+      .forEach(ev=>newEventIds.add(Number(ev.id)));
+    entry.attachedEventIds=[...newEventIds];
+    prevEventIds.forEach(id=>{
+      if(entry.attachedEventIds.includes(id))return;
+      const ev=entries().find(x=>x.id===id);
+      if(ev?.attachedQuoteIds){
+        ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==entry.id);
+      }
+    });
+    entry.attachedEventIds.forEach(id=>{
+      const ev=entries().find(x=>x.id===Number(id));
+      if(!ev)return;
+      if(!Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=[];
+      if(!ev.attachedQuoteIds.includes(entry.id))ev.attachedQuoteIds.push(entry.id);
     });
   }
 
@@ -5708,7 +5816,6 @@ function suggestPatriForQRRow(row){
   const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
   const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
   const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
-  // Find or create the hint container for this row.
   let hint=row.querySelector('.qr-patri-hint');
   if(!hint){
     hint=document.createElement('div');
@@ -5719,81 +5826,52 @@ function suggestPatriForQRRow(row){
     else row.appendChild(hint);
   }
   hint.style.display='none';hint.innerHTML='';
-  // xlsx #433 (Batch 39) — DIAGNOSTIC YELLOW STRIP. Per user request: previous batches
-  // shipped fixes silently and the user couldn't tell what was failing. This adds a
-  // persistent yellow strip that shows the suggester's internal state on every fire,
-  // so the user can copy/paste exactly what the function sees.
+  // xlsx #433 (Batch 41) — diagnostic yellow strip removed (was Batch 39 temporary).
+  // Suggester confirmed working; this is now the production-style implementation.
+  // Also removes any pre-existing strip from older renders.
+  const oldDbg=row.querySelector('.qr-patri-debug');if(oldDbg)oldDbg.remove();
   const isRelForm=!!row.closest('#ae-rel-quick-rels-list');
-  let dbg=row.querySelector('.qr-patri-debug');
-  if(!dbg){
-    dbg=document.createElement('div');
-    dbg.className='qr-patri-debug';
-    dbg.style.cssText='background:#fff3cd;color:#664d03;border:1px solid #ffd966;border-radius:var(--r);padding:6px 8px;margin:6px 0;font-size:11px;line-height:1.35;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;';
-    const charWrap=row.querySelector('.qr-char-search')?.parentElement;
-    if(charWrap)charWrap.parentElement.insertBefore(dbg,charWrap.nextSibling);
-    else row.appendChild(dbg);
-  }
-  // ---- mainCn lookup with full provenance ----
   let mainCn='';
-  let mainCnSource='none';
   if(isRelForm){
     const relaCdd=document.getElementById('ae-rela');
-    const v1=(relaCdd?.value||'').trim();
-    let v2='';
-    try{if(typeof cddGet==='function')v2=(cddGet('ae-rela')||'').trim();}catch(_){ }
-    const sf=document.getElementById('ae-rela-search');
-    const v3=sf?(sf.value||'').trim():'';
-    if(v1){mainCn=v1;mainCnSource='ae-rela.value';}
-    else if(v2){mainCn=v2;mainCnSource='cddGet(ae-rela)';}
-    else if(v3){mainCn=v3;mainCnSource='ae-rela-search.value';}
-    dbg._sources={v1,v2,v3};
+    mainCn=(relaCdd?.value||'').trim();
+    if(!mainCn&&typeof cddGet==='function'){try{mainCn=(cddGet('ae-rela')||'').trim();}catch(_){ }}
+    if(!mainCn){
+      const sf=document.getElementById('ae-rela-search');
+      if(sf)mainCn=(sf.value||'').trim();
+    }
   } else {
     mainCn=(document.getElementById('ae-cn')?.value||'').trim();
-    mainCnSource='ae-cn.value';
   }
   const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
   const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
-  const inGroup=PATRI_PARENT.includes(relType)?'PARENT':PATRI_CHILD.includes(relType)?'CHILD':PATRI_SIBLING.includes(relType)?'SIBLING':'(not patri)';
-  // Build the diagnostic line BEFORE early returns so we always show why we bailed.
-  const setDbg=(reason)=>{
-    const src=dbg._sources||{};
-    dbg.textContent=`[#433 DEBUG] form=${isRelForm?'REL':'CHAR'} | mainCn="${mainCn}" (from ${mainCnSource}) | relType="${relType}" → ${inGroup} | charName="${charName}" | result: ${reason}`
-      +(isRelForm?`\nrel-form sources: ae-rela.value="${src.v1||''}" · cddGet="${src.v2||''}" · ae-rela-search="${src.v3||''}"`:'');
-  };
-  // ---- guards (each with a debug reason) ----
-  if(!relType){setDbg('SKIP — no relType');return;}
-  if(!charName){setDbg('SKIP — no charName');return;}
+  if(!relType||!charName)return;
   let sourceFull='';
   let sourceLabel='';
   if(PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType)){
-    if(!mainCn){setDbg(`SKIP — no mainCn (need anchor char for ${inGroup})`);return;}
-    const parts=mainCn.split(/\s+/);
-    if(parts.length<2){setDbg(`SKIP — mainCn "${mainCn}" is single-token (need 2+ tokens)`);return;}
+    if(!mainCn)return;
+    if(mainCn.split(/\s+/).length<2)return;
     sourceFull=mainCn;
     sourceLabel=PATRI_CHILD.includes(relType)?'parent':'sibling';
   } else if(PATRI_PARENT.includes(relType)){
-    if(!mainCn){setDbg('SKIP — no mainCn (need anchor child)');return;}
-    const parts=mainCn.split(/\s+/);
-    if(parts.length<2){setDbg(`SKIP — mainCn "${mainCn}" is single-token`);return;}
+    if(!mainCn)return;
+    if(mainCn.split(/\s+/).length<2)return;
     sourceFull=mainCn;
     sourceLabel='child sharing surname';
-  } else {
-    setDbg('SKIP — relType not patri-relevant');return;
-  }
+  } else return;
   const sourceLast=sourceFull.split(/\s+/).slice(-1)[0];
-  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase())){setDbg(`SKIP — charName already ends in "${sourceLast}"`);return;}
+  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase()))return;
   const existingChar=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
   if(existingChar){
     const exFull=(existingChar.cn||existingChar.content||'').trim();
     const exLast=exFull.split(/\s+/).slice(-1)[0];
-    if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase()){setDbg(`SKIP — existing char "${exFull}" already has surname "${sourceLast}"`);return;}
+    if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase())return;
   }
   let suggested;
   const charParts=charName.split(/\s+/);
-  if(charParts.length===1){suggested=charName+' '+sourceLast;}
-  else{suggested=charParts.slice(0,-1).join(' ')+' '+sourceLast;}
+  if(charParts.length===1)suggested=charName+' '+sourceLast;
+  else suggested=charParts.slice(0,-1).join(' ')+' '+sourceLast;
   const rowId=row.dataset.qrId||'';
-  setDbg(`SHOWING HINT — suggest "${suggested}"`);
   hint.innerHTML=`💡 ${esc(sourceFull)} (${sourceLabel}) has the surname <strong>${esc(sourceLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>" for ${esc(charName)}?
     <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
       <button type="button" class="btn btn-sm btn-primary" onclick="_qrPatriApply('${rowId}','${esc(suggested)}')">Use this</button>
@@ -5805,9 +5883,8 @@ function suggestPatriForQRRow(row){
 // dropdown / type picker / Char B dropdown). Different scope from
 // suggestPatriForQRRow which only handles the QR rows further down.
 function suggestPatriForRelForm(){
-  const dbg=document.getElementById('ae-rel-patri-debug');
   const hint=document.getElementById('ae-rel-patri-hint');
-  if(!dbg||!hint)return;
+  if(!hint)return;
   hint.style.display='none';hint.innerHTML='';
   const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
   const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
@@ -5822,36 +5899,23 @@ function suggestPatriForRelForm(){
   const charB=bH||bC||bS;
   const relType=(document.getElementById('ae-reltype')?.value||'').trim();
   const inGroup=PATRI_PARENT.includes(relType)?'PARENT':PATRI_CHILD.includes(relType)?'CHILD':PATRI_SIBLING.includes(relType)?'SIBLING':'(not patri)';
-  const setDbg=(reason)=>{
-    dbg.textContent=`[#433 DEBUG] form=REL-MAIN | charA="${charA}" | relType="${relType}" → ${inGroup} | charB="${charB}" | result: ${reason}\nA sources: hidden="${aH}" · cddGet="${aC}" · search="${aS}"\nB sources: hidden="${bH}" · cddGet="${bC}" · search="${bS}"`;
-  };
-  if(!charA){setDbg('SKIP — no Char A picked yet');return;}
-  if(!relType){setDbg('SKIP — no relationship type picked yet');return;}
-  if(!charB){setDbg('SKIP — no Char B yet');return;}
-  if(inGroup==='(not patri)'){setDbg('SKIP — relType not a parent/child/sibling type');return;}
+  if(!charA||!relType||!charB||inGroup==='(not patri)')return;
   const aParts=charA.split(/\s+/);
   const bParts=charB.split(/\s+/);
   let source,target,sourceFromA;
   if(aParts.length>=2&&bParts.length===1){source=charA;target=charB;sourceFromA=true;}
   else if(bParts.length>=2&&aParts.length===1){source=charB;target=charA;sourceFromA=false;}
-  else if(aParts.length>=2&&bParts.length>=2){
-    const aLast=aParts.slice(-1)[0].toLowerCase();
-    const bLast=bParts.slice(-1)[0].toLowerCase();
-    if(aLast===bLast){setDbg('SKIP — both have matching surnames already');return;}
-    setDbg('SKIP — both multi-token with different surnames; ambiguous');return;
-  }
-  else {setDbg(`SKIP — both single-token ("${charA}" and "${charB}"); need at least one multi-token to know the surname`);return;}
+  else return;
   const sourceLast=source.split(/\s+/).slice(-1)[0];
   const existingTarget=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===target);
   if(existingTarget){
     const exFull=(existingTarget.cn||existingTarget.content||'').trim();
     const exParts=exFull.split(/\s+/);
-    if(exParts.length>1&&exParts.slice(-1)[0].toLowerCase()===sourceLast.toLowerCase()){setDbg(`SKIP — existing char "${exFull}" already has surname "${sourceLast}"`);return;}
+    if(exParts.length>1&&exParts.slice(-1)[0].toLowerCase()===sourceLast.toLowerCase())return;
   }
   const suggested=target+' '+sourceLast;
   const sideLabel=sourceFromA?'A':'B';
   const targetSide=sourceFromA?'B':'A';
-  setDbg(`SHOWING HINT — suggest "${suggested}" for Char ${targetSide}`);
   hint.innerHTML=`💡 Char ${sideLabel} "${esc(source)}" has the surname <strong>${esc(sourceLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>" for Char ${targetSide}?
     <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
       <button type="button" class="btn btn-sm btn-primary" onclick="_relFormPatriApply('${esc(suggested)}','${targetSide}')">Use this</button>
@@ -6257,6 +6321,22 @@ function editEntry(id){
         save();
       }
       loadAttachedThemes(_filtered);
+      // xlsx #425 (Batch 41) — load attached event/timeline ids. Union of
+      // entry.attachedEventIds[] and reverse-scan of any Event/Timeline entries
+      // whose attachedQuoteIds[] include this quote. Filter against live entries.
+      refreshAttachEventOptions();
+      const _eIds=new Set();
+      if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)_eIds.add(Number(id));});
+      entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
+        .forEach(ev=>_eIds.add(Number(ev.id)));
+      const _liveEv=new Set(entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>Number(ev.id)));
+      const _eFiltered=[..._eIds].filter(id=>_liveEv.has(id));
+      if(Array.isArray(e.attachedEventIds)){
+        const before=e.attachedEventIds.length;
+        e.attachedEventIds=e.attachedEventIds.filter(id=>_liveEv.has(Number(id)));
+        if(e.attachedEventIds.length!==before)save();
+      }
+      loadAttachedEvents(_eFiltered);
     },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
@@ -7934,6 +8014,18 @@ function renderTimeline(){
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
         ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div class="ec quote" style="margin-top:7px;margin-bottom:0;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
+        ${(()=>{
+          // xlsx #425 (Batch 41) — render Quote entries that are attached to this timeline/event entry.
+          if(!Array.isArray(item.attachedQuoteIds)||!item.attachedQuoteIds.length)return '';
+          const aq=item.attachedQuoteIds.map(id=>entries().find(x=>x.id===Number(id))).filter(Boolean);
+          if(!aq.length)return '';
+          return aq.map(q=>{
+            const spk=q.speaker?'— '+q.speaker:'';
+            const pg=q.pageNum?'p.'+q.pageNum:'';
+            const meta=[spk,pg].filter(Boolean).join(' · ');
+            return `<div class="ec quote" style="margin-top:6px;margin-bottom:0;cursor:pointer;border-left-color:var(--accent);" onclick="editEntry(${q.id})"><div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:3px;">💬 Attached quote</div><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>${esc(q.content||'')}<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>${meta?`<div style="font-size:11px;color:var(--t2);margin-top:4px;">${esc(meta)}</div>`:''}</div>`;
+          }).join('');
+        })()}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
         <div class="eactions"><span class="tl-drag-handle" title="Long-press / drag to reorder" style="padding:4px 6px;cursor:grab;color:var(--t3);font-size:14px;user-select:none;touch-action:none;">☰</span><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
@@ -7999,13 +8091,19 @@ function openTlCompare(){
     <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Pick any two entries. Type to filter. The gap is computed as precisely as the available date data allows (year+month+day+hour+min+sec when present, year-only when only the year is known).</div>
     <div style="margin-bottom:10px;">
       <label style="font-size:11px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px;">Entry A</label>
-      <input type="text" id="tl-cmp-a-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;margin-bottom:4px;"/>
+      <div style="position:relative;margin-bottom:4px;">
+        <input type="text" id="tl-cmp-a-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px 30px 8px 8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;"/>
+        <button type="button" onclick="document.getElementById('tl-cmp-a-search').value='';document.getElementById('tl-cmp-a-search').dispatchEvent(new Event('input'));" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;" title="Clear">×</button>
+      </div>
       <input type="hidden" id="tl-cmp-a"/>
       <div id="tl-cmp-a-list" style="max-height:160px;overflow-y:auto;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--card);"></div>
     </div>
     <div style="margin-bottom:12px;">
       <label style="font-size:11px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px;">Entry B</label>
-      <input type="text" id="tl-cmp-b-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;margin-bottom:4px;"/>
+      <div style="position:relative;margin-bottom:4px;">
+        <input type="text" id="tl-cmp-b-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px 30px 8px 8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;"/>
+        <button type="button" onclick="document.getElementById('tl-cmp-b-search').value='';document.getElementById('tl-cmp-b-search').dispatchEvent(new Event('input'));" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;" title="Clear">×</button>
+      </div>
       <input type="hidden" id="tl-cmp-b"/>
       <div id="tl-cmp-b-list" style="max-height:160px;overflow-y:auto;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--card);"></div>
     </div>
