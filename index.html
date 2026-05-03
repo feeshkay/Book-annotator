@@ -779,7 +779,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- #303/#335 — structured date fields; year/era required for Timeline -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required — use a real year, "Ch.4", "Year 3", "Unknown", etc.)</span></label>
-        <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;"/>
+        <!-- xlsx #419 (Batch 42) — × clear button on year input -->
+        <div style="position:relative;">
+          <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/>
+          <button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
+        </div>
       </div>
       <div class="r2">
         <div class="fg"><label>Month <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
@@ -797,7 +801,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <!-- xlsx #419 sub (Batch 40) — Time of day (optional). Hour/minute/second + AM/PM
            feed into the Timeline Compare dialog so it can show finer-grained gaps
-           (hours, minutes, seconds in addition to days/months/years). -->
+           (hours, minutes, seconds in addition to days/months/years).
+           xlsx #419 (Batch 42) — × clear button to wipe all time-of-day fields at once. -->
       <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional — for sub-day precision in compare)</span></label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="number" id="ae-evdate-hour" inputmode="numeric" placeholder="hh" min="1" max="12" style="width:60px;font-size:14px;text-align:center;"/>
@@ -810,6 +815,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <option value="AM">AM</option>
             <option value="PM">PM</option>
           </select>
+          <button type="button" onclick="['ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});" title="Clear time of day" style="background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;">×</button>
         </div>
       </div>
       <!-- #342 follow-up — Importance hidden (duplicated Significance). Hidden control
@@ -873,6 +879,24 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="hidden" id="ae-tl-speaker"/>
           <div class="cdd-list" id="ae-tl-speaker-list"></div>
         </div>
+      </div>
+      <!-- xlsx #425 (Batch 42) — Reverse direction of the Quote→Event attach. From
+           the Event/Timeline side, attach an EXISTING quote entry. Searchable input
+           with × clear (per user request: "field should show up blank but have an
+           x to discard the content"). Multi-pick. Persists into entry.attachedQuoteIds[]
+           and mirrors into target Quote's attachedEventIds[] for two-way lookup. -->
+      <div class="fg" style="margin-top:10px;">
+        <label>Attach existing quote(s) <span style="font-weight:400;color:var(--t3);">(searchable — pick from existing Quote entries)</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;position:relative;">
+          <div style="flex:1;position:relative;">
+            <input type="text" id="ae-tl-aq-search" placeholder="🔍 Search quotes…" autocomplete="off" oninput="_tlAqFilter()" onfocus="_tlAqFilter()" style="width:100%;padding:8px 30px 8px 8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;"/>
+            <button type="button" onclick="_tlAqClear()" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
+            <input type="hidden" id="ae-tl-aq-id"/>
+            <div id="ae-tl-aq-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+          </div>
+          <button type="button" class="btn btn-sm" onclick="addTlAttachedQuote()" style="flex-shrink:0;">+ Attach</button>
+        </div>
+        <div id="ae-tl-aq-chips" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       </div>
     </div>
 
@@ -3035,6 +3059,8 @@ function _scrubThemeQuoteCrossLinks(){
   const all=book().entries||[];
   const liveThemeNames=new Set(all.filter(t=>t.type==='Theme'&&t.content).map(t=>t.content));
   const liveQuoteIds=new Set(all.filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>q.id));
+  // xlsx #425 (Batch 42) — also scrub Event/Timeline ↔ Quote pairs.
+  const liveEventIds=new Set(all.filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>ev.id));
   let changed=false;
   all.forEach(e=>{
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){
@@ -3047,8 +3073,20 @@ function _scrubThemeQuoteCrossLinks(){
         e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';
         changed=true;
       }
+      // xlsx #425 (Batch 42) — strip dead event ids from Quote.attachedEventIds[].
+      if(Array.isArray(e.attachedEventIds)){
+        const before=e.attachedEventIds.length;
+        e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));
+        if(e.attachedEventIds.length!==before)changed=true;
+      }
     }
     if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
+      const before=e.attachedQuoteIds.length;
+      e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
+      if(e.attachedQuoteIds.length!==before)changed=true;
+    }
+    // xlsx #425 (Batch 42) — strip dead quote ids from Event/Timeline.attachedQuoteIds[].
+    if(['Event','Timeline','Date/Period'].includes(e.type)&&Array.isArray(e.attachedQuoteIds)){
       const before=e.attachedQuoteIds.length;
       e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
       if(e.attachedQuoteIds.length!==before)changed=true;
@@ -3980,6 +4018,9 @@ function onTypeChange(){
     const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
     const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
     window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
+    // xlsx #425 (Batch 42) — clear attached-quote chips on form open. editEntry
+    // will repopulate them when editing an existing event.
+    if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   }
   if(isRel&&chars.length){
     // #217 — Both blank, user picks A and B explicitly
@@ -4485,6 +4526,8 @@ function clearAEForm(){
   clearAttachedQuotes();
   // xlsx #429 — also reset multi-theme state on form clear.
   if(typeof clearAttachedThemes==='function')clearAttachedThemes();
+  // xlsx #425 (Batch 42) — also reset Event/Timeline attached-quote state.
+  if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   // #250 — Discard draft button hidden until editEntry decides to show it
   const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
   // xlsx #427 — Delete button hidden until editEntry sets editId
@@ -4975,6 +5018,82 @@ function refreshAttachEventOptions(){
     +evs.map(e=>{const icon=e.type==='Event'?'⭐':'📅';const d=e.evdate?` · ${e.evdate}`:'';return `<option value="${e.id}">${icon} ${esc((e.content||'(untitled)').slice(0,40))}${d}</option>`;}).join('');
 }
 
+// xlsx #425 (Batch 42) — Reverse direction: from Event/Timeline form, attach existing
+// Quote entries. Mirror state to Quote's attachedEventIds[] for bidirectional consistency.
+let _tlAttachedQuoteIds=[];
+function _tlAqFilter(){
+  const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
+  const list=document.getElementById('ae-tl-aq-list');if(!list)return;
+  const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
+  const filtered=q?allQs.filter(qe=>(qe.content||'').toLowerCase().includes(q)||(qe.speaker||'').toLowerCase().includes(q)):allQs.slice(0,40);
+  if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);font-style:italic;">No matches.</div>';list.style.display='';return;}
+  list.innerHTML=filtered.map(qe=>{
+    const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';
+    const pg=qe.pageNum?` · p.${qe.pageNum}`:'';
+    const txt=esc((qe.content||'').slice(0,80));
+    const sel=String(qe.id)===document.getElementById('ae-tl-aq-id')?.value;
+    return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);${sel?'background:var(--al);color:var(--accent);font-weight:600;':''}">"${txt}"${spk}${pg}</div>`;
+  }).join('');
+  list.style.display='';
+}
+function _tlAqClear(){
+  const s=document.getElementById('ae-tl-aq-search');if(s)s.value='';
+  const h=document.getElementById('ae-tl-aq-id');if(h)h.value='';
+  const list=document.getElementById('ae-tl-aq-list');if(list)list.style.display='none';
+}
+function _tlAqPick(id){
+  const qe=entries().find(x=>x.id===Number(id));if(!qe)return;
+  const s=document.getElementById('ae-tl-aq-search');if(s)s.value=`"${(qe.content||'').slice(0,60)}"${qe.speaker?' — '+qe.speaker:''}`;
+  const h=document.getElementById('ae-tl-aq-id');if(h)h.value=String(id);
+  const list=document.getElementById('ae-tl-aq-list');if(list)list.style.display='none';
+}
+function addTlAttachedQuote(){
+  const id=Number(document.getElementById('ae-tl-aq-id')?.value||0);
+  if(!id){
+    // If user typed text but didn't pick from the list, try to match by content/speaker.
+    const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
+    if(!q){alert('Type to search and tap a quote from the list, then tap "+ Attach".');return;}
+    const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
+    const match=allQs.find(qe=>(qe.content||'').toLowerCase().includes(q));
+    if(!match){alert('No matching quote found. Pick one from the dropdown.');return;}
+    if(!_tlAttachedQuoteIds.includes(match.id))_tlAttachedQuoteIds.push(match.id);
+  } else {
+    if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);
+  }
+  _tlAqClear();
+  renderTlAttachedQuoteChips();
+}
+function detachTlQuote(id){
+  id=Number(id);
+  _tlAttachedQuoteIds=_tlAttachedQuoteIds.filter(x=>x!==id);
+  renderTlAttachedQuoteChips();
+  // If editing an existing event, mirror the detach into the quote's attachedEventIds[].
+  const editId=Number(document.getElementById('ae-edit-id')?.value||0);
+  const type=document.getElementById('ae-type')?.value;
+  if(editId&&['Event','Timeline','Date/Period'].includes(type)){
+    const ev=entries().find(x=>x.id===editId);
+    if(ev){
+      if(Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==id);
+      const q=entries().find(x=>x.id===id);
+      if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==ev.id);
+      save();
+    }
+  }
+}
+function renderTlAttachedQuoteChips(){
+  const wrap=document.getElementById('ae-tl-aq-chips');if(!wrap)return;
+  if(!_tlAttachedQuoteIds.length){wrap.innerHTML='';return;}
+  wrap.innerHTML=_tlAttachedQuoteIds.map(id=>{
+    const qe=entries().find(x=>x.id===id);if(!qe)return '';
+    const txt=esc((qe.content||'(untitled)').slice(0,30));
+    const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';
+    return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">💬 "${txt}"${spk}<button type="button" onclick="detachTlQuote(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;
+  }).filter(Boolean).join('');
+}
+function getTlAttachedQuoteIds(){return [..._tlAttachedQuoteIds];}
+function clearTlAttachedQuotes(){_tlAttachedQuoteIds=[];renderTlAttachedQuoteChips();_tlAqClear();}
+function loadTlAttachedQuotes(ids){_tlAttachedQuoteIds=(ids||[]).map(Number).filter(Boolean);renderTlAttachedQuoteChips();}
+
 function submitEntry(){
   try {
   if(!currentId)return;
@@ -5251,6 +5370,29 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     }
     const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
     entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
+    // xlsx #425 (Batch 42) — persist attached-quote ids on the Event/Timeline entry.
+    // Union with any reverse-scan results so attaches made from the Quote side aren't
+    // lost. Then mirror into each target Quote's attachedEventIds[] for two-way lookup.
+    const _localQIds=new Set(getTlAttachedQuoteIds());
+    entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id))
+      .forEach(q=>_localQIds.add(Number(q.id)));
+    const _prevQIds=new Set((entry.attachedQuoteIds||[]).map(Number));
+    entry.attachedQuoteIds=[..._localQIds];
+    // For quotes newly added, push entry.id into quote.attachedEventIds[].
+    const _newlyAdded=[..._localQIds].filter(id=>!_prevQIds.has(id));
+    _newlyAdded.forEach(qid=>{
+      const q=entries().find(x=>x.id===qid);
+      if(q){
+        if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];
+        if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);
+      }
+    });
+    // For quotes newly removed, strip entry.id from quote.attachedEventIds[].
+    const _newlyRemoved=[..._prevQIds].filter(id=>!_localQIds.has(id));
+    _newlyRemoved.forEach(qid=>{
+      const q=entries().find(x=>x.id===qid);
+      if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);
+    });
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -5757,9 +5899,23 @@ function deleteEntry(id){
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
   book().entries=book().entries.filter(x=>x.id!==id);
+  // xlsx #435 (Batch 42) — Bidirectional Chapter delete. When a Chapter log entry
+  // is deleted, also remove the matching chapSetup row from the book record so the
+  // Edit Book → Chapter setup tab reflects the deletion. Match on chapNum.
+  if(e.type==='Chapter'&&e.chapNum!=null){
+    const chN=+e.chapNum;
+    const cs=book()?.chapSetup;
+    if(Array.isArray(cs)&&!isNaN(chN)){
+      const before=cs.length;
+      book().chapSetup=cs.filter(c=>!c||+c.ch!==chN);
+      // (No alert needed — silent mirror; the user just deleted from the log.)
+    }
+  }
   // xlsx #431 follow-up (Batch 36) — scrub theme↔quote cross-links if a Theme or
   // Quote was just deleted, so the remaining entries don't carry stale references.
-  if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)){
+  // xlsx #425 (Batch 42) — also scrub event↔quote cross-links when an Event/Timeline
+  // OR a Quote is deleted.
+  if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)||['Event','Timeline','Date/Period'].includes(e.type)){
     if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();
   }
   save();renderAll();
@@ -5982,6 +6138,47 @@ function _showThemeListPopover(anchor,namesJoinedNL){
   pop.style.top=top+'px';
   pop.style.left=left+'px';
   // Close on next tap anywhere.
+  setTimeout(()=>{
+    const closeFn=function(e){
+      if(pop.contains(e.target))return;
+      pop.remove();
+      document.removeEventListener('click',closeFn,true);
+      document.removeEventListener('touchend',closeFn,true);
+    };
+    document.addEventListener('click',closeFn,true);
+    document.addEventListener('touchend',closeFn,true);
+  },50);
+}
+// xlsx #425 (Batch 42) — Event-list popover. Mirrors _showThemeListPopover for the
+// new event-attach pill on Quote cards. Lists each attached event/timeline; tap a
+// row → jumps to that event's edit form.
+function _showEventListPopover(anchor,evIds){
+  document.getElementById('event-list-popover')?.remove();
+  const pop=document.createElement('div');
+  pop.id='event-list-popover';
+  const _live=new Set(entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>ev.id));
+  const evs=(evIds||[]).map(id=>entries().find(ev=>ev.id===id)).filter(ev=>ev&&_live.has(ev.id));
+  const _condense=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+  if(!evs.length){
+    pop.innerHTML='<div style="font-size:12px;color:var(--t3);">No live events attached.</div>';
+  } else {
+    pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached events (tap to open)</div>'
+      +evs.map(ev=>{
+        const ic=ev.type==='Event'?'⭐':'📅';
+        const display=_condense(ev.content||'(untitled)',26);
+        const dateStr=ev.evdate?` <span style="color:var(--t3);font-size:10px;">${esc(ev.evdate)}</span>`:'';
+        return `<div onclick="event.stopPropagation();document.getElementById('event-list-popover')?.remove();editEntry(${ev.id});" title="${esc(ev.content||'')}" style="font-size:13px;padding:5px 4px;border-radius:4px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${ic} ${esc(display)}${dateStr}</div>`;
+      }).join('');
+  }
+  pop.style.cssText='position:fixed;background:var(--card);border:0.5px solid var(--am);border-radius:var(--rl2);padding:9px 12px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:9999;max-width:280px;';
+  document.body.appendChild(pop);
+  const rect=anchor.getBoundingClientRect();
+  const popH=pop.offsetHeight;const popW=pop.offsetWidth;
+  let top=rect.bottom+6;
+  if(top+popH>window.innerHeight-10)top=Math.max(10,rect.top-popH-6);
+  let left=rect.left;
+  if(left+popW>window.innerWidth-10)left=Math.max(10,window.innerWidth-popW-10);
+  pop.style.top=top+'px';pop.style.left=left+'px';
   setTimeout(()=>{
     const closeFn=function(e){
       if(pop.contains(e.target))return;
@@ -6377,6 +6574,21 @@ function editEntry(id){
       const sq=document.getElementById('ae-tl-sq');if(sq)sq.value=e.tlSq||'';
       const sqpg=document.getElementById('ae-tl-sq-pg');if(sqpg)sqpg.value=e.tlSqPg||'';
       if(e.tlSpeaker)cddSet('ae-tl-speaker',e.tlSpeaker);
+      // xlsx #425 (Batch 42) — restore attached-quote chips. Union of stored
+      // attachedQuoteIds[] and reverse-scan of any Quote whose attachedEventIds[]
+      // includes this event.id. Filter against live quote ids.
+      const _qIds=new Set();
+      if(Array.isArray(e.attachedQuoteIds))e.attachedQuoteIds.forEach(id=>{if(id)_qIds.add(Number(id));});
+      entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(e.id))
+        .forEach(q=>_qIds.add(Number(q.id)));
+      const _liveQ=new Set(entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>Number(q.id)));
+      const _qFiltered=[..._qIds].filter(id=>_liveQ.has(id));
+      if(Array.isArray(e.attachedQuoteIds)){
+        const before=e.attachedQuoteIds.length;
+        e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveQ.has(Number(id)));
+        if(e.attachedQuoteIds.length!==before)save();
+      }
+      loadTlAttachedQuotes(_qFiltered);
     }
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
     if(e.importance)document.getElementById('ae-imp').value=e.importance;
@@ -6716,8 +6928,38 @@ function ecHTML(e,compact,fromTab){
       themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showThemeListPopover(this,'${themeListJS}');" title="${themeList}">${label}</span>`;
     }
   }
+  // xlsx #425 (Batch 42) — event-attach pill on Quote log card. Mirrors the theme
+  // pill above. Shows '⭐ Event' when one event/timeline is attached, '📅 +N' for
+  // multiple. Tap → jumps to that event's edit form (or shows a list popover when
+  // multiple are attached). Reads from e.attachedEventIds[] AND reverse-scans any
+  // Event/Timeline whose attachedQuoteIds[] includes this quote.
+  let eventPill='';
+  if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
+    const evIds=new Set();
+    if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)evIds.add(Number(id));});
+    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
+      .forEach(ev=>evIds.add(Number(ev.id)));
+    const evObjs=[...evIds].map(id=>entries().find(x=>x.id===id)).filter(Boolean);
+    if(evObjs.length){
+      const first=evObjs[0];
+      const fIcon=first.type==='Event'?'⭐':'📅';
+      const fLabel=(first.content||'(untitled)').slice(0,16);
+      const truncFirst=(first.content||'').length>16?fLabel+'…':fLabel;
+      const label=evObjs.length===1?`${fIcon} ${truncFirst}`:`${fIcon} ${truncFirst} +${evObjs.length-1}`;
+      // Title attr for tooltip on devices that show it
+      const fullList=evObjs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';return `${ic} ${(ev.content||'(untitled)')}${ev.evdate?' ('+ev.evdate+')':''}`;}).join(', ');
+      // Single attached event → tap goes straight to that event's edit form.
+      // Multiple → tap shows a small popover listing each event (clickable).
+      if(evObjs.length===1){
+        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${first.id});" title="${esc(fullList)}">${label}</span>`;
+      } else {
+        const evIdsJS=evObjs.map(ev=>ev.id).join(',');
+        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${evIdsJS}]);" title="${esc(fullList)}">${label}</span>`;
+      }
+    }
+  }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}</div>${body}${qtrans}${photosStrip}${invB}
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
@@ -8124,11 +8366,8 @@ function openTlCompare(){
   };
   document.getElementById('tl-cmp-a-search').addEventListener('input',()=>renderList('a'));
   document.getElementById('tl-cmp-b-search').addEventListener('input',()=>renderList('b'));
-  // Default-pick first two distinct entries.
-  if(sorted.length>=2){
-    document.getElementById('tl-cmp-a').value=sorted[0].id;
-    document.getElementById('tl-cmp-b').value=sorted[1].id;
-  }
+  // xlsx #419 sub (Batch 42) — Per user request, do NOT auto-pick the first two
+  // entries. Both pickers start blank so the user explicitly chooses what to compare.
   // Convert to seconds-since-epoch-ish (very rough — good enough for diffs).
   const _toSeconds=e=>{
     const ye=_yr(e);if(!ye)return null;
@@ -8192,11 +8431,8 @@ function openTlCompare(){
     out.innerHTML=`<div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--t2);">${esc(labelOf(a))} → ${esc(labelOf(b))}</div>`
       +`<div style="font-size:14px;">B is <strong>${label}</strong>${dir?' '+dir:''} A.</div>`;
   };
-  // Pre-fill the search inputs with selected entries' labels.
-  if(sorted.length>=2){
-    document.getElementById('tl-cmp-a-search').value=labelOf(sorted[0]);
-    document.getElementById('tl-cmp-b-search').value=labelOf(sorted[1]);
-  }
+  // xlsx #419 sub (Batch 42) — Pickers start empty (no pre-selection). Result panel
+  // shows a hint to pick two entries.
   renderList('a');renderList('b');
   recompute();
 }
