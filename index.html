@@ -3418,7 +3418,14 @@ function quickRelNewChar(btn){
   // xlsx #393 follow-up (Batch 33) — fire the per-QR-row suggester. When the user
   // is on the FATHER's entry and types a new char "B" in a "Son" QR row, this surfaces
   // the surname hint for that QR-row target (B → "B Smith").
-  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
+  // xlsx #393 follow-up (Batch 34) — fire IMMEDIATELY and again after a delay, so
+  // the hint surfaces both before AND after the gender prompt resolves (whichever
+  // path the user takes).
+  if(typeof suggestPatriForQRRow==='function'){
+    try{suggestPatriForQRRow(row);}catch(_){ }
+    setTimeout(()=>{try{suggestPatriForQRRow(row);}catch(_){ }},250);
+    setTimeout(()=>{try{suggestPatriForQRRow(row);}catch(_){ }},800);
+  }
 }
 function buildRelTypeOpts(sel){
   const groups=[
@@ -4495,11 +4502,16 @@ function loadAttachedQuotes(ids){_attachedQuoteIds=(ids||[]).filter(Boolean);ren
 // xlsx #427 — Detach a quote from a theme without deleting either entry. Pulls the
 // quote.id out of theme.attachedQuoteIds[] AND strips the theme name from the quote's
 // attachedThemes[] / attachedTheme. Confirms first; re-renders on success.
+// xlsx #430 (Batch 34) follow-up — also prune the now-orphaned speaker chip from
+// theme.involved if that speaker is no longer the speaker of any other still-attached
+// quote (themeQuotes free-text or attachedQuoteIds quote entries).
 function detachQuoteFromTheme(quoteId,themeId){
   const t=book().entries.find(x=>x.id===themeId&&x.type==='Theme');
   const q=book().entries.find(x=>x.id===quoteId);
   if(!t||!q)return;
   if(!confirm(`Remove this quote from theme "${t.content||''}"?\n\nThe quote itself stays in your log — only the theme attachment is removed.`))return;
+  // Capture the detached quote's speaker BEFORE we mutate anything.
+  const detachedSpeaker=(q.speaker||'').trim();
   // Strip from theme's side
   if(Array.isArray(t.attachedQuoteIds)){
     t.attachedQuoteIds=t.attachedQuoteIds.filter(id=>id!==quoteId);
@@ -4510,6 +4522,22 @@ function detachQuoteFromTheme(quoteId,themeId){
   }
   if(q.attachedTheme===t.content){
     q.attachedTheme=Array.isArray(q.attachedThemes)&&q.attachedThemes.length?q.attachedThemes[0]:'';
+  }
+  // xlsx #430 (Batch 34) — prune the speaker chip from theme.involved if that
+  // speaker is no longer represented by any other still-attached quote. Build the
+  // current set of "live" speakers from (a) themeQuotes free-text rows and
+  // (b) remaining attachedQuoteIds quote entries. If detachedSpeaker isn't in that
+  // set AND is currently in theme.involved, drop it.
+  if(detachedSpeaker&&detachedSpeaker!=='Narrator / Author'&&Array.isArray(t.involved)){
+    const liveSpeakers=new Set();
+    (t.themeQuotes||[]).forEach(tq=>{if(tq.speaker&&tq.speaker.trim())liveSpeakers.add(tq.speaker.trim());});
+    (t.attachedQuoteIds||[]).forEach(qid=>{
+      const qe=book().entries.find(x=>x.id===qid);
+      if(qe?.speaker&&qe.speaker!=='Narrator / Author')liveSpeakers.add(qe.speaker);
+    });
+    if(!liveSpeakers.has(detachedSpeaker)){
+      t.involved=t.involved.filter(c=>c!==detachedSpeaker);
+    }
   }
   save();renderAll();
 }
@@ -5352,7 +5380,9 @@ function suggestPatriForQRRow(row){
   if(!hint){
     hint=document.createElement('div');
     hint.className='qr-patri-hint';
-    hint.style.cssText='display:none;background:var(--al);color:var(--accent);border-radius:var(--r);padding:6px 8px;margin:4px 0;font-size:12px;';
+    // xlsx #393 follow-up (Batch 34) — make the hint MORE visible than Batch 33's
+    // mild background. Match the prominence of the main-form ae-patri-hint.
+    hint.style.cssText='display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:12px;line-height:1.4;';
     // Place after the char field's wrapping div (the second child of the row's main wrapper).
     const charWrap=row.querySelector('.qr-char-search')?.parentElement;
     if(charWrap)charWrap.parentElement.insertBefore(hint,charWrap.nextSibling);
@@ -5361,36 +5391,46 @@ function suggestPatriForQRRow(row){
   hint.style.display='none';hint.innerHTML='';
   const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
   const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
+  // xlsx #393 follow-up (Batch 34) — instrument with console.log for debug. User
+  // reported "nothing popped up" — these logs help identify which guard is firing.
+  if(window._qrPatriDebug){console.log('[qrPatri]',{relType,charName,row});}
   if(!relType||!charName)return;
-  // Determine the SOURCE of the surname:
-  // - If relType is a CHILD type ("Son", "Daughter", etc.) → the form's main char IS the parent
-  //   (the user is on the father's entry, adding "Son: B"). Surname source = main form char.
-  // - If relType is a SIBLING type → the form's main char shares the surname (siblings share surnames).
-  //   Surname source = main form char.
-  // - If relType is a PARENT type ("Father", "Mother", etc.) → the QR-row char IS the parent of
-  //   the form's main char (less common path, but supported). Surname source = QR-row char itself.
-  //   In that case, the suggestion should fire on the FORM'S main char (already handled by
-  //   suggestPatriLastName) — not on the QR-row char. So skip here.
   let sourceFull='';
   let sourceLabel='';
   if(PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType)){
     const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
+    if(window._qrPatriDebug)console.log('[qrPatri] mainCn=',mainCn);
     if(!mainCn)return;
     const parts=mainCn.split(/\s+/);
-    if(parts.length<2)return; // main char has no surname to inherit
+    if(parts.length<2){
+      if(window._qrPatriDebug)console.log('[qrPatri] main char has no surname — skipping');
+      return;
+    }
     sourceFull=mainCn;
     sourceLabel=PATRI_CHILD.includes(relType)?'parent':'sibling';
   } else {
-    return; // PARENT_TYPES handled by main-form suggester
+    if(window._qrPatriDebug)console.log('[qrPatri] relType not CHILD/SIBLING — skip:',relType);
+    return;
   }
   const sourceLast=sourceFull.split(/\s+/).slice(-1)[0];
   // Don't suggest if the QR char already ends with that surname.
-  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase()))return;
-  // Don't suggest if the QR char is an EXISTING entry that already has a surname (don't override saved data).
+  if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase())){
+    if(window._qrPatriDebug)console.log('[qrPatri] already has the surname — skip');
+    return;
+  }
+  // xlsx #393 follow-up (Batch 34) — RELAXED existingChar check. Previously: if
+  // existing char has 2+ tokens, suppress (assume saved data is intentional). User
+  // wants the suggestion to surface anyway when the existing surname differs from
+  // the inherited family surname — so they can choose to update. Now: suppress only
+  // if existing char's last token ALREADY equals sourceLast.
   const existingChar=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
   if(existingChar){
-    const exParts=(existingChar.cn||existingChar.content||'').trim().split(/\s+/);
-    if(exParts.length>1)return;
+    const exFull=(existingChar.cn||existingChar.content||'').trim();
+    const exLast=exFull.split(/\s+/).slice(-1)[0];
+    if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase()){
+      if(window._qrPatriDebug)console.log('[qrPatri] existing char already has the family surname — skip');
+      return;
+    }
   }
   let suggested;
   const charParts=charName.split(/\s+/);
@@ -5398,11 +5438,12 @@ function suggestPatriForQRRow(row){
   else{suggested=charParts.slice(0,-1).join(' ')+' '+sourceLast;}
   const rowId=row.dataset.qrId||'';
   hint.innerHTML=`💡 ${esc(sourceFull)} (${sourceLabel}) has the surname <strong>${esc(sourceLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>" for ${esc(charName)}?
-    <div style="margin-top:4px;display:flex;gap:5px;">
+    <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
       <button type="button" class="btn btn-sm btn-primary" onclick="_qrPatriApply('${rowId}','${esc(suggested)}')">Use this</button>
       <button type="button" class="btn btn-sm" onclick="this.closest('.qr-patri-hint').style.display='none';">Keep different</button>
     </div>`;
   hint.style.display='';
+  if(window._qrPatriDebug)console.log('[qrPatri] hint shown:',suggested);
 }
 function _qrPatriApply(rowId,name){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -6051,6 +6092,10 @@ function ecHTML(e,compact,fromTab){
   // Reads from e.attachedThemes[] (new multi-theme array, Batch 31) OR falls back to
   // legacy single-theme e.attachedTheme. Also reverse-scans Theme entries' attachedQuoteIds[]
   // to surface attachments made FROM the Theme side that haven't yet been mirrored on the quote.
+  // xlsx #431 (Batch 34) — filter against existing Theme entries by name. Stale theme
+  // names (theme entry was deleted) are dropped from the pill display.
+  // xlsx #432 (Batch 34) — condensed display: show first theme name truncated to ~16
+  // chars, with "+N" suffix when multiple themes are attached.
   let themePill='';
   if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
     const themeNames=new Set();
@@ -6059,9 +6104,15 @@ function ecHTML(e,compact,fromTab){
     // Reverse scan: themes that include this quote in their attachedQuoteIds[]
     entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(e.id))
       .forEach(t=>{if(t.content)themeNames.add(t.content);});
-    if(themeNames.size){
-      const label=themeNames.size===1?'🎯 Theme':`🎯 Themes (${themeNames.size})`;
-      const themeList=[...themeNames].map(t=>esc(t)).join(', ');
+    // xlsx #431 — drop names that don't correspond to any current Theme entry.
+    const liveThemeNames=new Set(entries().filter(t=>t.type==='Theme'&&t.content).map(t=>t.content));
+    const filtered=[...themeNames].filter(n=>liveThemeNames.has(n));
+    if(filtered.length){
+      // xlsx #432 — condensed visible label. Truncate first name to 16 chars.
+      const first=filtered[0];
+      const truncFirst=first.length>16?first.slice(0,15)+'…':first;
+      const label=filtered.length===1?`🎯 ${truncFirst}`:`🎯 ${truncFirst} +${filtered.length-1}`;
+      const themeList=filtered.map(t=>esc(t)).join(', ');
       themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${e.id});" title="${themeList}">${label}</span>`;
     }
   }
