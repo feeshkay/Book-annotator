@@ -2908,9 +2908,42 @@ function convertRefToBook(bookId,refId){
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
+  // xlsx #431 follow-up (Batch 36) — global maintenance pass on book open. Scrubs
+  // both sides of the theme↔quote cross-link: drops dead theme names from quote
+  // entries' attachedThemes/attachedTheme, and drops dead quote ids from theme
+  // entries' attachedQuoteIds[]. Done once per book-open; persistent.
+  _scrubThemeQuoteCrossLinks();
   document.getElementById('bs-title').textContent=book().title;
   backfillTimelineSortNums();
   show('book-screen','lib-screen');buildTabs();buildTypeSelect();populateEventTypePicks();renderAll();
+}
+// xlsx #431 follow-up (Batch 36) — Scrub the theme↔quote bidirectional cross-link
+// of any references to deleted entries on either side. Saves once at the end.
+function _scrubThemeQuoteCrossLinks(){
+  if(!book())return;
+  const all=book().entries||[];
+  const liveThemeNames=new Set(all.filter(t=>t.type==='Theme'&&t.content).map(t=>t.content));
+  const liveQuoteIds=new Set(all.filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>q.id));
+  let changed=false;
+  all.forEach(e=>{
+    if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){
+      if(Array.isArray(e.attachedThemes)){
+        const before=e.attachedThemes.length;
+        e.attachedThemes=e.attachedThemes.filter(n=>liveThemeNames.has(n));
+        if(e.attachedThemes.length!==before)changed=true;
+      }
+      if(e.attachedTheme&&!liveThemeNames.has(e.attachedTheme)){
+        e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';
+        changed=true;
+      }
+    }
+    if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
+      const before=e.attachedQuoteIds.length;
+      e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
+      if(e.attachedQuoteIds.length!==before)changed=true;
+    }
+  });
+  if(changed)save();
 }
 function goLib(){currentId=null;currentCharName=null;currentLocName=null;show('lib-screen','book-screen');renderLibrary();}
 function openBookSettings(){openSheet('settings-overlay');}
@@ -3162,7 +3195,12 @@ function addQuickRelRow(relType,charName){
   const row=document.createElement('div');row.style.cssText='background:var(--bg2);border-radius:var(--r);padding:7px 8px;margin-bottom:7px;border:0.5px solid var(--cb);';
   row.dataset.qrId=rowId;
   // #239/272/282 — rel-type on its own line; char field full-width on its own line (× clear always visible); +New on its own line below so nothing crowds the char row.
-  row.innerHTML=`<div style="margin-bottom:6px;position:relative;">
+  // xlsx #393 follow-up (Batch 36) — bake the debug strip directly into the row's
+  // markup at the TOP, with high contrast so the user can't miss it on mobile. ALSO
+  // bake an explicit "Test surname suggester" button so the user can force-fire and
+  // see an alert() with the result regardless of any DOM-injection issues.
+  row.innerHTML=`<div class="qr-patri-debug" style="font-size:10px;font-family:monospace;background:#fff7d6;color:#7a4c00;border:1px solid #d4a700;border-radius:4px;padding:4px 6px;margin-bottom:6px;line-height:1.3;word-break:break-word;">[surname-debug] (waiting…)</div>
+    <div style="margin-bottom:6px;position:relative;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
         <input type="text" class="qr-type-search" placeholder="Search relationship type…" autocomplete="off" value="${relType||''}" style="flex:1;font-size:14px;" oninput="qrTypeFilter('${rowId}')" onclick="qrTypeOpen('${rowId}')"/>
         <input type="hidden" class="qr-type" value="${relType||''}"/>
@@ -3176,7 +3214,8 @@ function addQuickRelRow(relType,charName){
       <button type="button" onclick="qrCharClear('${rowId}')" class="qr-char-clear" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
       <div class="qr-char-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:50;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
     </div>
-    <div style="text-align:right;">
+    <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+      <button type="button" onclick="_qrPatriManualTest('${rowId}')" class="btn btn-sm" style="padding:4px 10px;font-size:12px;background:#fff7d6;border:1px solid #d4a700;color:#7a4c00;">🧪 Test surname suggester</button>
       <button type="button" onclick="quickRelNewChar(this)" class="btn btn-sm" style="padding:4px 10px;font-size:12px;">+ New character</button>
     </div>`;
   list.appendChild(row);
@@ -5319,6 +5358,9 @@ function deleteEntry(id){
     // Mark ⚠️ on taggedOnly entries (stored in book().deletedChars)
     if(!book().deletedChars)book().deletedChars={};
     book().deletedChars[name]=ts;
+    // xlsx #431 follow-up (Batch 36) — char-delete may cascade-delete quotes
+    // (quotesOwned). Scrub theme↔quote cross-links so themes don't carry dead ids.
+    if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();
     save();renderAll();
     if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
       if((e.cn||e.content)===currentCharName)show('book-screen','char-screen');
@@ -5331,6 +5373,11 @@ function deleteEntry(id){
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
   book().entries=book().entries.filter(x=>x.id!==id);
+  // xlsx #431 follow-up (Batch 36) — scrub theme↔quote cross-links if a Theme or
+  // Quote was just deleted, so the remaining entries don't carry stale references.
+  if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)){
+    if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();
+  }
   save();renderAll();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
     if(CT.includes(e.type)&&(e.cn||e.content)===currentCharName){show('book-screen','char-screen');}
@@ -5474,6 +5521,35 @@ function suggestPatriForQRRow(row){
 // Safari mobile doesn't surface title-tooltips on tap. This shows a small popover
 // next to the tapped pill listing the full theme names. Tapping anywhere outside
 // the popover closes it.
+// xlsx #393 follow-up (Batch 36) — Manual test button on every QR row. User taps
+// "🧪 Test surname suggester" → fires the suggester immediately AND surfaces an
+// alert() with the full state read. Guaranteed visibility on mobile Safari.
+function _qrPatriManualTest(rowId){
+  const row=document.querySelector(`[data-qr-id="${rowId}"]`);
+  if(!row){alert('[surname-test] Row not found. (rowId='+rowId+')');return;}
+  const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
+  const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
+  const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
+  const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
+  const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
+  const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
+  const isFamily=PATRI_PARENT.includes(relType)||PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType);
+  const mainTokens=mainCn?mainCn.split(/\s+/).length:0;
+  let result='[surname-test]\n';
+  result+=`mainCn = "${mainCn}" (${mainTokens} token${mainTokens===1?'':'s'})\n`;
+  result+=`relType = "${relType}"\n`;
+  result+=`charName = "${charName}"\n`;
+  result+=`relType-is-family = ${isFamily}\n`;
+  result+='\n';
+  if(!mainCn)result+='✗ MAIN char name (ae-cn) is empty. The form must be open on a character whose name has 2+ tokens.\n';
+  else if(mainTokens<2)result+='✗ MAIN char has only 1 token. Need a multi-word name like "John Smith" for surname inheritance.\n';
+  else if(!relType)result+='✗ relType is empty. Pick a relationship type from the dropdown.\n';
+  else if(!isFamily)result+=`✗ relType "${relType}" is not a family type. Use Father/Mother/Son/Daughter/Brother/Sister/etc.\n`;
+  else if(!charName)result+='✗ charName is empty. Type a name in the character field.\n';
+  else result+='✓ All preconditions met — calling suggester now…\n';
+  alert(result);
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(err){alert('Error in suggester: '+err.message);}
+}
 function _showThemeListPopover(anchor,namesJoinedNL){
   // Remove any existing popover first.
   const existing=document.getElementById('theme-list-popover');
@@ -5910,6 +5986,16 @@ function editEntry(id){
     if(e.transFrom)document.getElementById('ae-trans-from').value=e.transFrom;if(e.transTo)document.getElementById('ae-trans-to').value=e.transTo;if(e.transOriginal)document.getElementById('ae-trans-original').value=e.transOriginal;if(e.transRendered)document.getElementById('ae-trans-rendered').value=e.transRendered;if(e.transTranslator)document.getElementById('ae-trans-translator').value=e.transTranslator;if(e.transWhy)document.getElementById('ae-trans-why').value=e.transWhy;
     if(e.themeQuotes?.length)setTimeout(()=>renderThemeQuotes(e.themeQuotes,document.getElementById('ae-theme-quotes-list')),50);
     if(e.type==='Theme'){
+      // xlsx #431 follow-up (Batch 36) — filter attachedQuoteIds against live quote
+      // entries by id. If a quote was deleted, drop its id from the theme's
+      // attachedQuoteIds[] persistently so the theme's attached-quotes list is
+      // clean on this and future loads.
+      if(Array.isArray(e.attachedQuoteIds)){
+        const _liveIds=new Set(entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>q.id));
+        const before=e.attachedQuoteIds.length;
+        e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveIds.has(id));
+        if(e.attachedQuoteIds.length!==before)save();
+      }
       setTimeout(()=>{populateAttachQuoteSel();loadAttachedQuotes(e.attachedQuoteIds||[]);},60);
       // #399 follow-up — stash prior quote-speakers so save can subtract them
       // before re-merging current speakers (drops A when speaker A→B).
