@@ -350,7 +350,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="map-panel" class="panel" style="padding:10px 11px 85px;">
-      <div style="position:relative;margin-bottom:8px;"><input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('map-search').value='';renderMap();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
+      <!-- xlsx #392 (Batch 43) — View toggle: list (default) vs in-app OSM map. -->
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <div style="position:relative;flex:1;"><input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('map-search').value='';renderMap();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
+        <button id="osm-toggle-btn" class="btn btn-sm" onclick="toggleOsmView()" style="flex-shrink:0;font-size:12px;padding:6px 10px;" title="Switch between map view and list view">🗺️ Map</button>
+      </div>
+      <!-- OSM map container (hidden until toggled) -->
+      <div id="osm-map-wrap" style="display:none;border-radius:var(--r);overflow:hidden;margin-bottom:10px;border:0.5px solid var(--cb);">
+        <div id="osm-map" style="height:320px;width:100%;"></div>
+        <div id="osm-map-status" style="font-size:11px;color:var(--t3);padding:5px 8px;background:var(--bg2);"></div>
+      </div>
       <div id="map-list"></div>
       <div id="map-empty" class="empty" style="display:none"><div class="empty-icon">📍</div><div class="empty-text">No locations yet</div></div>
     </div>
@@ -779,7 +788,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- #303/#335 — structured date fields; year/era required for Timeline -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required — use a real year, "Ch.4", "Year 3", "Unknown", etc.)</span></label>
-        <!-- xlsx #419 (Batch 42) — × clear button on year input -->
         <div style="position:relative;">
           <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/>
           <button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
@@ -799,10 +807,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-evdate-day" inputmode="numeric" placeholder="e.g. 14" min="1" max="31"/>
         </div>
       </div>
-      <!-- xlsx #419 sub (Batch 40) — Time of day (optional). Hour/minute/second + AM/PM
-           feed into the Timeline Compare dialog so it can show finer-grained gaps
-           (hours, minutes, seconds in addition to days/months/years).
-           xlsx #419 (Batch 42) — × clear button to wipe all time-of-day fields at once. -->
+      <!-- xlsx #419 sub (Batch 40) — Time of day. xlsx #419 (Batch 42) — × clears all time fields. -->
       <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional — for sub-day precision in compare)</span></label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="number" id="ae-evdate-hour" inputmode="numeric" placeholder="hh" min="1" max="12" style="width:60px;font-size:14px;text-align:center;"/>
@@ -815,7 +820,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <option value="AM">AM</option>
             <option value="PM">PM</option>
           </select>
-          <button type="button" onclick="['ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});" title="Clear time of day" style="background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;">×</button>
+          <button type="button" onclick="['ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});" title="Clear time" style="background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;">×</button>
         </div>
       </div>
       <!-- #342 follow-up — Importance hidden (duplicated Significance). Hidden control
@@ -880,14 +885,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="cdd-list" id="ae-tl-speaker-list"></div>
         </div>
       </div>
-      <!-- xlsx #425 (Batch 42) — Reverse direction of the Quote→Event attach. From
-           the Event/Timeline side, attach an EXISTING quote entry. Searchable input
-           with × clear (per user request: "field should show up blank but have an
-           x to discard the content"). Multi-pick. Persists into entry.attachedQuoteIds[]
-           and mirrors into target Quote's attachedEventIds[] for two-way lookup. -->
+      <!-- xlsx #425 (Batch 42) — Reverse: attach existing Quote entries from the Event/Timeline form. -->
       <div class="fg" style="margin-top:10px;">
         <label>Attach existing quote(s) <span style="font-weight:400;color:var(--t3);">(searchable — pick from existing Quote entries)</span></label>
-        <div style="display:flex;gap:6px;margin-bottom:6px;position:relative;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
           <div style="flex:1;position:relative;">
             <input type="text" id="ae-tl-aq-search" placeholder="🔍 Search quotes…" autocomplete="off" oninput="_tlAqFilter()" onfocus="_tlAqFilter()" style="width:100%;padding:8px 30px 8px 8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;"/>
             <button type="button" onclick="_tlAqClear()" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
@@ -3043,6 +3044,10 @@ function convertRefToBook(bookId,refId){
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
+  // xlsx #392 (Batch 43) — reset OSM map state when switching books.
+  if(_osmMap){_osmMap.remove();_osmMap=null;}_osmActive=false;
+  const osmWrap=document.getElementById('osm-map-wrap');if(osmWrap)osmWrap.style.display='none';
+  const osmBtn=document.getElementById('osm-toggle-btn');if(osmBtn)osmBtn.textContent='🗺️ Map';
   // xlsx #431 follow-up (Batch 36) — global maintenance pass on book open. Scrubs
   // both sides of the theme↔quote cross-link: drops dead theme names from quote
   // entries' attachedThemes/attachedTheme, and drops dead quote ids from theme
@@ -3059,7 +3064,6 @@ function _scrubThemeQuoteCrossLinks(){
   const all=book().entries||[];
   const liveThemeNames=new Set(all.filter(t=>t.type==='Theme'&&t.content).map(t=>t.content));
   const liveQuoteIds=new Set(all.filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>q.id));
-  // xlsx #425 (Batch 42) — also scrub Event/Timeline ↔ Quote pairs.
   const liveEventIds=new Set(all.filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>ev.id));
   let changed=false;
   all.forEach(e=>{
@@ -3074,11 +3078,7 @@ function _scrubThemeQuoteCrossLinks(){
         changed=true;
       }
       // xlsx #425 (Batch 42) — strip dead event ids from Quote.attachedEventIds[].
-      if(Array.isArray(e.attachedEventIds)){
-        const before=e.attachedEventIds.length;
-        e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));
-        if(e.attachedEventIds.length!==before)changed=true;
-      }
+      if(Array.isArray(e.attachedEventIds)){const b=e.attachedEventIds.length;e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));if(e.attachedEventIds.length!==b)changed=true;}
     }
     if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
       const before=e.attachedQuoteIds.length;
@@ -3086,11 +3086,7 @@ function _scrubThemeQuoteCrossLinks(){
       if(e.attachedQuoteIds.length!==before)changed=true;
     }
     // xlsx #425 (Batch 42) — strip dead quote ids from Event/Timeline.attachedQuoteIds[].
-    if(['Event','Timeline','Date/Period'].includes(e.type)&&Array.isArray(e.attachedQuoteIds)){
-      const before=e.attachedQuoteIds.length;
-      e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
-      if(e.attachedQuoteIds.length!==before)changed=true;
-    }
+    if(['Event','Timeline','Date/Period'].includes(e.type)&&Array.isArray(e.attachedQuoteIds)){const b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));if(e.attachedQuoteIds.length!==b)changed=true;}
   });
   if(changed)save();
 }
@@ -3392,7 +3388,7 @@ function switchTab(t,btn){
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();if(t==='chars')renderChars();if(t==='quotes')renderQuotes();
-  if(t==='timeline')renderTimeline();if(t==='map')renderMap();
+  if(t==='timeline')renderTimeline();if(t==='map'){renderMap();_osmInvalidate();}
   if(t==='words')renderWords();if(t==='questions')renderQuestions();if(t==='refs')renderRefs();
   if(t==='todo')renderTodo();if(t==='stats')renderStats();
 }
@@ -3405,7 +3401,7 @@ function forceTab(t){
   // #187-A — when forced to Log tab, re-apply the current activeFilter (chip + list)
   if(t==='log'){if(typeof buildFilterBar==='function')buildFilterBar();if(typeof renderEntries==='function')renderEntries();}
   if(t==='web')renderWeb();if(t==='timeline')renderTimeline();if(t==='quotes')renderQuotes();
-  if(t==='map')renderMap();if(t==='words')renderWords();if(t==='questions')renderQuestions();
+  if(t==='map'){renderMap();_osmInvalidate();}if(t==='words')renderWords();if(t==='questions')renderQuestions();
   if(t==='refs')renderRefs();if(t==='todo')renderTodo();if(t==='stats')renderStats();
 }
 
@@ -4018,8 +4014,6 @@ function onTypeChange(){
     const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
     const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
     window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
-    // xlsx #425 (Batch 42) — clear attached-quote chips on form open. editEntry
-    // will repopulate them when editing an existing event.
     if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   }
   if(isRel&&chars.length){
@@ -5018,8 +5012,7 @@ function refreshAttachEventOptions(){
     +evs.map(e=>{const icon=e.type==='Event'?'⭐':'📅';const d=e.evdate?` · ${e.evdate}`:'';return `<option value="${e.id}">${icon} ${esc((e.content||'(untitled)').slice(0,40))}${d}</option>`;}).join('');
 }
 
-// xlsx #425 (Batch 42) — Reverse direction: from Event/Timeline form, attach existing
-// Quote entries. Mirror state to Quote's attachedEventIds[] for bidirectional consistency.
+// xlsx #425 (Batch 42) — Event/Timeline → Quote attach state & helpers.
 let _tlAttachedQuoteIds=[];
 function _tlAqFilter(){
   const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
@@ -5027,13 +5020,7 @@ function _tlAqFilter(){
   const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
   const filtered=q?allQs.filter(qe=>(qe.content||'').toLowerCase().includes(q)||(qe.speaker||'').toLowerCase().includes(q)):allQs.slice(0,40);
   if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);font-style:italic;">No matches.</div>';list.style.display='';return;}
-  list.innerHTML=filtered.map(qe=>{
-    const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';
-    const pg=qe.pageNum?` · p.${qe.pageNum}`:'';
-    const txt=esc((qe.content||'').slice(0,80));
-    const sel=String(qe.id)===document.getElementById('ae-tl-aq-id')?.value;
-    return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);${sel?'background:var(--al);color:var(--accent);font-weight:600;':''}">"${txt}"${spk}${pg}</div>`;
-  }).join('');
+  list.innerHTML=filtered.map(qe=>{const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';const pg=qe.pageNum?` · p.${qe.pageNum}`:'';const sel=String(qe.id)===document.getElementById('ae-tl-aq-id')?.value;return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);${sel?'background:var(--al);color:var(--accent);font-weight:600;':''}">"${esc((qe.content||'').slice(0,80))}"${spk}${pg}</div>`;}).join('');
   list.style.display='';
 }
 function _tlAqClear(){
@@ -5049,48 +5036,25 @@ function _tlAqPick(id){
 }
 function addTlAttachedQuote(){
   const id=Number(document.getElementById('ae-tl-aq-id')?.value||0);
-  if(!id){
-    // If user typed text but didn't pick from the list, try to match by content/speaker.
-    const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
-    if(!q){alert('Type to search and tap a quote from the list, then tap "+ Attach".');return;}
-    const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
-    const match=allQs.find(qe=>(qe.content||'').toLowerCase().includes(q));
-    if(!match){alert('No matching quote found. Pick one from the dropdown.');return;}
-    if(!_tlAttachedQuoteIds.includes(match.id))_tlAttachedQuoteIds.push(match.id);
-  } else {
-    if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);
-  }
-  _tlAqClear();
-  renderTlAttachedQuoteChips();
+  if(!id){alert('Type to search then tap a quote from the list before tapping "+ Attach".');return;}
+  if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);
+  _tlAqClear();renderTlAttachedQuoteChips();
 }
 function detachTlQuote(id){
-  id=Number(id);
-  _tlAttachedQuoteIds=_tlAttachedQuoteIds.filter(x=>x!==id);
-  renderTlAttachedQuoteChips();
-  // If editing an existing event, mirror the detach into the quote's attachedEventIds[].
+  id=Number(id);_tlAttachedQuoteIds=_tlAttachedQuoteIds.filter(x=>x!==id);renderTlAttachedQuoteChips();
   const editId=Number(document.getElementById('ae-edit-id')?.value||0);
   const type=document.getElementById('ae-type')?.value;
   if(editId&&['Event','Timeline','Date/Period'].includes(type)){
     const ev=entries().find(x=>x.id===editId);
-    if(ev){
-      if(Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==id);
-      const q=entries().find(x=>x.id===id);
-      if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==ev.id);
-      save();
-    }
+    if(ev){if(Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==id);const q=entries().find(x=>x.id===id);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==ev.id);save();}
   }
 }
 function renderTlAttachedQuoteChips(){
   const wrap=document.getElementById('ae-tl-aq-chips');if(!wrap)return;
   if(!_tlAttachedQuoteIds.length){wrap.innerHTML='';return;}
-  wrap.innerHTML=_tlAttachedQuoteIds.map(id=>{
-    const qe=entries().find(x=>x.id===id);if(!qe)return '';
-    const txt=esc((qe.content||'(untitled)').slice(0,30));
-    const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';
-    return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">💬 "${txt}"${spk}<button type="button" onclick="detachTlQuote(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;
-  }).filter(Boolean).join('');
+  wrap.innerHTML=_tlAttachedQuoteIds.map(id=>{const qe=entries().find(x=>x.id===id);if(!qe)return '';const txt=esc((qe.content||'(untitled)').slice(0,30));const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">💬 "${txt}"${spk}<button type="button" onclick="detachTlQuote(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;}).filter(Boolean).join('');
 }
-function getTlAttachedQuoteIds(){return [..._tlAttachedQuoteIds];}
+function getTlAttachedQuoteIds(){return[..._tlAttachedQuoteIds];}
 function clearTlAttachedQuotes(){_tlAttachedQuoteIds=[];renderTlAttachedQuoteChips();_tlAqClear();}
 function loadTlAttachedQuotes(ids){_tlAttachedQuoteIds=(ids||[]).map(Number).filter(Boolean);renderTlAttachedQuoteChips();}
 
@@ -5370,29 +5334,13 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     }
     const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
     entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
-    // xlsx #425 (Batch 42) — persist attached-quote ids on the Event/Timeline entry.
-    // Union with any reverse-scan results so attaches made from the Quote side aren't
-    // lost. Then mirror into each target Quote's attachedEventIds[] for two-way lookup.
-    const _localQIds=new Set(getTlAttachedQuoteIds());
-    entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id))
-      .forEach(q=>_localQIds.add(Number(q.id)));
-    const _prevQIds=new Set((entry.attachedQuoteIds||[]).map(Number));
-    entry.attachedQuoteIds=[..._localQIds];
-    // For quotes newly added, push entry.id into quote.attachedEventIds[].
-    const _newlyAdded=[..._localQIds].filter(id=>!_prevQIds.has(id));
-    _newlyAdded.forEach(qid=>{
-      const q=entries().find(x=>x.id===qid);
-      if(q){
-        if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];
-        if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);
-      }
-    });
-    // For quotes newly removed, strip entry.id from quote.attachedEventIds[].
-    const _newlyRemoved=[..._prevQIds].filter(id=>!_localQIds.has(id));
-    _newlyRemoved.forEach(qid=>{
-      const q=entries().find(x=>x.id===qid);
-      if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);
-    });
+    // xlsx #425 (Batch 42) — persist attached-quote ids; bidirectional mirror.
+    const _tlQIds=new Set(getTlAttachedQuoteIds());
+    entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id)).forEach(q=>_tlQIds.add(Number(q.id)));
+    const _prevTlQ=new Set((entry.attachedQuoteIds||[]).map(Number));
+    entry.attachedQuoteIds=[..._tlQIds];
+    [..._tlQIds].filter(id=>!_prevTlQ.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q){if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);}});
+    [..._prevTlQ].filter(id=>!_tlQIds.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);});
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -5899,22 +5847,12 @@ function deleteEntry(id){
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
   book().entries=book().entries.filter(x=>x.id!==id);
-  // xlsx #435 (Batch 42) — Bidirectional Chapter delete. When a Chapter log entry
-  // is deleted, also remove the matching chapSetup row from the book record so the
-  // Edit Book → Chapter setup tab reflects the deletion. Match on chapNum.
+  // xlsx #435 (Batch 42) — Chapter log delete → strip matching chapSetup row.
   if(e.type==='Chapter'&&e.chapNum!=null){
-    const chN=+e.chapNum;
-    const cs=book()?.chapSetup;
-    if(Array.isArray(cs)&&!isNaN(chN)){
-      const before=cs.length;
-      book().chapSetup=cs.filter(c=>!c||+c.ch!==chN);
-      // (No alert needed — silent mirror; the user just deleted from the log.)
-    }
+    const _chN=+e.chapNum;
+    if(!isNaN(_chN)&&Array.isArray(book()?.chapSetup))book().chapSetup=book().chapSetup.filter(c=>!c||+c.ch!==_chN);
   }
-  // xlsx #431 follow-up (Batch 36) — scrub theme↔quote cross-links if a Theme or
-  // Quote was just deleted, so the remaining entries don't carry stale references.
-  // xlsx #425 (Batch 42) — also scrub event↔quote cross-links when an Event/Timeline
-  // OR a Quote is deleted.
+  // xlsx #431/#425 (Batch 36/42) — scrub cross-links.
   if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)||['Event','Timeline','Date/Period'].includes(e.type)){
     if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();
   }
@@ -6149,46 +6087,25 @@ function _showThemeListPopover(anchor,namesJoinedNL){
     document.addEventListener('touchend',closeFn,true);
   },50);
 }
-// xlsx #425 (Batch 42) — Event-list popover. Mirrors _showThemeListPopover for the
-// new event-attach pill on Quote cards. Lists each attached event/timeline; tap a
-// row → jumps to that event's edit form.
+// xlsx #425 (Batch 42) — Event-list popover for multi-event pill on Quote cards.
 function _showEventListPopover(anchor,evIds){
   document.getElementById('event-list-popover')?.remove();
   const pop=document.createElement('div');
   pop.id='event-list-popover';
   const _live=new Set(entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>ev.id));
   const evs=(evIds||[]).map(id=>entries().find(ev=>ev.id===id)).filter(ev=>ev&&_live.has(ev.id));
-  const _condense=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
-  if(!evs.length){
-    pop.innerHTML='<div style="font-size:12px;color:var(--t3);">No live events attached.</div>';
-  } else {
-    pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached events (tap to open)</div>'
-      +evs.map(ev=>{
-        const ic=ev.type==='Event'?'⭐':'📅';
-        const display=_condense(ev.content||'(untitled)',26);
-        const dateStr=ev.evdate?` <span style="color:var(--t3);font-size:10px;">${esc(ev.evdate)}</span>`:'';
-        return `<div onclick="event.stopPropagation();document.getElementById('event-list-popover')?.remove();editEntry(${ev.id});" title="${esc(ev.content||'')}" style="font-size:13px;padding:5px 4px;border-radius:4px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${ic} ${esc(display)}${dateStr}</div>`;
-      }).join('');
-  }
+  const _cond=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+  if(!evs.length){pop.innerHTML='<div style="font-size:12px;color:var(--t3);">No live events attached.</div>';}
+  else{pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached events (tap to open)</div>'
+    +evs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';const d=ev.evdate?` <span style="color:var(--t3);font-size:10px;">${esc(ev.evdate)}</span>`:'';
+    return `<div onclick="event.stopPropagation();document.getElementById('event-list-popover')?.remove();editEntry(${ev.id});" style="font-size:13px;padding:5px 4px;border-radius:4px;cursor:pointer;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${ic} ${esc(_cond(ev.content||'(untitled)',26))}${d}</div>`;}).join('');}
   pop.style.cssText='position:fixed;background:var(--card);border:0.5px solid var(--am);border-radius:var(--rl2);padding:9px 12px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:9999;max-width:280px;';
   document.body.appendChild(pop);
-  const rect=anchor.getBoundingClientRect();
-  const popH=pop.offsetHeight;const popW=pop.offsetWidth;
-  let top=rect.bottom+6;
-  if(top+popH>window.innerHeight-10)top=Math.max(10,rect.top-popH-6);
-  let left=rect.left;
-  if(left+popW>window.innerWidth-10)left=Math.max(10,window.innerWidth-popW-10);
+  const rect=anchor.getBoundingClientRect();const pH=pop.offsetHeight;const pW=pop.offsetWidth;
+  let top=rect.bottom+6;if(top+pH>window.innerHeight-10)top=Math.max(10,rect.top-pH-6);
+  let left=rect.left;if(left+pW>window.innerWidth-10)left=Math.max(10,window.innerWidth-pW-10);
   pop.style.top=top+'px';pop.style.left=left+'px';
-  setTimeout(()=>{
-    const closeFn=function(e){
-      if(pop.contains(e.target))return;
-      pop.remove();
-      document.removeEventListener('click',closeFn,true);
-      document.removeEventListener('touchend',closeFn,true);
-    };
-    document.addEventListener('click',closeFn,true);
-    document.addEventListener('touchend',closeFn,true);
-  },50);
+  setTimeout(()=>{const fn=function(e){if(pop.contains(e.target))return;pop.remove();document.removeEventListener('click',fn,true);document.removeEventListener('touchend',fn,true);};document.addEventListener('click',fn,true);document.addEventListener('touchend',fn,true);},50);
 }
 function _qrPatriApply(rowId,name){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -6574,21 +6491,13 @@ function editEntry(id){
       const sq=document.getElementById('ae-tl-sq');if(sq)sq.value=e.tlSq||'';
       const sqpg=document.getElementById('ae-tl-sq-pg');if(sqpg)sqpg.value=e.tlSqPg||'';
       if(e.tlSpeaker)cddSet('ae-tl-speaker',e.tlSpeaker);
-      // xlsx #425 (Batch 42) — restore attached-quote chips. Union of stored
-      // attachedQuoteIds[] and reverse-scan of any Quote whose attachedEventIds[]
-      // includes this event.id. Filter against live quote ids.
-      const _qIds=new Set();
-      if(Array.isArray(e.attachedQuoteIds))e.attachedQuoteIds.forEach(id=>{if(id)_qIds.add(Number(id));});
-      entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(e.id))
-        .forEach(q=>_qIds.add(Number(q.id)));
+      // xlsx #425 (Batch 42) — restore attached-quote chips.
+      const _aqIds=new Set();
+      if(Array.isArray(e.attachedQuoteIds))e.attachedQuoteIds.forEach(id=>{if(id)_aqIds.add(Number(id));});
+      entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(e.id)).forEach(q=>_aqIds.add(Number(q.id)));
       const _liveQ=new Set(entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>Number(q.id)));
-      const _qFiltered=[..._qIds].filter(id=>_liveQ.has(id));
-      if(Array.isArray(e.attachedQuoteIds)){
-        const before=e.attachedQuoteIds.length;
-        e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveQ.has(Number(id)));
-        if(e.attachedQuoteIds.length!==before)save();
-      }
-      loadTlAttachedQuotes(_qFiltered);
+      if(Array.isArray(e.attachedQuoteIds)){const _b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveQ.has(Number(id)));if(e.attachedQuoteIds.length!==_b)save();}
+      if(typeof loadTlAttachedQuotes==='function')loadTlAttachedQuotes([..._aqIds].filter(id=>_liveQ.has(id)));
     }
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
     if(e.importance)document.getElementById('ae-imp').value=e.importance;
@@ -6928,33 +6837,26 @@ function ecHTML(e,compact,fromTab){
       themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showThemeListPopover(this,'${themeListJS}');" title="${themeList}">${label}</span>`;
     }
   }
-  // xlsx #425 (Batch 42) — event-attach pill on Quote log card. Mirrors the theme
-  // pill above. Shows '⭐ Event' when one event/timeline is attached, '📅 +N' for
-  // multiple. Tap → jumps to that event's edit form (or shows a list popover when
-  // multiple are attached). Reads from e.attachedEventIds[] AND reverse-scans any
-  // Event/Timeline whose attachedQuoteIds[] includes this quote.
+  // xlsx #425 (Batch 42) — event-attach pill on Quote log cards.
   let eventPill='';
   if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
-    const evIds=new Set();
-    if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)evIds.add(Number(id));});
+    const _evIds=new Set();
+    if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)_evIds.add(Number(id));});
     entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
-      .forEach(ev=>evIds.add(Number(ev.id)));
-    const evObjs=[...evIds].map(id=>entries().find(x=>x.id===id)).filter(Boolean);
-    if(evObjs.length){
-      const first=evObjs[0];
-      const fIcon=first.type==='Event'?'⭐':'📅';
-      const fLabel=(first.content||'(untitled)').slice(0,16);
-      const truncFirst=(first.content||'').length>16?fLabel+'…':fLabel;
-      const label=evObjs.length===1?`${fIcon} ${truncFirst}`:`${fIcon} ${truncFirst} +${evObjs.length-1}`;
-      // Title attr for tooltip on devices that show it
-      const fullList=evObjs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';return `${ic} ${(ev.content||'(untitled)')}${ev.evdate?' ('+ev.evdate+')':''}`;}).join(', ');
-      // Single attached event → tap goes straight to that event's edit form.
-      // Multiple → tap shows a small popover listing each event (clickable).
-      if(evObjs.length===1){
-        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${first.id});" title="${esc(fullList)}">${label}</span>`;
+      .forEach(ev=>_evIds.add(Number(ev.id)));
+    const _evObjs=[..._evIds].map(id=>entries().find(x=>x.id===id)).filter(Boolean);
+    if(_evObjs.length){
+      const _first=_evObjs[0];
+      const _fIcon=_first.type==='Event'?'⭐':'📅';
+      const _fLbl=(_first.content||'(untitled)').slice(0,16);
+      const _fTrunc=(_first.content||'').length>16?_fLbl+'…':_fLbl;
+      const _label=_evObjs.length===1?`${_fIcon} ${_fTrunc}`:`${_fIcon} ${_fTrunc} +${_evObjs.length-1}`;
+      const _full=_evObjs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';return `${ic} ${ev.content||'(untitled)'}${ev.evdate?' ('+ev.evdate+')':''}`;}).join(', ');
+      if(_evObjs.length===1){
+        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${_first.id});" title="${esc(_full)}">${_label}</span>`;
       } else {
-        const evIdsJS=evObjs.map(ev=>ev.id).join(',');
-        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${evIdsJS}]);" title="${esc(fullList)}">${label}</span>`;
+        const _ids=_evObjs.map(ev=>ev.id).join(',');
+        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids}]);" title="${esc(_full)}">${_label}</span>`;
       }
     }
   }
@@ -8366,8 +8268,7 @@ function openTlCompare(){
   };
   document.getElementById('tl-cmp-a-search').addEventListener('input',()=>renderList('a'));
   document.getElementById('tl-cmp-b-search').addEventListener('input',()=>renderList('b'));
-  // xlsx #419 sub (Batch 42) — Per user request, do NOT auto-pick the first two
-  // entries. Both pickers start blank so the user explicitly chooses what to compare.
+  // xlsx #419 sub (Batch 42) — start blank; user picks explicitly.
   // Convert to seconds-since-epoch-ish (very rough — good enough for diffs).
   const _toSeconds=e=>{
     const ye=_yr(e);if(!ye)return null;
@@ -8431,8 +8332,6 @@ function openTlCompare(){
     out.innerHTML=`<div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--t2);">${esc(labelOf(a))} → ${esc(labelOf(b))}</div>`
       +`<div style="font-size:14px;">B is <strong>${label}</strong>${dir?' '+dir:''} A.</div>`;
   };
-  // xlsx #419 sub (Batch 42) — Pickers start empty (no pre-selection). Result panel
-  // shows a hint to pick two entries.
   renderList('a');renderList('b');
   recompute();
 }
@@ -8811,6 +8710,121 @@ function _mapToggleFilter(group,val){
   renderMap();
 }
 function _mapClearFilters(){window._mapFilters={countries:new Set(),states:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};renderMap();}
+// ═══════════════════════════════════════════════════════════════
+// xlsx #392 (Batch 43) — In-app OpenStreetMap / Leaflet view
+// Leaflet loaded lazily from CDN when the user first activates map view.
+// Geocoded lat/lng stored in book().locations[].lat / .lng so we don't
+// re-fetch Nominatim on every toggle.
+// ═══════════════════════════════════════════════════════════════
+let _osmMap=null;       // Leaflet map instance
+let _osmActive=false;   // current toggle state
+
+function toggleOsmView(){
+  _osmActive=!_osmActive;
+  const btn=document.getElementById('osm-toggle-btn');
+  const wrap=document.getElementById('osm-map-wrap');
+  if(btn)btn.textContent=_osmActive?'📋 List':'🗺️ Map';
+  if(wrap)wrap.style.display=_osmActive?'':'none';
+  if(_osmActive)_osmLoadAndRender();
+}
+
+async function _osmLoadLeaflet(){
+  if(window.L)return;
+  await new Promise((res,rej)=>{
+    if(document.getElementById('leaflet-css'))return res();
+    const link=document.createElement('link');link.id='leaflet-css';link.rel='stylesheet';
+    link.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(link);
+    const scr=document.createElement('script');
+    scr.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    scr.onload=res;scr.onerror=rej;
+    document.head.appendChild(scr);
+  });
+}
+
+async function _osmGeocode(name,city,country){
+  const q=[name,city,country].filter(Boolean).join(', ');
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
+    const data=await r.json();
+    if(data&&data.length){return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};}
+  }catch(_){}
+  return null;
+}
+
+async function _osmLoadAndRender(){
+  const statusEl=document.getElementById('osm-map-status');
+  const mapEl=document.getElementById('osm-map');
+  if(!mapEl)return;
+  if(statusEl)statusEl.textContent='Loading map…';
+  try{await _osmLoadLeaflet();}
+  catch(_){if(statusEl)statusEl.textContent='Could not load map library. Check your connection.';return;}
+
+  // Destroy existing map instance before re-creating (panel hide/show cycles)
+  if(_osmMap){_osmMap.remove();_osmMap=null;}
+
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark'||
+    window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const tileUrl=isDark
+    ?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    :'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const tileAttr=isDark
+    ?"© <a href='https://www.openstreetmap.org/copyright'>OSM</a> © <a href='https://carto.com/'>CARTO</a>"
+    :"© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>";
+
+  _osmMap=L.map(mapEl,{zoomControl:true,attributionControl:true}).setView([20,0],2);
+  L.tileLayer(tileUrl,{attribution:tileAttr,maxZoom:19}).addTo(_osmMap);
+
+  // Get all real locations for this book
+  const realLocs=getLocations().filter(l=>l.type==='real');
+  // Also pick up real-flagged Location entries not yet in the registry
+  entries().filter(e=>e.type==='Location'&&!e.isDraft&&e.locType==='real')
+    .forEach(e=>{if(!realLocs.find(l=>l.name===e.content))realLocs.push({name:e.content,type:'real',city:e.locCity||'',country:e.locCountry||''});});
+
+  if(!realLocs.length){
+    if(statusEl)statusEl.textContent='No real locations to show. Mark a location as "Real place" in its edit sheet to pin it here.';
+    return;
+  }
+
+  if(statusEl)statusEl.textContent=`Pinning ${realLocs.length} location${realLocs.length>1?'s':''}…`;
+  const markers=[];
+  let geocodedCount=0;
+
+  for(const loc of realLocs){
+    // Use cached lat/lng if available; otherwise geocode
+    let lat=loc.lat,lng=loc.lng;
+    if(!lat||!lng){
+      const coords=await _osmGeocode(loc.name,loc.city,loc.country);
+      if(coords){lat=coords.lat;lng=coords.lng;saveLocation(loc.name,{lat,lng});}
+    }
+    if(!lat||!lng)continue;
+    geocodedCount++;
+    const icon=L.divIcon({
+      className:'',
+      html:`<div style="background:var(--accent,#7c3aed);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍</div>`,
+      iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]
+    });
+    const marker=L.marker([lat,lng],{icon,title:loc.name});
+    const cityLine=[loc.city,loc.country].filter(Boolean).join(', ');
+    marker.bindPopup(`<strong style="font-size:13px;">${loc.name}</strong>${cityLine?`<br><span style="font-size:11px;color:#666;">${cityLine}</span>`:''}<br><button onclick="document.getElementById('osm-toggle-btn')?.click();setTimeout(()=>openLocDetail('${(loc.name||'').replace(/'/g,"\\'")}'),50);" style="margin-top:6px;font-size:11px;padding:3px 8px;background:#7c3aed;color:#fff;border:0;border-radius:4px;cursor:pointer;">Open detail ›</button>`,{maxWidth:200});
+    marker.addTo(_osmMap);
+    markers.push(marker);
+    // Small delay between geocodes to respect Nominatim rate limit
+    if(!loc.lat)await new Promise(r=>setTimeout(r,1100));
+  }
+
+  if(markers.length){
+    const group=L.featureGroup(markers);
+    _osmMap.fitBounds(group.getBounds().pad(0.2));
+    // Force Leaflet to recalculate size after container was hidden
+    setTimeout(()=>{if(_osmMap)_osmMap.invalidateSize();},100);
+  }
+  if(statusEl)statusEl.textContent=geocodedCount>0?`${geocodedCount} location${geocodedCount>1?'s':''} pinned. Tap a pin to open.`:'No coordinates found for any location.';
+}
+
+// When switching tabs back to map, re-attach the Leaflet instance
+function _osmInvalidate(){if(_osmActive&&_osmMap)setTimeout(()=>{_osmMap.invalidateSize();},80);}
+
 function renderMap(){
   const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
   const locEntries=entries().filter(e=>e.type==='Location');
