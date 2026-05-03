@@ -364,8 +364,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- xlsx #416 (Batch 38) — sort toggle: Recently added (default) vs Book order. -->
       <div style="display:flex;gap:6px;margin-bottom:9px;align-items:center;">
         <span style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;flex-shrink:0;">Sort:</span>
-        <button id="q-sort-recent" class="chip active" onclick="setQSort('recent')" style="font-size:11px;padding:5px 10px;">Recently added</button>
-        <button id="q-sort-book" class="chip" onclick="setQSort('book')" style="font-size:11px;padding:5px 10px;">Book order</button>
+        <button id="q-sort-recent" class="chip active" onclick="setQuestionsSort('recent')" style="font-size:11px;padding:5px 10px;">Recently added</button>
+        <button id="q-sort-book" class="chip" onclick="setQuestionsSort('book')" style="font-size:11px;padding:5px 10px;">Book order</button>
       </div>
       <div id="questions-list"></div>
       <div id="q-empty" class="empty" style="display:none"><div class="empty-icon">❓</div><div class="empty-text">No questions yet</div></div>
@@ -784,6 +784,23 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-evdate-day" inputmode="numeric" placeholder="e.g. 14" min="1" max="31"/>
         </div>
       </div>
+      <!-- xlsx #419 sub (Batch 40) — Time of day (optional). Hour/minute/second + AM/PM
+           feed into the Timeline Compare dialog so it can show finer-grained gaps
+           (hours, minutes, seconds in addition to days/months/years). -->
+      <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional — for sub-day precision in compare)</span></label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" id="ae-evdate-hour" inputmode="numeric" placeholder="hh" min="1" max="12" style="width:60px;font-size:14px;text-align:center;"/>
+          <span style="color:var(--t3);">:</span>
+          <input type="number" id="ae-evdate-min" inputmode="numeric" placeholder="mm" min="0" max="59" style="width:60px;font-size:14px;text-align:center;"/>
+          <span style="color:var(--t3);">:</span>
+          <input type="number" id="ae-evdate-sec" inputmode="numeric" placeholder="ss" min="0" max="59" style="width:60px;font-size:14px;text-align:center;"/>
+          <select id="ae-evdate-ampm" style="font-size:13px;">
+            <option value="">—</option>
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </div>
+      </div>
       <!-- #342 follow-up — Importance hidden (duplicated Significance). Hidden control
            preserved for legacy save/edit code. -->
       <div class="r2" style="display:none;">
@@ -959,6 +976,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <div id="ae-rel-existing-warn" style="display:none;font-size:12px;color:#7F4F24;background:#FEF0D4;border-radius:var(--r);padding:8px 10px;margin-bottom:8px;border:0.5px solid #E8853C;"></div>
+      <!-- xlsx #433 (Batch 40) — Patri suggester hint + debug strip for the MAIN
+           rel form fields (Char A / type / Char B). Was previously only wired to
+           the QR rows below. User wants the same surname suggestion when typing
+           a single-token name into Char B with a relationship type already picked. -->
+      <div id="ae-rel-patri-hint" style="display:none;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:13px;line-height:1.4;font-weight:500;"></div>
+      <div id="ae-rel-patri-debug" style="background:#fff3cd;color:#664d03;border:1px solid #ffd966;border-radius:var(--r);padding:6px 8px;margin-bottom:8px;font-size:11px;line-height:1.35;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word;">[#433 DEBUG] (waiting for Char A + type + Char B…)</div>
       <div id="ae-quick-add-b" style="display:none">
         <div class="quick-add-char">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">Quick-add new character for B:</div>
@@ -1521,6 +1544,8 @@ function rtpPick(val){
   // xlsx #393 follow-up (Batch 31) — surfacing a Father/Son rel on the rel form should
   // immediately re-evaluate the patrilineal last-name hint (if any char form is also open).
   if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
+  // xlsx #433 (Batch 40) — fire rel-form-MAIN suggester when type is picked.
+  if(typeof suggestPatriForRelForm==='function')try{suggestPatriForRelForm();}catch(_){ }
 }
 function rtpClear(){
   document.getElementById('ae-reltype').value='';
@@ -2189,6 +2214,24 @@ function _cddEnsureRegistered(){
   if(!cddConfig['ae-word-speaker'])cddRegister('ae-word-speaker',{includeNarrator:true,onChange:autoTagWordSpeaker});
   if(!cddConfig['ae-rela'])cddRegister('ae-rela',{onChange:_cddRelChanged});
   if(!cddConfig['ae-relb'])cddRegister('ae-relb',{onChange:_cddRelChanged});
+  // xlsx #433 (Batch 40) — also fire on text input on the rela/relb search fields
+  // (covers cases where user types but doesn't pick from the dropdown). Debounced
+  // 200ms. Attached once via a flag so re-registration doesn't double-bind.
+  if(!window._relFormPatriBound){
+    window._relFormPatriBound=true;
+    setTimeout(()=>{
+      const fire=()=>{
+        if(window._relFormPatriDeb)clearTimeout(window._relFormPatriDeb);
+        window._relFormPatriDeb=setTimeout(()=>{try{if(typeof suggestPatriForRelForm==='function')suggestPatriForRelForm();}catch(_){ }},200);
+      };
+      const aS=document.getElementById('ae-rela-search');
+      const bS=document.getElementById('ae-relb-search');
+      if(aS)aS.addEventListener('input',fire);
+      if(bS)bS.addEventListener('input',fire);
+      if(aS)aS.addEventListener('blur',()=>{try{if(typeof suggestPatriForRelForm==='function')suggestPatriForRelForm();}catch(_){ }});
+      if(bS)bS.addEventListener('blur',()=>{try{if(typeof suggestPatriForRelForm==='function')suggestPatriForRelForm();}catch(_){ }});
+    },100);
+  }
   // #253 — Timeline supporting-quote speaker
   if(!cddConfig['ae-tl-speaker'])cddRegister('ae-tl-speaker',{includeNarrator:true,onChange:autoTagTlSpeaker});
 }
@@ -2204,6 +2247,9 @@ function _cddRelChanged(){
   // OR on the cn field of any char being created via this form. The suggester is a no-op
   // if no ae-cn / ae-patri-hint exists (i.e. no char form is open), so it's safe to call.
   if(typeof suggestPatriLastName==='function')try{suggestPatriLastName();}catch(_){ }
+  // xlsx #433 (Batch 40) — also fire the new rel-form-MAIN suggester. Picks up
+  // when the user picks Char A or Char B via the cdd dropdown.
+  if(typeof suggestPatriForRelForm==='function')try{suggestPatriForRelForm();}catch(_){ }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2232,20 +2278,46 @@ function addChapSetupRow(num,start,end,title){
   }
   const row=document.createElement('div');row.className='chap-row';
   row.dataset.ch=String(chNum);
-  row.innerHTML=`<span style="font-size:11px;color:var(--t2);width:42px;flex-shrink:0;">Ch.${chNum}</span>
+  // xlsx #473 (Batch 40) — chapter number is now an editable number input. min=0
+  // so 0 represents pre-pages / front-matter (preface, intro, foreword). The
+  // dataset.ch attribute syncs from the input's value via _onChapNumChange so
+  // getChapSetup() always returns the user-entered number, not a sequence index.
+  row.innerHTML=`<span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0;">Ch.</span>
+    <input type="number" inputmode="numeric" min="0" value="${chNum}" oninput="_onChapNumChange(this)" style="width:46px;flex-shrink:0;font-size:16px;text-align:center;" title="Chapter number (0 = front-matter / pre-pages)"/>
     <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:16px;"/>
-    <input type="number" inputmode="numeric" placeholder="p.start" min="1" value="${start||''}" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" style="flex:1;min-width:0;font-size:16px;"/>
     <span style="font-size:11px;color:var(--t2);">–</span>
-    <input type="number" inputmode="numeric" placeholder="p.end" min="1" value="${end||''}" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.end" min="0" value="${end||''}" style="flex:1;min-width:0;font-size:16px;"/>
     <button onclick="this.parentElement.remove();" style="background:transparent;color:var(--t3);font-size:16px;padding:0 4px;">×</button>`;
   list.appendChild(row);
+}
+// xlsx #473 (Batch 40) — keep dataset.ch in sync with the editable chapter-num input.
+function _onChapNumChange(inputEl){
+  const row=inputEl.closest('.chap-row');
+  if(!row)return;
+  const v=inputEl.value.trim();
+  // Allow 0 (front-matter) and any positive integer.
+  if(v===''||isNaN(+v))return;
+  row.dataset.ch=String(+v);
 }
 // xlsx #411 (Batch 39) — renumChaps removed. Chapter numbers are preserved on
 // row deletion so delete-sync can match correctly. (Function kept as a no-op
 // for any callers that may still reference it.)
 function renumChaps(){}
 function getChapSetup(){
-  return[...document.querySelectorAll('#chap-setup-list .chap-row')].map((r,i)=>{const ins=r.querySelectorAll('input');const ch=+r.dataset.ch||(i+1);return{ch,title:ins[0].value.trim(),start:+ins[1].value||0,end:+ins[2].value||0};}).filter(r=>r.start>0);
+  // xlsx #473 (Batch 40) — input layout changed: now [chapnum, title, start, end].
+  // dataset.ch still authoritative (synced via _onChapNumChange) but we also fall
+  // back to ins[0].value if dataset is missing. Allow start=0 to support
+  // front-matter chapter (ch=0 with pages 1-12 for preface, etc.); also keep
+  // rows with start=0 only if chapnum is explicit (not the autogenerated default).
+  return[...document.querySelectorAll('#chap-setup-list .chap-row')].map((r,i)=>{
+    const ins=r.querySelectorAll('input');
+    const ch=+r.dataset.ch>=0?+r.dataset.ch:(+ins[0].value>=0?+ins[0].value:(i+1));
+    const title=ins[1].value.trim();
+    const start=+ins[2].value;
+    const end=+ins[3].value;
+    return{ch,title,start:isNaN(start)?0:start,end:isNaN(end)?0:end};
+  }).filter(r=>r.start>0||r.ch===0||r.title);// keep rows with title or pages or front-matter (ch=0)
 }
 function renderChapSetup(s){document.getElementById('chap-setup-list').innerHTML='';(s||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end,c.title));}
 function pageToChapters(pageStr){
@@ -3361,6 +3433,10 @@ function _refreshRelQRAnchor(){
   document.querySelectorAll('#ae-rel-quick-rels-list [data-qr-id]').forEach(r=>{
     if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(r);}catch(_){ }
   });
+  // xlsx #433 (Batch 40) — also re-fire the rel-form-MAIN suggester. _refreshRelQRAnchor
+  // is called whenever ae-rela changes, which is exactly when the main suggester
+  // needs to recompute.
+  if(typeof suggestPatriForRelForm==='function')try{suggestPatriForRelForm();}catch(_){ }
 }
 function qrCharClear(rowId){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -4356,7 +4432,7 @@ function reshowTemplateHint(){
   const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -5058,6 +5134,12 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     if(assembled){document.getElementById('ae-evdate').value=assembled;}
     entry.evdate=assembled||'';
     entry.evdateYear=evYear;entry.evdateMonth=evMon||'';entry.evdateDay=evDay||'';
+    // xlsx #419 sub (Batch 40) — also persist time-of-day for finer-grained
+    // compare math.
+    entry.evdateHour=(document.getElementById('ae-evdate-hour')?.value||'').trim();
+    entry.evdateMin=(document.getElementById('ae-evdate-min')?.value||'').trim();
+    entry.evdateSec=(document.getElementById('ae-evdate-sec')?.value||'').trim();
+    entry.evdateAmPm=(document.getElementById('ae-evdate-ampm')?.value||'').trim();
     entry.importance=document.getElementById('ae-imp').value;
     // Store offset — #309: clear if toggle is unchecked
     if(offsetActive){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}
@@ -5719,6 +5801,74 @@ function suggestPatriForQRRow(row){
     </div>`;
   hint.style.display='';
 }
+// xlsx #433 (Batch 40) — Patri suggester for the MAIN rel form fields (Char A
+// dropdown / type picker / Char B dropdown). Different scope from
+// suggestPatriForQRRow which only handles the QR rows further down.
+function suggestPatriForRelForm(){
+  const dbg=document.getElementById('ae-rel-patri-debug');
+  const hint=document.getElementById('ae-rel-patri-hint');
+  if(!dbg||!hint)return;
+  hint.style.display='none';hint.innerHTML='';
+  const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
+  const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
+  const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
+  const aH=(document.getElementById('ae-rela')?.value||'').trim();
+  let aC='';try{if(typeof cddGet==='function')aC=(cddGet('ae-rela')||'').trim();}catch(_){ }
+  const aS=(document.getElementById('ae-rela-search')?.value||'').trim();
+  const charA=aH||aC||aS;
+  const bH=(document.getElementById('ae-relb')?.value||'').trim();
+  let bC='';try{if(typeof cddGet==='function')bC=(cddGet('ae-relb')||'').trim();}catch(_){ }
+  const bS=(document.getElementById('ae-relb-search')?.value||'').trim();
+  const charB=bH||bC||bS;
+  const relType=(document.getElementById('ae-reltype')?.value||'').trim();
+  const inGroup=PATRI_PARENT.includes(relType)?'PARENT':PATRI_CHILD.includes(relType)?'CHILD':PATRI_SIBLING.includes(relType)?'SIBLING':'(not patri)';
+  const setDbg=(reason)=>{
+    dbg.textContent=`[#433 DEBUG] form=REL-MAIN | charA="${charA}" | relType="${relType}" → ${inGroup} | charB="${charB}" | result: ${reason}\nA sources: hidden="${aH}" · cddGet="${aC}" · search="${aS}"\nB sources: hidden="${bH}" · cddGet="${bC}" · search="${bS}"`;
+  };
+  if(!charA){setDbg('SKIP — no Char A picked yet');return;}
+  if(!relType){setDbg('SKIP — no relationship type picked yet');return;}
+  if(!charB){setDbg('SKIP — no Char B yet');return;}
+  if(inGroup==='(not patri)'){setDbg('SKIP — relType not a parent/child/sibling type');return;}
+  const aParts=charA.split(/\s+/);
+  const bParts=charB.split(/\s+/);
+  let source,target,sourceFromA;
+  if(aParts.length>=2&&bParts.length===1){source=charA;target=charB;sourceFromA=true;}
+  else if(bParts.length>=2&&aParts.length===1){source=charB;target=charA;sourceFromA=false;}
+  else if(aParts.length>=2&&bParts.length>=2){
+    const aLast=aParts.slice(-1)[0].toLowerCase();
+    const bLast=bParts.slice(-1)[0].toLowerCase();
+    if(aLast===bLast){setDbg('SKIP — both have matching surnames already');return;}
+    setDbg('SKIP — both multi-token with different surnames; ambiguous');return;
+  }
+  else {setDbg(`SKIP — both single-token ("${charA}" and "${charB}"); need at least one multi-token to know the surname`);return;}
+  const sourceLast=source.split(/\s+/).slice(-1)[0];
+  const existingTarget=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===target);
+  if(existingTarget){
+    const exFull=(existingTarget.cn||existingTarget.content||'').trim();
+    const exParts=exFull.split(/\s+/);
+    if(exParts.length>1&&exParts.slice(-1)[0].toLowerCase()===sourceLast.toLowerCase()){setDbg(`SKIP — existing char "${exFull}" already has surname "${sourceLast}"`);return;}
+  }
+  const suggested=target+' '+sourceLast;
+  const sideLabel=sourceFromA?'A':'B';
+  const targetSide=sourceFromA?'B':'A';
+  setDbg(`SHOWING HINT — suggest "${suggested}" for Char ${targetSide}`);
+  hint.innerHTML=`💡 Char ${sideLabel} "${esc(source)}" has the surname <strong>${esc(sourceLast)}</strong>. Suggest "<strong>${esc(suggested)}</strong>" for Char ${targetSide}?
+    <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="_relFormPatriApply('${esc(suggested)}','${targetSide}')">Use this</button>
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('ae-rel-patri-hint').style.display='none';">Keep different</button>
+    </div>`;
+  hint.style.display='';
+}
+function _relFormPatriApply(name,side){
+  const prefix=side==='A'?'ae-rela':'ae-relb';
+  if(typeof cddSet==='function'){try{cddSet(prefix,name);}catch(_){ }}
+  else {
+    document.getElementById(prefix).value=name;
+    const sf=document.getElementById(prefix+'-search');if(sf)sf.value=name;
+  }
+  const hint=document.getElementById('ae-rel-patri-hint');if(hint)hint.style.display='none';
+  setTimeout(()=>{try{suggestPatriForRelForm();}catch(_){ }},80);
+}
 // xlsx #432 follow-up (Batch 35) — Tap-popover for the theme pill on quote log cards.
 // Safari mobile doesn't surface title-tooltips on tap. This shows a small popover
 // next to the tapped pill listing the full theme names. Tapping anywhere outside
@@ -6135,6 +6285,11 @@ function editEntry(id){
         document.getElementById('ae-evdate-year').value=hasOffset?'':(e.evdateYear||e.evdate||'');
         const evMonEl=document.getElementById('ae-evdate-month');if(evMonEl)evMonEl.value=e.evdateMonth||'';
         document.getElementById('ae-evdate-day').value=e.evdateDay||'';
+        // xlsx #419 sub (Batch 40) — also restore time-of-day fields.
+        const eh=document.getElementById('ae-evdate-hour');if(eh)eh.value=e.evdateHour||'';
+        const em=document.getElementById('ae-evdate-min');if(em)em.value=e.evdateMin||'';
+        const es=document.getElementById('ae-evdate-sec');if(es)es.value=e.evdateSec||'';
+        const ea=document.getElementById('ae-evdate-ampm');if(ea)ea.value=e.evdateAmPm||'';
       }
     }
     // #342 — restore tl-* fields for Event (Timeline already restored above implicitly)
@@ -7817,25 +7972,42 @@ function setTlSortMode(mode){
 function openTlCompare(){
   const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&!e.isDraft&&e.evdate);
   if(all.length<2){alert('You need at least 2 dated timeline/event entries to compare.\n\n(Entries need a year filled in on the evdate field.)');return;}
-  // Sort by evdate for nicer dropdown ordering.
   const _yr=e=>{const m=(e.evdate||'').match(/^-?(\d{1,6})/);return m?(+m[1])*((e.evdate||'').startsWith('-')?-1:1):0;};
   const sorted=[...all].sort((a,b)=>_yr(a)-_yr(b));
-  // Build the picker overlay.
   const overlay=document.createElement('div');
   overlay.id='tl-compare-overlay';
   overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;';
-  const labelOf=e=>{const c=(e.content||'(untitled)').slice(0,50);const d=e.evdate||'';return `${d} — ${c}`;};
-  const opts=sorted.map(e=>`<option value="${e.id}">${esc(labelOf(e))}</option>`).join('');
-  overlay.innerHTML=`<div style="background:var(--card);border-radius:var(--rl2);padding:18px 18px 14px;max-width:420px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+  // xlsx #419 sub (Batch 40) — option label includes time-of-day if set, so the
+  // dropdown reflects sub-day precision.
+  const labelOf=e=>{
+    const c=(e.content||'(untitled)').slice(0,50);
+    const d=e.evdate||'';
+    let t='';
+    if(e.evdateHour||e.evdateMin){
+      const hh=e.evdateHour||'?';const mm=String(e.evdateMin||'').padStart(2,'0');
+      const ss=e.evdateSec?(':'+String(e.evdateSec).padStart(2,'0')):'';
+      const ap=e.evdateAmPm?' '+e.evdateAmPm:'';
+      t=` ${hh}:${mm}${ss}${ap}`;
+    }
+    return `${d}${t} — ${c}`;
+  };
+  // xlsx #419 sub (Batch 40) — searchable dropdowns (datalist-style). Each pick
+  // is a text input + button that opens a filtered list. Native <select> can't
+  // be filtered on most mobile keyboards, so we roll a small custom picker.
+  overlay.innerHTML=`<div style="background:var(--card);border-radius:var(--rl2);padding:18px 18px 14px;max-width:460px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
     <div style="font-size:15px;font-weight:700;margin-bottom:10px;">📏 Compare two timeline entries</div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Pick any two entries. The gap is computed from their dates (year+month+day if available, otherwise year-only fallback).</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:12px;">Pick any two entries. Type to filter. The gap is computed as precisely as the available date data allows (year+month+day+hour+min+sec when present, year-only when only the year is known).</div>
     <div style="margin-bottom:10px;">
-      <label style="font-size:11px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px;">Entry A (earlier or later)</label>
-      <select id="tl-cmp-a" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;">${opts}</select>
+      <label style="font-size:11px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px;">Entry A</label>
+      <input type="text" id="tl-cmp-a-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;margin-bottom:4px;"/>
+      <input type="hidden" id="tl-cmp-a"/>
+      <div id="tl-cmp-a-list" style="max-height:160px;overflow-y:auto;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--card);"></div>
     </div>
     <div style="margin-bottom:12px;">
       <label style="font-size:11px;color:var(--t2);font-weight:600;display:block;margin-bottom:4px;">Entry B</label>
-      <select id="tl-cmp-b" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;">${opts}</select>
+      <input type="text" id="tl-cmp-b-search" placeholder="🔍 Search entries…" autocomplete="off" style="width:100%;padding:8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;margin-bottom:4px;"/>
+      <input type="hidden" id="tl-cmp-b"/>
+      <div id="tl-cmp-b-list" style="max-height:160px;overflow-y:auto;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--card);"></div>
     </div>
     <div id="tl-cmp-result" style="background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:10px 12px;font-size:13px;font-weight:600;line-height:1.5;margin-bottom:10px;">Pick two entries to see the gap.</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -7843,44 +8015,91 @@ function openTlCompare(){
     </div>
   </div>`;
   document.body.appendChild(overlay);
-  // Default-select first two entries.
-  const aSel=document.getElementById('tl-cmp-a');
-  const bSel=document.getElementById('tl-cmp-b');
-  if(sorted.length>=2){aSel.value=sorted[0].id;bSel.value=sorted[1].id;}
+  // Render each picker with a filterable list.
+  const renderList=(side)=>{
+    const q=(document.getElementById('tl-cmp-'+side+'-search').value||'').toLowerCase().trim();
+    const listEl=document.getElementById('tl-cmp-'+side+'-list');
+    const filtered=q?sorted.filter(e=>(labelOf(e)||'').toLowerCase().includes(q)):sorted;
+    const sel=document.getElementById('tl-cmp-'+side).value;
+    if(!filtered.length){listEl.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);font-style:italic;">No matches.</div>';return;}
+    listEl.innerHTML=filtered.map(e=>`<div onclick="_tlCmpPick('${side}',${e.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);${String(e.id)===sel?'background:var(--al);color:var(--accent);font-weight:600;':''}">${esc(labelOf(e))}</div>`).join('');
+  };
+  document.getElementById('tl-cmp-a-search').addEventListener('input',()=>renderList('a'));
+  document.getElementById('tl-cmp-b-search').addEventListener('input',()=>renderList('b'));
+  // Default-pick first two distinct entries.
+  if(sorted.length>=2){
+    document.getElementById('tl-cmp-a').value=sorted[0].id;
+    document.getElementById('tl-cmp-b').value=sorted[1].id;
+  }
+  // Convert to seconds-since-epoch-ish (very rough — good enough for diffs).
+  const _toSeconds=e=>{
+    const ye=_yr(e);if(!ye)return null;
+    let mo=e.evdateMonth?+e.evdateMonth:0;let dy=e.evdateDay?+e.evdateDay:0;
+    if(!mo&&e.evdate&&e.evdate.includes('-')){const parts=e.evdate.replace(/^-/,'').split('-');if(parts[1])mo=+parts[1];if(parts[2])dy=+parts[2];}
+    if(!mo||!dy)return null;
+    let hh=e.evdateHour?+e.evdateHour:0;
+    const mm=e.evdateMin?+e.evdateMin:0;
+    const ss=e.evdateSec?+e.evdateSec:0;
+    if(e.evdateAmPm==='PM'&&hh<12)hh+=12;
+    if(e.evdateAmPm==='AM'&&hh===12)hh=0;
+    const days=ye*365.25+(mo-1)*30.4+dy;
+    return days*86400 + hh*3600 + mm*60 + ss;
+  };
+  // Decompose seconds into y/mo/d/h/m/s; only show non-zero units. Returns the
+  // FULL breakdown the user wants (years AND months AND days AND hours AND
+  // minutes AND seconds, in whichever combination has data).
+  const _breakdown=(secs)=>{
+    let s=Math.abs(Math.round(secs));
+    const y=Math.floor(s/(365.25*86400));s-=y*Math.floor(365.25*86400);
+    const mo=Math.floor(s/(30.4*86400));s-=mo*Math.floor(30.4*86400);
+    const d=Math.floor(s/86400);s-=d*86400;
+    const h=Math.floor(s/3600);s-=h*3600;
+    const m=Math.floor(s/60);s-=m*60;
+    const sec=s;
+    const parts=[];
+    if(y)parts.push(`${y} year${y===1?'':'s'}`);
+    if(mo)parts.push(`${mo} month${mo===1?'':'s'}`);
+    if(d)parts.push(`${d} day${d===1?'':'s'}`);
+    if(h)parts.push(`${h} hour${h===1?'':'s'}`);
+    if(m)parts.push(`${m} minute${m===1?'':'s'}`);
+    if(sec)parts.push(`${sec} second${sec===1?'':'s'}`);
+    return parts.length?parts.join(', '):'0 seconds';
+  };
+  window._tlCmpPick=(side,id)=>{
+    document.getElementById('tl-cmp-'+side).value=String(id);
+    const e=sorted.find(x=>x.id==id);
+    if(e)document.getElementById('tl-cmp-'+side+'-search').value=labelOf(e);
+    renderList(side);
+    recompute();
+  };
   const recompute=()=>{
-    const a=sorted.find(e=>e.id==aSel.value);
-    const b=sorted.find(e=>e.id==bSel.value);
+    const a=sorted.find(e=>e.id==document.getElementById('tl-cmp-a').value);
+    const b=sorted.find(e=>e.id==document.getElementById('tl-cmp-b').value);
     const out=document.getElementById('tl-cmp-result');
     if(!a||!b||a.id===b.id){out.textContent='Pick two DIFFERENT entries to see the gap.';return;}
-    const _toJulian=e=>{
-      const ye=_yr(e);if(!ye)return null;
-      let mo=e.evdateMonth?+e.evdateMonth:0;let dy=e.evdateDay?+e.evdateDay:0;
-      if(!mo&&e.evdate&&e.evdate.includes('-')){const parts=e.evdate.replace(/^-/,'').split('-');if(parts[1])mo=+parts[1];if(parts[2])dy=+parts[2];}
-      if(!mo||!dy)return null;
-      return ye*365.25+(mo-1)*30.4+dy;
-    };
-    const ja=_toJulian(a),jb=_toJulian(b);
+    const sa=_toSeconds(a),sb=_toSeconds(b);
     let label;
-    if(ja!=null&&jb!=null){
-      const diff=Math.round(jb-ja);
-      const ad=Math.abs(diff);
-      if(diff===0)label='same day';
-      else if(ad<31)label=`${ad} day${ad===1?'':'s'}`;
-      else if(ad<365){const mo=Math.round(ad/30.4);label=`${mo} month${mo===1?'':'s'} (${ad} days)`;}
-      else{const yr=Math.round(ad/365.25*10)/10;label=`${yr} year${yr===1?'':'s'} (${ad} days)`;}
+    if(sa!=null&&sb!=null){
+      const diff=sb-sa;
+      if(Math.abs(diff)<1)label='same moment';
+      else label=_breakdown(diff);
     } else {
       const ya=_yr(a),yb=_yr(b);
       const diff=yb-ya;const ad=Math.abs(diff);
       if(diff===0)label='same year (only year-level data available)';
       else label=`~${ad} year${ad===1?'':'s'} (year-level estimate)`;
     }
-    const dir=ja!=null&&jb!=null?(jb>ja?'after':jb<ja?'before':'')
+    const dir=sa!=null&&sb!=null?(sb>sa?'after':sb<sa?'before':'')
       :(_yr(b)>_yr(a)?'after':_yr(b)<_yr(a)?'before':'');
-    out.innerHTML=`<div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--t2);">${esc(a.evdate||'')} → ${esc(b.evdate||'')}</div>`
+    out.innerHTML=`<div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--t2);">${esc(labelOf(a))} → ${esc(labelOf(b))}</div>`
       +`<div style="font-size:14px;">B is <strong>${label}</strong>${dir?' '+dir:''} A.</div>`;
   };
-  aSel.addEventListener('change',recompute);
-  bSel.addEventListener('change',recompute);
+  // Pre-fill the search inputs with selected entries' labels.
+  if(sorted.length>=2){
+    document.getElementById('tl-cmp-a-search').value=labelOf(sorted[0]);
+    document.getElementById('tl-cmp-b-search').value=labelOf(sorted[1]);
+  }
+  renderList('a');renderList('b');
   recompute();
 }
 // #218-C — open Timeline form pre-filled with offset toggle on, between two known events.
@@ -8646,7 +8865,12 @@ function renderQuestions(){
   list.innerHTML=html;
 }
 // xlsx #416 (Batch 38) — toggle the question sort mode and re-render.
-function setQSort(mode){
+// xlsx #414 fix (Batch 40) — RENAMED from setQSort to setQuestionsSort to avoid
+// global-scope clash with the QUOTES setQSort (line 6596). Both functions had the
+// same name; the questions one was defined later and replaced the quotes one,
+// breaking the Page sort pill on the Quotes tab. The Questions tab pills now
+// call setQuestionsSort and the Quotes tab pills keep calling setQSort.
+function setQuestionsSort(mode){
   if(!book())return;
   book().qSort=mode;save();renderQuestions();
 }
