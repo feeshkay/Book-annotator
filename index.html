@@ -3181,6 +3181,9 @@ function addQuickRelRow(relType,charName){
     </div>`;
   list.appendChild(row);
   // qr-type is now a hidden input; checkSuggestions is called from qrTypePick
+  // xlsx #393 follow-up (Batch 35) — fire suggester immediately so the on-screen
+  // debug strip is visible from row creation.
+  if(typeof suggestPatriForQRRow==='function')try{suggestPatriForQRRow(row);}catch(_){ }
 }
 // #340 — Same row markup as addQuickRelRow but appended to the Relationship
 // form's separate list (#ae-rel-quick-rels-list). Re-uses every qr-* helper
@@ -3315,6 +3318,13 @@ function qrTypeFilter(rowId){
   if(!html)html=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);">No matches</div>`;
   list.innerHTML=html;
   list.style.display='block';
+  // xlsx #393 follow-up (Batch 35) — fire the per-QR-row suggester as user types
+  // the rel-type. The suggester reads from .qr-type-search as fallback when .qr-type
+  // hidden is empty, so the hint surfaces even before the user picks from the list.
+  try{
+    if(row._qrPatriTypeDeb)clearTimeout(row._qrPatriTypeDeb);
+    row._qrPatriTypeDeb=setTimeout(()=>{try{suggestPatriForQRRow(row);}catch(_){ }},300);
+  }catch(_){ }
 }
 function qrTypePick(rowId,val,label){
   if(val==='Custom…'){
@@ -5375,15 +5385,20 @@ function suggestPatriForQRRow(row){
   const PATRI_PARENT=['Father','Adoptive parent','Step-parent','Grandfather','Great-grandfather','Great-great-grandfather','Mother','Grandmother','Great-grandmother','Great-great-grandmother'];
   const PATRI_CHILD=['Son','Daughter','Child','Adopted child','Step-child','Grandchild','Great-grandchild','Great-great-grandchild'];
   const PATRI_SIBLING=['Sibling','Brother','Sister','Half-sibling','Step-sibling'];
+  // xlsx #393 follow-up (Batch 35) — also accept ALL parent types as a trigger.
+  // Originally we skipped PARENT types (handled by main-form suggester). But the user's
+  // repro is "writing father's entry, picking 'Father' in QR" — they think of the
+  // QR row's relType from B's perspective. So when relType is a PARENT type, we
+  // interpret it as: "the QR-row char is the parent of the form's main char" —
+  // and the surname source is the QR-row char. Suggestion fires on the form's main
+  // char (already covered by suggestPatriLastName) AND ALSO on the QR-row char if it
+  // happens to be single-token (rare but valid).
   // Find or create the hint container for this row.
   let hint=row.querySelector('.qr-patri-hint');
   if(!hint){
     hint=document.createElement('div');
     hint.className='qr-patri-hint';
-    // xlsx #393 follow-up (Batch 34) — make the hint MORE visible than Batch 33's
-    // mild background. Match the prominence of the main-form ae-patri-hint.
-    hint.style.cssText='display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 10px;margin:6px 0;font-size:12px;line-height:1.4;';
-    // Place after the char field's wrapping div (the second child of the row's main wrapper).
+    hint.style.cssText='display:none;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:8px 10px;margin:6px 0;font-size:13px;line-height:1.4;font-weight:500;';
     const charWrap=row.querySelector('.qr-char-search')?.parentElement;
     if(charWrap)charWrap.parentElement.insertBefore(hint,charWrap.nextSibling);
     else row.appendChild(hint);
@@ -5391,44 +5406,54 @@ function suggestPatriForQRRow(row){
   hint.style.display='none';hint.innerHTML='';
   const relType=(row.querySelector('.qr-type')?.value||'').trim()||(row.querySelector('.qr-type-search')?.value||'').trim();
   const charName=(row.querySelector('.qr-char-search')?.value||'').trim()||(row.querySelector('.qr-char')?.value||'').trim();
-  // xlsx #393 follow-up (Batch 34) — instrument with console.log for debug. User
-  // reported "nothing popped up" — these logs help identify which guard is firing.
-  if(window._qrPatriDebug){console.log('[qrPatri]',{relType,charName,row});}
-  if(!relType||!charName)return;
+  const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
+  // xlsx #393 follow-up (Batch 35) — visible on-screen debug strip. Surfaces the
+  // suggester's state so the user can see what's being read on mobile (where dev
+  // tools aren't accessible). Toggle via window._qrPatriDebug = false to hide.
+  if(window._qrPatriDebug!==false){
+    let dbg=row.querySelector('.qr-patri-debug');
+    if(!dbg){
+      dbg=document.createElement('div');
+      dbg.className='qr-patri-debug';
+      dbg.style.cssText='font-size:10px;color:var(--t3);background:var(--bg);border:0.5px dashed var(--cb);border-radius:var(--r);padding:4px 6px;margin:4px 0;font-family:monospace;line-height:1.3;';
+      const charWrap=row.querySelector('.qr-char-search')?.parentElement;
+      if(charWrap)charWrap.parentElement.insertBefore(dbg,charWrap.nextSibling);
+    }
+    dbg.textContent=`[surname-debug] mainCn="${mainCn}" relType="${relType}" charName="${charName}"`;
+  }
+  if(!relType||!charName){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (relType or charName empty)';}return;}
   let sourceFull='';
   let sourceLabel='';
   if(PATRI_CHILD.includes(relType)||PATRI_SIBLING.includes(relType)){
-    const mainCn=(document.getElementById('ae-cn')?.value||'').trim();
-    if(window._qrPatriDebug)console.log('[qrPatri] mainCn=',mainCn);
-    if(!mainCn)return;
+    if(!mainCn){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (mainCn empty)';}return;}
     const parts=mainCn.split(/\s+/);
-    if(parts.length<2){
-      if(window._qrPatriDebug)console.log('[qrPatri] main char has no surname — skipping');
-      return;
-    }
+    if(parts.length<2){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (main char single-token, no surname to share)';}return;}
     sourceFull=mainCn;
     sourceLabel=PATRI_CHILD.includes(relType)?'parent':'sibling';
+  } else if(PATRI_PARENT.includes(relType)){
+    // xlsx #393 follow-up (Batch 35) — accept PARENT types. The QR-row char IS the
+    // parent. The form's main char inherits the surname (handled by main suggester).
+    // ALSO suggest a surname for the QR-row char itself if main char has multi-token name.
+    if(!mainCn){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (mainCn empty for parent-relType path)';}return;}
+    const parts=mainCn.split(/\s+/);
+    if(parts.length<2){if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (main char single-token; for parent-relType, suggester needs main char to have a surname)';}return;}
+    sourceFull=mainCn;
+    sourceLabel='child sharing surname';
   } else {
-    if(window._qrPatriDebug)console.log('[qrPatri] relType not CHILD/SIBLING — skip:',relType);
+    if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=` → skip (relType "${relType}" not familial)`;}
     return;
   }
   const sourceLast=sourceFull.split(/\s+/).slice(-1)[0];
-  // Don't suggest if the QR char already ends with that surname.
   if(charName.toLowerCase().endsWith(' '+sourceLast.toLowerCase())){
-    if(window._qrPatriDebug)console.log('[qrPatri] already has the surname — skip');
+    if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (already has the surname)';}
     return;
   }
-  // xlsx #393 follow-up (Batch 34) — RELAXED existingChar check. Previously: if
-  // existing char has 2+ tokens, suppress (assume saved data is intentional). User
-  // wants the suggestion to surface anyway when the existing surname differs from
-  // the inherited family surname — so they can choose to update. Now: suppress only
-  // if existing char's last token ALREADY equals sourceLast.
   const existingChar=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
   if(existingChar){
     const exFull=(existingChar.cn||existingChar.content||'').trim();
     const exLast=exFull.split(/\s+/).slice(-1)[0];
     if(exFull.split(/\s+/).length>1&&exLast.toLowerCase()===sourceLast.toLowerCase()){
-      if(window._qrPatriDebug)console.log('[qrPatri] existing char already has the family surname — skip');
+      if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → skip (existing char already has family surname)';}
       return;
     }
   }
@@ -5443,7 +5468,44 @@ function suggestPatriForQRRow(row){
       <button type="button" class="btn btn-sm" onclick="this.closest('.qr-patri-hint').style.display='none';">Keep different</button>
     </div>`;
   hint.style.display='';
-  if(window._qrPatriDebug)console.log('[qrPatri] hint shown:',suggested);
+  if(window._qrPatriDebug!==false){const dbg=row.querySelector('.qr-patri-debug');if(dbg)dbg.textContent+=' → ✓ HINT SHOWN';}
+}
+// xlsx #432 follow-up (Batch 35) — Tap-popover for the theme pill on quote log cards.
+// Safari mobile doesn't surface title-tooltips on tap. This shows a small popover
+// next to the tapped pill listing the full theme names. Tapping anywhere outside
+// the popover closes it.
+function _showThemeListPopover(anchor,namesJoinedNL){
+  // Remove any existing popover first.
+  const existing=document.getElementById('theme-list-popover');
+  if(existing)existing.remove();
+  const pop=document.createElement('div');
+  pop.id='theme-list-popover';
+  const names=namesJoinedNL.split('\n• ');
+  pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached themes</div>'
+    +names.map(n=>`<div style="font-size:13px;padding:2px 0;">🎯 ${esc(n.replace(/^• /,''))}</div>`).join('');
+  pop.style.cssText='position:fixed;background:var(--card);border:0.5px solid var(--am);border-radius:var(--rl2);padding:9px 12px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:9999;max-width:260px;';
+  document.body.appendChild(pop);
+  // Position the popover BELOW the anchor; if it would overflow viewport, position above.
+  const rect=anchor.getBoundingClientRect();
+  const popH=pop.offsetHeight;
+  const popW=pop.offsetWidth;
+  let top=rect.bottom+6;
+  if(top+popH>window.innerHeight-10)top=Math.max(10,rect.top-popH-6);
+  let left=rect.left;
+  if(left+popW>window.innerWidth-10)left=Math.max(10,window.innerWidth-popW-10);
+  pop.style.top=top+'px';
+  pop.style.left=left+'px';
+  // Close on next tap anywhere.
+  setTimeout(()=>{
+    const closeFn=function(e){
+      if(pop.contains(e.target))return;
+      pop.remove();
+      document.removeEventListener('click',closeFn,true);
+      document.removeEventListener('touchend',closeFn,true);
+    };
+    document.addEventListener('click',closeFn,true);
+    document.addEventListener('touchend',closeFn,true);
+  },50);
 }
 function _qrPatriApply(rowId,name){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -5751,12 +5813,28 @@ function editEntry(id){
       // xlsx #429 (Batch 33) — load multi-theme attachments. Reads from attachedThemes[]
       // (new) or falls back to legacy single attachedTheme. ALSO reverse-scans Theme entries
       // that include this quote in their attachedQuoteIds[] (for self-healing display).
+      // xlsx #431 follow-up (Batch 35) — also filter against live Theme entries by name,
+      // so deleted theme names don't appear as chips in the Quote edit form. AND
+      // persistently strip them from the entry's attachedThemes/attachedTheme so they
+      // don't surface again on a future load.
       const _ts=new Set();
       if(Array.isArray(e.attachedThemes))e.attachedThemes.forEach(t=>{if(t)_ts.add(t);});
       if(e.attachedTheme)_ts.add(e.attachedTheme);
       entries().filter(t=>t.type==='Theme'&&Array.isArray(t.attachedQuoteIds)&&t.attachedQuoteIds.includes(e.id))
         .forEach(t=>{if(t.content)_ts.add(t.content);});
-      loadAttachedThemes([..._ts]);
+      const _live=new Set(entries().filter(t=>t.type==='Theme'&&t.content).map(t=>t.content));
+      const _filtered=[..._ts].filter(n=>_live.has(n));
+      // Persistent cleanup: strip stale theme names from the entry itself.
+      if(Array.isArray(e.attachedThemes)){
+        const before=e.attachedThemes.length;
+        e.attachedThemes=e.attachedThemes.filter(n=>_live.has(n));
+        if(e.attachedThemes.length!==before)save();
+      }
+      if(e.attachedTheme&&!_live.has(e.attachedTheme)){
+        e.attachedTheme=e.attachedThemes&&e.attachedThemes.length?e.attachedThemes[0]:'';
+        save();
+      }
+      loadAttachedThemes(_filtered);
     },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
@@ -6113,7 +6191,12 @@ function ecHTML(e,compact,fromTab){
       const truncFirst=first.length>16?first.slice(0,15)+'…':first;
       const label=filtered.length===1?`🎯 ${truncFirst}`:`🎯 ${truncFirst} +${filtered.length-1}`;
       const themeList=filtered.map(t=>esc(t)).join(', ');
-      themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${e.id});" title="${themeList}">${label}</span>`;
+      // xlsx #432 follow-up (Batch 35) — Safari mobile doesn't surface title-tooltips
+      // on tap. Replace the onclick=editEntry with a popover that shows the full
+      // theme list. The user can still get to the quote's edit form by tapping the
+      // card body itself (outside the pill).
+      const themeListJS=filtered.map(t=>t.replace(/'/g,"\\'").replace(/"/g,'\\"')).join('\\n• ');
+      themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showThemeListPopover(this,'${themeListJS}');" title="${themeList}">${label}</span>`;
     }
   }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
