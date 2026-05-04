@@ -26,7 +26,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overscroll-behavior:none;}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding-top:var(--st);overflow-x:hidden;}
-.screen{display:none;flex-direction:column;height:calc(100vh - var(--st));overflow:hidden;}
+.screen{display:none;flex-direction:column;height:calc(100vh - var(--st));height:calc(100dvh - var(--st));overflow:hidden;}
 .screen.active{display:flex;}
 .topbar{display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:var(--bg);border-bottom:0.5px solid var(--cb);flex-shrink:0;}
 .topbar-title{font-size:16px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -352,7 +352,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="map-panel" class="panel" style="padding:10px 11px 85px;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
         <div style="position:relative;flex:1;"><input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('map-search').value='';renderMap();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
-        <button id="osm-toggle-btn" class="btn btn-sm" onclick="toggleOsmView()" style="flex-shrink:0;font-size:12px;padding:6px 10px;" title="Toggle in-app map">🗺️ Map</button>
+        <button id="osm-toggle-btn" class="btn btn-sm" onclick="toggleOsmView()" style="flex-shrink:0;font-size:12px;padding:6px 10px;">🗺️ Map</button>
       </div>
       <div id="osm-map-wrap" style="display:none;border-radius:var(--r);overflow:hidden;margin-bottom:10px;border:0.5px solid var(--cb);">
         <div id="osm-map" style="height:320px;width:100%;"></div>
@@ -785,7 +785,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <!-- #303/#335 -->
       <div class="fg" id="ae-evdate-row">
-        <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required — use a real year, "Ch.4", "Year 3", "Unknown", etc.)</span></label>
+        <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required)</span></label>
         <div style="position:relative;"><input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/><button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button></div>
       </div>
       <div class="r2">
@@ -803,7 +803,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <!-- Time of day + × clear -->
-      <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional — for sub-day precision in compare)</span></label>
+      <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="number" id="ae-evdate-hour" inputmode="numeric" placeholder="hh" min="1" max="12" style="width:60px;font-size:14px;text-align:center;"/>
           <span style="color:var(--t3);">:</span>
@@ -1069,27 +1069,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()" oninput="_chNumInputHandler()"/></div>
       </div>
-      <!-- xlsx #417 (Batch 45) — Section-label row: shown when Chapter # = 0. Lets the
-           user label front/back-matter sections (Prologue, Preface, Epilogue, etc.) instead
-           of displaying an opaque "Ch. 0" badge on log cards. -->
       <div id="ae-section-label-row" style="display:none;margin-top:-4px;">
-        <div class="fg"><label>Section type <span style="font-weight:400;color:var(--t3);">(Ch. 0 — pick what kind of section this is)</span></label>
-          <select id="ae-section-label">
-            <option value="">— Generic front/back matter —</option>
-            <option value="Prologue">Prologue</option>
-            <option value="Preface">Preface</option>
-            <option value="Foreword">Foreword</option>
-            <option value="Introduction">Introduction</option>
-            <option value="Author's Note">Author's Note</option>
-            <option value="Dedication">Dedication</option>
-            <option value="Epigraph">Epigraph</option>
-            <option value="Epilogue">Epilogue</option>
-            <option value="Afterword">Afterword</option>
-            <option value="Appendix">Appendix</option>
-            <option value="Glossary">Glossary</option>
-            <option value="Index">Index</option>
-            <option value="Acknowledgements">Acknowledgements</option>
-          </select>
+        <div class="fg"><label>Section type <span style="font-weight:400;color:var(--t3);">(Ch. 0 — what kind of section?)</span></label>
+          <select id="ae-section-label"><option value="">— Generic front/back matter —</option><option value="Prologue">Prologue</option><option value="Preface">Preface</option><option value="Foreword">Foreword</option><option value="Introduction">Introduction</option><option value="Author's Note">Author's Note</option><option value="Dedication">Dedication</option><option value="Epigraph">Epigraph</option><option value="Epilogue">Epilogue</option><option value="Afterword">Afterword</option><option value="Appendix">Appendix</option><option value="Glossary">Glossary</option><option value="Index">Index</option><option value="Acknowledgements">Acknowledgements</option></select>
         </div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
@@ -1252,7 +1234,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
   fiction:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Concept','Evidence','Figure','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
   memoir:   {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
   mystery:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
   scifi:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
@@ -2301,12 +2283,8 @@ function _cddRelChanged(){
 // ═══════════════════════════════════════════════════════════════
 // CHAPTER SETUP
 // ═══════════════════════════════════════════════════════════════
-function addChapSetupRow(num,start,end,title){
+function addChapSetupRow(num,start,end,title,sectionLabel){
   const list=document.getElementById('chap-setup-list');
-  // xlsx #435 (Batch 41) — page-start autofill: use the MAX end (or start) page
-  // across ALL existing rows, not just the immediately-preceding row. Prevents
-  // pulling a stale "recent" number when the user renumbered/deleted middle rows.
-  // xlsx #411 (Batch 39 / refined Batch 41) — chapter # autofill: max(existing_ch)+1.
   if(start==null){
     let maxEnd=0;
     document.querySelectorAll('#chap-setup-list .chap-row').forEach(r=>{
@@ -2329,12 +2307,12 @@ function addChapSetupRow(num,start,end,title){
   }
   const row=document.createElement('div');row.className='chap-row';
   row.dataset.ch=String(chNum);
-  // xlsx #473 (Batch 40) — chapter number is now an editable number input. min=0
-  // so 0 represents pre-pages / front-matter (preface, intro, foreword). The
-  // dataset.ch attribute syncs from the input's value via _onChapNumChange so
-  // getChapSetup() always returns the user-entered number, not a sequence index.
+  // #417 (Batch 46) — show sectionLabel badge for Ch.0 rows; tooltip on Ch# input
+  const isFrontBack=chNum===0||chNum==='0';
+  const slBadge=isFrontBack&&sectionLabel?`<span style="font-size:10px;background:var(--al);color:var(--accent);border-radius:4px;padding:1px 5px;font-weight:600;flex-shrink:0;">${sectionLabel}</span>`:'';
   row.innerHTML=`<span style="font-size:11px;color:var(--t2);font-weight:600;flex-shrink:0;">Ch.</span>
     <input type="number" inputmode="numeric" min="0" value="${chNum}" oninput="_onChapNumChange(this)" style="width:46px;flex-shrink:0;font-size:16px;text-align:center;" title="Chapter number (0 = front-matter / pre-pages)"/>
+    ${slBadge}
     <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:16px;"/>
     <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" style="flex:1;min-width:0;font-size:16px;"/>
     <span style="font-size:11px;color:var(--t2);">–</span>
@@ -2373,7 +2351,21 @@ function getChapSetup(){
     return{ch,title,start:isNaN(start)?0:start,end:isNaN(end)?0:end};
   }).filter(r=>r.start>0||r.ch===0||r.title);
 }
-function renderChapSetup(s){document.getElementById('chap-setup-list').innerHTML='';(s||[]).forEach(c=>addChapSetupRow(c.ch,c.start,c.end,c.title));}
+function renderChapSetup(s){
+  document.getElementById('chap-setup-list').innerHTML='';
+  // #417 (Batch 46) — sort numerically (Ch.0 first, then 1, 2, 3…)
+  const sorted=(s||[]).slice().sort((a,b)=>(+a.ch||0)-(+b.ch||0));
+  // Pull sectionLabel from matching log entries for Ch.0 rows
+  const chapEntries=entries().filter(e=>e.type==='Chapter');
+  sorted.forEach(c=>{
+    let sl=c.sectionLabel||'';
+    if(!sl&&(+c.ch===0)){
+      const match=chapEntries.find(e=>String(e.chapNum)==='0'&&e.sectionLabel);
+      if(match)sl=match.sectionLabel;
+    }
+    addChapSetupRow(c.ch,c.start,c.end,c.title,sl);
+  });
+}
 function pageToChapters(pageStr){
   const setup=book()?.chapSetup||[];if(!setup.length)return[];
   const parts=pageStr.replace('–','-').replace('—','-').split('-');
@@ -2402,7 +2394,6 @@ function autoChapFromPageLive(pgVal){
   if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
   _chNumInputHandler();
 }
-// xlsx #417 (Batch 45) — Show section-label selector when chapter # = 0.
 function _chNumInputHandler(){
   const type=document.getElementById('ae-type')?.value;
   const ch=document.getElementById('ae-ch')?.value.trim();
@@ -2993,7 +2984,9 @@ async function lookupMW(){
 function toggleRatingVis(){const s=document.getElementById('nb-status').value;document.getElementById('nb-rating-group').style.display=s==='finished'?'':'none';}
 function switchLibTab(tab,btn){
   libTab=tab;
-  document.querySelectorAll('.tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  // #436 (Batch 46) — scope active removal to the lib tab buttons only, not the book tab-bar
+  document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   renderLibrary();
 }
 function renderLibrary(){
@@ -3087,11 +3080,22 @@ function _scrubThemeQuoteCrossLinks(){
   let changed=false;
   all.forEach(e=>{
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){
-      if(Array.isArray(e.attachedThemes)){const before=e.attachedThemes.length;e.attachedThemes=e.attachedThemes.filter(n=>liveThemeNames.has(n));if(e.attachedThemes.length!==before)changed=true;}
-      if(e.attachedTheme&&!liveThemeNames.has(e.attachedTheme)){e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';changed=true;}
+      if(Array.isArray(e.attachedThemes)){
+        const before=e.attachedThemes.length;
+        e.attachedThemes=e.attachedThemes.filter(n=>liveThemeNames.has(n));
+        if(e.attachedThemes.length!==before)changed=true;
+      }
+      if(e.attachedTheme&&!liveThemeNames.has(e.attachedTheme)){
+        e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';
+        changed=true;
+      }
       if(Array.isArray(e.attachedEventIds)){const b=e.attachedEventIds.length;e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));if(e.attachedEventIds.length!==b)changed=true;}
     }
-    if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){const before=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));if(e.attachedQuoteIds.length!==before)changed=true;}
+    if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
+      const before=e.attachedQuoteIds.length;
+      e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
+      if(e.attachedQuoteIds.length!==before)changed=true;
+    }
     if(['Event','Timeline','Date/Period'].includes(e.type)&&Array.isArray(e.attachedQuoteIds)){const b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));if(e.attachedQuoteIds.length!==b)changed=true;}
   });
   if(changed)save();
@@ -3332,7 +3336,7 @@ function saveBook(applyWiki){
     const newEntry={
       id:Date.now()+ch+Math.floor(Math.random()*100),
       type:'Chapter',
-      content:c.title||(ch===0?(c.sectionLabel||'Front matter'):`Chapter ${ch}`),
+      content:c.title||(ch===0?'Front matter':`Chapter ${ch}`),
       chapNum:String(ch),
       pageNum,
       date:(typeof localDate==='function'?localDate():new Date().toISOString().slice(0,10)),
@@ -4022,7 +4026,6 @@ function onTypeChange(){
     window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
     if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   }
-  // xlsx #417 (Batch 45) — update section-label row visibility on type change
   if(typeof _chNumInputHandler==='function')_chNumInputHandler();
   if(isRel&&chars.length){
     // #217 — Both blank, user picks A and B explicitly
@@ -4050,19 +4053,12 @@ function onTypeChange(){
     };
   }
   if(!isChar&&!isRel&&chars.length){
-    // Reset Characters Involved to empty for new entries
+    // Batch 46: reset Characters Involved to empty for ALL new entries by default.
+    // Auto-populate only happens explicitly from openAddFromCharProfile / openAddTypeForChar.
     if(!document.getElementById('ae-edit-id').value)cddSet('ae-inv',[]);
     cddFilter('ae-inv');
-    if(isTrait){
-      // #311 — Auto-select: prefer sole main char; fall back to first char if only one exists
-      setTimeout(()=>{
-        if(cddGet('ae-inv').length)return;
-        const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content);
-        const mains=entries().filter(e=>CT.includes(e.type)&&e.charRole==='main').map(e=>e.cn||e.content);
-        const pick=mains.length===1?mains[0]:(allChars.length===1?allChars[0]:null);
-        if(pick)cddSet('ae-inv',[pick]);
-      },30);
-    }
+    // Trait auto-select removed — was pre-filling main character even when not from a profile.
+    // The user expects a blank "Characters Involved" unless they explicitly add from a char profile.
   }
   if(isChar){document.getElementById('ae-quick-rels-list').innerHTML='';document.getElementById('ae-sug-box').style.display='none';}
   // #340 — when entering a Relationship-type form, clear any prior quick-rels
@@ -4506,18 +4502,12 @@ function reshowTemplateHint(){
   hint.style.display='';
   const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
 }
-// xlsx #271 (Batch 45) — Dirty-form guard. Track whether user has made any
-// changes to the entry form since it was last opened. If they tap × or Cancel
-// without saving, warn them. Reset on form open and after successful save.
 let _aeDirty=false;
 function _markDirty(){_aeDirty=true;}
 function _clearDirty(){_aeDirty=false;}
 function _closeAEIfSafe(){
-  if(_aeDirty){
-    if(!confirm('You have unsaved changes. Close without saving?'))return;
-  }
-  _clearDirty();
-  closeSheet('ae-overlay');
+  if(_aeDirty){if(!confirm('You have unsaved changes. Close without saving?'))return;}
+  _clearDirty();closeSheet('ae-overlay');
 }
 function clearAEForm(){
   ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
@@ -4541,10 +4531,11 @@ function clearAEForm(){
   clearAttachedQuotes();
   if(typeof clearAttachedThemes==='function')clearAttachedThemes();
   if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
-  // xlsx #417 (Batch 45) — hide section-label row
   const _slr=document.getElementById('ae-section-label-row');if(_slr)_slr.style.display='none';
   const _sl=document.getElementById('ae-section-label');if(_sl)_sl.value='';
-  _clearDirty();
+  if(typeof _clearDirty==='function')_clearDirty();
+  if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
+  // #250 — Discard draft button hidden until editEntry decides to show it
   const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
   // xlsx #427 — Delete button hidden until editEntry sets editId
   const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='none';
@@ -5035,15 +5026,7 @@ function refreshAttachEventOptions(){
 }
 
 let _tlAttachedQuoteIds=[];
-function _tlAqFilter(){
-  const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
-  const list=document.getElementById('ae-tl-aq-list');if(!list)return;
-  const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
-  const filtered=q?allQs.filter(qe=>(qe.content||'').toLowerCase().includes(q)||(qe.speaker||'').toLowerCase().includes(q)):allQs.slice(0,40);
-  if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);">No matches.</div>';list.style.display='';return;}
-  list.innerHTML=filtered.map(qe=>{const sp=qe.speaker?` — ${esc(qe.speaker)}`:'';const pg=qe.pageNum?` · p.${qe.pageNum}`:'';return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);">"${esc((qe.content||'').slice(0,80))}"${sp}${pg}</div>`;}).join('');
-  list.style.display='';
-}
+function _tlAqFilter(){const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();const list=document.getElementById('ae-tl-aq-list');if(!list)return;const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);const filtered=q?allQs.filter(qe=>(qe.content||'').toLowerCase().includes(q)||(qe.speaker||'').toLowerCase().includes(q)):allQs.slice(0,40);if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);">No matches.</div>';list.style.display='';return;}list.innerHTML=filtered.map(qe=>{const sp=qe.speaker?` — ${esc(qe.speaker)}`:'';const pg=qe.pageNum?` · p.${qe.pageNum}`:'';return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);">"${esc((qe.content||'').slice(0,80))}"${sp}${pg}</div>`;}).join('');list.style.display='';}
 function _tlAqClear(){const s=document.getElementById('ae-tl-aq-search');if(s)s.value='';const h=document.getElementById('ae-tl-aq-id');if(h)h.value='';const l=document.getElementById('ae-tl-aq-list');if(l)l.style.display='none';}
 function _tlAqPick(id){const qe=entries().find(x=>x.id===Number(id));if(!qe)return;const s=document.getElementById('ae-tl-aq-search');if(s)s.value=`"${(qe.content||'').slice(0,60)}"${qe.speaker?' — '+qe.speaker:''}`;const h=document.getElementById('ae-tl-aq-id');if(h)h.value=String(id);const l=document.getElementById('ae-tl-aq-list');if(l)l.style.display='none';}
 function addTlAttachedQuote(){const id=Number(document.getElementById('ae-tl-aq-id')?.value||0);if(!id){alert('Pick a quote from the list first.');return;}if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);_tlAqClear();renderTlAttachedQuoteChips();}
@@ -5211,7 +5194,6 @@ function submitEntry(){
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
   const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?(getCharPhotos()[0]||document.getElementById('ae-char-photo-data').value||''):(getEntryPhotos()[0]||''),photos:isChar?getCharPhotos():getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
-  // xlsx #417 (Batch 45) — persist sectionLabel for Ch.0 front/back-matter entries.
   if(type==='Chapter'&&String(chapNum)==='0'){const _sl=document.getElementById('ae-section-label');if(_sl&&_sl.value)entry.sectionLabel=_sl.value;}
 
   if(isChar){
@@ -6540,11 +6522,7 @@ function editEntry(id){
     const ddb=document.getElementById('ae-discard-draft-btn');
     if(ddb)ddb.style.display=e.isDraft?'':'none';
     const di=document.getElementById('ae-is-draft');if(di)di.value=e.isDraft?'true':'false';
-    // xlsx #417 (Batch 45) — restore sectionLabel if Ch.0
-    if(e.type==='Chapter'&&String(e.chapNum)==='0'){
-      const _slr=document.getElementById('ae-section-label-row');if(_slr)_slr.style.display='';
-      const _sl=document.getElementById('ae-section-label');if(_sl)_sl.value=e.sectionLabel||'';
-    }
+    if(e.type==='Chapter'&&String(e.chapNum)==='0'){const _slr=document.getElementById('ae-section-label-row');if(_slr)_slr.style.display='';const _sl=document.getElementById('ae-section-label');if(_sl)_sl.value=e.sectionLabel||'';}
     const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent=e.isDraft?'☑':'☐';
     if(e.type==='Dialogue'&&e.dialogueLines?.length)setTimeout(()=>{
       const cont=document.getElementById('ae-dial-lines');cont.innerHTML='';
@@ -6683,8 +6661,6 @@ function ecHTML(e,compact,fromTab){
   const tag=`<span class="tag tag-${k}">${e.type}</span>`;
   const pg=[];
   const chapNums=e.chapNum?e.chapNum.split(',').map(c=>c.trim()):[];
-  // xlsx #417 (Batch 45) — for Ch.0 entries with a sectionLabel, show the label
-  // instead of "Ch. 0" on the log card badge. e.g. "Prologue" or "Epilogue".
   chapNums.forEach(c=>{
     if(!c)return;
     if(c==='0'&&e.sectionLabel){pg.push(`<span class="pbadge" onclick="setFilter('ch:0')" style="cursor:pointer;background:var(--al);color:var(--accent);font-weight:600;">${esc(e.sectionLabel)}</span>`);}
@@ -6745,7 +6721,6 @@ function ecHTML(e,compact,fromTab){
     });
     const attachedQEntries=[..._attachedSet].map(id=>entries().find(q=>q.id===id)).filter(Boolean);
     const allTqs=[...tqs,...attachedQEntries.map(q=>({text:q.content,page:q.pageNum||'',speaker:q.speaker||'',_entryId:q.id}))];
-    // xlsx #396 (Batch 45) — sort combined quote list by page number ascending.
     allTqs.sort((a,b)=>{const pa=parseFloat(a.page)||9999,pb=parseFloat(b.page)||9999;return pa-pb;});
     const allTqsWithId=allTqs.map(q=>({...q,_themeId:e.id}));
     const quoteBlock=buildThemeQuoteBlock(allTqsWithId);
@@ -6770,9 +6745,9 @@ function ecHTML(e,compact,fromTab){
     </div>`;
   } else {
     const ph=e.photo?`<img src="${e.photo}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;float:right;margin-left:7px;"/>`:'' ;
-    // #229 (Batch 45) — larger quote body text
+    // #229 — enlarge only the " marks; keep body text at standard size
     const isQuoteLike=['Quote','Line/stanza','Narrator quote'].includes(e.type);
-    body=`<div class="econtent">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span><span style="font-size:15px;line-height:1.55;">${e.content}</span><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
+    body=`<div class="econtent">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.content}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:'';
@@ -8247,7 +8222,7 @@ function openTlCompare(){
   };
   document.getElementById('tl-cmp-a-search').addEventListener('input',()=>renderList('a'));
   document.getElementById('tl-cmp-b-search').addEventListener('input',()=>renderList('b'));
-  // B42 — start blank
+  // B42: start blank
   // Convert to seconds-since-epoch-ish (very rough — good enough for diffs).
   const _toSeconds=e=>{
     const ye=_yr(e);if(!ye)return null;
@@ -8758,13 +8733,9 @@ function renderMap(){
   empty.style.display='none';
   const locDraftHTML=locDrafts.length?`\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts (${locDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">${locDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}</div>\x3C/details>`:'';
 
-  // Collect all real locations for a combined Maps link (B44: "View all in Maps" button removed per user request)
   const realLocs=locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return d.type==='real';});
-
   let headerHTML='';
-  if(realLocs.length>0){
-    headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:7px 12px;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--t2);">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} — tap 🗺️ Map above to see them on the map</div>`;
-  }
+  if(realLocs.length>0){headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:7px 12px;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--t2);">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} — tap 🗺️ Map above to see them on the map</div>`;}
 
   const mapQ=(document.getElementById('map-search')?.value||'').toLowerCase().trim();
   // #328 — filter chips. Toggle by tapping; multiple chips = OR within group, AND across groups.
@@ -9528,12 +9499,12 @@ function renderStats(){
   const content=document.getElementById('stats-content');
   content.innerHTML=`
   <div class="sum-grid">
-    <div class="sum-card" onclick="forceTab('log')" title="Go to Log" style="cursor:pointer;"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
-    <div class="sum-card" onclick="forceTab('chars')" title="Go to Characters" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
-    <div class="sum-card" onclick="forceTab('quotes')" title="Go to Quotes" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes ›</div></div>
-    <div class="sum-card" onclick="forceTab('timeline')" title="Go to Timeline" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events ›</div></div>
-    <div class="sum-card" onclick="forceTab('log');setFilter('Theme');" title="Go to Themes" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>e.type==='Theme').length}</div><div class="sum-lbl">Themes ›</div></div>
-    <div class="sum-card" onclick="forceTab('map')" title="Go to Locations" style="cursor:pointer;"><div class="sum-val">${getLocations().length}</div><div class="sum-lbl">Locations ›</div></div>
+    <div class="sum-card" onclick="forceTab('log')" style="cursor:pointer;" title="Go to Log"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
+    <div class="sum-card" onclick="forceTab('chars')" style="cursor:pointer;" title="Go to Characters"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
+    <div class="sum-card" onclick="forceTab('quotes')" style="cursor:pointer;" title="Go to Quotes"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes ›</div></div>
+    <div class="sum-card" onclick="forceTab('timeline')" style="cursor:pointer;" title="Go to Timeline"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events ›</div></div>
+    <div class="sum-card" onclick="forceTab('log');setFilter('Theme');" style="cursor:pointer;" title="Go to Themes"><div class="sum-val">${all.filter(e=>e.type==='Theme').length}</div><div class="sum-lbl">Themes ›</div></div>
+    <div class="sum-card" onclick="forceTab('map')" style="cursor:pointer;" title="Go to Locations"><div class="sum-val">${getLocations().length}</div><div class="sum-lbl">Locations ›</div></div>
     <div class="sum-card"><div class="sum-val">${sessions.length}</div><div class="sum-lbl">Sessions</div></div>
     <div class="sum-card"><div class="sum-val">${totalMin>=60?Math.floor(totalMin/60)+'h '+(totalMin%60)+'m':totalMin+' min'}</div><div class="sum-lbl">Total reading time</div></div>
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
@@ -10012,24 +9983,15 @@ function exportPDF(){
         </div>
       </div>`;
     });
-    // xlsx #392 (Batch 44) — include a static OSM map image in the PDF for real
-    // locations that have geocoded lat/lng cached. Uses OpenStreetMap tile-based
-    // static image (staticmap.openstreetmap.de) — free, no key required.
-    // For each geocoded real location, emit a small tile map centered on its coords.
+    // B44: static OSM tile maps for geocoded real locations
     const geocodedLocs=locList.filter(l=>l.type==='real'&&l.lat&&l.lng);
     if(geocodedLocs.length){
-      html+=`<div style="margin-top:20px;"><h3 style="font-size:14px;margin-bottom:10px;color:#534AB7;">📍 Location Maps</h3>`;
-      html+=`<div style="display:flex;flex-wrap:wrap;gap:12px;">`;
+      html+=`<div style="margin-top:20px;"><h3 style="font-size:14px;margin-bottom:10px;color:#534AB7;">📍 Location Maps</h3><div style="display:flex;flex-wrap:wrap;gap:12px;">`;
       geocodedLocs.forEach(loc=>{
-        // Use staticmap.openstreetmap.de for a 300x200 tile snapshot
         const zoom=loc.city||loc.country?10:5;
         const staticUrl=`https://staticmap.openstreetmap.de/?center=${loc.lat},${loc.lng}&zoom=${zoom}&size=300x200&markers=${loc.lat},${loc.lng},red`;
         const cityLine=[loc.city,loc.country].filter(Boolean).join(', ');
-        html+=`<div style="text-align:center;flex-shrink:0;">
-          <img src="${staticUrl}" width="200" height="133" style="border-radius:6px;border:1px solid #ddd;display:block;object-fit:cover;" onerror="this.style.display='none'"/>
-          <div style="font-size:10px;font-weight:600;margin-top:4px;">${loc.name}</div>
-          ${cityLine?`<div style="font-size:9px;color:#888;">${cityLine}</div>`:''}
-        </div>`;
+        html+=`<div style="text-align:center;flex-shrink:0;"><img src="${staticUrl}" width="200" height="133" style="border-radius:6px;border:1px solid #ddd;display:block;object-fit:cover;" onerror="this.style.display='none'"/><div style="font-size:10px;font-weight:600;margin-top:4px;">${loc.name}</div>${cityLine?`<div style="font-size:9px;color:#888;">${cityLine}</div>`:''}</div>`;
       });
       html+=`</div></div>`;
     }
