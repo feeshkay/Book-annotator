@@ -750,6 +750,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div id="ae-mw-result" style="display:none;background:var(--gl);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;font-size:12px;color:var(--green);"></div>
       <div class="fg"><label>Definition</label><textarea id="ae-def" style="min-height:50px;" placeholder="What does it mean?"></textarea></div>
+      <div class="fg"><label>Etymology <span style="font-weight:400;color:var(--t3);">(word origin — auto-filled from lookup)</span></label><input type="text" id="ae-word-etym" placeholder="e.g. Latin rēs 'thing'…"/></div>
+      <div class="fg"><label>Example sentence <span style="font-weight:400;color:var(--t3);">(from dictionary — auto-filled)</span></label><input type="text" id="ae-word-mw-ex" placeholder="e.g. 'She evinced great courage.'"/></div>
       <div class="fg"><label>Context in book</label><input type="text" id="ae-word-context" placeholder="How it was used in the text…"/></div>
       <div class="fg"><label>Who said it / narrator</label>
         <div class="cdd-wrap" id="ae-word-speaker-cdd-wrap">
@@ -937,6 +939,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-ref-length-row" class="r2">
         <div class="fg"><label id="ae-ref-length-label">Pages</label><input type="number" id="ae-ref-length" inputmode="numeric" placeholder="e.g. 320" min="0" oninput="toggleGoodreads()"/></div>
         <div class="fg"><label>Est. reading time</label><input type="text" id="ae-ref-time-est" placeholder="auto" readonly style="background:var(--bg3);color:var(--t2);cursor:default;"/></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Actual time to read <span style="font-weight:400;color:var(--t3);">(minutes)</span></label><input type="number" id="ae-ref-actual-min" inputmode="numeric" placeholder="e.g. 90" min="0"/></div>
+        <div class="fg"><label>Date read</label><input type="date" id="ae-ref-date-read"/></div>
       </div>
       <div class="fg"><label>Link / URL <span style="font-weight:400;color:var(--t3);">(optional — if blank, the reference card shows a Google search button)</span></label><input type="text" id="ae-ref-url" placeholder="https://…"/></div>
       <div id="ae-goodreads-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 Book reference — consider <span style="text-decoration:underline;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent(document.getElementById('ae-content').value))">adding to Goodreads</span> too.</div>
@@ -1214,6 +1220,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
+    </div>
+    <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="openSymbolCheatSheet()">📝 Reading symbols guide</button>
+      <button class="btn" onclick="copySessionOpener()">📋 Copy session opener</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
@@ -1767,9 +1777,9 @@ function _dcBadge(name){
 // Capture the visible/relevant input fields by ID. Apply them by writing back into the form.
 const TEMPLATE_FIELDS=[
   'ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg',
-  'ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc',
+  'ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex',
   'ae-evdate','ae-evdate-year','ae-evdate-month','ae-evdate-day','ae-medate',
-  'ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg',
+  'ae-ref-author','ae-ref-url','ae-ref-length','ae-ref-actual-min','ae-ref-date-read','ae-cintro-ch','ae-cintro-pg',
   'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-era','ae-loc-notes',
   'ae-trait-type','ae-imp','ae-event-sig','ae-loc-type','ae-ref-type'
 ];
@@ -1893,7 +1903,7 @@ function toggleInfoTip(btn,ev){
   div.textContent=msg;
   btn.parentNode.appendChild(div);
 }
-function titleCase(str){const articles=new Set(['a','an','the','and','but','or','for','nor','on','at','to','by','in','of','up','as','is']);return str.split(' ').map((w,i)=>{if(!w)return w;const low=w.toLowerCase();return(i===0||!articles.has(low))?w[0].toUpperCase()+w.slice(1).toLowerCase():low;}).join(' ');}
+function titleCase(str){const articles=new Set(['a','an','the','and','but','or','for','nor','on','at','to','by','in','of','up','as','is']);return str.split(' ').map((w,i)=>{if(!w)return w;const low=w.toLowerCase();if(w.length===1||w===w.toUpperCase()&&w.length>1&&!/[^A-Z]/.test(w))return w;return(i===0||!articles.has(low))?w[0].toUpperCase()+w.slice(1).toLowerCase():low;}).join(' ');}
 function autoTitleCase(el){const pos=el.selectionStart;el.value=titleCase(el.value);el.setSelectionRange(pos,pos);}
 function toneClass(emotion){
   if(!emotion)return'';
@@ -2169,6 +2179,7 @@ function cddQuickAdd(prefix){
   // Use search input value as the new name; if empty, prompt.
   let name=(document.getElementById(prefix+'-search')?.value||'').trim();
   if(!name){name=prompt('New character name:');if(!name||!name.trim())return;name=name.trim();}
+  name=titleCase(name);
   if(!currentId)return;
   // Don't duplicate — but if existing is a draft, promote it.
   const existing=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content).toLowerCase()===name.toLowerCase());
@@ -2968,13 +2979,24 @@ async function lookupMW(){
     if(!r.ok)throw new Error();
     const d=await r.json();
     const entry=d[0];
-    const meaning=entry.meanings?.[0];
-    const def=meaning?.definitions?.[0]?.definition||'No definition found.';
-    const partOfSpeech=meaning?.partOfSpeech||'';
-    const example=meaning?.definitions?.[0]?.example||'';
-    res.innerHTML=`<strong>${entry.word}</strong> <em>${partOfSpeech}</em><br>${def}${example?`<br><em>"${example}"</em>`:''}`;
-    document.getElementById('ae-def').value=`${partOfSpeech ? '['+partOfSpeech+'] ' : ''}${def}`;
-    document.getElementById('ae-wsrc').value='Free Dictionary API / Merriam-Webster';
+    // Full definitions across all meanings (#227)
+    const allDefs=[];
+    (entry.meanings||[]).forEach(m=>{
+      (m.definitions||[]).forEach((df,i)=>{
+        allDefs.push(`[${m.partOfSpeech}${i>0?' ('+(i+1)+')':''}] ${df.definition}`);
+      });
+    });
+    const fullDef=allDefs.join('\n')||'No definition found.';
+    // First example (#227-B)
+    let example='';
+    for(const m of(entry.meanings||[])){for(const df of(m.definitions||[])){if(df.example){example=df.example;break;}}if(example)break;}
+    // Etymology (#227-A)
+    const etym=entry.origin||(d.find&&d.find(e=>e.origin)?.origin)||'';
+    res.innerHTML=`<strong>${entry.word}</strong>${allDefs.length>1?` <span style="font-size:10px;color:var(--t3);">(${allDefs.length} definitions loaded)</span>`:''}<br>${allDefs[0]||''}${example?`<br><em style="color:var(--t2);">"${example}"</em>`:''}${etym?`<br><span style="font-size:10px;color:var(--t3);">Origin: ${etym}</span>`:''}`;
+    document.getElementById('ae-def').value=fullDef;
+    const exEl=document.getElementById('ae-word-mw-ex');if(exEl&&!exEl.value&&example)exEl.value=example;
+    const etEl=document.getElementById('ae-word-etym');if(etEl&&!etEl.value&&etym)etEl.value=etym;
+    document.getElementById('ae-wsrc').value='Free Dictionary API';
   }catch(e){res.textContent='Not found. ';const a=document.createElement('span');a.style.cssText='color:var(--accent);cursor:pointer;text-decoration:underline;';a.textContent='Open Merriam-Webster';a.onclick=()=>openLink('https://www.merriam-webster.com/dictionary/'+encodeURIComponent(word));res.appendChild(a);}
 }
 
@@ -3220,7 +3242,7 @@ function renderLibLists(){
       <button class="btn btn-sm btn-primary" onclick="addCustomEventType()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
       ${deletedBuiltins.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Restore deleted built-ins (${deletedBuiltins.length})</summary><div style="margin-top:6px;">${deletedBuiltins.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;text-decoration:line-through;">${t}</span> <button class="btn btn-sm" onclick="libListsRestoreEv('${esc(t)}')" style="font-size:10px;padding:2px 6px;margin:1px 4px 1px 0;">Restore</button>`).join(' ')}</div></details>`:''}
     </div>
-    <div style="font-size:11px;color:var(--t3);text-align:center;padding:8px;background:var(--bg2);border-radius:var(--r);">More lists coming: relationship types, character roles, trait types.</div>
+    ${renderRelTypesSection()}
   `;
 }
 // xlsx #401 / #342 (Batch 30) — wrapper that delegates to deleteEventType (which
@@ -3236,6 +3258,58 @@ function libListsRestoreEv(name){
   save();
   renderLibLists();
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
+}
+// #409 — custom relationship types
+const ALL_BUILTIN_REL_TYPES=[...new Set(REL_GROUPS.flatMap(g=>g.items).filter(t=>t!=='Custom\u2026'))];
+function _activeRelTypes(){
+  if(!library)return{builtins:ALL_BUILTIN_REL_TYPES,customs:[]};
+  const deleted=new Set(library.deletedRelTypes||[]);
+  const customs=(library.customRelTypes||[]).filter(t=>!deleted.has(t)&&!ALL_BUILTIN_REL_TYPES.includes(t));
+  return{builtins:ALL_BUILTIN_REL_TYPES.filter(t=>!deleted.has(t)),customs};
+}
+function renderRelTypesSection(){
+  if(!library.customRelTypes)library.customRelTypes=[];
+  if(!library.deletedRelTypes)library.deletedRelTypes=[];
+  const{builtins,customs}=_activeRelTypes();
+  const deleted=new Set(library.deletedRelTypes);
+  const allActive=[...builtins,...customs].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+  const deletedBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>deleted.has(t)).sort();
+  return`<div style="margin-bottom:18px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Relationship types</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in relationship entry forms. Custom additions show in accent color.</div>
+    ${allActive.length?`<div style="margin-bottom:10px;">${allActive.map(t=>{
+      const isCustom=customs.includes(t);
+      const bg=isCustom?'var(--al)':'var(--bg2)';const border=isCustom?'var(--am)':'var(--cb)';
+      const color=isCustom?'var(--accent)':'var(--text)';const fw=isCustom?'600':'400';
+      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t} <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">\xd7</span></span>`;
+    }).join('')}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No active types.</div>'}
+    <button class="btn btn-sm btn-primary" onclick="libListsAddRel()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
+    ${deletedBuiltins.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Restore deleted (${deletedBuiltins.length})</summary><div style="margin-top:6px;">${deletedBuiltins.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;text-decoration:line-through;">${t}</span> <button class="btn btn-sm" onclick="libListsRestoreRel('${esc(t)}')" style="font-size:10px;padding:2px 6px;margin:1px 0;">Restore</button>`).join(' ')}</div></details>`:''}
+  </div>`;
+}
+function libListsAddRel(){
+  const v=(prompt('New relationship type:')||'').trim();if(!v)return;
+  if(!library.customRelTypes)library.customRelTypes=[];
+  if(!library.deletedRelTypes)library.deletedRelTypes=[];
+  if(library.customRelTypes.includes(v)||ALL_BUILTIN_REL_TYPES.includes(v)){alert('Already exists.');return;}
+  library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==v);
+  library.customRelTypes.push(v);save();renderLibLists();
+}
+function libListsRemoveRel(name){
+  if(!library.deletedRelTypes)library.deletedRelTypes=[];
+  if(!library.customRelTypes)library.customRelTypes=[];
+  if(ALL_BUILTIN_REL_TYPES.includes(name)){
+    if(!confirm(`Remove "${name}" from the relationship picker?\n\nExisting entries keep their type. Restore it from this screen anytime.`))return;
+    library.deletedRelTypes.push(name);
+  } else {
+    library.customRelTypes=library.customRelTypes.filter(t=>t!==name);
+  }
+  save();renderLibLists();
+}
+function libListsRestoreRel(name){
+  if(!library.deletedRelTypes)return;
+  library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==name);
+  save();renderLibLists();
 }
 function openNewBookSheet(){
   document.getElementById('nb-edit-id').value='';
@@ -3600,14 +3674,16 @@ function qrTypeFilter(rowId){
   const input=row.querySelector('.qr-type-search');
   const list=row.querySelector('.qr-type-list');
   const q=(input.value||'').toLowerCase().trim();
+  const{builtins:_qrBuiltins,customs:_qrCustoms}=_activeRelTypes();
   let html='';
   REL_GROUPS.forEach(g=>{
-    const matched=g.items.filter(it=>!q||it.toLowerCase().includes(q));
+    const matched=g.items.filter(it=>it!=='…'&&it!=='Custom…'&&_qrBuiltins.includes(it)&&(!q||it.toLowerCase().includes(q)));
     if(!matched.length)return;
     const cur=row.querySelector('.qr-type').value;
     html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);padding:4px 8px 2px;text-transform:uppercase;letter-spacing:.05em;">${g.label}</div>`
       +matched.map(it=>`<div onclick="qrTypePick('${rowId}','${it.replace(/'/g,"\'")}','${it.replace(/'/g,"\'")}',this)" style="padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);${it===cur?'background:var(--al);color:var(--accent);':''}">${relEmoji(it)} ${it}</div>`).join('');
   });
+  if(_qrCustoms.length){const cur=row.querySelector('.qr-type').value;const mc=_qrCustoms.filter(it=>!q||it.toLowerCase().includes(q));if(mc.length)html+=`<div style="font-size:10px;font-weight:700;color:var(--t3);padding:4px 8px 2px;text-transform:uppercase;letter-spacing:.05em;">Custom</div>`+mc.map(it=>`<div onclick="qrTypePick('${rowId}','${it.replace(/'/g,"\'")}','${it.replace(/'/g,"\'")}',this)" style="padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);color:var(--accent);${it===cur?'background:var(--al);':''}">${relEmoji(it)} ${it}</div>`).join('');}
   if(!html)html=`<div style="padding:8px 10px;font-size:12px;color:var(--t3);">No matches</div>`;
   list.innerHTML=html;
   list.style.display='block';
@@ -3913,10 +3989,36 @@ function filterEventTypePicks(){
 // ═══════════════════════════════════════════════════════════════
 // ENTRY FORM
 // ═══════════════════════════════════════════════════════════════
+// #439 — nonfiction-aware character role select
+const NONFIC_GENRES=new Set(['nonfiction','history','essays','selfhelp']);
+function buildCharRoleSelect(preserveVal){
+  const sel=document.getElementById('ae-crole');if(!sel)return;
+  const cur=preserveVal!==undefined?preserveVal:sel.value;
+  const genre=book()?.genre||'fiction';
+  if(NONFIC_GENRES.has(genre)){
+    sel.innerHTML=`<option value="">Unknown</option>
+      <option value="author">Author (book's author)</option>
+      <option value="subject">Subject (person the book is about)</option>
+      <option value="expert">Expert / Academic</option>
+      <option value="historical">Historical figure</option>
+      <option value="narrator">Narrator</option>
+      <option value="mentioned">Mentioned (passing reference)</option>`;
+  } else {
+    sel.innerHTML=`<option value="">Unknown</option>
+      <option value="main">Main</option>
+      <option value="side">Side</option>
+      <option value="minor">Minor / Unnamed</option>
+      <option value="stranger">Stranger / One-liner</option>
+      <option value="antagonist">Antagonist</option>
+      <option value="narrator">Narrator</option>`;
+  }
+  if(cur)sel.value=cur;
+}
 function buildTypeSelect(){
   if(!currentId)return;
   const cfg=GENRES[book().genre]||GENRES.fiction;
   document.getElementById('ae-type').innerHTML=cfg.types.map(t=>`<option>${t}</option>`).join('');
+  buildCharRoleSelect();
 }
 function showTraitTypeHint(){
   alert(`Trait types — what each one means:
@@ -3979,6 +4081,7 @@ function onTypeChange(){
   // Type hint — only show on explicit ? tap (not auto on type change)
   document.getElementById('ae-type-hint').style.display='none';
   document.getElementById('ae-char-section').style.display=isChar?'':'none';
+  if(isChar)buildCharRoleSelect();
   document.getElementById('ae-content-section').style.display=(isChar||isTrans)?'none':'';
   document.getElementById('ae-theme-ex').style.display=isTheme?'':'none';  document.getElementById('ae-quote-ex').style.display=isQ?'':'none';
   document.getElementById('ae-char-ex').style.display=isTrait?'':'none';
@@ -5242,6 +5345,8 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.definition=document.getElementById('ae-def').value.trim();
     entry.wordContext=document.getElementById('ae-word-context').value.trim();
     entry.wordSpeaker=document.getElementById('ae-word-speaker').value;
+    entry.wordEtym=(document.getElementById('ae-word-etym')?.value||'').trim();
+    entry.wordMwEx=(document.getElementById('ae-word-mw-ex')?.value||'').trim();
     entry.wordTrans='';
     entry.wsrc=document.getElementById('ae-wsrc').value.trim();
     entry.wordTransFrom=document.getElementById('ae-word-trans-from').value.trim();
@@ -5335,7 +5440,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       book().entries.push(tlEntry);
     }
   }
-  if(isRef){entry.refType=document.getElementById('ae-ref-type').value;entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refLength=document.getElementById('ae-ref-length').value;entry.refDone=false;}
+  if(isRef){entry.refType=document.getElementById('ae-ref-type').value;entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refLength=document.getElementById('ae-ref-length').value;entry.refActualMin=document.getElementById('ae-ref-actual-min')?.value||'';entry.refDateRead=document.getElementById('ae-ref-date-read')?.value||'';entry.refDone=false;}
   if(isRel){
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
@@ -6362,7 +6467,7 @@ function editEntry(id){
   const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='';
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
-    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';document.getElementById('ae-crole').value=e.charRole||'';document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';buildCharRoleSelect(e.charRole||'');document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');cddSet('ae-rela','');cddSet('ae-relb','');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}// #323 — clear first to prevent stale values from prior form state
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
@@ -6416,7 +6521,7 @@ function editEntry(id){
     },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
-    if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
+    if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;const _wEtEl=document.getElementById('ae-word-etym');if(_wEtEl)_wEtEl.value=e.wordEtym||'';const _wExEl=document.getElementById('ae-word-mw-ex');if(_wExEl)_wExEl.value=e.wordMwEx||'';// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
     if(e.wordSpeaker)cddSet('ae-word-speaker',e.wordSpeaker);
     if(e.wordTransFrom||e.wordTransOriginal){
       const wtx=document.getElementById('ae-word-trans-ex');if(wtx)wtx.style.display='';
@@ -6482,7 +6587,7 @@ function editEntry(id){
     if(e.eventSig)document.getElementById('ae-event-sig').value=e.eventSig;
     if(e.eventTypes?.length){setTimeout(()=>e.eventTypes.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${t}"]`);if(chip)chip.classList.add('sel');}),60);}
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
-    if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;
+    if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;const _rAm=document.getElementById('ae-ref-actual-min');if(_rAm)_rAm.value=e.refActualMin||'';const _rDr=document.getElementById('ae-ref-date-read');if(_rDr)_rDr.value=e.refDateRead||'';
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;{const _ls=document.getElementById('ae-loc-state');if(_ls)_ls.value=e.locState||'';}if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     // #328 — restore parent. Pull from registry if entry didn't store one.
     const _psel=document.getElementById('ae-loc-parent');
@@ -7001,7 +7106,7 @@ function renderChars(){
     const name=c.cn||c.content;const col=getCC(name);
     const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const ph=c.photo?`<img src="${escAttr(c.photo)}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
-    const roleLabel={main:'Main',side:'Side',minor:'Minor/Unnamed',stranger:'Stranger',antagonist:'Antagonist',narrator:'Narrator'}[c.charRole||'']||'';
+    const roleLabel={main:'Main',side:'Side',minor:'Minor/Unnamed',stranger:'Stranger',antagonist:'Antagonist',narrator:'Narrator',author:'Author',subject:'Subject',expert:'Expert/Academic',historical:'Historical figure',mentioned:'Mentioned'}[c.charRole||'']||'';
     const charRels=entries().filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
     const relCount=charRels.length;
     const relEmojis=[...new Set(charRels.map(r=>{
@@ -7062,7 +7167,7 @@ function renderCharDetail(name){
   const ce=all.find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
   const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const ph=ce?.photo?`<img src="${ce.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
-  const roleLabel={main:'Main character',side:'Side character',minor:'Minor/Unnamed',stranger:'Stranger / One-liner',antagonist:'Antagonist',narrator:'Narrator',unknown:'Unknown role'}[ce?.charRole||'unknown']||'';
+  const roleLabel={main:'Main character',side:'Side character',minor:'Minor/Unnamed',stranger:'Stranger / One-liner',antagonist:'Antagonist',narrator:'Narrator',author:'Author',subject:'Subject',expert:'Expert / Academic',historical:'Historical figure',mentioned:'Mentioned (passing reference)',unknown:'Unknown role'}[ce?.charRole||'unknown']||'';
   const statusLabel={alive:'Alive',deceased:'Deceased 🪦',unknown:'Unknown'}[ce?.charStatus||'unknown']||'';
 
   // Summary stats
@@ -9045,6 +9150,8 @@ function wordCard(e){
         <div style="font-size:14px;font-weight:700;color:var(--accent);">${e.content}</div>
         ${e.definition?`<div style="font-size:12px;margin-top:2px;">${e.definition}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;">Not yet defined</div>'}
         ${e.wordContext?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">"${e.wordContext}"</div>`:''}
+        ${e.wordMwEx?`<div style="font-size:11px;color:var(--t3);margin-top:2px;">📖 "${e.wordMwEx}"</div>`:''}
+        ${e.wordEtym?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">🌿 ${e.wordEtym}</div>`:''}
         ${spkBadge?`<div style="margin-top:4px;font-size:10px;color:var(--t3);">${spkLabel}: ${spkBadge}</div>`:''}
         ${e.wordTrans?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">🌐 ${e.wordTrans}</div>`:''}
         ${e.wsrc?`<div style="font-size:10px;color:var(--t3);">Source: ${e.wsrc}</div>`:''}
@@ -9173,6 +9280,8 @@ function renderRefs(){
         ${r.refAuthor?`<div style="font-size:11px;color:var(--t2);">by ${r.refAuthor}</div>`:''}
         ${r.refLength?`<div style="font-size:10px;color:var(--t3);">${r.refType==='watch'||r.refType==='podcast'?r.refLength+' min':r.refLength+' pages'}</div>`:''}
         ${(r.pageNum||r.chapNum)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin:3px 0 1px;">${r.chapNum?`<span class="pbadge" onclick="event.stopPropagation();setFilter('ch:${r.chapNum}');forceTab('log');" style="cursor:pointer;font-size:10px;">Ch.${r.chapNum}</span>`:''}${r.pageNum?`<span class="pbadge" style="font-size:10px;">p.${r.pageNum}</span>`:''}</div>`:''}
+        ${r.refActualMin?`<div style="font-size:10px;color:var(--t3);">⏱ Actual: ${r.refActualMin>=60?Math.floor(r.refActualMin/60)+'h '+(r.refActualMin%60>0?r.refActualMin%60+'m':''):(r.refActualMin+'m')}</div>`:''}
+        ${r.refDateRead?`<div style="font-size:10px;color:var(--t3);">📅 ${r.refDateRead}</div>`:''}
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${doneLabel[r.refType]||'Done'}</div>`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
         ${r.refType==='book'&&!r.refDone?`<div style="font-size:10px;margin-top:2px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent('${esc(r.content)}'))">+ Add to Goodreads</span></div>`:''}
@@ -9810,6 +9919,75 @@ async function syncPull(){
   }catch(e){setSyncStatus('✗ '+e.message,'#E24B4A');}
 }
 
+// #254 — reading symbol cheat sheet
+function openSymbolCheatSheet(){
+  const html=`<div style="max-width:400px;margin:0 auto;">
+<h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">📝 Reading Symbols Guide</h2>
+<p style="font-size:12px;color:var(--t2);margin-bottom:12px;">Common symbols for annotating books by hand, matching app entry types.</p>
+<div style="display:grid;gap:7px;">
+${[
+  ['⭕ / 🔵','Circle a word','Word / Vocabulary — look up or define later'],
+  ['★','Star a passage','Quote worth keeping'],
+  ['?','Question mark','Question — something to research or answer'],
+  ['!','Exclamation','Key idea, surprise, or significant event'],
+  ['→','Arrow','Cause and effect, or forward reference'],
+  ['←','Back arrow','Callback to earlier moment'],
+  ['T','Theme marker','Theme — recurring idea'],
+  ['C','Character note','Character — new person or trait observed'],
+  ['P','Plot note','Event or Timeline entry'],
+  ['S','Setting/symbol','Setting or Symbol entry'],
+  ['R','Relationship','Relationship between characters'],
+  ['\u25b3 triangle','Foreshadowing','Timeline — mark for later reference'],
+  ['[ ]','Bracket passage','Reference — something to research'],
+  ['NB','Nota bene','Important — Reference or Key idea'],
+  ['//','Double slash','Dialogue worth logging'],
+  ['\u2713','Checkmark','Done / understood'],
+  ['\u2715','X mark','Disagree or question validity'],
+  ['~','Tilde','Approximation or fuzzy date'],
+].map(([sym,name,type])=>`<div style="display:grid;grid-template-columns:36px 1fr;gap:6px;align-items:start;padding:5px 8px;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);">
+  <span style="font-size:18px;text-align:center;font-weight:700;color:var(--accent);">${sym}</span>
+  <div><div style="font-size:12px;font-weight:600;">${name}</div><div style="font-size:10px;color:var(--t3);">${type}</div></div>
+</div>`).join('')}
+</div>
+<p style="font-size:11px;color:var(--t3);margin-top:12px;line-height:1.5;">Tip: Use page tabs or sticky flags to mark pages for later entry. Number your flags to match entry types (1=Quote, 2=Character, 3=Event…)</p>
+</div>`;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center;';
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const box=document.createElement('div');
+  box.style.cssText='background:var(--card);border-radius:var(--rl2);padding:18px;max-width:420px;width:100%;position:relative;';
+  box.innerHTML=`<button onclick="this.closest('[style*=fixed]').remove()" style="position:absolute;top:10px;right:12px;background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--t3);">×</button>`+html;
+  ov.appendChild(box);document.body.appendChild(ov);
+}
+// #256 — copy session opener to clipboard
+function copySessionOpener(){
+  const b=book();if(!b){alert('Open a book first.');return;}
+  const all=entries();
+  const open=all.filter(e=>!e.isDraft&&e.type!=='Reference');
+  const missingPg=all.filter(e=>!e.pageNum&&!e.chapNum&&!['Reference','Question'].includes(e.type));
+  const drafts=all.filter(e=>e.isDraft);
+  const text=`# Session Opener — ${b.title}
+Date: ${new Date().toLocaleDateString()}
+Genre: ${b.genre||'fiction'} | Progress: p.${b.progressPage||'?'} / ${b.totalPages||'?'}
+
+## Stats
+- Total entries: ${all.length}
+- Drafts: ${drafts.length}
+- Missing page numbers: ${missingPg.length}
+
+## What to continue
+- Open tickets from last session (see tracker)
+- Unresolved questions: ${all.filter(e=>e.type==='Question'&&!e.answered).length}
+- Undefined vocab: ${all.filter(e=>e.type==='Word / Vocabulary'&&!e.definition).length}
+
+## Entry type breakdown
+${Object.entries(all.reduce((a,e)=>{a[e.type]=(a[e.type]||0)+1;return a;},{})).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`- ${t}: ${n}`).join('\n')}
+`;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.querySelector('[onclick="copySessionOpener()"]');
+    if(btn){const orig=btn.textContent;btn.textContent='✓ Copied!';setTimeout(()=>btn.textContent=orig,2000);}
+  }).catch(()=>alert('Copy failed — check browser permissions.'));
+}
 function exportMyMaps(){
   const b=book();if(!b)return;
   const locs=getLocations();
