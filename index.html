@@ -350,12 +350,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="map-panel" class="panel" style="padding:10px 11px 85px;">
-      <!-- xlsx #392 (Batch 43) — View toggle: list (default) vs in-app OSM map. -->
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
         <div style="position:relative;flex:1;"><input type="text" id="map-search" placeholder="🔍 Search locations…" oninput="renderMap()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('map-search').value='';renderMap();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
-        <button id="osm-toggle-btn" class="btn btn-sm" onclick="toggleOsmView()" style="flex-shrink:0;font-size:12px;padding:6px 10px;" title="Switch between map view and list view">🗺️ Map</button>
+        <button id="osm-toggle-btn" class="btn btn-sm" onclick="toggleOsmView()" style="flex-shrink:0;font-size:12px;padding:6px 10px;" title="Toggle in-app map">🗺️ Map</button>
       </div>
-      <!-- OSM map container (hidden until toggled) -->
       <div id="osm-map-wrap" style="display:none;border-radius:var(--r);overflow:hidden;margin-bottom:10px;border:0.5px solid var(--cb);">
         <div id="osm-map" style="height:320px;width:100%;"></div>
         <div id="osm-map-status" style="font-size:11px;color:var(--t3);padding:5px 8px;background:var(--bg2);"></div>
@@ -539,7 +537,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <div class="sheet-overlay" id="ae-overlay" onclick="mc('ae-overlay',event)">
   <div class="sheet" style="position:relative;">
     <div class="sheet-handle"></div>
-    <button class="sheet-x" onclick="closeSheet('ae-overlay')">×</button>
+    <button class="sheet-x" onclick="_closeAEIfSafe()">×</button>
     <button onclick="openReportIssue()" title="Report issue" style="position:absolute;left:10px;top:10px;background:transparent;border:none;font-size:16px;cursor:pointer;z-index:21;padding:4px;">🐛</button>
     <!-- TYPE SELECTOR + HINT PINNED AT TOP -->
     <div style="position:sticky;top:0;background:var(--bg);z-index:10;padding-bottom:8px;margin-bottom:8px;border-bottom:0.5px solid var(--cb);">
@@ -636,7 +634,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
-      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" onblur="checkDuplicateEntry(this.value.trim());if(document.getElementById('ae-type')?.value==='Location')stdLocAutofill();"></textarea></div>
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" oninput="_markDirty()" onblur="checkDuplicateEntry(this.value.trim());if(document.getElementById('ae-type')?.value==='Location')stdLocAutofill();"></textarea></div>
     </div>
 
     <!-- THEME QUOTES -->
@@ -785,13 +783,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <strong>Timeline examples:</strong> "Year 1348 — Black Death begins" · "Three months after the wedding" · "Same day as Chapter 4" · "Unknown — sometime in winter"<br>
         Use the ± offset below to calculate from a prior event.
       </div>
-      <!-- #303/#335 — structured date fields; year/era required for Timeline -->
+      <!-- #303/#335 -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required — use a real year, "Ch.4", "Year 3", "Unknown", etc.)</span></label>
-        <div style="position:relative;">
-          <input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/>
-          <button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
-        </div>
+        <div style="position:relative;"><input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/><button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button></div>
       </div>
       <div class="r2">
         <div class="fg"><label>Month <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
@@ -807,7 +802,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-evdate-day" inputmode="numeric" placeholder="e.g. 14" min="1" max="31"/>
         </div>
       </div>
-      <!-- xlsx #419 sub (Batch 40) — Time of day. xlsx #419 (Batch 42) — × clears all time fields. -->
+      <!-- Time of day + × clear -->
       <div class="fg" style="margin-top:6px;"><label style="font-size:11px;">Time of day <span style="font-weight:400;color:var(--t3);">(optional — for sub-day precision in compare)</span></label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="number" id="ae-evdate-hour" inputmode="numeric" placeholder="hh" min="1" max="12" style="width:60px;font-size:14px;text-align:center;"/>
@@ -815,11 +810,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-evdate-min" inputmode="numeric" placeholder="mm" min="0" max="59" style="width:60px;font-size:14px;text-align:center;"/>
           <span style="color:var(--t3);">:</span>
           <input type="number" id="ae-evdate-sec" inputmode="numeric" placeholder="ss" min="0" max="59" style="width:60px;font-size:14px;text-align:center;"/>
-          <select id="ae-evdate-ampm" style="font-size:13px;">
-            <option value="">—</option>
-            <option value="AM">AM</option>
-            <option value="PM">PM</option>
-          </select>
+          <select id="ae-evdate-ampm" style="font-size:13px;"><option value="">—</option><option value="AM">AM</option><option value="PM">PM</option></select>
           <button type="button" onclick="['ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});" title="Clear time" style="background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 8px;cursor:pointer;line-height:1;">×</button>
         </div>
       </div>
@@ -885,9 +876,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="cdd-list" id="ae-tl-speaker-list"></div>
         </div>
       </div>
-      <!-- xlsx #425 (Batch 42) — Reverse: attach existing Quote entries from the Event/Timeline form. -->
       <div class="fg" style="margin-top:10px;">
-        <label>Attach existing quote(s) <span style="font-weight:400;color:var(--t3);">(searchable — pick from existing Quote entries)</span></label>
+        <label>Attach existing quote(s) <span style="font-weight:400;color:var(--t3);">(searchable)</span></label>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
           <div style="flex:1;position:relative;">
             <input type="text" id="ae-tl-aq-search" placeholder="🔍 Search quotes…" autocomplete="off" oninput="_tlAqFilter()" onfocus="_tlAqFilter()" style="width:100%;padding:8px 30px 8px 8px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;"/>
@@ -1077,7 +1067,30 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="divider"></div>
       <div class="r2" id="ae-chappage">
         <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
-        <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()"/></div>
+        <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()" oninput="_chNumInputHandler()"/></div>
+      </div>
+      <!-- xlsx #417 (Batch 45) — Section-label row: shown when Chapter # = 0. Lets the
+           user label front/back-matter sections (Prologue, Preface, Epilogue, etc.) instead
+           of displaying an opaque "Ch. 0" badge on log cards. -->
+      <div id="ae-section-label-row" style="display:none;margin-top:-4px;">
+        <div class="fg"><label>Section type <span style="font-weight:400;color:var(--t3);">(Ch. 0 — pick what kind of section this is)</span></label>
+          <select id="ae-section-label">
+            <option value="">— Generic front/back matter —</option>
+            <option value="Prologue">Prologue</option>
+            <option value="Preface">Preface</option>
+            <option value="Foreword">Foreword</option>
+            <option value="Introduction">Introduction</option>
+            <option value="Author's Note">Author's Note</option>
+            <option value="Dedication">Dedication</option>
+            <option value="Epigraph">Epigraph</option>
+            <option value="Epilogue">Epilogue</option>
+            <option value="Afterword">Afterword</option>
+            <option value="Appendix">Appendix</option>
+            <option value="Glossary">Glossary</option>
+            <option value="Index">Index</option>
+            <option value="Acknowledgements">Acknowledgements</option>
+          </select>
+        </div>
       </div>
       <div class="fg"><label>Date of entry</label><input type="date" id="ae-date"/></div>
       <div class="fg"><label>Location in story</label>
@@ -1150,7 +1163,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <input type="hidden" id="ae-is-draft" value="false"/>
     </div>
     <div class="fa">
-      <button class="btn" onclick="closeSheet('ae-overlay')">Cancel</button>
+      <button class="btn" onclick="_closeAEIfSafe()">Cancel</button>
       <button class="btn" id="ae-discard-draft-btn" onclick="discardDraft()" style="display:none;color:var(--red);border-color:var(--red);background:var(--rl);">Discard draft</button>
       <!-- xlsx #427 — Delete button shown only when editing an existing entry (editId set). Confirms then runs deleteEntry(editId). -->
       <button class="btn" id="ae-delete-btn" onclick="deleteEntryFromForm()" style="display:none;color:var(--red);border-color:var(--red);background:var(--rl);">Delete</button>
@@ -2380,12 +2393,21 @@ function autoChapFromPage(){
   if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
   if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
+  _chNumInputHandler();
 }
 function autoChapFromPageLive(pgVal){
   const chEl=document.getElementById('ae-ch');
   if(!pgVal)return;
   const chaps=pageToChapters(pgVal);
   if(chaps.length)chEl.value=chaps.length>1?chaps.join(', '):String(chaps[0]);
+  _chNumInputHandler();
+}
+// xlsx #417 (Batch 45) — Show section-label selector when chapter # = 0.
+function _chNumInputHandler(){
+  const type=document.getElementById('ae-type')?.value;
+  const ch=document.getElementById('ae-ch')?.value.trim();
+  const row=document.getElementById('ae-section-label-row');
+  if(row)row.style.display=(type==='Chapter'&&ch==='0')?'':'none';
 }
 // #220 — Character form: derive intro chapter from intro page
 function autoCharIntroChap(){
@@ -3044,10 +3066,7 @@ function convertRefToBook(bookId,refId){
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
-  // xlsx #392 (Batch 43) — reset OSM map state when switching books.
-  if(_osmMap){_osmMap.remove();_osmMap=null;}_osmActive=false;
-  const osmWrap=document.getElementById('osm-map-wrap');if(osmWrap)osmWrap.style.display='none';
-  const osmBtn=document.getElementById('osm-toggle-btn');if(osmBtn)osmBtn.textContent='🗺️ Map';
+  if(_osmMap){_osmMap.remove();_osmMap=null;}_osmActive=false;const _ow=document.getElementById('osm-map-wrap');if(_ow)_ow.style.display='none';const _ob=document.getElementById('osm-toggle-btn');if(_ob)_ob.textContent='🗺️ Map';
   // xlsx #431 follow-up (Batch 36) — global maintenance pass on book open. Scrubs
   // both sides of the theme↔quote cross-link: drops dead theme names from quote
   // entries' attachedThemes/attachedTheme, and drops dead quote ids from theme
@@ -3068,24 +3087,11 @@ function _scrubThemeQuoteCrossLinks(){
   let changed=false;
   all.forEach(e=>{
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){
-      if(Array.isArray(e.attachedThemes)){
-        const before=e.attachedThemes.length;
-        e.attachedThemes=e.attachedThemes.filter(n=>liveThemeNames.has(n));
-        if(e.attachedThemes.length!==before)changed=true;
-      }
-      if(e.attachedTheme&&!liveThemeNames.has(e.attachedTheme)){
-        e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';
-        changed=true;
-      }
-      // xlsx #425 (Batch 42) — strip dead event ids from Quote.attachedEventIds[].
+      if(Array.isArray(e.attachedThemes)){const before=e.attachedThemes.length;e.attachedThemes=e.attachedThemes.filter(n=>liveThemeNames.has(n));if(e.attachedThemes.length!==before)changed=true;}
+      if(e.attachedTheme&&!liveThemeNames.has(e.attachedTheme)){e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';changed=true;}
       if(Array.isArray(e.attachedEventIds)){const b=e.attachedEventIds.length;e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));if(e.attachedEventIds.length!==b)changed=true;}
     }
-    if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
-      const before=e.attachedQuoteIds.length;
-      e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));
-      if(e.attachedQuoteIds.length!==before)changed=true;
-    }
-    // xlsx #425 (Batch 42) — strip dead quote ids from Event/Timeline.attachedQuoteIds[].
+    if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){const before=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));if(e.attachedQuoteIds.length!==before)changed=true;}
     if(['Event','Timeline','Date/Period'].includes(e.type)&&Array.isArray(e.attachedQuoteIds)){const b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>liveQuoteIds.has(id));if(e.attachedQuoteIds.length!==b)changed=true;}
   });
   if(changed)save();
@@ -3326,7 +3332,7 @@ function saveBook(applyWiki){
     const newEntry={
       id:Date.now()+ch+Math.floor(Math.random()*100),
       type:'Chapter',
-      content:c.title||(ch===0?'Front matter':`Chapter ${ch}`),
+      content:c.title||(ch===0?(c.sectionLabel||'Front matter'):`Chapter ${ch}`),
       chapNum:String(ch),
       pageNum,
       date:(typeof localDate==='function'?localDate():new Date().toISOString().slice(0,10)),
@@ -4016,6 +4022,8 @@ function onTypeChange(){
     window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
     if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   }
+  // xlsx #417 (Batch 45) — update section-label row visibility on type change
+  if(typeof _chNumInputHandler==='function')_chNumInputHandler();
   if(isRel&&chars.length){
     // #217 — Both blank, user picks A and B explicitly
     if(!document.getElementById('ae-edit-id').value){
@@ -4498,6 +4506,19 @@ function reshowTemplateHint(){
   hint.style.display='';
   const sheet=document.querySelector('#ae-overlay .sheet');if(sheet)sheet.scrollTop=0;
 }
+// xlsx #271 (Batch 45) — Dirty-form guard. Track whether user has made any
+// changes to the entry form since it was last opened. If they tap × or Cancel
+// without saving, warn them. Reset on form open and after successful save.
+let _aeDirty=false;
+function _markDirty(){_aeDirty=true;}
+function _clearDirty(){_aeDirty=false;}
+function _closeAEIfSafe(){
+  if(_aeDirty){
+    if(!confirm('You have unsaved changes. Close without saving?'))return;
+  }
+  _clearDirty();
+  closeSheet('ae-overlay');
+}
 function clearAEForm(){
   ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
@@ -4518,11 +4539,12 @@ function clearAEForm(){
   if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
   clearTraitQuotes();
   clearAttachedQuotes();
-  // xlsx #429 — also reset multi-theme state on form clear.
   if(typeof clearAttachedThemes==='function')clearAttachedThemes();
-  // xlsx #425 (Batch 42) — also reset Event/Timeline attached-quote state.
   if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
-  // #250 — Discard draft button hidden until editEntry decides to show it
+  // xlsx #417 (Batch 45) — hide section-label row
+  const _slr=document.getElementById('ae-section-label-row');if(_slr)_slr.style.display='none';
+  const _sl=document.getElementById('ae-section-label');if(_sl)_sl.value='';
+  _clearDirty();
   const ddb=document.getElementById('ae-discard-draft-btn');if(ddb)ddb.style.display='none';
   // xlsx #427 — Delete button hidden until editEntry sets editId
   const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='none';
@@ -5012,48 +5034,21 @@ function refreshAttachEventOptions(){
     +evs.map(e=>{const icon=e.type==='Event'?'⭐':'📅';const d=e.evdate?` · ${e.evdate}`:'';return `<option value="${e.id}">${icon} ${esc((e.content||'(untitled)').slice(0,40))}${d}</option>`;}).join('');
 }
 
-// xlsx #425 (Batch 42) — Event/Timeline → Quote attach state & helpers.
 let _tlAttachedQuoteIds=[];
 function _tlAqFilter(){
   const q=(document.getElementById('ae-tl-aq-search')?.value||'').toLowerCase().trim();
   const list=document.getElementById('ae-tl-aq-list');if(!list)return;
   const allQs=entries().filter(e=>['Quote','Narrator quote','Line/stanza'].includes(e.type)&&!e.isDraft);
   const filtered=q?allQs.filter(qe=>(qe.content||'').toLowerCase().includes(q)||(qe.speaker||'').toLowerCase().includes(q)):allQs.slice(0,40);
-  if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);font-style:italic;">No matches.</div>';list.style.display='';return;}
-  list.innerHTML=filtered.map(qe=>{const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';const pg=qe.pageNum?` · p.${qe.pageNum}`:'';const sel=String(qe.id)===document.getElementById('ae-tl-aq-id')?.value;return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);${sel?'background:var(--al);color:var(--accent);font-weight:600;':''}">"${esc((qe.content||'').slice(0,80))}"${spk}${pg}</div>`;}).join('');
+  if(!filtered.length){list.innerHTML='<div style="padding:8px;font-size:12px;color:var(--t3);">No matches.</div>';list.style.display='';return;}
+  list.innerHTML=filtered.map(qe=>{const sp=qe.speaker?` — ${esc(qe.speaker)}`:'';const pg=qe.pageNum?` · p.${qe.pageNum}`:'';return `<div onclick="_tlAqPick(${qe.id})" style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:0.5px solid var(--cb);">"${esc((qe.content||'').slice(0,80))}"${sp}${pg}</div>`;}).join('');
   list.style.display='';
 }
-function _tlAqClear(){
-  const s=document.getElementById('ae-tl-aq-search');if(s)s.value='';
-  const h=document.getElementById('ae-tl-aq-id');if(h)h.value='';
-  const list=document.getElementById('ae-tl-aq-list');if(list)list.style.display='none';
-}
-function _tlAqPick(id){
-  const qe=entries().find(x=>x.id===Number(id));if(!qe)return;
-  const s=document.getElementById('ae-tl-aq-search');if(s)s.value=`"${(qe.content||'').slice(0,60)}"${qe.speaker?' — '+qe.speaker:''}`;
-  const h=document.getElementById('ae-tl-aq-id');if(h)h.value=String(id);
-  const list=document.getElementById('ae-tl-aq-list');if(list)list.style.display='none';
-}
-function addTlAttachedQuote(){
-  const id=Number(document.getElementById('ae-tl-aq-id')?.value||0);
-  if(!id){alert('Type to search then tap a quote from the list before tapping "+ Attach".');return;}
-  if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);
-  _tlAqClear();renderTlAttachedQuoteChips();
-}
-function detachTlQuote(id){
-  id=Number(id);_tlAttachedQuoteIds=_tlAttachedQuoteIds.filter(x=>x!==id);renderTlAttachedQuoteChips();
-  const editId=Number(document.getElementById('ae-edit-id')?.value||0);
-  const type=document.getElementById('ae-type')?.value;
-  if(editId&&['Event','Timeline','Date/Period'].includes(type)){
-    const ev=entries().find(x=>x.id===editId);
-    if(ev){if(Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==id);const q=entries().find(x=>x.id===id);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==ev.id);save();}
-  }
-}
-function renderTlAttachedQuoteChips(){
-  const wrap=document.getElementById('ae-tl-aq-chips');if(!wrap)return;
-  if(!_tlAttachedQuoteIds.length){wrap.innerHTML='';return;}
-  wrap.innerHTML=_tlAttachedQuoteIds.map(id=>{const qe=entries().find(x=>x.id===id);if(!qe)return '';const txt=esc((qe.content||'(untitled)').slice(0,30));const spk=qe.speaker?` — ${esc(qe.speaker)}`:'';return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">💬 "${txt}"${spk}<button type="button" onclick="detachTlQuote(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;}).filter(Boolean).join('');
-}
+function _tlAqClear(){const s=document.getElementById('ae-tl-aq-search');if(s)s.value='';const h=document.getElementById('ae-tl-aq-id');if(h)h.value='';const l=document.getElementById('ae-tl-aq-list');if(l)l.style.display='none';}
+function _tlAqPick(id){const qe=entries().find(x=>x.id===Number(id));if(!qe)return;const s=document.getElementById('ae-tl-aq-search');if(s)s.value=`"${(qe.content||'').slice(0,60)}"${qe.speaker?' — '+qe.speaker:''}`;const h=document.getElementById('ae-tl-aq-id');if(h)h.value=String(id);const l=document.getElementById('ae-tl-aq-list');if(l)l.style.display='none';}
+function addTlAttachedQuote(){const id=Number(document.getElementById('ae-tl-aq-id')?.value||0);if(!id){alert('Pick a quote from the list first.');return;}if(!_tlAttachedQuoteIds.includes(id))_tlAttachedQuoteIds.push(id);_tlAqClear();renderTlAttachedQuoteChips();}
+function detachTlQuote(id){id=Number(id);_tlAttachedQuoteIds=_tlAttachedQuoteIds.filter(x=>x!==id);renderTlAttachedQuoteChips();const editId=Number(document.getElementById('ae-edit-id')?.value||0);const type=document.getElementById('ae-type')?.value;if(editId&&['Event','Timeline','Date/Period'].includes(type)){const ev=entries().find(x=>x.id===editId);if(ev){if(Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==id);const q=entries().find(x=>x.id===id);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==ev.id);save();}}}
+function renderTlAttachedQuoteChips(){const wrap=document.getElementById('ae-tl-aq-chips');if(!wrap)return;if(!_tlAttachedQuoteIds.length){wrap.innerHTML='';return;}wrap.innerHTML=_tlAttachedQuoteIds.map(id=>{const qe=entries().find(x=>x.id===id);if(!qe)return '';return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">💬 "${esc((qe.content||'').slice(0,30))}"${qe.speaker?' — '+esc(qe.speaker):''}<button type="button" onclick="detachTlQuote(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;">×</button></span>`;}).filter(Boolean).join('');}
 function getTlAttachedQuoteIds(){return[..._tlAttachedQuoteIds];}
 function clearTlAttachedQuotes(){_tlAttachedQuoteIds=[];renderTlAttachedQuoteChips();_tlAqClear();}
 function loadTlAttachedQuotes(ids){_tlAttachedQuoteIds=(ids||[]).map(Number).filter(Boolean);renderTlAttachedQuoteChips();}
@@ -5216,6 +5211,8 @@ function submitEntry(){
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
   const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?(getCharPhotos()[0]||document.getElementById('ae-char-photo-data').value||''):(getEntryPhotos()[0]||''),photos:isChar?getCharPhotos():getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
+  // xlsx #417 (Batch 45) — persist sectionLabel for Ch.0 front/back-matter entries.
+  if(type==='Chapter'&&String(chapNum)==='0'){const _sl=document.getElementById('ae-section-label');if(_sl&&_sl.value)entry.sectionLabel=_sl.value;}
 
   if(isChar){
     entry.nickname=document.getElementById('ae-nick').value.trim();
@@ -5334,13 +5331,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     }
     const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
     entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
-    // xlsx #425 (Batch 42) — persist attached-quote ids; bidirectional mirror.
-    const _tlQIds=new Set(getTlAttachedQuoteIds());
-    entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id)).forEach(q=>_tlQIds.add(Number(q.id)));
-    const _prevTlQ=new Set((entry.attachedQuoteIds||[]).map(Number));
-    entry.attachedQuoteIds=[..._tlQIds];
-    [..._tlQIds].filter(id=>!_prevTlQ.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q){if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);}});
-    [..._prevTlQ].filter(id=>!_tlQIds.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);});
+    const _tlQIds=new Set(getTlAttachedQuoteIds());entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id)).forEach(q=>_tlQIds.add(Number(q.id)));const _prevTlQ=new Set((entry.attachedQuoteIds||[]).map(Number));entry.attachedQuoteIds=[..._tlQIds];[..._tlQIds].filter(id=>!_prevTlQ.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q){if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);}});[..._prevTlQ].filter(id=>!_tlQIds.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);});
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -5698,7 +5689,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
 
   save();
   if(['Timeline','Event','Date/Period'].includes(type))backfillTimelineSortNums();
-  closeSheet('ae-overlay');renderAll();buildTypeSelect();
+  _clearDirty();closeSheet('ae-overlay');renderAll();buildTypeSelect();
   // Feature 3: Navigate to the view that best fits the saved entry type
   postSaveNavigate(entry,type);
   } catch(err) {
@@ -5847,15 +5838,8 @@ function deleteEntry(id){
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
   book().entries=book().entries.filter(x=>x.id!==id);
-  // xlsx #435 (Batch 42) — Chapter log delete → strip matching chapSetup row.
-  if(e.type==='Chapter'&&e.chapNum!=null){
-    const _chN=+e.chapNum;
-    if(!isNaN(_chN)&&Array.isArray(book()?.chapSetup))book().chapSetup=book().chapSetup.filter(c=>!c||+c.ch!==_chN);
-  }
-  // xlsx #431/#425 (Batch 36/42) — scrub cross-links.
-  if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)||['Event','Timeline','Date/Period'].includes(e.type)){
-    if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();
-  }
+  if(e.type==='Chapter'&&e.chapNum!=null){const _chN=+e.chapNum;if(!isNaN(_chN)&&Array.isArray(book()?.chapSetup))book().chapSetup=book().chapSetup.filter(c=>!c||+c.ch!==_chN);}
+  if(e.type==='Theme'||['Quote','Narrator quote','Line/stanza'].includes(e.type)||['Event','Timeline','Date/Period'].includes(e.type)){if(typeof _scrubThemeQuoteCrossLinks==='function')_scrubThemeQuoteCrossLinks();}
   save();renderAll();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active')){
     if(CT.includes(e.type)&&(e.cn||e.content)===currentCharName){show('book-screen','char-screen');}
@@ -6087,25 +6071,21 @@ function _showThemeListPopover(anchor,namesJoinedNL){
     document.addEventListener('touchend',closeFn,true);
   },50);
 }
-// xlsx #425 (Batch 42) — Event-list popover for multi-event pill on Quote cards.
 function _showEventListPopover(anchor,evIds){
   document.getElementById('event-list-popover')?.remove();
-  const pop=document.createElement('div');
-  pop.id='event-list-popover';
+  const pop=document.createElement('div');pop.id='event-list-popover';
   const _live=new Set(entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>ev.id));
   const evs=(evIds||[]).map(id=>entries().find(ev=>ev.id===id)).filter(ev=>ev&&_live.has(ev.id));
-  const _cond=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
-  if(!evs.length){pop.innerHTML='<div style="font-size:12px;color:var(--t3);">No live events attached.</div>';}
-  else{pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Attached events (tap to open)</div>'
-    +evs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';const d=ev.evdate?` <span style="color:var(--t3);font-size:10px;">${esc(ev.evdate)}</span>`:'';
-    return `<div onclick="event.stopPropagation();document.getElementById('event-list-popover')?.remove();editEntry(${ev.id});" style="font-size:13px;padding:5px 4px;border-radius:4px;cursor:pointer;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${ic} ${esc(_cond(ev.content||'(untitled)',26))}${d}</div>`;}).join('');}
+  if(!evs.length){pop.innerHTML='<div style="font-size:12px;color:var(--t3);">No live events.</div>';}
+  else{pop.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:4px;">Attached events</div>'+evs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';return `<div onclick="event.stopPropagation();document.getElementById('event-list-popover')?.remove();editEntry(${ev.id});" style="font-size:13px;padding:5px 4px;border-radius:4px;cursor:pointer;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${ic} ${esc((ev.content||'(untitled)').slice(0,26))}</div>`;}).join('');}
   pop.style.cssText='position:fixed;background:var(--card);border:0.5px solid var(--am);border-radius:var(--rl2);padding:9px 12px;box-shadow:0 6px 20px rgba(0,0,0,0.18);z-index:9999;max-width:280px;';
   document.body.appendChild(pop);
-  const rect=anchor.getBoundingClientRect();const pH=pop.offsetHeight;const pW=pop.offsetWidth;
-  let top=rect.bottom+6;if(top+pH>window.innerHeight-10)top=Math.max(10,rect.top-pH-6);
-  let left=rect.left;if(left+pW>window.innerWidth-10)left=Math.max(10,window.innerWidth-pW-10);
+  const rect=anchor.getBoundingClientRect();let top=rect.bottom+6,left=rect.left;
+  const pH=pop.offsetHeight,pW=pop.offsetWidth;
+  if(top+pH>window.innerHeight-10)top=Math.max(10,rect.top-pH-6);
+  if(left+pW>window.innerWidth-10)left=Math.max(10,window.innerWidth-pW-10);
   pop.style.top=top+'px';pop.style.left=left+'px';
-  setTimeout(()=>{const fn=function(e){if(pop.contains(e.target))return;pop.remove();document.removeEventListener('click',fn,true);document.removeEventListener('touchend',fn,true);};document.addEventListener('click',fn,true);document.addEventListener('touchend',fn,true);},50);
+  setTimeout(()=>{const fn=e=>{if(pop.contains(e.target))return;pop.remove();document.removeEventListener('click',fn,true);document.removeEventListener('touchend',fn,true);};document.addEventListener('click',fn,true);document.addEventListener('touchend',fn,true);},50);
 }
 function _qrPatriApply(rowId,name){
   const row=document.querySelector(`[data-qr-id="${rowId}"]`);if(!row)return;
@@ -6491,13 +6471,7 @@ function editEntry(id){
       const sq=document.getElementById('ae-tl-sq');if(sq)sq.value=e.tlSq||'';
       const sqpg=document.getElementById('ae-tl-sq-pg');if(sqpg)sqpg.value=e.tlSqPg||'';
       if(e.tlSpeaker)cddSet('ae-tl-speaker',e.tlSpeaker);
-      // xlsx #425 (Batch 42) — restore attached-quote chips.
-      const _aqIds=new Set();
-      if(Array.isArray(e.attachedQuoteIds))e.attachedQuoteIds.forEach(id=>{if(id)_aqIds.add(Number(id));});
-      entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(e.id)).forEach(q=>_aqIds.add(Number(q.id)));
-      const _liveQ=new Set(entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>Number(q.id)));
-      if(Array.isArray(e.attachedQuoteIds)){const _b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveQ.has(Number(id)));if(e.attachedQuoteIds.length!==_b)save();}
-      if(typeof loadTlAttachedQuotes==='function')loadTlAttachedQuotes([..._aqIds].filter(id=>_liveQ.has(id)));
+      const _aqIds=new Set();if(Array.isArray(e.attachedQuoteIds))e.attachedQuoteIds.forEach(id=>{if(id)_aqIds.add(Number(id));});entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(e.id)).forEach(q=>_aqIds.add(Number(q.id)));const _liveQ=new Set(entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)).map(q=>Number(q.id)));if(Array.isArray(e.attachedQuoteIds)){const _b=e.attachedQuoteIds.length;e.attachedQuoteIds=e.attachedQuoteIds.filter(id=>_liveQ.has(Number(id)));if(e.attachedQuoteIds.length!==_b)save();}if(typeof loadTlAttachedQuotes==='function')loadTlAttachedQuotes([..._aqIds].filter(id=>_liveQ.has(id)));
     }
     if(e.type==='Event'){const tl=document.getElementById('ae-event-to-tl');if(tl)tl.checked=false;}
     if(e.importance)document.getElementById('ae-imp').value=e.importance;
@@ -6566,6 +6540,11 @@ function editEntry(id){
     const ddb=document.getElementById('ae-discard-draft-btn');
     if(ddb)ddb.style.display=e.isDraft?'':'none';
     const di=document.getElementById('ae-is-draft');if(di)di.value=e.isDraft?'true':'false';
+    // xlsx #417 (Batch 45) — restore sectionLabel if Ch.0
+    if(e.type==='Chapter'&&String(e.chapNum)==='0'){
+      const _slr=document.getElementById('ae-section-label-row');if(_slr)_slr.style.display='';
+      const _sl=document.getElementById('ae-section-label');if(_sl)_sl.value=e.sectionLabel||'';
+    }
     const dicon=document.getElementById('ae-draft-icon');if(dicon)dicon.textContent=e.isDraft?'☑':'☐';
     if(e.type==='Dialogue'&&e.dialogueLines?.length)setTimeout(()=>{
       const cont=document.getElementById('ae-dial-lines');cont.innerHTML='';
@@ -6704,7 +6683,13 @@ function ecHTML(e,compact,fromTab){
   const tag=`<span class="tag tag-${k}">${e.type}</span>`;
   const pg=[];
   const chapNums=e.chapNum?e.chapNum.split(',').map(c=>c.trim()):[];
-  chapNums.forEach(c=>{if(c)pg.push(`<span class="pbadge" onclick="setFilter('ch:${c}')" style="cursor:pointer;">Ch.${c}</span>`);});
+  // xlsx #417 (Batch 45) — for Ch.0 entries with a sectionLabel, show the label
+  // instead of "Ch. 0" on the log card badge. e.g. "Prologue" or "Epilogue".
+  chapNums.forEach(c=>{
+    if(!c)return;
+    if(c==='0'&&e.sectionLabel){pg.push(`<span class="pbadge" onclick="setFilter('ch:0')" style="cursor:pointer;background:var(--al);color:var(--accent);font-weight:600;">${esc(e.sectionLabel)}</span>`);}
+    else{pg.push(`<span class="pbadge" onclick="setFilter('ch:${c}')" style="cursor:pointer;">Ch.${c}</span>`);}
+  });
   if(e.pageNum)pg.push(`<span class="pbadge">p.${e.pageNum}</span>`);
   if(e.evdate)pg.push(`<span class="pbadge">📅 ${e.evdate}</span>`);
   if(e.date)pg.push(`<span class="pbadge">${fmt(e.date)}</span>`);
@@ -6760,6 +6745,8 @@ function ecHTML(e,compact,fromTab){
     });
     const attachedQEntries=[..._attachedSet].map(id=>entries().find(q=>q.id===id)).filter(Boolean);
     const allTqs=[...tqs,...attachedQEntries.map(q=>({text:q.content,page:q.pageNum||'',speaker:q.speaker||'',_entryId:q.id}))];
+    // xlsx #396 (Batch 45) — sort combined quote list by page number ascending.
+    allTqs.sort((a,b)=>{const pa=parseFloat(a.page)||9999,pb=parseFloat(b.page)||9999;return pa-pb;});
     const allTqsWithId=allTqs.map(q=>({...q,_themeId:e.id}));
     const quoteBlock=buildThemeQuoteBlock(allTqsWithId);
     body='<div class="econtent"><strong>'+e.content+'</strong>'+(e.note?'<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">'+e.note+'</div>':'')+quoteBlock+'</div>';
@@ -6783,9 +6770,9 @@ function ecHTML(e,compact,fromTab){
     </div>`;
   } else {
     const ph=e.photo?`<img src="${e.photo}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;float:right;margin-left:7px;"/>`:'' ;
-    // #229 — enlarge only the " marks; keep body text at standard size
+    // #229 (Batch 45) — larger quote body text
     const isQuoteLike=['Quote','Line/stanza','Narrator quote'].includes(e.type);
-    body=`<div class="econtent">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.content}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
+    body=`<div class="econtent">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span><span style="font-size:15px;line-height:1.55;">${e.content}</span><span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:'';
@@ -6837,27 +6824,19 @@ function ecHTML(e,compact,fromTab){
       themePill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showThemeListPopover(this,'${themeListJS}');" title="${themeList}">${label}</span>`;
     }
   }
-  // xlsx #425 (Batch 42) — event-attach pill on Quote log cards.
   let eventPill='';
   if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
     const _evIds=new Set();
     if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)_evIds.add(Number(id));});
-    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
-      .forEach(ev=>_evIds.add(Number(ev.id)));
+    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id)).forEach(ev=>_evIds.add(Number(ev.id)));
     const _evObjs=[..._evIds].map(id=>entries().find(x=>x.id===id)).filter(Boolean);
     if(_evObjs.length){
-      const _first=_evObjs[0];
-      const _fIcon=_first.type==='Event'?'⭐':'📅';
-      const _fLbl=(_first.content||'(untitled)').slice(0,16);
-      const _fTrunc=(_first.content||'').length>16?_fLbl+'…':_fLbl;
-      const _label=_evObjs.length===1?`${_fIcon} ${_fTrunc}`:`${_fIcon} ${_fTrunc} +${_evObjs.length-1}`;
-      const _full=_evObjs.map(ev=>{const ic=ev.type==='Event'?'⭐':'📅';return `${ic} ${ev.content||'(untitled)'}${ev.evdate?' ('+ev.evdate+')':''}`;}).join(', ');
-      if(_evObjs.length===1){
-        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${_first.id});" title="${esc(_full)}">${_label}</span>`;
-      } else {
-        const _ids=_evObjs.map(ev=>ev.id).join(',');
-        eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids}]);" title="${esc(_full)}">${_label}</span>`;
-      }
+      const _f=_evObjs[0];const _fi=_f.type==='Event'?'⭐':'📅';
+      const _fl=(_f.content||'(untitled)').slice(0,16)+(_f.content&&_f.content.length>16?'…':'');
+      const _label=_evObjs.length===1?`${_fi} ${_fl}`:`${_fi} ${_fl} +${_evObjs.length-1}`;
+      const _full=_evObjs.map(ev=>(ev.type==='Event'?'⭐':'📅')+' '+(ev.content||'(untitled)')).join(', ');
+      if(_evObjs.length===1){eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${_f.id});" title="${esc(_full)}">${_label}</span>`;}
+      else{const _ids=_evObjs.map(ev=>ev.id).join(',');eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids}]);" title="${esc(_full)}">${_label}</span>`;}
     }
   }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
@@ -8268,7 +8247,7 @@ function openTlCompare(){
   };
   document.getElementById('tl-cmp-a-search').addEventListener('input',()=>renderList('a'));
   document.getElementById('tl-cmp-b-search').addEventListener('input',()=>renderList('b'));
-  // xlsx #419 sub (Batch 42) — start blank; user picks explicitly.
+  // B42 — start blank
   // Convert to seconds-since-epoch-ish (very rough — good enough for diffs).
   const _toSeconds=e=>{
     const ye=_yr(e);if(!ye)return null;
@@ -8710,15 +8689,7 @@ function _mapToggleFilter(group,val){
   renderMap();
 }
 function _mapClearFilters(){window._mapFilters={countries:new Set(),states:new Set(),cities:new Set(),buildings:new Set(),parents:new Set()};renderMap();}
-// ═══════════════════════════════════════════════════════════════
-// xlsx #392 (Batch 43) — In-app OpenStreetMap / Leaflet view
-// Leaflet loaded lazily from CDN when the user first activates map view.
-// Geocoded lat/lng stored in book().locations[].lat / .lng so we don't
-// re-fetch Nominatim on every toggle.
-// ═══════════════════════════════════════════════════════════════
-let _osmMap=null;       // Leaflet map instance
-let _osmActive=false;   // current toggle state
-
+let _osmMap=null,_osmActive=false;
 function toggleOsmView(){
   _osmActive=!_osmActive;
   const btn=document.getElementById('osm-toggle-btn');
@@ -8727,103 +8698,55 @@ function toggleOsmView(){
   if(wrap)wrap.style.display=_osmActive?'':'none';
   if(_osmActive)_osmLoadAndRender();
 }
-
 async function _osmLoadLeaflet(){
   if(window.L)return;
   await new Promise((res,rej)=>{
-    if(document.getElementById('leaflet-css'))return res();
-    const link=document.createElement('link');link.id='leaflet-css';link.rel='stylesheet';
+    const link=document.createElement('link');link.rel='stylesheet';
     link.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
     document.head.appendChild(link);
     const scr=document.createElement('script');
     scr.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-    scr.onload=res;scr.onerror=rej;
-    document.head.appendChild(scr);
+    scr.onload=res;scr.onerror=rej;document.head.appendChild(scr);
   });
 }
-
 async function _osmGeocode(name,city,country){
   const q=[name,city,country].filter(Boolean).join(', ');
-  try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});
-    const data=await r.json();
-    if(data&&data.length){return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};}
-  }catch(_){}
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{'Accept-Language':'en','User-Agent':'BookAnnotatorPWA/1.0'}});const data=await r.json();if(data&&data.length)return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};}catch(_){}
   return null;
 }
-
 async function _osmLoadAndRender(){
   const statusEl=document.getElementById('osm-map-status');
-  const mapEl=document.getElementById('osm-map');
-  if(!mapEl)return;
+  const mapEl=document.getElementById('osm-map');if(!mapEl)return;
   if(statusEl)statusEl.textContent='Loading map…';
-  try{await _osmLoadLeaflet();}
-  catch(_){if(statusEl)statusEl.textContent='Could not load map library. Check your connection.';return;}
-
-  // Destroy existing map instance before re-creating (panel hide/show cycles)
+  try{await _osmLoadLeaflet();}catch(_){if(statusEl)statusEl.textContent='Could not load map library.';return;}
   if(_osmMap){_osmMap.remove();_osmMap=null;}
-
-  const isDark=document.documentElement.getAttribute('data-theme')==='dark'||
-    window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const tileUrl=isDark
-    ?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    :'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const tileAttr=isDark
-    ?"© <a href='https://www.openstreetmap.org/copyright'>OSM</a> © <a href='https://carto.com/'>CARTO</a>"
-    :"© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>";
-
-  _osmMap=L.map(mapEl,{zoomControl:true,attributionControl:true}).setView([20,0],2);
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark'||window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const tileUrl=isDark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const tileAttr=isDark?"© <a href='https://www.openstreetmap.org/copyright'>OSM</a> © <a href='https://carto.com/'>CARTO</a>":"© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>";
+  _osmMap=L.map(mapEl,{zoomControl:true}).setView([20,0],2);
   L.tileLayer(tileUrl,{attribution:tileAttr,maxZoom:19}).addTo(_osmMap);
-
-  // Get all real locations for this book
   const realLocs=getLocations().filter(l=>l.type==='real');
-  // Also pick up real-flagged Location entries not yet in the registry
-  entries().filter(e=>e.type==='Location'&&!e.isDraft&&e.locType==='real')
-    .forEach(e=>{if(!realLocs.find(l=>l.name===e.content))realLocs.push({name:e.content,type:'real',city:e.locCity||'',country:e.locCountry||''});});
-
-  if(!realLocs.length){
-    if(statusEl)statusEl.textContent='No real locations to show. Mark a location as "Real place" in its edit sheet to pin it here.';
-    return;
-  }
-
+  entries().filter(e=>e.type==='Location'&&!e.isDraft&&e.locType==='real').forEach(e=>{if(!realLocs.find(l=>l.name===e.content))realLocs.push({name:e.content,type:'real',city:e.locCity||'',country:e.locCountry||''});});
+  if(!realLocs.length){if(statusEl)statusEl.textContent='No real locations. Mark a location as "Real place" in its edit sheet.';return;}
   if(statusEl)statusEl.textContent=`Pinning ${realLocs.length} location${realLocs.length>1?'s':''}…`;
-  const markers=[];
-  let geocodedCount=0;
-
+  const markers=[];let geocodedCount=0;
   for(const loc of realLocs){
-    // Use cached lat/lng if available; otherwise geocode
     let lat=loc.lat,lng=loc.lng;
-    if(!lat||!lng){
-      const coords=await _osmGeocode(loc.name,loc.city,loc.country);
-      if(coords){lat=coords.lat;lng=coords.lng;saveLocation(loc.name,{lat,lng});}
-    }
-    if(!lat||!lng)continue;
-    geocodedCount++;
-    const icon=L.divIcon({
-      className:'',
-      html:`<div style="background:var(--accent,#7c3aed);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍</div>`,
-      iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]
-    });
+    if(!lat||!lng){const coords=await _osmGeocode(loc.name,loc.city,loc.country);if(coords){lat=coords.lat;lng=coords.lng;saveLocation(loc.name,{lat,lng});}}
+    if(!lat||!lng)continue;geocodedCount++;
+    const icon=L.divIcon({className:'',html:`<div style="background:var(--accent,#7c3aed);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📍</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
     const marker=L.marker([lat,lng],{icon,title:loc.name});
     const cityLine=[loc.city,loc.country].filter(Boolean).join(', ');
-    marker.bindPopup(`<strong style="font-size:13px;">${loc.name}</strong>${cityLine?`<br><span style="font-size:11px;color:#666;">${cityLine}</span>`:''}<br><button onclick="document.getElementById('osm-toggle-btn')?.click();setTimeout(()=>openLocDetail('${(loc.name||'').replace(/'/g,"\\'")}'),50);" style="margin-top:6px;font-size:11px;padding:3px 8px;background:#7c3aed;color:#fff;border:0;border-radius:4px;cursor:pointer;">Open detail ›</button>`,{maxWidth:200});
-    marker.addTo(_osmMap);
-    markers.push(marker);
-    // Small delay between geocodes to respect Nominatim rate limit
+    const safeName=(loc.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    marker.bindPopup(`<strong style="font-size:13px;">${loc.name}</strong>${cityLine?`<br><span style="font-size:11px;color:#666;">${cityLine}</span>`:''}<br><button onclick="document.getElementById('osm-toggle-btn')?.click();setTimeout(()=>openLocDetail('${safeName}'),50);" style="margin-top:6px;font-size:11px;padding:3px 8px;background:#7c3aed;color:#fff;border:0;border-radius:4px;cursor:pointer;">Open detail ›</button>`,{maxWidth:200});
+    marker.addTo(_osmMap);markers.push(marker);
     if(!loc.lat)await new Promise(r=>setTimeout(r,1100));
   }
-
-  if(markers.length){
-    const group=L.featureGroup(markers);
-    _osmMap.fitBounds(group.getBounds().pad(0.2));
-    // Force Leaflet to recalculate size after container was hidden
-    setTimeout(()=>{if(_osmMap)_osmMap.invalidateSize();},100);
-  }
-  if(statusEl)statusEl.textContent=geocodedCount>0?`${geocodedCount} location${geocodedCount>1?'s':''} pinned. Tap a pin to open.`:'No coordinates found for any location.';
+  if(markers.length){const group=L.featureGroup(markers);_osmMap.fitBounds(group.getBounds().pad(0.2));setTimeout(()=>{if(_osmMap)_osmMap.invalidateSize();},100);}
+  if(statusEl)statusEl.textContent=geocodedCount?`${geocodedCount} location${geocodedCount>1?'s':''} pinned. Tap a pin to open.`:'No coordinates found.';
 }
-
-// When switching tabs back to map, re-attach the Leaflet instance
 function _osmInvalidate(){if(_osmActive&&_osmMap)setTimeout(()=>{_osmMap.invalidateSize();},80);}
+
 
 function renderMap(){
   const list=document.getElementById('map-list');const empty=document.getElementById('map-empty');
@@ -8835,22 +8758,12 @@ function renderMap(){
   empty.style.display='none';
   const locDraftHTML=locDrafts.length?`\x3Cdetails style="margin-bottom:10px;">\x3Csummary style="cursor:pointer;font-size:12px;font-weight:700;color:#7F4F24;background:var(--bg2);border:0.5px solid #f0a500;border-radius:var(--r);padding:7px 10px;list-style:none;display:flex;align-items:center;gap:6px;"><span style="flex:1;">📝 Drafts (${locDrafts.length})</span><span style="font-size:10px;color:var(--t3);">tap to expand</span>\x3C/summary><div style="border:0.5px solid #f0a500;border-top:none;border-radius:0 0 var(--r) var(--r);padding:6px 8px;">${locDrafts.map(e=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--cb);cursor:pointer;" onclick="editEntry(${e.id})"><span style="font-size:9px;font-weight:700;background:#f0a500;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">DRAFT</span><span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.content||'(empty)'}</span><span style="font-size:11px;color:var(--accent);">Edit ›</span></div>`).join('')}</div>\x3C/details>`:'';
 
-  // Collect all real locations for a combined Maps link
+  // Collect all real locations for a combined Maps link (B44: "View all in Maps" button removed per user request)
   const realLocs=locNames.filter(loc=>{const d=getLocations().find(l=>l.name===loc)||{};return d.type==='real';});
-  const mapsAllUrl=realLocs.length>=1
-    ? 'https://www.google.com/maps/search/?api=1&query='+realLocs.map(l=>{const d=getLocations().find(x=>x.name===l)||{};return encodeURIComponent([l,d.city,d.country].filter(Boolean).join(', '));}).join('|')
-    : null;
-  // Build a search-friendly multi-location Maps URL (opens search for first, links all)
-  const mapsSearchUrl=realLocs.length>=1
-    ? 'https://www.google.com/maps/search/'+encodeURIComponent(realLocs.slice(0,5).map(l=>{const d=getLocations().find(x=>x.name===l)||{};return [l,d.city,d.country].filter(Boolean).join(', ');}).join(' | '))
-    : null;
 
   let headerHTML='';
   if(realLocs.length>0){
-    headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:12px;font-weight:600;flex:1;">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} in this book</span>
-      <button class="btn btn-sm" onclick="openLink('${mapsSearchUrl}')">🗺️ View all in Maps</button>
-    </div>`;
+    headerHTML=`<div style="background:var(--bg2);border-radius:var(--r);padding:7px 12px;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--t2);">📍 ${realLocs.length} real location${realLocs.length>1?'s':''} — tap 🗺️ Map above to see them on the map</div>`;
   }
 
   const mapQ=(document.getElementById('map-search')?.value||'').toLowerCase().trim();
@@ -9615,10 +9528,12 @@ function renderStats(){
   const content=document.getElementById('stats-content');
   content.innerHTML=`
   <div class="sum-grid">
-    <div class="sum-card" onclick="forceTab('log')" title="Go to Log"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
-    <div class="sum-card" onclick="forceTab('chars')" title="Go to Characters"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
-    <div class="sum-card" onclick="forceTab('quotes')" title="Go to Quotes"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes ›</div></div>
-    <div class="sum-card" onclick="forceTab('timeline')" title="Go to Timeline"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events ›</div></div>
+    <div class="sum-card" onclick="forceTab('log')" title="Go to Log" style="cursor:pointer;"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
+    <div class="sum-card" onclick="forceTab('chars')" title="Go to Characters" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
+    <div class="sum-card" onclick="forceTab('quotes')" title="Go to Quotes" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>['Quote','Line/stanza'].includes(e.type)).length}</div><div class="sum-lbl">Quotes ›</div></div>
+    <div class="sum-card" onclick="forceTab('timeline')" title="Go to Timeline" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>e.type==='Event').length}</div><div class="sum-lbl">Events ›</div></div>
+    <div class="sum-card" onclick="forceTab('log');setFilter('Theme');" title="Go to Themes" style="cursor:pointer;"><div class="sum-val">${all.filter(e=>e.type==='Theme').length}</div><div class="sum-lbl">Themes ›</div></div>
+    <div class="sum-card" onclick="forceTab('map')" title="Go to Locations" style="cursor:pointer;"><div class="sum-val">${getLocations().length}</div><div class="sum-lbl">Locations ›</div></div>
     <div class="sum-card"><div class="sum-val">${sessions.length}</div><div class="sum-lbl">Sessions</div></div>
     <div class="sum-card"><div class="sum-val">${totalMin>=60?Math.floor(totalMin/60)+'h '+(totalMin%60)+'m':totalMin+' min'}</div><div class="sum-lbl">Total reading time</div></div>
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
@@ -10097,6 +10012,27 @@ function exportPDF(){
         </div>
       </div>`;
     });
+    // xlsx #392 (Batch 44) — include a static OSM map image in the PDF for real
+    // locations that have geocoded lat/lng cached. Uses OpenStreetMap tile-based
+    // static image (staticmap.openstreetmap.de) — free, no key required.
+    // For each geocoded real location, emit a small tile map centered on its coords.
+    const geocodedLocs=locList.filter(l=>l.type==='real'&&l.lat&&l.lng);
+    if(geocodedLocs.length){
+      html+=`<div style="margin-top:20px;"><h3 style="font-size:14px;margin-bottom:10px;color:#534AB7;">📍 Location Maps</h3>`;
+      html+=`<div style="display:flex;flex-wrap:wrap;gap:12px;">`;
+      geocodedLocs.forEach(loc=>{
+        // Use staticmap.openstreetmap.de for a 300x200 tile snapshot
+        const zoom=loc.city||loc.country?10:5;
+        const staticUrl=`https://staticmap.openstreetmap.de/?center=${loc.lat},${loc.lng}&zoom=${zoom}&size=300x200&markers=${loc.lat},${loc.lng},red`;
+        const cityLine=[loc.city,loc.country].filter(Boolean).join(', ');
+        html+=`<div style="text-align:center;flex-shrink:0;">
+          <img src="${staticUrl}" width="200" height="133" style="border-radius:6px;border:1px solid #ddd;display:block;object-fit:cover;" onerror="this.style.display='none'"/>
+          <div style="font-size:10px;font-weight:600;margin-top:4px;">${loc.name}</div>
+          ${cityLine?`<div style="font-size:9px;color:#888;">${cityLine}</div>`:''}
+        </div>`;
+      });
+      html+=`</div></div>`;
+    }
   }
 
   // Character relationship web — inline SVG snapshot
