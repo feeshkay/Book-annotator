@@ -10956,7 +10956,7 @@ function renderLibStats(){
 //       Test results with result=pass auto-close the target ticket.
 // ═══════════════════════════════════════════════════════════════
 function getReports(){try{return JSON.parse(localStorage.getItem('reports')||'[]');}catch(e){return[];}}
-function saveReports(r){localStorage.setItem('reports',JSON.stringify(r));}
+function saveReports(r){try{localStorage.setItem('reports',JSON.stringify(r));}catch(e){alert('Could not save report — storage may be full. Try exporting a backup first.');}}
 // Back-fill status on any legacy reports that don't have one.
 function _normalizeReports(){
   const reports=getReports();let changed=false;
@@ -11396,7 +11396,7 @@ function _swipeInit(){/* removed */}
 
 <!-- ══ REPORT ISSUE SHEET ══ -->
 <div class="sheet-overlay" id="report-overlay" onclick="mc('report-overlay',event)">
-  <div class="sheet" style="position:relative;max-height:90vh;">
+  <div class="sheet" style="position:relative;max-height:92vh;display:flex;flex-direction:column;">
     <div class="sheet-handle"></div>
     <button class="sheet-x" onclick="closeSheet('report-overlay')">×</button>
     <div class="sheet-title" style="padding-right:48px;">🐛 Report issue / request feature</div>
@@ -11431,7 +11431,7 @@ function _swipeInit(){/* removed */}
       </select>
     </div>
     <div id="report-context-preview" style="font-size:10px;color:var(--t3);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:10px;font-family:monospace;line-height:1.5;"></div>
-    <div class="fa">
+    <div class="fa" style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 4px;margin-top:4px;border-top:0.5px solid var(--cb);z-index:2;">
       <button class="btn" id="report-discard-btn" onclick="discardReportEdit()" style="display:none;color:var(--red);border-color:var(--red);">× Discard</button>
       <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
       <button class="btn btn-primary" onclick="saveReport()">Save report</button>
