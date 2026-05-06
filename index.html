@@ -241,8 +241,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .dial-speaker{min-width:80px;font-size:11px;font-weight:600;color:var(--accent);}
 /* quick add char */
 .quick-add-char{background:var(--al);border-radius:var(--r);padding:9px 11px;margin-top:6px;border:0.5px solid var(--am);}
-</style>
-</head>
+.offset-detail.shown{display:inline!important;}
+</style></head>
 <body>
 
 <!-- ══ LIBRARY ══ -->
@@ -331,21 +331,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="timeline-panel" class="panel" style="padding:10px 11px 85px;">
-      <!-- #521 — reading time estimates: with and without annotating -->
-      <div id="tl-read-est" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
-        <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">📖 Estimated reading time remaining</div>
-        <div class="r2" style="gap:8px;">
-          <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
-            <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">Just reading</div>
-            <div id="tl-est-plain" style="font-size:16px;font-weight:700;color:var(--accent);">—</div>
-          </div>
-          <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
-            <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">With annotating</div>
-            <div id="tl-est-annot" style="font-size:16px;font-weight:700;color:var(--green);">—</div>
-          </div>
-        </div>
-        <div style="font-size:10px;color:var(--t3);margin-top:5px;">Based on pages left · <span style="color:var(--accent);cursor:pointer;" onclick="openReadEstSettings()">adjust speeds ⚙</span></div>
-      </div>
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
@@ -862,6 +847,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="number" id="ae-offset-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;" oninput="anchorChanged()"/>
           <select id="ae-offset-unit" style="flex:1;" onchange="anchorChanged()"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>decades</option><option>centuries</option><option>hours</option><option>minutes</option></select>
         </div>
+        <!-- #524 — Additive offset rows: e.g. 4 months + 3 weeks + 2 days. Same direction as primary row. -->
+        <div id="ae-offset-extras"></div>
+        <button type="button" onclick="addOffsetRow()" style="font-size:11px;color:var(--accent);background:transparent;border:0.5px dashed var(--am);border-radius:var(--r);padding:5px 9px;margin-bottom:6px;cursor:pointer;">+ Add another time amount</button>
         <div class="fg" style="margin-bottom:0;"><label style="font-size:10px;">Related to which event? <span style="font-weight:400;">(searchable — type to filter)</span></label>
           <!-- #342 follow-up — replaced native <select> with a searchable
                text-input + filtered dropdown. The hidden #ae-offset-event keeps
@@ -958,19 +946,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="r2">
         <div class="fg"><label>Actual time <span style="font-weight:400;color:var(--t3);">read</span></label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input type="number" id="ae-ref-actual-min" inputmode="numeric" placeholder="e.g. 90" min="0" style="flex:1;"/>
-            <select id="ae-ref-actual-unit" onchange="toggleRefActualUnit()" style="flex-shrink:0;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+          <div id="ae-ref-actual-single" style="display:flex;gap:6px;align-items:stretch;">
+            <input type="number" id="ae-ref-actual-min" inputmode="numeric" placeholder="e.g. 90" min="0" style="flex:1;min-width:0;"/>
+            <select id="ae-ref-actual-unit" onchange="toggleRefActualUnit()" style="flex-shrink:0;width:90px;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
               <option value="min">min</option>
               <option value="hr">hr</option>
               <option value="hr_min">hr + min</option>
             </select>
           </div>
-          <div id="ae-ref-actual-hrmin" style="display:none;margin-top:4px;">
-            <div class="r2" style="gap:6px;">
-              <div class="fg" style="margin:0;"><input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">hours</div></div>
-              <div class="fg" style="margin:0;"><input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">minutes</div></div>
-            </div>
+          <div id="ae-ref-actual-hrmin" style="display:none;gap:6px;align-items:stretch;">
+            <input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0" style="flex:1;min-width:0;"/>
+            <input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59" style="flex:1;min-width:0;"/>
+            <select onchange="document.getElementById('ae-ref-actual-unit').value=this.value;toggleRefActualUnit();" style="flex-shrink:0;width:90px;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+              <option value="hr_min" selected>hr + min</option>
+              <option value="min">min</option>
+              <option value="hr">hr</option>
+            </select>
           </div>
         </div>
         <div class="fg"><label>Date read</label><input type="date" id="ae-ref-date-read"/></div>
@@ -1578,6 +1569,51 @@ function anchorChanged(anchorLabel){
     }
   }
 }
+// #524 — Add another offset amount (additive: e.g. 4 months + 3 weeks + 2 days)
+let _offsetExtraCounter=0;
+function addOffsetRow(){
+  const wrap=document.getElementById('ae-offset-extras');if(!wrap)return;
+  const idx=++_offsetExtraCounter;
+  const row=document.createElement('div');
+  row.className='ae-offset-extra-row';
+  row.dataset.idx=idx;
+  row.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML=`
+    <span style="width:130px;flex-shrink:0;font-size:11px;color:var(--t3);text-align:right;padding-right:10px;">+ also</span>
+    <input type="number" class="ae-offset-extra-num" inputmode="numeric" placeholder="e.g. 3" style="width:70px;flex-shrink:0;min-width:0;"/>
+    <select class="ae-offset-extra-unit" style="flex:1;"><option>days</option><option>weeks</option><option>months</option><option>years</option><option>hours</option><option>minutes</option></select>
+    <button type="button" onclick="this.closest('.ae-offset-extra-row').remove();" style="background:transparent;border:0;color:var(--red);font-size:18px;padding:0 6px;cursor:pointer;line-height:1;">×</button>
+  `;
+  wrap.appendChild(row);
+}
+function clearOffsetExtras(){
+  const wrap=document.getElementById('ae-offset-extras');
+  if(wrap)wrap.innerHTML='';
+}
+function getOffsetExtras(){
+  // Returns array of {num,unit} from any extra rows
+  const rows=document.querySelectorAll('.ae-offset-extra-row');
+  const out=[];
+  rows.forEach(r=>{
+    const n=r.querySelector('.ae-offset-extra-num')?.value?.trim();
+    const u=r.querySelector('.ae-offset-extra-unit')?.value;
+    if(n&&u)out.push({num:n,unit:u});
+  });
+  return out;
+}
+function setOffsetExtras(extras){
+  clearOffsetExtras();
+  if(!Array.isArray(extras))return;
+  extras.forEach(ex=>{
+    addOffsetRow();
+    const rows=document.querySelectorAll('.ae-offset-extra-row');
+    const last=rows[rows.length-1];
+    if(last){
+      last.querySelector('.ae-offset-extra-num').value=ex.num||'';
+      last.querySelector('.ae-offset-extra-unit').value=ex.unit||'days';
+    }
+  });
+}
 // #246 — Searchable relationship-type picker
 function rtpRender(filter){
   const panel=document.getElementById('ae-reltype-panel');if(!panel)return;
@@ -1670,6 +1706,38 @@ const TYPE_HINTS={
   'Characteristic (physical)':{icon:'👁',desc:'A physical description or appearance note.',tips:['Separate from personality — helps keep character profiles clean.','Useful for tracking changes (injury, aging, disguise).']},
   'Translation':{icon:'🌐',desc:'A translation of a passage or term into another language.',tips:['Add the original text and the translation.','Useful for bilingual editions or books in translation.','Tag the language pair.']},
   'Key idea':{icon:'💡',desc:'A core takeaway or principle.',tips:['How might you apply it?','Does it challenge your existing thinking?']},
+  // ── Sci-Fi / Fantasy ──────────────────────────────────────────────────────
+  'Faction':{icon:'⚔️',desc:'A group, organization, or political body in a sci-fi or fantasy world — alliance, empire, guild, house, etc.',tips:['What does this faction want? What are they against?','Who are their key members? (Tag with Characters Involved.)','What gives them power — military, magic, money, ideology?','How does this faction shift your protagonist\'s options or loyalties?']},
+  'World element':{icon:'🪐',desc:'A piece of the world\'s rules, lore, or infrastructure — magic systems, technology, laws of physics, religion, currency, history.',tips:['Is this something you need to understand to follow the plot?','How does it constrain or enable what characters can do?','Log "how it works" in the content, and your questions in the Notes field.','Cross-reference with characters or factions it affects.']},
+  // ── Nonfiction (shared) ───────────────────────────────────────────────────
+  'Argument':{icon:'⚖️',desc:'A claim the author is making — a position they\'re defending or a point they\'re building toward.',tips:['State the argument in one sentence: "The author claims that..."','What evidence or reasoning supports it?','Do you agree? Push back in the notes.','Is this the thesis, a sub-argument, or a counter-argument being introduced?']},
+  'Author note':{icon:'✍️',desc:'Something the author says directly to the reader — a preface note, personal aside, methodological comment, or meta-observation.',tips:['Why did the author include this here?','Does it reveal their bias, intent, or background?','Does it change how you read what comes before or after?']},
+  'Concept':{icon:'🧠',desc:'A key idea, theory, term, or framework the author introduces or relies on.',tips:['Define it in your own words — if you can\'t, you haven\'t understood it yet.','What field does it come from? (Psychology, economics, philosophy?)','How is the author applying it in this specific context?','Does the author agree with the concept or critique it?']},
+  'Evidence':{icon:'📊',desc:'A fact, study, statistic, example, or anecdote the author uses to support a point.',tips:['What argument is this evidence supporting?','Is it primary (direct data) or secondary (citing someone else)?','Do you trust the source? Any reason to be skeptical?','Log page and chapter so you can trace it back.']},
+  'Characteristic':{icon:'🔍',desc:'For nonfiction: a notable trait, behavior, belief, or quality of a real person referenced in the book.',tips:['Is this trait documented or inferred by the author?','What evidence supports it?','How does it shape the person\'s role in the story being told?']},
+  'Person':{icon:'👤',desc:'A real person referenced in this book — expert, historical figure, subject, or author.',tips:['What is their role in the book? (Expert quoted, subject studied, historical figure, etc.)','Add their profession/occupation — it shows on their profile.','Use the Relationship type to connect them to others in the book.','Log any quotes from them in the Quotes tab with their name as speaker.']},
+  'Reflection':{icon:'🪞',desc:'Your own response to what you\'ve read — a thought, emotion, connection to your own life, or a moment of pause.',tips:['This is about YOU, not just the text.','What did this stir up? A memory? A disagreement? A realization?','No need to be analytical — this is your private annotation.','Great for memoir, self-help, and essays where the personal resonance matters.']},
+  // ── History ───────────────────────────────────────────────────────────────
+  'Date/Period':{icon:'📅',desc:'A specific date, year, or historical time period.',tips:['Log the event name AND the date so the timeline is meaningful.','For broad periods ("The Victorian Era"), add a start year and end year in the notes.','Use ± offset for relative dating — "30 years after the French Revolution."','Cross-reference with Evidence entries that document it.']},
+  'Figure':{icon:'🏛',desc:'A historical person of significance — ruler, general, thinker, revolutionary, etc.',tips:['Distinguish from Character (fictional) — Figure is reserved for historical/real people.','What were they known for before the events in this book?','How does the author portray them — sympathetically or critically?','Tag them in relevant Evidence and Date/Period entries.']},
+  'Place':{icon:'📍',desc:'A historically significant location — battlefield, city, territory, institution.',tips:['Different from Location (a scene-specific place) — Place is historically significant.','Note how it changed over the time period covered.','Was it renamed? Destroyed? Still exists?','Pin real places on the map view for geographic context.']},
+  // ── Self-Help ─────────────────────────────────────────────────────────────
+  'Actionable':{icon:'✅',desc:'A specific action, habit, or practice the author recommends you do.',tips:['Make it concrete: what would you actually do, when, and how?','Add it to your To-Do by saving it as a Reference too.','Did you try it? Log the result in the Notes field later.','Rate your confidence in doing it — helps prioritize.']},
+  'Exercise':{icon:'🏋️',desc:'A structured prompt, worksheet, or practice the author gives you to work through.',tips:['Log the exercise instructions in the content.','Work through it in the Notes field.','Tag the chapter so you can find it when you revisit.','Note whether you completed it and what you discovered.']},
+  'Principle':{icon:'📐',desc:'A guiding rule or belief system the author espouses — a "law" for how to live, work, or think.',tips:['State it as the author would: "Principle: ..."','Do you agree with it? Why or why not?','How does it compare to principles from other books you\'ve read?','Does the author give examples of it working in practice?']},
+  'Objection':{icon:'🙋',desc:'A counter-argument the author anticipates and responds to.',tips:['What is the objection being addressed?','How does the author answer it?','Is the answer satisfying? Do you have your own objection?','Useful for steelmanning — understanding the strongest case against the author\'s view.']},
+  // ── Poetry ────────────────────────────────────────────────────────────────
+  'Poem':{icon:'📜',desc:'An entire poem within an anthology or collection.',tips:['Use the content field for the title + first line.','Log your reading of it in Quotes (Line/stanza entries).','Note the form: sonnet, free verse, haiku, ode, etc.','What\'s the emotional register — mournful, celebratory, ironic?']},
+  'Line/stanza':{icon:'✒️',desc:'A specific line or stanza from a poem that struck you.',tips:['Paste the exact lines.','Add the poem title in the Note field.','What makes this language work — sound, image, surprise?','Does it echo anything elsewhere in the collection?']},
+  'Technique':{icon:'🔬',desc:'A poetic or literary device used in the text — metaphor, enjambment, anaphora, assonance, etc.',tips:['Name the technique and find at least one clear example in the text.','Why does it work here? What does it add?','Is this technique repeated throughout the poem or collection?','Tag the poem it appears in.']},
+  'Emotion':{icon:'❤️',desc:'The dominant feeling or emotional register of a poem or passage.',tips:['Be specific: not just "sad" but "grief that hasn\'t found its form yet."','What in the text creates this feeling — image, rhythm, word choice?','Does the emotion shift across the poem? Log that arc.']},
+  // ── Play / Drama ──────────────────────────────────────────────────────────
+  'Act/Scene':{icon:'🎭',desc:'A structural unit of the play — act, scene, or beat.',tips:['Note the page range and who appears.','What is the scene\'s function: exposition, confrontation, revelation, resolution?','How does the tone shift from the scene before?','What does each character want in this scene?']},
+  // ── General / Shared ──────────────────────────────────────────────────────
+  'Suspect':{icon:'🕵️',desc:'A character who may be guilty of something — a mystery suspect.',tips:['What motive do they have?','What evidence points to them?','What evidence clears them?','Rate your suspicion level in the Notes field.']},
+  'Red herring':{icon:'🐟',desc:'A misleading clue or detail designed to throw you off track.',tips:['Why did it seem significant at first?','When did you realize it was a misdirect?','Does the author play fair or is this cheap misdirection?']},
+  'Plot twist':{icon:'⚡',desc:'A sudden revelation or reversal that reframes what came before.',tips:['What did you think was true before?','What is true now?','Were there planted clues? Go back and find them.','How does this change your understanding of specific characters or scenes?']},
+  'Clue':{icon:'🔎',desc:'A piece of evidence or hint that may point toward an answer.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','What does it point toward?','Rate your confidence in its relevance.']},
 };
 const CP=[
   {bg:'#FAECE7',text:'#712B13',stroke:'#D85A30'},{bg:'#E6F1FB',text:'#0C447C',stroke:'#378ADD'},
@@ -3023,14 +3091,14 @@ function toggleGoodreads(){
 }
 function toggleRefActualUnit(){
   const unit=document.getElementById('ae-ref-actual-unit')?.value||'min';
-  const hrMinRow=document.getElementById('ae-ref-actual-hrmin');
-  const minField=document.getElementById('ae-ref-actual-min');
+  const single=document.getElementById('ae-ref-actual-single');
+  const hrMin=document.getElementById('ae-ref-actual-hrmin');
   if(unit==='hr_min'){
-    if(hrMinRow)hrMinRow.style.display='';
-    if(minField)minField.style.display='none';
+    if(single)single.style.display='none';
+    if(hrMin)hrMin.style.display='flex';
   } else {
-    if(hrMinRow)hrMinRow.style.display='none';
-    if(minField)minField.style.display='';
+    if(single)single.style.display='flex';
+    if(hrMin)hrMin.style.display='none';
   }
 }
 function getRefActualMinutes(){
@@ -3357,7 +3425,7 @@ function renderRelTypesSection(){
       const isPaired=pairedTypes.has(t);
       const bg=isCustom?'var(--al)':'var(--bg2)';const border=isPaired?'var(--am)':isCustom?'var(--am)':'var(--cb)';
       const color=isCustom?'var(--accent)':'var(--text)';const fw=isCustom?'600':'400';
-      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t}${isPaired?` <span style="font-size:9px;color:var(--am);">🔗</span>`:''}${isCustom?` <span onclick="libListsRenameRel('${esc(t)}')" style="margin-left:2px;cursor:pointer;font-size:10px;" title="Rename">✏️</span>`:''}  <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
+      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t}${isPaired?` <span style="font-size:9px;color:var(--am);">🔗</span>`:''} <span onclick="libListsRenameRel('${esc(t)}')" style="margin-left:2px;cursor:pointer;font-size:10px;" title="Rename">✏️</span>  <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
     }).join('')}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No active types.</div>'}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
       <button class="btn btn-sm btn-primary" onclick="libListsAddRel()" style="font-size:12px;">+ Add type</button>
@@ -3378,11 +3446,30 @@ function libListsAddRel(){
 function libListsRenameRel(oldName){
   const newName=(prompt(`Rename "${oldName}" to:`,oldName)||'').trim();
   if(!newName||newName===oldName)return;
-  if((library.customRelTypes||[]).includes(newName)||ALL_BUILTIN_REL_TYPES.includes(newName)){alert('That name already exists.');return;}
-  // Rename in customRelTypes
-  library.customRelTypes=(library.customRelTypes||[]).map(t=>t===oldName?newName:t);
+  const allExisting=[...(library.customRelTypes||[]),...ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName)];
+  if(allExisting.includes(newName)){alert('That name already exists.');return;}
+  const isBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
+  if(isBuiltin){
+    // For built-ins: add the new name as a custom type and delete the old built-in from view
+    if(!library.customRelTypes)library.customRelTypes=[];
+    if(!library.deletedRelTypes)library.deletedRelTypes=[];
+    library.customRelTypes.push(newName);
+    library.deletedRelTypes.push(oldName);
+  } else {
+    library.customRelTypes=(library.customRelTypes||[]).map(t=>t===oldName?newName:t);
+  }
   // Rename in customRelPairs
   (library.customRelPairs||[]).forEach(p=>{if(p.typeA===oldName)p.typeA=newName;if(p.typeB===oldName)p.typeB=newName;});
+  // Also rename in RECIPROCAL mirror (update pairs if it was a built-in with a built-in reciprocal)
+  if(RECIPROCAL[oldName]){
+    if(!library.customRelPairs)library.customRelPairs=[];
+    const recip=RECIPROCAL[oldName];
+    // Add a custom pair so the new name maps to the old reciprocal
+    const alreadyPaired=(library.customRelPairs||[]).some(p=>p.typeA===newName||p.typeB===newName);
+    if(!alreadyPaired){
+      library.customRelPairs.push({typeA:newName,typeB:recip,phraseA:'is '+newName.toLowerCase()+' of',phraseB:'is '+recip.toLowerCase()+' of'});
+    }
+  }
   // Rename in all entries across all books
   Object.values(library).forEach(b=>{
     if(!b||!b.entries)return;
@@ -3391,10 +3478,8 @@ function libListsRenameRel(oldName){
   save();renderLibLists();
 }
 function libListsAddPair(){
-  const customs=(library.customRelTypes||[]).filter(t=>!ALL_BUILTIN_REL_TYPES.includes(t));
-  if(customs.length<1){alert('Add at least one custom relationship type first, then pair it.');return;}
-  const typeA=(prompt('Type A (e.g. Owner):')||'').trim();if(!typeA)return;
-  const typeB=(prompt('Type B — the reciprocal of '+typeA+' (e.g. Pet):')||'').trim();if(!typeB)return;
+  const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
+  const typeB=(prompt('Type B — the reciprocal of "'+typeA+'" (e.g. Pet, Student):')||'').trim();if(!typeB)return;
   const phraseA=(prompt(`Phrase on ${typeA}'s card (e.g. "is owner of"):`,'is '+typeA.toLowerCase()+' of')||'').trim();
   const phraseB=(prompt(`Phrase on ${typeB}'s card (e.g. "is pet of"):`,'is '+typeB.toLowerCase()+' of')||'').trim();
   if(!library.customRelPairs)library.customRelPairs=[];
@@ -3582,9 +3667,16 @@ function saveBook(applyWiki){
 // ═══════════════════════════════════════════════════════════════
 function buildTabs(){
   const cfg=GENRES[book().genre]||GENRES.fiction;
+  // #542 — Relationship web is universal across genres. Insert 'web' tab between chars/timeline if missing.
+  let tabs=cfg.tabs.slice();
+  if(!tabs.includes('web')){
+    const charsIdx=tabs.indexOf('chars');
+    if(charsIdx>=0)tabs.splice(charsIdx+1,0,'web');
+    else tabs.push('web');
+  }
   const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats'};
-  document.getElementById('tab-bar').innerHTML=cfg.tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${lbl[t]||t}</button>`).join('');
-  cfg.tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
+  document.getElementById('tab-bar').innerHTML=tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${lbl[t]||t}</button>`).join('');
+  tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
 }
 function switchTab(t,btn){
   activeTab=t;
@@ -4137,7 +4229,13 @@ function buildCharRoleSelect(preserveVal){
 function buildTypeSelect(){
   if(!currentId)return;
   const cfg=GENRES[book().genre]||GENRES.fiction;
-  document.getElementById('ae-type').innerHTML=cfg.types.map(t=>`<option>${t}</option>`).join('');
+  // #517 — Image / Diagram is universal across genres
+  // #542 — Relationship is universal across genres
+  let types=cfg.types.slice();
+  if(!types.includes('Image / Diagram'))types.push('Image / Diagram');
+  if(!types.includes('Relationship'))types.push('Relationship');
+  types.sort((a,b)=>a.localeCompare(b));
+  document.getElementById('ae-type').innerHTML=types.map(t=>`<option>${t}</option>`).join('');
   buildCharRoleSelect();
 }
 function showTraitTypeHint(){
@@ -4777,7 +4875,7 @@ function clearAEForm(){
   const _rau=document.getElementById('ae-ref-actual-unit');if(_rau){_rau.value='min';toggleRefActualUnit();}
   document.getElementById('ae-trait-type').value='personality';
   document.getElementById('ae-event-sig').value='significant';
-  document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';
+  document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';clearOffsetExtras();
   const skEl=document.getElementById('ae-sortkey');if(skEl)skEl.value='';
   const offTog=document.getElementById('ae-offset-toggle');if(offTog){offTog.checked=false;document.getElementById('ae-offset-block').style.display='none';}
   // #342 follow-up — clear offset-event picker (hidden field, search input, panel).
@@ -5503,7 +5601,9 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const on=document.getElementById('ae-offset-num').value.trim();
     const ou=document.getElementById('ae-offset-unit').value;
     const oe=document.getElementById('ae-offset-event').value;
-    const offsetActive=document.getElementById('ae-offset-toggle')?.checked && on;
+    // #539 — require BOTH a number AND an anchor event for offset to be considered active.
+    // Without the anchor event, the "X days before/after" label has no meaning, so don't save it.
+    const offsetActive=document.getElementById('ae-offset-toggle')?.checked && on && oe;
     // Year required ONLY for Timeline entries with no offset anchor; Event can save without it.
     if(type==='Timeline' && !evYear && !offsetActive){alert('Please enter a year or era, OR connect this entry to another event.');return;}
     // Build evdate string
@@ -5520,8 +5620,15 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.evdateAmPm=(document.getElementById('ae-evdate-ampm')?.value||'').trim();
     entry.importance=document.getElementById('ae-imp').value;
     // Store offset — #309: clear if toggle is unchecked
-    if(offsetActive){entry.timeOffset=`${od}${on} ${ou}`;if(oe)entry.timeOffsetFrom=oe;}
-    else{delete entry.timeOffset;delete entry.timeOffsetFrom;}
+    if(offsetActive){
+      entry.timeOffset=`${od}${on} ${ou}`;
+      if(oe)entry.timeOffsetFrom=oe;
+      // #524 — additive extra offsets
+      const extras=getOffsetExtras();
+      if(extras.length)entry.offsetExtras=extras;
+      else delete entry.offsetExtras;
+    }
+    else{delete entry.timeOffset;delete entry.timeOffsetFrom;delete entry.offsetExtras;}
     // #303 — compute numeric sort value from anchor so entry lands in correct position
     if(offsetActive && oe){
       const anchor=findAnchorEntry(oe);
@@ -6704,6 +6811,8 @@ function editEntry(id){
         if(evSearch)evSearch.value=e.timeOffsetFrom;
       }
       const t=document.getElementById('ae-offset-toggle');if(t){t.checked=true;document.getElementById('ae-offset-block').style.display='';}
+      // #524 — restore additive offset rows
+      clearOffsetExtras();if(e.offsetExtras)setOffsetExtras(e.offsetExtras);
       // #309 — Re-run anchor calc so the year/era field is auto-filled with the calculated date,
       // not left blank. Done after offset fields are restored. Slight delay so the offset-event
       // dropdown is fully populated by buildOffsetEventList() before we read it.
@@ -8310,15 +8419,23 @@ function renderTimeline(){
     const jp=_toJulian(prev), jc=_toJulian(cur);
     if(jp!=null&&jc!=null){
       const diff=Math.round(jc-jp);
-      if(diff===0)return 'same day';
       const ad=Math.abs(diff);
       const dir=diff>0?'later':'earlier';
-      if(ad<31)return `${ad} day${ad===1?'':'s'} ${dir}`;
+      // #524 — smart natural-language labels with exact detail in parens
+      if(diff===0)return 'same day';
+      if(ad===1)return diff>0?'next day':'previous day';
+      if(ad<=3)return `a few days ${dir} (${ad} days)`;
+      if(ad<=7)return diff>0?`the following week (${ad} days)`:`the previous week (${ad} days)`;
+      if(ad<14)return `${ad} days ${dir}`;
+      if(ad<31){const wk=Math.round(ad/7);return `~${wk} week${wk===1?'':'s'} ${dir} (${ad} days)`;}
+      if(ad<90){const mo=Math.round(ad/30.4);return `${mo} month${mo===1?'':'s'} ${dir} (${ad} days)`;}
       if(ad<365){const mo=Math.round(ad/30.4);return `${mo} month${mo===1?'':'s'} ${dir}`;}
       const yr=Math.round(ad/365.25*10)/10;
+      // Within same range, also note the months/days for sub-yearly precision
+      if(yr<2){const mo=Math.round(ad/30.4);return `~${yr} year${yr===1?'':'s'} ${dir} (${mo} months)`;}
       return `${yr} year${yr===1?'':'s'} ${dir}`;
     }
-    // Year-only fallback.
+    // Year-only fallback. #524 — prefix with ~ since the date is estimated (no month/day).
     const yp=_yearOf(prev), yc=_yearOf(cur);
     if(yp!=null&&yc!=null){
       const diff=yc-yp;
@@ -8350,7 +8467,7 @@ function renderTimeline(){
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${item.timeOffset?(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m){const raw=String(item.timeOffset).trim();const sign=raw.startsWith('-')?'before':raw.startsWith('+')?'after':'near';const body=raw.replace(/^[+-]/,'');const anchor=item.timeOffsetFrom?` "${item.timeOffsetFrom.slice(0,30)}"`:' previous';return ` (${body} ${sign}${anchor})`;}const dir=m[1]==='+'?'after':'before';const n=m[2];const u=m[3];const anchor=item.timeOffsetFrom?` "${item.timeOffsetFrom.slice(0,30)}"`:' previous';return ` (${n} ${u} ${dir}${anchor})`;})():''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--t2);">${item.evdate||item.dateVal||''}${(item.timeOffset&&item.timeOffsetFrom)?`<span class="offset-tip" style="display:inline-block;margin-left:6px;cursor:pointer;color:var(--accent);font-size:10px;" onclick="event.stopPropagation();this.querySelector('.offset-detail').classList.toggle('shown');" title="Click for offset detail">🔗<span class="offset-detail" style="display:none;font-weight:400;font-style:italic;color:var(--t3);margin-left:4px;">${(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m){const raw=String(item.timeOffset).trim();const sign=raw.startsWith('-')?'before':raw.startsWith('+')?'after':'near';const body=raw.replace(/^[+-]/,'');return `${body} ${sign} "${item.timeOffsetFrom.slice(0,30)}"`;}const dir=m[1]==='+'?'after':'before';return `${m[2]} ${m[3]} ${dir} "${item.timeOffsetFrom.slice(0,30)}"`;})()}</span></span>`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
@@ -8386,8 +8503,6 @@ function renderTimeline(){
   html+='</div>';
   // #398 — drafts block at top
   list.innerHTML=draftHTML+html;
-  // #521 — update read-time estimates
-  updateReadingEstimate();
 }
 // #314 — timeline location filter
 function setTlLocFilter(loc){
@@ -8395,35 +8510,89 @@ function setTlLocFilter(loc){
   if(bar)bar.dataset.active=loc;
   renderTimeline();
 }
-// #521 — Reading time estimate: with and without annotating
-function updateReadingEstimate(){
-  const b=book();if(!b)return;
-  const estEl=document.getElementById('tl-read-est');
-  if(!estEl)return;
+// #521 — Reading-time estimate widget for the Stats tab.
+// Speeds are derived from the user's own session log (filtered by mode):
+//   - plainPPH:  pages/hr from sessions logged as 📖 reading-only (no synth)
+//   - annotPPH:  pages/hr from sessions that included synthesizing/annotating
+// Falls back to defaults if not enough data, or to library.readEstReadPPH /
+// library.readEstAnnotPPH overrides if user has manually set them.
+function buildReadEstHTML(b,sessions){
+  if(!b)return '';
   const total=+b.totalPages||0;const prog=+b.progressPage||0;
-  if(!total||prog>=total){estEl.style.display='none';return;}
-  estEl.style.display='';
+  if(!total){return '<div style="background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3);">📖 Set a total page count in book info to see reading-time estimates.</div>';}
+  if(prog>=total){return '<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--accent);">📖 ✅ Done with this one!</div>';}
   const pagesLeft=total-prog;
-  // speeds: pages per hour — stored on library object, defaults 40 read / 20 annotate
-  const readPPH=+((library&&library.readEstReadPPH)||40);
-  const annotPPH=+((library&&library.readEstAnnotPPH)||20);
-  const plainHrs=pagesLeft/readPPH;
+
+  // Derive speeds from sessions
+  let plainPagesH=0,plainMinT=0,annotPagesH=0,annotMinT=0;
+  (sessions||[]).forEach(s=>{
+    const pg=+s.pEnd-(+s.pStart||0);if(!pg||pg<=0)return;
+    const rm=+s.readMinutes||0;const sm=+s.synthMinutes||0;const m=+s.minutes||0;
+    if(rm>0&&sm===0){plainPagesH+=pg;plainMinT+=rm;}
+    else if(sm>0){annotPagesH+=pg;annotMinT+=(rm+sm)||m;}
+    else if(m>0){plainPagesH+=pg;plainMinT+=m;} // legacy untracked sessions count as plain
+  });
+  const derivedPlain=plainMinT>0?(plainPagesH/(plainMinT/60)):0;
+  const derivedAnnot=annotMinT>0?(annotPagesH/(annotMinT/60)):0;
+  const overrideR=+((library&&library.readEstReadPPH)||0);
+  const overrideA=+((library&&library.readEstAnnotPPH)||0);
+  const plainPPH=overrideR>0?overrideR:(derivedPlain>0?derivedPlain:40);
+  const annotPPH=overrideA>0?overrideA:(derivedAnnot>0?derivedAnnot:20);
+
+  const plainHrs=pagesLeft/plainPPH;
   const annotHrs=pagesLeft/annotPPH;
-  const fmtHrs=h=>{if(h<1)return Math.round(h*60)+'m';const hh=Math.floor(h);const mm=Math.round((h-hh)*60);return hh+'h'+(mm>0?' '+mm+'m':'');};
-  const plainEl=document.getElementById('tl-est-plain');
-  const annotEl=document.getElementById('tl-est-annot');
-  if(plainEl)plainEl.textContent=fmtHrs(plainHrs);
-  if(annotEl)annotEl.textContent=fmtHrs(annotHrs);
+  const fmtHM=h=>{const totalM=Math.max(0,Math.round(h*60));if(totalM<60)return totalM+'m';const hh=Math.floor(totalM/60);const mm=totalM%60;return hh+'h'+(mm>0?' '+mm+'m':'');};
+
+  // Time saved/lost: compare expected (initial pages × current pace) vs actual (sum of session minutes so far)
+  let savedHTML='';
+  if(prog>0&&(plainMinT+annotMinT)>0){
+    const totalMinSpent=plainMinT+annotMinT;
+    const totalPagesDone=plainPagesH+annotPagesH;
+    if(totalPagesDone>0){
+      // Expected time, given current avg pace (blended), to read what they've actually read
+      const blendedPPH=(plainPagesH+annotPagesH)/((plainMinT+annotMinT)/60);
+      const expected=prog/blendedPPH; // hours, naive expectation
+      // Compare against actual minutes spent
+      const actualHrs=totalMinSpent/60;
+      const diffHrs=expected-actualHrs;
+      const isSaved=diffHrs>0.05;const isLost=diffHrs<-0.05;
+      if(isSaved){savedHTML=`<div style="font-size:11px;color:var(--green);margin-top:6px;">⏱ You're <strong>${fmtHM(diffHrs)}</strong> ahead of your average pace.</div>`;}
+      else if(isLost){savedHTML=`<div style="font-size:11px;color:var(--t2);margin-top:6px;">⏱ You're <strong>${fmtHM(-diffHrs)}</strong> behind your average pace.</div>`;}
+    }
+  }
+
+  const sourceLabel=(plainMinT+annotMinT)>0?`Based on your ${sessions.length} session${sessions.length===1?'':'s'}`:'Based on default speeds (no session data yet)';
+  const overrideNote=(overrideR||overrideA)?' · custom override':'';
+
+  return `<div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;border:0.5px solid var(--cb);">
+    <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">📖 Estimated time remaining (${pagesLeft}p)</div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
+        <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">Just reading</div>
+        <div style="font-size:16px;font-weight:700;color:var(--accent);">${fmtHM(plainHrs)}</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:1px;">~${Math.round(plainPPH)} p/hr</div>
+      </div>
+      <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
+        <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">With annotating</div>
+        <div style="font-size:16px;font-weight:700;color:var(--green);">${fmtHM(annotHrs)}</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:1px;">~${Math.round(annotPPH)} p/hr</div>
+      </div>
+    </div>
+    ${savedHTML}
+    <div style="font-size:10px;color:var(--t3);margin-top:6px;">${sourceLabel}${overrideNote} · <span style="color:var(--accent);cursor:pointer;" onclick="openReadEstSettings()">override speeds ⚙</span></div>
+  </div>`;
 }
 function openReadEstSettings(){
   if(!library)return;
-  const rpp=prompt('Reading speed (pages per hour) — just reading:\n(Default: 40)',library.readEstReadPPH||40);
+  const msg='Override your derived reading speeds? Leave blank to use the auto-calculated speed from your session log.';
+  alert(msg);
+  const rpp=prompt('Override reading speed (pages per hour) — just reading:\n(Blank = use derived speed from your sessions)',library.readEstReadPPH||'');
   if(rpp===null)return;
-  const app=prompt('Reading speed (pages per hour) — with annotating/notes:\n(Default: 20)',library.readEstAnnotPPH||20);
+  const app=prompt('Override reading speed (pages per hour) — with annotating:\n(Blank = use derived speed from your sessions)',library.readEstAnnotPPH||'');
   if(app===null)return;
-  library.readEstReadPPH=Math.max(1,+rpp||40);
-  library.readEstAnnotPPH=Math.max(1,+app||20);
-  save();updateReadingEstimate();
+  library.readEstReadPPH=rpp.trim()===''?0:Math.max(1,+rpp||0);
+  library.readEstAnnotPPH=app.trim()===''?0:Math.max(1,+app||0);
+  save();renderStats();
 }
 // xlsx #342 — switch the timeline sort mode between Story chronology and Reading order.
 function setTlSortMode(mode){
@@ -8943,29 +9112,20 @@ function cascadeDependentDates(anchorEntry){
       if(!anchor)return;
       const aYear=anchor.evdateYear||anchor.evdate||'';if(!aYear)return;
       const aMonth=anchor.evdateMonth||'';const aDay=anchor.evdateDay||'';
-      const m=( e.timeOffset||'').match(/^([+-])([\d.]+)\s+(\w+)/);if(!m)return;
+      const m=(e.timeOffset||'').match(/^([+-])([\d.]+)\s+(\w+)/);if(!m)return;
       const sign=m[1]==='-'?-1:1;const num=parseFloat(m[2])||0;const unit=m[3].toLowerCase();
-      // Compute total days offset
-      let days=0;
-      if(unit==='day'||unit==='days')days=sign*Math.round(num);
-      else if(unit==='week'||unit==='weeks')days=sign*Math.round(num*7);
-      else if(unit==='month'||unit==='months'){
-        // Approximate: shift month, carry year
-        let ny=+aYear;let nm=(+aMonth||1)+sign*Math.round(num);
-        while(nm>12){nm-=12;ny++;}while(nm<1){nm+=12;ny--;}
-        const nd=aDay?String(aDay):'';
-        const newYr=String(ny);const newMn=String(nm);
-        if(e.evdateYear!==newYr||e.evdateMonth!==newMn||(nd&&e.evdateDay!==nd)){
-          e.evdateYear=newYr;e.evdate=newYr;e.evdateMonth=newMn;if(nd)e.evdateDay=nd;
-          anyChange=true;changed=true;
-        }
-        return;
-      }
-      else if(unit==='year'||unit==='years')days=sign*Math.round(num*365);
-      else return;
+      // Helper: convert a {num,unit} pair to days (approximate)
+      const toDays=(n,u)=>{
+        const U={day:1,days:1,week:7,weeks:7,month:30.44,months:30.44,year:365.25,years:365.25,hour:1/24,hours:1/24,minute:1/1440,minutes:1/1440};
+        return Math.round((n||0)*(U[u]||1));
+      };
+      // Compute total days from primary + any extras (#524 additive offsets)
+      let days=sign*toDays(num,unit);
+      (e.offsetExtras||[]).forEach(ex=>{ days+=sign*toDays(parseFloat(ex.num)||0,ex.unit||'days'); });
       if(!aMonth){
-        // Year-only anchor — just shift year
-        const newYr=String(+aYear+Math.round(sign*num*(unit==='year'||unit==='years'?1:unit==='decade'||unit==='decades'?10:0)));
+        // Year-only anchor — convert total days to years
+        const yearShift=Math.round(days/365.25);
+        const newYr=String(+aYear+yearShift);
         if(e.evdateYear!==newYr){e.evdateYear=newYr;e.evdate=newYr;anyChange=true;changed=true;}
         return;
       }
@@ -9520,9 +9680,12 @@ function renderRefs(){
         ${(r.pageNum||r.chapNum)?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin:3px 0 1px;">${r.chapNum?`<span class="pbadge" onclick="event.stopPropagation();setFilter('ch:${r.chapNum}');forceTab('log');" style="cursor:pointer;font-size:10px;">Ch.${r.chapNum}</span>`:''}${r.pageNum?`<span class="pbadge" style="font-size:10px;">p.${r.pageNum}</span>`:''}</div>`:''}
         ${r.refActualMin?`<div style="font-size:10px;color:var(--t3);">⏱ Actual: ${+r.refActualMin>=60?Math.floor(+r.refActualMin/60)+'h '+(+r.refActualMin%60>0?+r.refActualMin%60+'m':''):(r.refActualMin+'m')}</div>`:''}
         ${r.refDateRead?`<div style="font-size:10px;color:var(--t3);">📅 ${r.refDateRead}</div>`:''}
-        ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${doneLabel[r.refType]||'Done'}</div>`:''}
+        ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${r.storyGraphAdded?'✅ Added to StoryGraph'+(r.storyGraphAddedDate?' · '+r.storyGraphAddedDate:''):(doneLabel[r.refType]||'Done')}</div>${r.storyGraphSourceBook?`<div style="font-size:10px;color:var(--t3);">📖 Discovered via: <em>${r.storyGraphSourceBook}</em></div>`:''}`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
-        ${r.refType==='book'&&!r.refDone?`<div style="font-size:10px;margin-top:2px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${esc(r.content)}'))">+ Add to StoryGraph</span></div>`:''}
+        ${r.refType==='book'&&!r.refDone?`<div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span style="color:#1D9E75;font-size:11px;cursor:pointer;" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${esc(r.content)}'))">📚 Open StoryGraph</span>
+          <span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="markAddedToStoryGraph(${r.id})">✅ Mark as added</span>
+        </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
       </div>
@@ -9535,6 +9698,15 @@ function renderRefs(){
 }
 function setRefFilter(t){activeRefFilter=t;renderRefs();}
 function toggleRef(id){const e=entries().find(x=>x.id===id);if(!e)return;e.refDone=!e.refDone;save();renderRefs();}
+// #525 — Mark a book reference as "Added to StoryGraph" and record source book + date
+function markAddedToStoryGraph(id){
+  const e=entries().find(x=>x.id===id);if(!e)return;
+  e.refDone=true;
+  e.storyGraphAdded=true;
+  e.storyGraphAddedDate=(new Date()).toISOString().slice(0,10);
+  e.storyGraphSourceBook=book()?.title||currentId;
+  save();renderRefs();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // TO-DO
@@ -9844,7 +10016,10 @@ function renderStats(){
   } // end if(days.length>=1)
 
   const content=document.getElementById('stats-content');
+  // #521 — Build read-time estimate widget for stats panel
+  const readEstHTML=buildReadEstHTML(b,sessions);
   content.innerHTML=`
+  ${readEstHTML}
   <div class="sum-grid">
     <div class="sum-card" onclick="forceTab('log')" style="cursor:pointer;" title="Go to Log"><div class="sum-val">${all.length}</div><div class="sum-lbl">Total entries ›</div></div>
     <div class="sum-card" onclick="forceTab('chars')" style="cursor:pointer;" title="Go to Characters"><div class="sum-val">${all.filter(e=>CT.includes(e.type)).length}</div><div class="sum-lbl">Characters ›</div></div>
