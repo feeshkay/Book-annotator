@@ -11404,10 +11404,6 @@ function _swipeInit(){/* removed */}
     <div class="sheet-title" style="padding-right:48px;">🐛 Report issue / request feature</div>
     <!-- #277 — preserves original # when editing an existing report -->
     <input type="hidden" id="report-edit-num" value=""/>
-    <div class="fa" style="margin-bottom:10px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="saveReport()">💾 Save report</button>
-      <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
-    </div>
     <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;line-height:1.55;">
       Capture bugs and feature requests as you go. Each one gets a tracker number and your context (current screen, book, last entry) auto-attached. At session end, copy the whole batch into your next Claude session.
     </div>
@@ -11440,7 +11436,7 @@ function _swipeInit(){/* removed */}
     <div class="fa">
       <button class="btn" id="report-discard-btn" onclick="discardReportEdit()" style="display:none;color:var(--red);border-color:var(--red);">× Discard</button>
       <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveReport()">Save report</button>
+      <button class="btn btn-primary" ontouchstart="document.activeElement&&document.activeElement.blur&&document.activeElement.blur()" onclick="saveReport()">Save report</button>
     </div>
     <div class="divider"></div>
     <!-- TEST a ticket # quickly -->
