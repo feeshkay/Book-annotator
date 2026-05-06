@@ -6916,7 +6916,7 @@ function ecHTML(e,compact,fromTab){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     // #244 — Format as "A is [relType] of B" so direction is unambiguous
     const _rp=e.relType?getRelPhrase(e.relType,true):'';const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">${_rp} ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong></span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
- #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
+    // #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
     const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
     const linkedQBlock=linkedQs.length?`<div style="margin-top:5px;border-left:2px solid var(--am);padding-left:7px;">${linkedQs.map(q=>`<div style="margin-bottom:3px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.pageNum?' · p.'+q.pageNum:''}</span><div style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry(${q.id})">"${(q.content||'').slice(0,80)}${q.content?.length>80?'…':''}"</div></div>`).join('')}</div>`:'';
