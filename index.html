@@ -1224,6 +1224,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
       <button class="btn" onclick="openSymbolCheatSheet()">📝 Reading symbols guide</button>
       <button class="btn" onclick="copySessionOpener()">📋 Copy session opener</button>
+      <button class="btn" onclick="freeStorage()" style="color:var(--red);border-color:var(--red);">🧹 Free up storage</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
@@ -9991,6 +9992,26 @@ function openSymbolCheatSheet(){
   ov.appendChild(box);document.body.appendChild(ov);
 }
 // #256 — copy session opener to clipboard
+function freeStorage(){
+  let freed=0;
+  // Remove old library snapshots superseded by IDB
+  ['book-annotator-v4','book-annotator-v3','book-annotator-v2','book-annotator-v1','book-annotator'].forEach(k=>{
+    if(localStorage.getItem(k)){localStorage.removeItem(k);freed++;}
+  });
+  // Remove reports from localStorage (now in IDB)
+  if(localStorage.getItem('reports')){localStorage.removeItem('reports');freed++;}
+  // Remove orphaned ignored-todo keys for books that no longer exist
+  const bookIds=new Set(Object.keys(library));
+  Object.keys(localStorage).filter(k=>k.startsWith('ignored-todos-')).forEach(k=>{
+    const id=k.replace('ignored-todos-','');
+    if(!bookIds.has(id)){localStorage.removeItem(k);freed++;}
+  });
+  // Remove stale scroll-position keys
+  Object.keys(localStorage).filter(k=>k.startsWith('scroll-')||k.startsWith('pos-')).forEach(k=>{
+    localStorage.removeItem(k);freed++;
+  });
+  alert(`Freed ${freed} stale storage item${freed===1?'':'s'}.\n\nYour books and reports are safe — they live in the app's database (IndexedDB), not in the freed storage.`);
+}
 function copySessionOpener(){
   const b=book();if(!b){alert('Open a book first.');return;}
   const all=entries();
@@ -10955,8 +10976,30 @@ function renderLibStats(){
 //       / 'closed' (fixed & confirmed, hidden by default). Auto-transition open→reported on Copy-all.
 //       Test results with result=pass auto-close the target ticket.
 // ═══════════════════════════════════════════════════════════════
-function getReports(){try{return JSON.parse(localStorage.getItem('reports')||'[]');}catch(e){return[];}}
-function saveReports(r){try{localStorage.setItem('reports',JSON.stringify(r));}catch(e){alert('Could not save report — storage may be full. Try exporting a backup first.');}}
+function getReports(){
+  if(window._reportsCache!==undefined)return window._reportsCache;
+  try{const r=JSON.parse(localStorage.getItem('reports')||'[]');window._reportsCache=r;return r;}catch(e){return[];}
+}
+function saveReports(r){
+  const cutoff=Date.now()-(60*24*60*60*1000);
+  r=r.filter(x=>x.status!=='closed'||!x.closedAt||x.closedAt>cutoff);
+  window._reportsCache=r;
+  _idbPut('reports',r).then(()=>{try{localStorage.removeItem('reports');}catch(e){}}).catch(()=>{
+    try{localStorage.setItem('reports',JSON.stringify(r));}
+    catch(e){alert('Storage is full. Go to Settings and export a backup first, then try again.');}
+  });
+}
+async function _loadReportsCache(){
+  try{
+    const d=await _idbGet('reports');
+    if(d&&Array.isArray(d)){window._reportsCache=d;return;}
+    const ls=localStorage.getItem('reports');
+    if(ls){const p=JSON.parse(ls);window._reportsCache=p;saveReports(p);}
+    else{window._reportsCache=[];}
+  }catch(e){
+    try{window._reportsCache=JSON.parse(localStorage.getItem('reports')||'[]');}catch(_){window._reportsCache=[];}
+  }
+}
 // Back-fill status on any legacy reports that don't have one.
 function _normalizeReports(){
   const reports=getReports();let changed=false;
@@ -11249,40 +11292,46 @@ function copyAllReports(){
   const reports=_normalizeReports();
   if(!reports.length){alert('No reports to copy.');return;}
   const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
-  const priLabel={top:'🔥 TOP PRIORITY',normal:'',low:'low priority'};
-  // #284 — Copy-all filter rules:
-  //   NEW REQUESTS section: only 'open' non-test items.
-  //   TEST RESULTS section: 'open' OR 'reported' test items (so re-tests still flow through).
-  //   After building output, auto-transition those items to 'reported' with today's date.
+  const priLabel={top:'TOP PRIORITY',normal:'',low:'low priority'};
   const openOthers=reports.filter(r=>r.type!=='test'&&r.status==='open');
   const testsToSend=reports.filter(r=>r.type==='test'&&(r.status==='open'||r.status==='reported'));
   const totalToSend=openOthers.length+testsToSend.length;
-  if(!totalToSend){alert('Nothing new to copy. All open items have already been reported.\n\nTip: tap ↺ on an item in "Awaiting fix" to re-open it, or log a fresh test result.');return;}
-  let out=`This is a batch of ${totalToSend} update${totalToSend===1?'':'s'} (${testsToSend.length} test result${testsToSend.length===1?'':'s'} + ${openOthers.length} new request${openOthers.length===1?'':'s'}). I'll need to make a new session. Don't edit the index file — I'll have the next session do that. I haven't updated my tracker at all yet, so let's update the most recent tracker xlsx with the information below.\n\n`;
-  out+=`⚠️ NOTE: Only OPEN items are below. Anything already reported to you in a previous session is now in the app's "Awaiting fix" bucket and is NOT repeated here.\n\n`;
+  if(!totalToSend){alert('Nothing new to copy.\n\nTip: tap on an item in "Awaiting fix" to re-open it, or log a fresh test result.');return;}
+  let out=`This is a batch of ${totalToSend} update${totalToSend===1?'':'s'} (${testsToSend.length} test result${testsToSend.length===1?'':'s'} + ${openOthers.length} new request${openOthers.length===1?'':'s'}).\n\n`;
+  out+='======================================\n';
+  out+='RULES FOR CLAUDE - READ BEFORE STARTING\n';
+  out+='======================================\n';
+  out+='1. SILENT WORK ONLY. No commentary, no process narration. Code and ship. Every token counts.\n';
+  out+='2. UPDATE TRACKER only if tokens clearly plentiful. Otherwise do all tracker updates at END before outputting files.\n';
+  out+='3. START IMMEDIATELY fixing failed tests below, then pull in older unshipped items from the tracker.\n';
+  out+='4. FOR EVERY CONFIRMED FIX: state which app log # the user can close (e.g. "You can close app log #12").\n';
+  out+='5. USE /mnt/user-data/outputs/ files - NOT the zip from a previous session.\n';
+  out+='======================================\n\n';
+  out+='NOTE: Only OPEN items below. Anything already reported is in "Awaiting fix" and NOT repeated here.\n\n';
   if(testsToSend.length){
-    out+='═══ TEST RESULTS ═══\n';
-    out+='(These are MY test results on existing tickets. The number after "Test #" is the tracker # being tested — match it to the existing tracker row, do NOT renumber these as new tickets.)\n\n';
+    out+='=== TEST RESULTS ===\n';
+    out+='(The # after "Test #" is the tracker # - match to existing row, do NOT renumber.)\n\n';
     testsToSend.forEach(r=>{
-      const sym=r.testResult==='pass'?'✅':'⚠️';
-      out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
+      const sym=r.testResult==='pass'?'[PASS]':'[NEEDS FIXES]';
+      out+=`${sym} #${r.testTarget} - ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
     });
     out+='\n';
   }
   if(openOthers.length){
-    out+='═══ NEW REQUESTS / BUGS ═══\n\n';
+    out+='=== NEW REQUESTS / BUGS ===\n\n';
     openOthers.forEach(r=>{
       const ctx=r.context||{};
-      const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' · ');
-      out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' — ':''}${r.title}\n`;
+      const ctxBits=[ctx.screen?'screen='+ctx.screen:'',ctx.tab?'tab='+ctx.tab:'',ctx.book?'book="'+ctx.book+'"':'',ctx.character?'char="'+ctx.character+'"':'',ctx.location?'loc="'+ctx.location+'"':''].filter(Boolean).join(' / ');
+      out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${priLabel[r.priority]?priLabel[r.priority]+' - ':''}${r.title}\n`;
       if(r.body)out+=`   ${r.body}\n`;
-      if(ctxBits)out+=`   📍 context: ${ctxBits}\n`;
-      out+=`   🕐 ${r.dateStr}\n\n`;
+      if(ctxBits)out+=`   context: ${ctxBits}\n`;
+      out+=`   ${r.dateStr}\n\n`;
     });
-    out+=`\n⚠️ NOTE TO CLAUDE: The # numbers on these new requests are app-tracker numbers and likely conflict with the xlsx tracker. The xlsx numbering is the source of truth. For each new request: check if it relates to an existing xlsx ticket (slot it underneath as a child / variant), or assign the next available xlsx # if it's brand new. Add a "previously app #X" note in the xlsx so the trail is preserved.\n\n`;
+    out+='NOTE TO CLAUDE: App # numbers may conflict with xlsx tracker. Xlsx is source of truth. Slot as child/variant of existing ticket or assign next xlsx #. Add "previously app #X" note.\n\n';
   }
-  out+='═══ FILES TO UPLOAD ═══\n- Latest index.html (from /mnt/user-data/outputs/ of last session)\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
-  // Auto-transition: everything in this batch flips open→reported with today's date.
+  out+='=== FILES TO UPLOAD ===\n';
+  out+='USE /mnt/user-data/outputs/ - NOT the zip from a previous session\n';
+  out+='- Latest index.html\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
   const today=new Date().toLocaleDateString();
   const idsInBatch=new Set([...openOthers,...testsToSend].filter(r=>r.status==='open').map(r=>r.num));
   if(idsInBatch.size){
@@ -11290,7 +11339,7 @@ function copyAllReports(){
     all.forEach(r=>{if(idsInBatch.has(r.num)){r.status='reported';r.reportedDate=today;}});
     saveReports(all);
   }
-  const done=()=>{renderReportList();alert('Copied! '+totalToSend+' item'+(totalToSend===1?'':'s')+' on clipboard.\n\nThese items have been moved to "Awaiting fix" so they won\'t show up in your next Copy-all.');};
+  const done=()=>{renderReportList();alert('Copied! '+totalToSend+' item'+(totalToSend===1?'':'s')+' on clipboard. Moved to "Awaiting fix".');};
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);renderReportList();});
   }else{_fallbackCopy(out);renderReportList();}
@@ -11302,34 +11351,45 @@ function _fallbackCopy(text){
   catch(e){alert('Copy failed. Long-press to copy manually:\n\n'+text.slice(0,500)+'…');}
   document.body.removeChild(ta);
 }
-// #345-copy — Copy "Awaiting fix" bucket
+// Copy "Awaiting fix" bucket
 function copyAwaitingReports(){
   const reports=_normalizeReports();
   const awaiting=reports.filter(r=>r.status==='reported'||r.status==='awaiting');
   if(!awaiting.length){alert('No items in Awaiting fix.');return;}
   const typeLabel={bug:'BUG',feature:'FEATURE',change:'CHANGE',question:'QUESTION',test:'TEST'};
-  let out='═══ AWAITING FIX ═══\n';
-  out+=`(${awaiting.length} item${awaiting.length===1?'':'s'} currently waiting for a fix)\n\n`;
+  let out='======================================\n';
+  out+='RULES FOR CLAUDE - READ BEFORE STARTING\n';
+  out+='======================================\n';
+  out+='1. SILENT WORK ONLY. No commentary, no process narration. Code and ship. Every token counts.\n';
+  out+='2. UPDATE TRACKER only if tokens clearly plentiful. Otherwise update at END.\n';
+  out+='3. START IMMEDIATELY fixing items below, then pull in older unshipped items.\n';
+  out+='4. FOR EVERY CONFIRMED FIX: state which app log # the user can close (e.g. "You can close app log #12").\n';
+  out+='5. USE /mnt/user-data/outputs/ files - NOT the zip from a previous session.\n';
+  out+='======================================\n\n';
+  out+=`=== AWAITING FIX (${awaiting.length} item${awaiting.length===1?'':'s'}) ===\n\n`;
   const tests=awaiting.filter(r=>r.type==='test');
   const others=awaiting.filter(r=>r.type!=='test');
   if(tests.length){
-    out+='── Test results awaiting fix ──\n';
+    out+='-- Test results awaiting fix --\n';
     tests.forEach(r=>{
-      const sym=r.testResult==='pass'?'✅':'⚠️';
-      out+=`${sym} #${r.testTarget} — ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
+      const sym=r.testResult==='pass'?'[PASS]':'[NEEDS FIXES]';
+      out+=`${sym} #${r.testTarget} - ${r.testResult==='pass'?'works':'still needs fixes'}${r.body?': '+r.body:''}\n`;
     });
     out+='\n';
   }
   if(others.length){
-    out+='── Requests / bugs awaiting fix ──\n';
+    out+='-- Requests / bugs awaiting fix --\n';
     others.forEach(r=>{
       out+=`#${r.num} [${typeLabel[r.type]||r.type}] ${r.title}\n`;
       if(r.body)out+=`   ${r.body}\n`;
-      if(r.reportedDate)out+=`   📅 Reported: ${r.reportedDate}\n`;
+      if(r.reportedDate)out+=`   Reported: ${r.reportedDate}\n`;
       out+='\n';
     });
   }
-  const done=()=>alert(`Copied! ${awaiting.length} awaiting-fix item${awaiting.length===1?'':'s'} on clipboard.`);
+  out+='=== FILES TO UPLOAD ===\n';
+  out+='USE /mnt/user-data/outputs/ - NOT the zip from a previous session\n';
+  out+='- Latest index.html\n- Latest feature_tracker_updated.xlsx\n- Latest NEXT_SESSION_OPENER.md\n';
+  const done=()=>alert(`Copied! ${awaiting.length} item${awaiting.length===1?'':'s'} on clipboard.`);
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(out).then(done,()=>{_fallbackCopy(out);});
   }else{_fallbackCopy(out);}
@@ -11374,7 +11434,18 @@ function _swipeInit(){/* removed */}
 // INIT
 // ═══════════════════════════════════════════════════════════════
 // serviceWorker registration removed for preview
-(async()=>{try{await load();}catch(e){console.error(e);}renderLibrary();})();
+(async()=>{
+  try{await load();}catch(e){console.error(e);}
+  renderLibrary();
+  // Free stale localStorage keys — main data is in IDB
+  try{
+    ['book-annotator-v4','book-annotator-v3','book-annotator-v2','book-annotator-v1'].forEach(k=>{
+      const src=localStorage.getItem(k+'-source');
+      if(src==='idb')localStorage.removeItem(k);
+    });
+  }catch(e){}
+  _loadReportsCache().catch(()=>{});
+})();
 </script>
 
 <!-- ══ RECYCLE BIN SHEET ══ -->
