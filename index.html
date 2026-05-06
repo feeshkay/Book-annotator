@@ -331,6 +331,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="timeline-panel" class="panel" style="padding:10px 11px 85px;">
+      <!-- #521 — reading time estimates: with and without annotating -->
+      <div id="tl-read-est" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--cb);">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">📖 Estimated reading time remaining</div>
+        <div class="r2" style="gap:8px;">
+          <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">Just reading</div>
+            <div id="tl-est-plain" style="font-size:16px;font-weight:700;color:var(--accent);">—</div>
+          </div>
+          <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">With annotating</div>
+            <div id="tl-est-annot" style="font-size:16px;font-weight:700;color:var(--green);">—</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--t3);margin-top:5px;">Based on pages left · <span style="color:var(--accent);cursor:pointer;" onclick="openReadEstSettings()">adjust speeds ⚙</span></div>
+      </div>
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
@@ -597,6 +612,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
+      <div class="fg"><label>Profession / Occupation <span style="font-weight:400;color:var(--t3);">— appears on card &amp; in web (optional)</span></label><input type="text" id="ae-cprofession" placeholder="e.g. Detective, Surgeon, Shopkeeper…"/></div>
       <div class="r2" style="align-items:end;">
         <div class="fg"><label>Introduced — p. <span style="font-size:13px;color:var(--accent);cursor:pointer;padding:2px 6px;" onclick="alert('The page where this character first appears in the book.')">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
         <div class="fg"><label>Introduced — Ch.</label><input type="number" id="ae-cintro-ch" inputmode="numeric" placeholder="e.g. 2" min="1"/></div>
@@ -941,11 +957,26 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Est. reading time</label><input type="text" id="ae-ref-time-est" placeholder="auto" readonly style="background:var(--bg3);color:var(--t2);cursor:default;"/></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>Actual time <span style="font-weight:400;color:var(--t3);">(minutes)</span></label><input type="number" id="ae-ref-actual-min" inputmode="numeric" placeholder="e.g. 90" min="0"/></div>
+        <div class="fg"><label>Actual time <span style="font-weight:400;color:var(--t3);">read</span></label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" id="ae-ref-actual-min" inputmode="numeric" placeholder="e.g. 90" min="0" style="flex:1;"/>
+            <select id="ae-ref-actual-unit" onchange="toggleRefActualUnit()" style="flex-shrink:0;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+              <option value="min">min</option>
+              <option value="hr">hr</option>
+              <option value="hr_min">hr + min</option>
+            </select>
+          </div>
+          <div id="ae-ref-actual-hrmin" style="display:none;margin-top:4px;">
+            <div class="r2" style="gap:6px;">
+              <div class="fg" style="margin:0;"><input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">hours</div></div>
+              <div class="fg" style="margin:0;"><input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59"/><div style="font-size:10px;color:var(--t2);text-align:center;margin-top:2px;">minutes</div></div>
+            </div>
+          </div>
+        </div>
         <div class="fg"><label>Date read</label><input type="date" id="ae-ref-date-read"/></div>
       </div>
       <div class="fg"><label>Link / URL <span style="font-weight:400;color:var(--t3);">(optional — if blank, the reference card shows a Google search button)</span></label><input type="text" id="ae-ref-url" placeholder="https://…"/></div>
-      <div id="ae-goodreads-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 Book reference — consider <span style="text-decoration:underline;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent(document.getElementById('ae-content').value))">adding to Goodreads</span> too.</div>
+      <div id="ae-goodreads-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);">💡 Book reference — consider <span style="text-decoration:underline;cursor:pointer;" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(document.getElementById('ae-content').value))">adding to StoryGraph</span> too.</div>
     </div>
 
     <!-- DIALOGUE -->
@@ -1245,7 +1276,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
   fiction:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Concept','Evidence','Figure','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
   memoir:   {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
   mystery:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
   scifi:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
@@ -1598,6 +1629,24 @@ function rtpSet(val){
   const p=document.getElementById('ae-reltype-panel');if(p)p.style.display='none';
 }
 const RECIPROCAL={'Teacher':'Student','Student':'Teacher','Employer':'Employee','Employee':'Employer','Master':'Servant','Servant':'Master','Commander':'Subordinate','Subordinate':'Commander','Mentor':'Protégé','Protégé':'Mentor','Mother':'Child','Father':'Child','Child':'Parent','Grandmother':'Grandchild','Grandfather':'Grandchild','Grandparent':'Grandchild','Grandchild':'Grandparent','Guardian':'Ward','Ward':'Guardian','Adoptive parent':'Adopted child','Adopted child':'Adoptive parent','Step-parent':'Step-child','Step-child':'Step-parent','Sibling':'Sibling','Spouse':'Spouse','Partner':'Partner','Son':'Parent','Daughter':'Parent','Rival':'Rival','Enemy':'Enemy','Ally':'Ally','Friend':'Friend','Best friend':'Best friend','Colleague':'Colleague','Business partner':'Business partner','Aunt':'Nephew/Niece','Uncle':'Nephew/Niece','Nephew':'Aunt/Uncle','Niece':'Aunt/Uncle','Cousin':'Cousin','Second cousin':'Second cousin','Uncle or Aunt':'Niece or Nephew','Niece or Nephew':'Uncle or Aunt','Brother':'Sibling','Sister':'Sibling','Godparent':'Godchild','Godchild':'Godparent','Godmother':'Godchild','Godfather':'Godchild','Half-sibling':'Half-sibling','Step-sibling':'Step-sibling'};
+// #409 -- Dynamic reciprocal lookup: checks library.customRelPairs first, then built-in RECIPROCAL.
+// customRelPairs: [{typeA:'Owner',typeB:'Pet',phraseA:'is owner of',phraseB:'is pet of'}]
+function getReciprocal(relType){
+  const pairs=(library&&library.customRelPairs)||[];
+  for(const p of pairs){
+    if(p.typeA===relType)return p.typeB;
+    if(p.typeB===relType)return p.typeA;
+  }
+  return RECIPROCAL[relType]||relType;
+}
+function getRelPhrase(relType,isA){
+  const pairs=(library&&library.customRelPairs)||[];
+  for(const p of pairs){
+    if(p.typeA===relType)return isA?(p.phraseA||('is '+relType.toLowerCase()+' of')):(p.phraseB||('is '+(p.typeB||relType).toLowerCase()+' of'));
+    if(p.typeB===relType)return isA?(p.phraseB||('is '+relType.toLowerCase()+' of')):(p.phraseA||('is '+(p.typeA||relType).toLowerCase()+' of'));
+  }
+  return isA?('is '+relType.toLowerCase()+' of'):('is '+(RECIPROCAL[relType]||relType).toLowerCase()+' of');
+}
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
@@ -1613,7 +1662,8 @@ const TYPE_HINTS={
   'Chapter':{icon:'📖',desc:'A chapter note or summary.',tips:['Include the page range — this auto-updates the chapter setup.','Note what changed narratively.','Which characters appeared? (Tag with "involved.")','What question does this chapter leave open?']},
   'Question':{icon:'❓',desc:'Something you\'re uncertain about — unanswered mysteries, confusions, predictions.',tips:['Mark it answered when you find out — it moves to the Answered section.','Tag involved characters.','Ask: is this plot-related, character-related, or thematic?']},
   'Word / Vocabulary':{icon:'📖',desc:'An unfamiliar or interesting word.',tips:['Tap 🔍 Look up in Merriam-Webster to search instantly.','Add the context from the book — how it was used.','Add a translation if it\'s a foreign word.','Mark as defined when complete in the Vocabulary tab.']},
-  'Reference':{icon:'🔖',desc:'Something to read, watch, or research — inspired by or mentioned in this book.',tips:['Books → consider adding to Goodreads.','Add a link for quick access later.','Check it off when done — it moves to the completed section.','Appears in the To-Do tab if unfinished.']},
+  'Reference':{icon:'🔖',desc:'Something to read, watch, or research — inspired by or mentioned in this book.',tips:['Books → consider adding to StoryGraph.','Add a link for quick access later.','Check it off when done — it moves to the completed section.','Appears in the To-Do tab if unfinished.']},
+  'Image / Diagram':{icon:'🖼',desc:'A photo, illustration, chart, or diagram from the book — or an image reference you found elsewhere.',tips:['Use "Upload photo" to attach the image directly.','Add a note explaining what it shows and why it matters.','Tag relevant characters or concepts in Characters Involved.','Great for diagrams, family trees, maps, evolution charts, etc.']},
   'Location':{icon:'📍',desc:'A specific place in the story where a scene occurs.',tips:['Real places get pinned on the map view.','Fictional places can have notes on their lore or significance.','Log the era/time period — helps with historical context.','Different from Setting — this is a specific scene-place, not the atmospheric context.']},
   'Dialogue':{icon:'💬',desc:'A multi-line conversation between characters.',tips:['Add each line with the speaker tagged.','Useful for capturing complex exchanges that one Quote entry can\'t hold.','Tag all characters in the "Characters involved" field.']},
   'Clue':{icon:'🔎',desc:'A piece of evidence or hint in a mystery.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','What does it point toward?']},
@@ -2971,6 +3021,30 @@ function toggleGoodreads(){
     else est.value='~'+Math.ceil(len/25)+'h reading';
   } else if(est){est.value='';}
 }
+function toggleRefActualUnit(){
+  const unit=document.getElementById('ae-ref-actual-unit')?.value||'min';
+  const hrMinRow=document.getElementById('ae-ref-actual-hrmin');
+  const minField=document.getElementById('ae-ref-actual-min');
+  if(unit==='hr_min'){
+    if(hrMinRow)hrMinRow.style.display='';
+    if(minField)minField.style.display='none';
+  } else {
+    if(hrMinRow)hrMinRow.style.display='none';
+    if(minField)minField.style.display='';
+  }
+}
+function getRefActualMinutes(){
+  const unit=document.getElementById('ae-ref-actual-unit')?.value||'min';
+  if(unit==='hr_min'){
+    const hr=+(document.getElementById('ae-ref-actual-hr')?.value||0);
+    const mn=+(document.getElementById('ae-ref-actual-min2')?.value||0);
+    return String(hr*60+mn);
+  } else if(unit==='hr'){
+    const v=+(document.getElementById('ae-ref-actual-min')?.value||0);
+    return String(Math.round(v*60));
+  }
+  return document.getElementById('ae-ref-actual-min')?.value||'';
+}
 async function lookupMW(){
   const word=document.getElementById('ae-content').value.trim();if(!word)return;
   const res=document.getElementById('ae-mw-result');
@@ -3028,7 +3102,7 @@ function renderLibrary(){
       <div class="book-info"><div class="book-title">${r.title}</div>${r.author?`<div class="book-author">${r.author}</div>`:''}
       <div style="font-size:10px;color:var(--t3);">From: ${r.fromBook}</div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-primary" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent('${r.title.replace(/'/g,"\\'")}'))">Goodreads</button>
+        <button class="btn btn-sm btn-primary" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${r.title.replace(/'/g,"\\'")}'))">StoryGraph</button>
         <button class="btn btn-sm" onclick="convertRefToBook('${r.bookId}',${r.refId})">+ Add as book</button>
       </div></div></div>`).join(''):``);
 }
@@ -3268,20 +3342,28 @@ function _activeRelTypes(){
 function renderRelTypesSection(){
   if(!library.customRelTypes)library.customRelTypes=[];
   if(!library.deletedRelTypes)library.deletedRelTypes=[];
+  if(!library.customRelPairs)library.customRelPairs=[];
   const{builtins,customs}=_activeRelTypes();
   const deleted=new Set(library.deletedRelTypes);
   const allActive=[...builtins,...customs].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
   const deletedBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>deleted.has(t)).sort();
+  const pairs=library.customRelPairs||[];
+  const pairedTypes=new Set(pairs.flatMap(p=>[p.typeA,p.typeB]));
   return`<div style="margin-bottom:18px;">
     <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Relationship types</div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in relationship entry forms. Custom additions show in accent color.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in relationship entry forms. Custom additions show in accent color. ✏️ = rename. 🔗 = pair for reciprocal messaging.</div>
     ${allActive.length?`<div style="margin-bottom:10px;">${allActive.map(t=>{
       const isCustom=customs.includes(t);
-      const bg=isCustom?'var(--al)':'var(--bg2)';const border=isCustom?'var(--am)':'var(--cb)';
+      const isPaired=pairedTypes.has(t);
+      const bg=isCustom?'var(--al)':'var(--bg2)';const border=isPaired?'var(--am)':isCustom?'var(--am)':'var(--cb)';
       const color=isCustom?'var(--accent)':'var(--text)';const fw=isCustom?'600':'400';
-      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t} <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:4px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
+      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t}${isPaired?` <span style="font-size:9px;color:var(--am);">🔗</span>`:''}${isCustom?` <span onclick="libListsRenameRel('${esc(t)}')" style="margin-left:2px;cursor:pointer;font-size:10px;" title="Rename">✏️</span>`:''}  <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
     }).join('')}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No active types.</div>'}
-    <button class="btn btn-sm btn-primary" onclick="libListsAddRel()" style="margin-bottom:10px;font-size:12px;">+ Add new</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button class="btn btn-sm btn-primary" onclick="libListsAddRel()" style="font-size:12px;">+ Add type</button>
+      <button class="btn btn-sm" onclick="libListsAddPair()" style="font-size:12px;color:var(--accent);border-color:var(--am);">🔗 Create / edit pair</button>
+    </div>
+    ${pairs.length?`<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:5px;">Linked pairs (reciprocal messaging)</div>${pairs.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border-radius:var(--r);padding:6px 10px;margin-bottom:4px;font-size:12px;border:0.5px solid var(--am);"><span style="flex:1;"><strong>${p.typeA}</strong> ↔ <strong>${p.typeB}</strong><div style="font-size:10px;color:var(--t3);margin-top:1px;">A's card: "${p.phraseA||'is '+p.typeA.toLowerCase()+' of'}" · B's card: "${p.phraseB||'is '+p.typeB.toLowerCase()+' of'}"</div></span><button class="btn btn-sm" onclick="libListsEditPair(${i})" style="font-size:10px;flex-shrink:0;">Edit</button><button class="btn btn-sm" onclick="libListsRemovePair(${i})" style="font-size:10px;color:var(--red);flex-shrink:0;">×</button></div>`).join('')}</div>`:''}
     ${deletedBuiltins.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Restore deleted (${deletedBuiltins.length})</summary><div style="margin-top:6px;">${deletedBuiltins.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;text-decoration:line-through;">${t}</span> <button class="btn btn-sm" onclick="libListsRestoreRel('${esc(t)}')" style="font-size:10px;padding:2px 6px;margin:1px 0;">Restore</button>`).join(' ')}</div></details>`:''}
   </div>`;
 }
@@ -3292,6 +3374,46 @@ function libListsAddRel(){
   if(library.customRelTypes.includes(v)||ALL_BUILTIN_REL_TYPES.includes(v)){alert('Already exists.');return;}
   library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==v);
   library.customRelTypes.push(v);save();renderLibLists();
+}
+function libListsRenameRel(oldName){
+  const newName=(prompt(`Rename "${oldName}" to:`,oldName)||'').trim();
+  if(!newName||newName===oldName)return;
+  if((library.customRelTypes||[]).includes(newName)||ALL_BUILTIN_REL_TYPES.includes(newName)){alert('That name already exists.');return;}
+  // Rename in customRelTypes
+  library.customRelTypes=(library.customRelTypes||[]).map(t=>t===oldName?newName:t);
+  // Rename in customRelPairs
+  (library.customRelPairs||[]).forEach(p=>{if(p.typeA===oldName)p.typeA=newName;if(p.typeB===oldName)p.typeB=newName;});
+  // Rename in all entries across all books
+  Object.values(library).forEach(b=>{
+    if(!b||!b.entries)return;
+    b.entries.forEach(e=>{if(e.relType===oldName)e.relType=newName;});
+  });
+  save();renderLibLists();
+}
+function libListsAddPair(){
+  const customs=(library.customRelTypes||[]).filter(t=>!ALL_BUILTIN_REL_TYPES.includes(t));
+  if(customs.length<1){alert('Add at least one custom relationship type first, then pair it.');return;}
+  const typeA=(prompt('Type A (e.g. Owner):')||'').trim();if(!typeA)return;
+  const typeB=(prompt('Type B — the reciprocal of '+typeA+' (e.g. Pet):')||'').trim();if(!typeB)return;
+  const phraseA=(prompt(`Phrase on ${typeA}'s card (e.g. "is owner of"):`,'is '+typeA.toLowerCase()+' of')||'').trim();
+  const phraseB=(prompt(`Phrase on ${typeB}'s card (e.g. "is pet of"):`,'is '+typeB.toLowerCase()+' of')||'').trim();
+  if(!library.customRelPairs)library.customRelPairs=[];
+  // Add typeB to customRelTypes if it's new
+  if(!ALL_BUILTIN_REL_TYPES.includes(typeB)&&!(library.customRelTypes||[]).includes(typeB)){
+    library.customRelTypes.push(typeB);
+  }
+  library.customRelPairs.push({typeA,typeB,phraseA,phraseB});
+  save();renderLibLists();
+}
+function libListsEditPair(idx){
+  const pairs=library.customRelPairs||[];const p=pairs[idx];if(!p)return;
+  const phraseA=(prompt(`Phrase on ${p.typeA}'s card:`,p.phraseA||'is '+p.typeA.toLowerCase()+' of')||'').trim();
+  const phraseB=(prompt(`Phrase on ${p.typeB}'s card:`,p.phraseB||'is '+p.typeB.toLowerCase()+' of')||'').trim();
+  pairs[idx]={...p,phraseA,phraseB};save();renderLibLists();
+}
+function libListsRemovePair(idx){
+  if(!library.customRelPairs)return;
+  library.customRelPairs.splice(idx,1);save();renderLibLists();
 }
 function libListsRemoveRel(name){
   if(!library.deletedRelTypes)library.deletedRelTypes=[];
@@ -4568,7 +4690,9 @@ function openAddSheet(preType){
       preType=activeFilter;
     }
     if(!preType){
-      const tabTypeMap={quotes:'Quote',chars:'Character',web:'Relationship',timeline:'Timeline',map:'Location',words:'Word / Vocabulary',questions:'Question',refs:'Reference',todo:'Reference',log:'Chapter'};
+      const genre=book()?.genre||'fiction';
+      const charType=(['nonfiction','history','essays','selfhelp'].includes(genre))?'Person':'Character';
+      const tabTypeMap={quotes:'Quote',chars:charType,web:'Relationship',timeline:'Timeline',map:'Location',words:'Word / Vocabulary',questions:'Question',refs:'Reference',todo:'Reference',log:'Chapter'};
       preType=tabTypeMap[activeTab]||null;
     }
   }
@@ -4611,7 +4735,7 @@ function _closeAEIfSafe(){
   _clearDirty();closeSheet('ae-overlay');
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why','ae-cprofession'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -4650,6 +4774,7 @@ function clearAEForm(){
   const qtd=document.getElementById('ae-quote-trans');if(qtd)qtd.style.display='none';const qtb=document.getElementById('ae-qt-btn');if(qtb)qtb.textContent='＋ Add translation';
   document.getElementById('ae-quick-loc').style.display='none';document.getElementById('ae-quick-add-b').style.display='none';
   const rt=document.getElementById('ae-ref-type');if(rt)rt.value='book';
+  const _rau=document.getElementById('ae-ref-actual-unit');if(_rau){_rau.value='min';toggleRefActualUnit();}
   document.getElementById('ae-trait-type').value='personality';
   document.getElementById('ae-event-sig').value='significant';
   document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';
@@ -5327,6 +5452,8 @@ function submitEntry(){
     entry.charPhys=document.getElementById('ae-cphys').value.trim();
     // #251 — Background / history
     const bgEl=document.getElementById('ae-cbg');entry.charBg=bgEl?bgEl.value.trim():'';
+    // #523 — Profession/Occupation
+    const profEl=document.getElementById('ae-cprofession');entry.charProfession=profEl?profEl.value.trim():'';
   }
   if(['Quote','Narrator quote','Line/stanza'].includes(type)){entry.speaker=document.getElementById('ae-speaker').value;entry.emotion=document.getElementById('ae-emotion').value;
     // xlsx #429 (Batch 33) — multi-theme. Read from _attachedThemeNames.
@@ -5438,7 +5565,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       book().entries.push(tlEntry);
     }
   }
-  if(isRef){entry.refType=document.getElementById('ae-ref-type').value;entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refLength=document.getElementById('ae-ref-length').value;entry.refActualMin=document.getElementById('ae-ref-actual-min')?.value||'';entry.refDateRead=document.getElementById('ae-ref-date-read')?.value||'';entry.refDone=false;}
+  if(isRef){entry.refType=document.getElementById('ae-ref-type').value;entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refLength=document.getElementById('ae-ref-length').value;entry.refActualMin=getRefActualMinutes();entry.refDateRead=document.getElementById('ae-ref-date-read')?.value||'';entry.refDone=false;}
   if(isRel){
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
@@ -5773,7 +5900,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
 
   save();
-  if(['Timeline','Event','Date/Period'].includes(type))backfillTimelineSortNums();
+  if(['Timeline','Event','Date/Period'].includes(type)){backfillTimelineSortNums();cascadeDependentDates(entry);}
   _clearDirty();closeSheet('ae-overlay');renderAll();buildTypeSelect();
   // Feature 3: Navigate to the view that best fits the saved entry type
   postSaveNavigate(entry,type);
@@ -6465,7 +6592,7 @@ function editEntry(id){
   const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='';
   document.getElementById('ae-type').value=e.type;onTypeChange();
   setTimeout(()=>{
-    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';buildCharRoleSelect(e.charRole||'');document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
+    if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';buildCharRoleSelect(e.charRole||'');document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';const profEl=document.getElementById('ae-cprofession');if(profEl)profEl.value=e.charProfession||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');cddSet('ae-rela','');cddSet('ae-relb','');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}// #323 — clear first to prevent stale values from prior form state
     else{document.getElementById('ae-content').value=e.content||'';}
     document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
@@ -6788,8 +6915,8 @@ function ecHTML(e,compact,fromTab){
   } else if(isRel){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     // #244 — Format as "A is [relType] of B" so direction is unambiguous
-    const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong> of</span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
-    // #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
+    const _rp=e.relType?getRelPhrase(e.relType,true):'is '+e.relType.toLowerCase()+' of';const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">${_rp} ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong></span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
+ #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
     const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
     const linkedQBlock=linkedQs.length?`<div style="margin-top:5px;border-left:2px solid var(--am);padding-left:7px;">${linkedQs.map(q=>`<div style="margin-bottom:3px;"><span style="font-size:10px;font-weight:700;color:var(--t2);">${q.speaker||'Narrator'}${q.pageNum?' · p.'+q.pageNum:''}</span><div style="font-size:12px;font-style:italic;cursor:pointer;" onclick="event.stopPropagation();editEntry(${q.id})">"${(q.content||'').slice(0,80)}${q.content?.length>80?'…':''}"</div></div>`).join('')}</div>`:'';
@@ -6849,8 +6976,10 @@ function ecHTML(e,compact,fromTab){
   } else {
     const ph=e.photo?`<img src="${e.photo}" style="width:42px;height:42px;object-fit:cover;border-radius:5px;float:right;margin-left:7px;"/>`:'' ;
     // #229 — enlarge only the " marks; keep body text at standard size
+    // #518 — preserve newlines in quote content
     const isQuoteLike=['Quote','Line/stanza','Narrator quote'].includes(e.type);
-    body=`<div class="econtent">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.content}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
+    const preStyle=isQuoteLike?'white-space:pre-wrap;':'';
+    body=`<div class="econtent" style="${preStyle}">${ph}${isQuoteLike?`<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-6px;margin-right:2px;">“</span>${e.content}<span style="font-size:32px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-10px;margin-left:1px;">”</span>`:e.content}</div>`;
   }
   const cleanInv=(e.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null');
   const invB=cleanInv.length?`<div class="inv-row">${cleanInv.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:'';
@@ -7108,7 +7237,7 @@ function renderChars(){
     const charRels=entries().filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name));
     const relCount=charRels.length;
     const relEmojis=[...new Set(charRels.map(r=>{
-      const t=(r.relA===name)?r.relType:(RECIPROCAL[r.relType]||r.relType);
+      const t=(r.relA===name)?r.relType:getReciprocal(r.relType);
       return relEmoji(t);
     }))].slice(0,5);
     const relEmojiRow=relEmojis.length?`<div style="margin-top:3px;font-size:14px;line-height:1;">${relEmojis.join(' ')}</div>`:'';
@@ -7186,7 +7315,7 @@ function renderCharDetail(name){
     <div class="avatar" style="width:52px;height:52px;font-size:18px;background:${col.stroke}28;color:${col.text};flex-shrink:0;overflow:hidden;">${ph||ini}</div>
     <div style="flex:1;">
       <div style="font-size:17px;font-weight:700;color:${col.text};">${ce?.charStatus==='deceased'?'🪦 ':''}${name}${ce?.nickname?` <span style="font-size:12px;font-weight:400;">(${ce.nickname})</span>`:''}</div>
-      <div style="font-size:11px;color:var(--t2);">${roleLabel} · ${statusLabel}${ce?.gender?' · '+ce.gender:''}${ce?.pronouns?' · '+ce.pronouns:''}</div>
+      <div style="font-size:11px;color:var(--t2);">${roleLabel} · ${statusLabel}${ce?.gender?' · '+ce.gender:''}${ce?.pronouns?' · '+ce.pronouns:''}${ce?.charProfession?` · <em>${ce.charProfession}</em>`:''}</div>
       ${ce?.charIntro?`<div style="font-size:10px;color:var(--t3);">Introduced: ${ce.charIntro}</div>`:''}
       ${chapsMentioned.length?`<div style="font-size:10px;color:var(--t3);">Chapters: ${chapsMentioned.map(c=>`<span onclick="setFilter('ch:${c}');forceTab('log')" style="color:var(--accent);cursor:pointer;">Ch.${c}</span>`).join(', ')}</div>`:''}
       ${ce?.lang?`<div style="font-size:10px;color:var(--t3);">Languages: ${ce.lang}</div>`:''}
@@ -7229,7 +7358,7 @@ function renderCharDetail(name){
       const isA=r.relA===name;
       // Show from this char's perspective with gender-aware labels (#214).
       // Step 1: pick the raw label for this side (A's stored relType, or its reciprocal for B).
-      let relLabel=isA?r.relType:(RECIPROCAL[r.relType]||r.relType);
+      let relLabel=isA?r.relType:getReciprocal(r.relType);
       // Step 2: regardless of side, re-derive the label from the VIEWED character's gender
       // by collapsing to a neutral trunk and re-mapping. This means:
       //   • A=Male, A "Child" of B → on A's profile shows "Son" (was the bug).
@@ -7397,7 +7526,7 @@ function renderWeb(){
   const svg=document.getElementById('web-svg');const empty=document.getElementById('web-empty');
   svg.innerHTML='';
   document.getElementById('web-no-filter')?.remove();
-  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||'',role:e.charRole||''}));
+  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||'',role:e.charRole||'',profession:e.charProfession||'',nameLines:(e.cn||e.content||'').split(' ').length>1?2:1}));
   if(!allChars.length){svg.style.display='none';empty.style.display='';return;}
   svg.style.display='';empty.style.display='none';
 
@@ -7650,7 +7779,7 @@ function renderWeb(){
     if(r.relType){
       // Position label at the curve midpoint (same as Bezier midpoint).
       const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
-      const recip=RECIPROCAL[r.relType];
+      const recip=getReciprocal(r.relType);
       const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
       const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
       const tw=label.length*5+14;
@@ -7726,6 +7855,17 @@ function renderWeb(){
       tl.appendChild(s1);tl.appendChild(s2);
     } else {tl.textContent=n.name;}
     g.appendChild(tl);
+    // #523 — profession in parentheses below name
+    if(n.profession){
+      const profLine=n.nameLines>1?nodeR+33:nodeR+22;
+      const pt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      pt.setAttribute('x',n.x);pt.setAttribute('y',n.y+profLine);
+      pt.setAttribute('text-anchor','middle');pt.setAttribute('font-size','7.5');
+      pt.setAttribute('fill',n.col.text);pt.setAttribute('font-style','italic');
+      pt.setAttribute('font-family','-apple-system,sans-serif');
+      pt.textContent='('+n.profession.slice(0,20)+')';
+      g.appendChild(pt);
+    }
     svg.appendChild(g);
   });
 
@@ -8246,12 +8386,44 @@ function renderTimeline(){
   html+='</div>';
   // #398 — drafts block at top
   list.innerHTML=draftHTML+html;
+  // #521 — update read-time estimates
+  updateReadingEstimate();
 }
 // #314 — timeline location filter
 function setTlLocFilter(loc){
   const bar=document.getElementById('tl-loc-filter');
   if(bar)bar.dataset.active=loc;
   renderTimeline();
+}
+// #521 — Reading time estimate: with and without annotating
+function updateReadingEstimate(){
+  const b=book();if(!b)return;
+  const estEl=document.getElementById('tl-read-est');
+  if(!estEl)return;
+  const total=+b.totalPages||0;const prog=+b.progressPage||0;
+  if(!total||prog>=total){estEl.style.display='none';return;}
+  estEl.style.display='';
+  const pagesLeft=total-prog;
+  // speeds: pages per hour — stored on library object, defaults 40 read / 20 annotate
+  const readPPH=+((library&&library.readEstReadPPH)||40);
+  const annotPPH=+((library&&library.readEstAnnotPPH)||20);
+  const plainHrs=pagesLeft/readPPH;
+  const annotHrs=pagesLeft/annotPPH;
+  const fmtHrs=h=>{if(h<1)return Math.round(h*60)+'m';const hh=Math.floor(h);const mm=Math.round((h-hh)*60);return hh+'h'+(mm>0?' '+mm+'m':'');};
+  const plainEl=document.getElementById('tl-est-plain');
+  const annotEl=document.getElementById('tl-est-annot');
+  if(plainEl)plainEl.textContent=fmtHrs(plainHrs);
+  if(annotEl)annotEl.textContent=fmtHrs(annotHrs);
+}
+function openReadEstSettings(){
+  if(!library)return;
+  const rpp=prompt('Reading speed (pages per hour) — just reading:\n(Default: 40)',library.readEstReadPPH||40);
+  if(rpp===null)return;
+  const app=prompt('Reading speed (pages per hour) — with annotating/notes:\n(Default: 20)',library.readEstAnnotPPH||20);
+  if(app===null)return;
+  library.readEstReadPPH=Math.max(1,+rpp||40);
+  library.readEstAnnotPPH=Math.max(1,+app||20);
+  save();updateReadingEstimate();
 }
 // xlsx #342 — switch the timeline sort mode between Story chronology and Reading order.
 function setTlSortMode(mode){
@@ -8740,6 +8912,74 @@ function computeOffsetSortNum(anchorEvdate,anchorMonth,anchorDay,dir,num,unit){
 function findAnchorEntry(label){
   return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).find(e=>(e.content||'')===(label||''));
 }
+// #524 — When an anchor event's year/month/day changes, auto-update all dependent events.
+// Propagates recursively so chains (A→B→C) fully resolve.
+function cascadeDependentDates(anchorEntry){
+  if(!anchorEntry||!currentId)return;
+  const label=anchorEntry.content||'';if(!label)return;
+  const anchorYear=anchorEntry.evdateYear||anchorEntry.evdate||'';
+  const anchorMonth=anchorEntry.evdateMonth||'';
+  const anchorDay=anchorEntry.evdateDay||'';
+  if(!anchorYear)return;
+  const MONTH_DAYS=[0,31,28,31,30,31,30,31,31,30,31,30,31];
+  function addDaysToDate(y,m,d,days){
+    // simple day arithmetic — handles months and year rollovers
+    let year=+y||0;let month=+m||1;let day=+d||1;
+    const isLeap=yr=>(yr%4===0&&yr%100!==0)||yr%400===0;
+    day+=days;
+    while(day<1){month--;if(month<1){month=12;year--;}const dpm=month===2&&isLeap(year)?29:MONTH_DAYS[month];day+=dpm;}
+    while(true){const dpm=month===2&&isLeap(year)?29:MONTH_DAYS[month];if(day<=dpm)break;day-=dpm;month++;if(month>12){month=1;year++;}}
+    return{year:String(year),month:month>0?String(month):'',day:day>0?String(day):''};
+  }
+  const tl=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&e.timeOffsetFrom);
+  let changed=false;
+  // Multi-pass to resolve chains
+  for(let pass=0;pass<10;pass++){
+    let anyChange=false;
+    tl.forEach(e=>{
+      // Resolve the anchor for this entry
+      const anchorLabel=e.timeOffsetFrom;
+      const anchor=entries().find(a=>['Timeline','Event','Date/Period'].includes(a.type)&&(a.content||'')===anchorLabel);
+      if(!anchor)return;
+      const aYear=anchor.evdateYear||anchor.evdate||'';if(!aYear)return;
+      const aMonth=anchor.evdateMonth||'';const aDay=anchor.evdateDay||'';
+      const m=( e.timeOffset||'').match(/^([+-])([\d.]+)\s+(\w+)/);if(!m)return;
+      const sign=m[1]==='-'?-1:1;const num=parseFloat(m[2])||0;const unit=m[3].toLowerCase();
+      // Compute total days offset
+      let days=0;
+      if(unit==='day'||unit==='days')days=sign*Math.round(num);
+      else if(unit==='week'||unit==='weeks')days=sign*Math.round(num*7);
+      else if(unit==='month'||unit==='months'){
+        // Approximate: shift month, carry year
+        let ny=+aYear;let nm=(+aMonth||1)+sign*Math.round(num);
+        while(nm>12){nm-=12;ny++;}while(nm<1){nm+=12;ny--;}
+        const nd=aDay?String(aDay):'';
+        const newYr=String(ny);const newMn=String(nm);
+        if(e.evdateYear!==newYr||e.evdateMonth!==newMn||(nd&&e.evdateDay!==nd)){
+          e.evdateYear=newYr;e.evdate=newYr;e.evdateMonth=newMn;if(nd)e.evdateDay=nd;
+          anyChange=true;changed=true;
+        }
+        return;
+      }
+      else if(unit==='year'||unit==='years')days=sign*Math.round(num*365);
+      else return;
+      if(!aMonth){
+        // Year-only anchor — just shift year
+        const newYr=String(+aYear+Math.round(sign*num*(unit==='year'||unit==='years'?1:unit==='decade'||unit==='decades'?10:0)));
+        if(e.evdateYear!==newYr){e.evdateYear=newYr;e.evdate=newYr;anyChange=true;changed=true;}
+        return;
+      }
+      const res=addDaysToDate(aYear,aMonth||1,aDay||1,days);
+      const newYr=res.year;const newMn=aMonth?res.month:'';const newDy=aDay?res.day:'';
+      if(e.evdateYear!==newYr||e.evdateMonth!==newMn||e.evdateDay!==newDy){
+        e.evdateYear=newYr;e.evdate=newYr;e.evdateMonth=newMn;e.evdateDay=newDy;
+        anyChange=true;changed=true;
+      }
+    });
+    if(!anyChange)break;
+  }
+  if(changed){backfillTimelineSortNums();save();renderTimeline();}
+}
 function backfillTimelineSortNums(){
   if(!currentId)return;
   const tl=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type));
@@ -9149,7 +9389,7 @@ function wordCard(e){
         ${e.definition?`<div style="font-size:12px;margin-top:2px;">${e.definition}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;">Not yet defined</div>'}
         ${e.wordContext?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">"${e.wordContext}"</div>`:''}
         ${e.wordMwEx?`<div style="font-size:11px;color:var(--t3);margin-top:2px;">📖 "${e.wordMwEx}"</div>`:''}
-        ${e.wordEtym?`<div style="font-size:10px;color:var(--t3);margin-top:2px);">🌿 ${e.wordEtym}</div>`:''}
+        ${e.wordEtym?`<div style="font-size:10px;color:var(--t3);margin-top:2px;">🌿 ${e.wordEtym}</div>`:''}
         ${spkBadge?`<div style="margin-top:4px;font-size:10px;color:var(--t3);">${spkLabel}: ${spkBadge}</div>`:''}
         ${e.wordTrans?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">🌐 ${e.wordTrans}</div>`:''}
         ${e.wsrc?`<div style="font-size:10px;color:var(--t3);">Source: ${e.wsrc}</div>`:''}
@@ -9267,7 +9507,7 @@ function renderRefs(){
   empty.style.display='none';
   const undone=all.filter(r=>!r.refDone),done=all.filter(r=>r.refDone);
   const rtI={book:'📚',article:'📰',watch:'🎬',research:'🔍',podcast:'🎙'};
-  const doneLabel={book:'Added to Goodreads / Read',article:'Reading complete',watch:'Watched',research:'Researched',podcast:'Listened'};
+  const doneLabel={book:'Added to StoryGraph / Read',article:'Reading complete',watch:'Watched',research:'Researched',podcast:'Listened'};
   const rc=(r)=>`<div class="ref-card" style="${r.refDone?'border-left-color:#1D9E75;':''}">
     <div style="display:flex;align-items:flex-start;gap:8px;">
       <div onclick="toggleRef(${r.id})" style="cursor:pointer;flex-shrink:0;margin-top:1px;">
@@ -9282,7 +9522,7 @@ function renderRefs(){
         ${r.refDateRead?`<div style="font-size:10px;color:var(--t3);">📅 ${r.refDateRead}</div>`:''}
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${doneLabel[r.refType]||'Done'}</div>`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
-        ${r.refType==='book'&&!r.refDone?`<div style="font-size:10px;margin-top:2px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://www.goodreads.com/search?q='+encodeURIComponent('${esc(r.content)}'))">+ Add to Goodreads</span></div>`:''}
+        ${r.refType==='book'&&!r.refDone?`<div style="font-size:10px;margin-top:2px;"><span style="color:#1D9E75;cursor:pointer;" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${esc(r.content)}'))">+ Add to StoryGraph</span></div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
       </div>
@@ -9767,9 +10007,31 @@ function openReadingTimer(){
   if(!hasState){
     resetTimers();
     document.getElementById('timer-edit-idx').value='';
-    document.getElementById('timer-pg-start').value=book()?.progressPage||'';
+    // #526 — auto-clear start page; but show overlap warning if this page was already read
+    const lastPg=book()?.progressPage||'';
+    document.getElementById('timer-pg-start').value=''; // always start blank per spec
     document.getElementById('timer-pg-end').value='';
     document.getElementById('timer-date').value=localDate();
+    // Show overlap safeguard if last session ended at a page
+    if(lastPg){
+      const sessions=book().sessions||[];
+      if(sessions.length>0){
+        const last=sessions[sessions.length-1];
+        // Show non-blocking notice after sheet opens
+        setTimeout(()=>{
+          const noticeId='timer-overlap-notice';
+          let notice=document.getElementById(noticeId);
+          if(!notice){
+            notice=document.createElement('div');
+            notice.id=noticeId;
+            notice.style.cssText='background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--accent);line-height:1.4;';
+            const sheet=document.querySelector('#timer-overlay .sheet');
+            if(sheet)sheet.insertBefore(notice,sheet.children[1]);
+          }
+          notice.innerHTML=`📌 <strong>Reminder:</strong> Your last session ended on <strong>p.${last.pEnd||'?'}</strong>. If your next session starts at that page, that's fine — just enter it as your start page. <span onclick="this.parentElement.remove()" style="float:right;cursor:pointer;font-size:14px;color:var(--t3);">×</span>`;
+        },150);
+      }
+    }
   }else{
     syncTimerSheetUI();
   }
@@ -10144,7 +10406,7 @@ function exportPDF(){
         <div style="font-size:11px;color:#666;">${c.charRole||''}${c.gender?' · '+c.gender:''}${c.pronouns?' · '+c.pronouns:''}${c.charIntro?' · Intro: '+c.charIntro:''}</div>
         ${c.charPhys?`<div style="font-size:12px;margin-top:4px;"><strong>Physical:</strong> ${c.charPhys}</div>`:''}
         ${c.charDesc?`<div style="font-size:12px;font-style:italic;color:#555;">${c.charDesc}</div>`:''}
-        ${cRels.length?`<div style="font-size:11px;margin-top:5px;"><strong>Relationships:</strong> ${cRels.map(r=>{const o=r.relA===name?r.relB:r.relA;const l=r.relA===name?r.relType:(RECIPROCAL[r.relType]||r.relType);return`${l?relEmoji(l)+' '+l+': ':''}${o}`;}).join(' · ')}</div>`:''}
+        ${cRels.length?`<div style="font-size:11px;margin-top:5px;"><strong>Relationships:</strong> ${cRels.map(r=>{const o=r.relA===name?r.relB:r.relA;const l=r.relA===name?r.relType:getReciprocal(r.relType);return`${l?relEmoji(l)+' '+l+': ':''}${o}`;}).join(' · ')}</div>`:''}
         ${cTraits.length?`<div style="font-size:11px;margin-top:4px;"><strong>Traits:</strong> ${cTraits.map(t=>t.content).join(', ')}</div>`:''}
         ${cQuotes.length?`<div style="font-size:11px;margin-top:4px;"><strong>Quotes:</strong><ul>${cQuotes.map(q=>`<li>"${q.content.slice(0,100)}${q.content.length>100?'…':''}" ${pg(q)?'('+pg(q)+')':''}${q.qtOrig?`<br><em style="color:#777;">[${[q.qtFrom,q.qtTo].filter(Boolean).join('→')}] "${q.qtOrig}"${q.qtRendered?' — '+q.qtRendered:''}${q.qtTranslator?' ('+q.qtTranslator+')':''}</em>`:''}</li>`).join('')}</ul></div>`:''}
         ${cEvents.length?`<div style="font-size:11px;margin-top:4px;"><strong>Events:</strong> ${cEvents.map(e=>e.content).join(' · ')}</div>`:''}
@@ -10366,7 +10628,7 @@ function renderGuide(){
   <div style="margin-bottom:8px;"><strong>Locations</strong> — All logged places grouped as cards. Tap any location card to open its full profile: summary with map/research links, chapters mentioned, characters who appear there, and all entries grouped by type in collapsible sections.</div>
   <div style="margin-bottom:8px;"><strong>Vocabulary</strong> — Words split into "Needs definition" and "Defined." Each card shows definition, context sentence, source, and M-W link. Upload a photo to a word entry and it shows here too.</div>
   <div style="margin-bottom:8px;"><strong>Questions</strong> — Open questions at top, answered at bottom. Tap the circle to toggle answered. Tap "Edit / Answer" to fill in the answer.</div>
-  <div style="margin-bottom:8px;"><strong>References</strong> — To explore (yellow) and Done (green). Filter by type. Book/article entries link to Goodreads. Check off when finished — the done label changes per type (Reading complete / Watched / Researched / Listened).</div>
+  <div style="margin-bottom:8px;"><strong>References</strong> — To explore (yellow) and Done (green). Filter by type. Book/article entries link to StoryGraph. Check off when finished — the done label changes per type (Reading complete / Watched / Researched / Listened).</div>
   <div style="margin-bottom:8px;"><strong>To-Do</strong> — Auto-generated from: undefined words, entries missing page numbers, characters without relationships, characters without intro pages, unanswered questions, unfinished references, and saved drafts. Each item has a Go button.</div>
   <div style="margin-bottom:8px;"><strong>Stats</strong> — Reading session history plus a pages-per-day line chart. Shows synthesized vs. reading-only breakdown. Tap <strong>⏱</strong> in the topbar to log a session.</div>
 
