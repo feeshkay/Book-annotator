@@ -11049,6 +11049,8 @@ function _nextReportNum(){
   return maxN+1;
 }
 function saveReport(){
+  // iOS Safari doesn't commit textarea value until blur — force it
+  if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
   const title=document.getElementById('report-title').value.trim();
   const body=document.getElementById('report-body').value.trim();
   if(!title&&!body){alert('Please add a title or description.');return;}
@@ -11396,10 +11398,11 @@ function _swipeInit(){/* removed */}
 
 <!-- ══ REPORT ISSUE SHEET ══ -->
 <div class="sheet-overlay" id="report-overlay" onclick="mc('report-overlay',event)">
-  <div class="sheet" style="position:relative;max-height:92vh;display:flex;flex-direction:column;">
+  <div class="sheet" style="position:relative;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0;">
     <div class="sheet-handle"></div>
     <button class="sheet-x" onclick="closeSheet('report-overlay')">×</button>
     <div class="sheet-title" style="padding-right:48px;">🐛 Report issue / request feature</div>
+    <div style="flex:1;overflow-y:auto;padding-bottom:8px;">
     <!-- #277 — preserves original # when editing an existing report -->
     <input type="hidden" id="report-edit-num" value=""/>
     <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;line-height:1.55;">
@@ -11431,12 +11434,13 @@ function _swipeInit(){/* removed */}
       </select>
     </div>
     <div id="report-context-preview" style="font-size:10px;color:var(--t3);background:var(--bg2);border-radius:var(--r);padding:7px 9px;margin-bottom:10px;font-family:monospace;line-height:1.5;"></div>
-    <div class="fa" style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 4px;margin-top:4px;border-top:0.5px solid var(--cb);z-index:2;">
+    </div><!-- end scrollable content -->
+    <div class="fa" style="flex-shrink:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:0.5px solid var(--cb);background:var(--bg);">
       <button class="btn" id="report-discard-btn" onclick="discardReportEdit()" style="display:none;color:var(--red);border-color:var(--red);">× Discard</button>
       <button class="btn" onclick="closeSheet('report-overlay')">Cancel</button>
       <button class="btn btn-primary" onclick="saveReport()">Save report</button>
     </div>
-    <div class="divider"></div>
+    <div class="divider" style="display:none;"></div>
     <!-- TEST a ticket # quickly -->
     <div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:9px 11px;margin-bottom:10px;">
       <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">🧪 Log a test result</div>
