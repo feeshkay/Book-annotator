@@ -6915,7 +6915,7 @@ function ecHTML(e,compact,fromTab){
   } else if(isRel){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     // #244 — Format as "A is [relType] of B" so direction is unambiguous
-    const _rp=e.relType?getRelPhrase(e.relType,true):'is '+e.relType.toLowerCase()+' of';const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">${_rp} ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong></span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
+    const _rp=e.relType?getRelPhrase(e.relType,true):'';const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">${_rp} ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong></span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
  #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
     const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
