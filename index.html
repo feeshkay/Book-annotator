@@ -379,6 +379,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="refs-panel" class="panel" style="padding:10px 11px 85px;">
+      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;">📚 <strong>Book references automatically appear</strong> in your Library → Want to Read tab (under "From your references") until you mark them done or add them as a book. Other types stay here only.</div>
       <div class="fscroll" id="ref-filter-bar"></div>
       <div id="refs-list"></div>
       <div id="refs-empty" class="empty" style="display:none"><div class="empty-icon">🔖</div><div class="empty-text">No references yet</div></div>
@@ -956,9 +957,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           </div>
           <div id="ae-ref-actual-hrmin" style="display:none;gap:6px;align-items:stretch;">
             <input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0" style="flex:1;min-width:0;"/>
-            <input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59" style="flex:1;min-width:0;"/>
-            <select onchange="document.getElementById('ae-ref-actual-unit').value=this.value;toggleRefActualUnit();" style="flex-shrink:0;width:90px;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
-              <option value="hr_min" selected>hr + min</option>
+            <input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59" style="flex:1;min-width:64px;"/>
+            <select onchange="document.getElementById('ae-ref-actual-unit').value=this.value;toggleRefActualUnit();" style="flex-shrink:0;width:72px;font-size:13px;padding:6px 6px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+              <option value="hr_min" selected>hr+min</option>
               <option value="min">min</option>
               <option value="hr">hr</option>
             </select>
@@ -1560,12 +1561,23 @@ function anchorChanged(anchorLabel){
     _yearAutoFilled=true;
     yearEl.style.borderColor='var(--accent)';
     setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);
-    // Also update month if we can compute it precisely
-    if(anchorYearNum!==null&&on&&(ou==='months'||ou==='days'||ou==='weeks')){
-      const totalMonths=Math.round(anchorYearNum*12+(on*(ou==='months'?1:ou==='weeks'?7/30.44:1/30.44))*(od==='-'?-1:1));
-      const newMon=((totalMonths%12)+12)%12;
+    // Also update month if we can compute it precisely — include any extras (#524 additive offsets)
+    if(anchorYearNum!==null&&on){
+      // Convert primary offset + all extras to total days
+      const toDaysLocal=(n,u)=>{const U={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};return (n||0)*(U[u]||1);};
+      const sign=od==='-'?-1:1;
+      let totalDays=sign*toDaysLocal(on,ou);
+      getOffsetExtras().forEach(ex=>{totalDays+=sign*toDaysLocal(parseFloat(ex.num)||0,ex.unit||'days');});
+      const anchorMon=anchor.evdateMonth?+anchor.evdateMonth:1;
+      const anchorDay=anchor.evdateDay?+anchor.evdateDay:1;
+      // Shift by days
+      let dm=new Date(anchorYearNum,anchorMon-1,anchorDay);
+      dm.setDate(dm.getDate()+Math.round(totalDays));
       const monEl=document.getElementById('ae-evdate-month');
-      if(monEl&&newMon>0)monEl.value=String(newMon).padStart(2,'0');
+      const dayEl=document.getElementById('ae-evdate-day');
+      if(monEl)monEl.value=String(dm.getMonth()+1).padStart(2,'0');
+      if(dayEl&&anchorDay>1)dayEl.value=String(dm.getDate());
+      yearEl.value=String(dm.getFullYear());
     }
   }
 }
@@ -3446,7 +3458,8 @@ function libListsAddRel(){
 function libListsRenameRel(oldName){
   const newName=(prompt(`Rename "${oldName}" to:`,oldName)||'').trim();
   if(!newName||newName===oldName)return;
-  const allExisting=[...(library.customRelTypes||[]),...ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName)];
+  const deleted=new Set(library.deletedRelTypes||[]);
+  const allExisting=[...(library.customRelTypes||[]).filter(t=>t!==oldName),...ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deleted.has(t))];
   if(allExisting.includes(newName)){alert('That name already exists.');return;}
   const isBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
   if(isBuiltin){
@@ -3473,7 +3486,7 @@ function libListsRenameRel(oldName){
   // Rename in all entries across all books
   Object.values(library).forEach(b=>{
     if(!b||!b.entries)return;
-    b.entries.forEach(e=>{if(e.relType===oldName)e.relType=newName;});
+    b.entries.forEach(e=>{if(e.relType===oldName){e.relType=newName;if(e.content===oldName)e.content=newName;}});
   });
   save();renderLibLists();
 }
@@ -7024,7 +7037,10 @@ function ecHTML(e,compact,fromTab){
   } else if(isRel){
     const ac=e.relA?getCC(e.relA):null,bc=e.relB?getCC(e.relB):null;
     // #244 — Format as "A is [relType] of B" so direction is unambiguous
-    const _rp=e.relType?getRelPhrase(e.relType,true):'';const relPhrase=e.relType?`<span style="font-size:11px;color:var(--t2);">${_rp} ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong></span>`:'<span style="font-size:11px;color:var(--t2);">↔</span>';
+    const _pairs=(library&&library.customRelPairs)||[];
+    const _hasPair=e.relType&&_pairs.some(p=>p.typeA===e.relType||p.typeB===e.relType);
+    const _rp=e.relType&&_hasPair?getRelPhrase(e.relType,true):'';
+    const relPhrase=e.relType?(_hasPair&&_rp?`<span style="font-size:11px;color:var(--t2);">${_rp}</span>`:`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong> of</span>`):'<span style="font-size:11px;color:var(--t2);">↔</span>';
     // #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
     const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
@@ -8471,7 +8487,7 @@ function renderTimeline(){
         <div style="font-size:12px;line-height:1.45;">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
         ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
-        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div class="ec quote" style="margin-top:7px;margin-bottom:0;"><div style="font-size:13px;line-height:1.5;"><span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:28px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-9px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:11px;color:var(--t2);margin-top:4px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
+        ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;padding:7px 10px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #1D9E75;">'+'<div style="font-size:12px;line-height:1.5;color:var(--t2);">'+'<span style="font-size:22px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-4px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:22px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-7px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:10px;color:var(--t3);margin-top:3px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
         ${(()=>{
           // xlsx #425 (Batch 41) — render Quote entries that are attached to this timeline/event entry.
           if(!Array.isArray(item.attachedQuoteIds)||!item.attachedQuoteIds.length)return '';
@@ -8519,58 +8535,48 @@ function setTlLocFilter(loc){
 function buildReadEstHTML(b,sessions){
   if(!b)return '';
   const total=+b.totalPages||0;const prog=+b.progressPage||0;
-  if(!total){return '<div style="background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3);">📖 Set a total page count in book info to see reading-time estimates.</div>';}
-  if(prog>=total){return '<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--accent);">📖 ✅ Done with this one!</div>';}
+  if(!total)return '<div style="background:var(--bg2);border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3);">📖 Set a total page count in book info to see reading-time estimates.</div>';
+  if(prog>=total)return '<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--accent);">📖 ✅ Done with this one!</div>';
   const pagesLeft=total-prog;
-
-  // Derive speeds from sessions
-  let plainPagesH=0,plainMinT=0,annotPagesH=0,annotMinT=0;
+  // #521-2 Fix: reading speed = pages / total read-minutes from all sessions.
+  // "With annotating" adds the observed synth overhead per page on top.
+  let totalPages=0,totalReadMin=0,totalSynthMin=0,totalLegacyMin=0,totalLegacyPg=0;
   (sessions||[]).forEach(s=>{
     const pg=+s.pEnd-(+s.pStart||0);if(!pg||pg<=0)return;
     const rm=+s.readMinutes||0;const sm=+s.synthMinutes||0;const m=+s.minutes||0;
-    if(rm>0&&sm===0){plainPagesH+=pg;plainMinT+=rm;}
-    else if(sm>0){annotPagesH+=pg;annotMinT+=(rm+sm)||m;}
-    else if(m>0){plainPagesH+=pg;plainMinT+=m;} // legacy untracked sessions count as plain
+    if(rm>0||sm>0){totalPages+=pg;totalReadMin+=rm;totalSynthMin+=sm;}
+    else if(m>0){totalLegacyPg+=pg;totalLegacyMin+=m;}
   });
-  const derivedPlain=plainMinT>0?(plainPagesH/(plainMinT/60)):0;
-  const derivedAnnot=annotMinT>0?(annotPagesH/(annotMinT/60)):0;
+  const allReadPg=totalPages+totalLegacyPg;
+  const allReadMin=totalReadMin+totalLegacyMin;
+  const derivedReadPPH=allReadMin>0?(allReadPg/(allReadMin/60)):0;
+  const synthMinPerPage=totalPages>0?(totalSynthMin/totalPages):0;
   const overrideR=+((library&&library.readEstReadPPH)||0);
   const overrideA=+((library&&library.readEstAnnotPPH)||0);
-  const plainPPH=overrideR>0?overrideR:(derivedPlain>0?derivedPlain:40);
-  const annotPPH=overrideA>0?overrideA:(derivedAnnot>0?derivedAnnot:20);
-
-  const plainHrs=pagesLeft/plainPPH;
+  const readPPH=overrideR>0?overrideR:(derivedReadPPH>0?derivedReadPPH:40);
+  const readMinPerPage=60/readPPH;
+  const totalMinPerPageAnnot=readMinPerPage+(overrideA>0?(60/overrideA-readMinPerPage):synthMinPerPage);
+  const annotPPH=Math.max(0.1,60/totalMinPerPageAnnot);
+  const plainHrs=pagesLeft/readPPH;
   const annotHrs=pagesLeft/annotPPH;
   const fmtHM=h=>{const totalM=Math.max(0,Math.round(h*60));if(totalM<60)return totalM+'m';const hh=Math.floor(totalM/60);const mm=totalM%60;return hh+'h'+(mm>0?' '+mm+'m':'');};
-
-  // Time saved/lost: compare expected (initial pages × current pace) vs actual (sum of session minutes so far)
   let savedHTML='';
-  if(prog>0&&(plainMinT+annotMinT)>0){
-    const totalMinSpent=plainMinT+annotMinT;
-    const totalPagesDone=plainPagesH+annotPagesH;
-    if(totalPagesDone>0){
-      // Expected time, given current avg pace (blended), to read what they've actually read
-      const blendedPPH=(plainPagesH+annotPagesH)/((plainMinT+annotMinT)/60);
-      const expected=prog/blendedPPH; // hours, naive expectation
-      // Compare against actual minutes spent
-      const actualHrs=totalMinSpent/60;
-      const diffHrs=expected-actualHrs;
-      const isSaved=diffHrs>0.05;const isLost=diffHrs<-0.05;
-      if(isSaved){savedHTML=`<div style="font-size:11px;color:var(--green);margin-top:6px;">⏱ You're <strong>${fmtHM(diffHrs)}</strong> ahead of your average pace.</div>`;}
-      else if(isLost){savedHTML=`<div style="font-size:11px;color:var(--t2);margin-top:6px;">⏱ You're <strong>${fmtHM(-diffHrs)}</strong> behind your average pace.</div>`;}
-    }
+  const totalMinSpent=totalReadMin+totalSynthMin+totalLegacyMin;
+  if(prog>0&&totalMinSpent>0&&allReadPg>0){
+    const blendedPPH=allReadPg/(totalMinSpent/60);
+    const diffHrs=(prog/blendedPPH)-(totalMinSpent/60);
+    if(diffHrs>0.05)savedHTML=`<div style="font-size:11px;color:var(--green);margin-top:6px;">⏱ You're <strong>${fmtHM(diffHrs)}</strong> ahead of your average pace.</div>`;
+    else if(diffHrs<-0.05)savedHTML=`<div style="font-size:11px;color:var(--t2);margin-top:6px;">⏱ You're <strong>${fmtHM(-diffHrs)}</strong> behind your average pace.</div>`;
   }
-
-  const sourceLabel=(plainMinT+annotMinT)>0?`Based on your ${sessions.length} session${sessions.length===1?'':'s'}`:'Based on default speeds (no session data yet)';
+  const sourceLabel=(totalMinSpent>0)?`Based on your ${sessions.length} session${sessions.length===1?'':'s'}`:'Based on default speeds (no session data yet)';
   const overrideNote=(overrideR||overrideA)?' · custom override':'';
-
   return `<div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;border:0.5px solid var(--cb);">
     <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">📖 Estimated time remaining (${pagesLeft}p)</div>
     <div style="display:flex;gap:8px;">
       <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
         <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">Just reading</div>
         <div style="font-size:16px;font-weight:700;color:var(--accent);">${fmtHM(plainHrs)}</div>
-        <div style="font-size:9px;color:var(--t3);margin-top:1px;">~${Math.round(plainPPH)} p/hr</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:1px;">~${Math.round(readPPH)} p/hr</div>
       </div>
       <div style="flex:1;background:var(--card);border-radius:8px;padding:8px 10px;border:0.5px solid var(--cb);">
         <div style="font-size:10px;color:var(--t3);margin-bottom:2px;">With annotating</div>
@@ -11389,6 +11395,11 @@ function renderLibStats(){
   const genreCount={};books.forEach(b=>{if(b.genre)genreCount[b.genre]=(genreCount[b.genre]||0)+1;});
   const topGenres=Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
+  // Reference reading time (from refActualMin on completed reference entries)
+  const refMin=allEntries.filter(e=>e.type==='Reference'&&e.refActualMin&&+e.refActualMin>0).reduce((s,e)=>s+(+e.refActualMin||0),0);
+  const combinedMin=totalMin+refMin;
+  const fmtTime=m=>m>=60?Math.floor(m/60)+'h '+(m%60>0?m%60+'m':''):m+'m';
+
   document.getElementById('lib-stats-body').innerHTML=`
   <div class="sum-grid">
     <div class="sum-card"><div class="sum-val">${books.length}</div><div class="sum-lbl">Total books</div></div>
@@ -11397,7 +11408,8 @@ function renderLibStats(){
     <div class="sum-card"><div class="sum-val">${want.length}</div><div class="sum-lbl">Want to read</div></div>
     <div class="sum-card"><div class="sum-val">${allEntries.length}</div><div class="sum-lbl">Total entries</div></div>
     <div class="sum-card"><div class="sum-val">${allSessions.length}</div><div class="sum-lbl">Sessions logged</div></div>
-    <div class="sum-card"><div class="sum-val">${totalMin>=60?Math.floor(totalMin/60)+'h '+(totalMin%60)+'m':totalMin+'m'}</div><div class="sum-lbl">Total reading time</div></div>
+    <div class="sum-card"><div class="sum-val">${fmtTime(totalMin)}</div><div class="sum-lbl">Books reading time</div></div>
+    ${refMin>0?`<div class="sum-card"><div class="sum-val">${fmtTime(refMin)}</div><div class="sum-lbl">References time</div></div><div class="sum-card"><div class="sum-val">${fmtTime(combinedMin)}</div><div class="sum-lbl">Total time (all)</div></div>`:''}
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
   </div>
   ${chartHTML}
