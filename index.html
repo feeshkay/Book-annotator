@@ -956,9 +956,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             </select>
           </div>
           <div id="ae-ref-actual-hrmin" style="display:none;gap:6px;align-items:stretch;">
-            <input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0" style="flex:1;min-width:0;"/>
-            <input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59" style="flex:1;min-width:64px;"/>
-            <select onchange="document.getElementById('ae-ref-actual-unit').value=this.value;toggleRefActualUnit();" style="flex-shrink:0;width:72px;font-size:13px;padding:6px 6px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+            <input type="number" id="ae-ref-actual-hr" inputmode="numeric" placeholder="hrs" min="0" style="flex:1;min-width:60px;"/>
+            <input type="number" id="ae-ref-actual-min2" inputmode="numeric" placeholder="min" min="0" max="59" style="flex:1;min-width:60px;"/>
+            <select onchange="document.getElementById('ae-ref-actual-unit').value=this.value;toggleRefActualUnit();" style="flex-shrink:0;width:68px;font-size:13px;padding:6px 4px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
               <option value="hr_min" selected>hr+min</option>
               <option value="min">min</option>
               <option value="hr">hr</option>
@@ -1561,23 +1561,32 @@ function anchorChanged(anchorLabel){
     _yearAutoFilled=true;
     yearEl.style.borderColor='var(--accent)';
     setTimeout(()=>{if(yearEl)yearEl.style.borderColor='';},2000);
-    // Also update month if we can compute it precisely — include any extras (#524 additive offsets)
+    // Also update month/day if anchor has them, or if the offset is small enough to make them meaningful
     if(anchorYearNum!==null&&on){
-      // Convert primary offset + all extras to total days
-      const toDaysLocal=(n,u)=>{const U={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};return (n||0)*(U[u]||1);};
+      const toDaysLocal=(n,u)=>{const U={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};return Math.abs((n||0)*(U[u]||1));};
       const sign=od==='-'?-1:1;
       let totalDays=sign*toDaysLocal(on,ou);
-      getOffsetExtras().forEach(ex=>{totalDays+=sign*toDaysLocal(parseFloat(ex.num)||0,ex.unit||'days');});
-      const anchorMon=anchor.evdateMonth?+anchor.evdateMonth:1;
-      const anchorDay=anchor.evdateDay?+anchor.evdateDay:1;
-      // Shift by days
-      let dm=new Date(anchorYearNum,anchorMon-1,anchorDay);
-      dm.setDate(dm.getDate()+Math.round(totalDays));
+      // Apply extras — each uses same direction
+      getOffsetExtras().filter(Boolean).forEach(ex=>{totalDays+=sign*toDaysLocal(parseFloat(ex.num)||0,ex.unit||'days');});
+      const anchorHasMonth=!!(anchor.evdateMonth);
+      const anchorHasDay=!!(anchor.evdateDay&&+anchor.evdateDay>0);
+      const anchorMon=anchorHasMonth?+anchor.evdateMonth:1;
+      const anchorDay=anchorHasDay?+anchor.evdateDay:1;
+      // Use Date math for precise month/year rollover
+      const baseDate=new Date(anchorYearNum,anchorMon-1,anchorDay);
+      baseDate.setDate(baseDate.getDate()+Math.round(totalDays));
       const monEl=document.getElementById('ae-evdate-month');
       const dayEl=document.getElementById('ae-evdate-day');
-      if(monEl)monEl.value=String(dm.getMonth()+1).padStart(2,'0');
-      if(dayEl&&anchorDay>1)dayEl.value=String(dm.getDate());
-      yearEl.value=String(dm.getFullYear());
+      yearEl.value=String(baseDate.getFullYear());
+      // Only fill month if anchor had a month, or offset is sub-year (days/weeks/months)
+      const isSubYear=['days','weeks','months','hours','minutes'].includes(ou)||
+        getOffsetExtras().filter(Boolean).some(ex=>['days','weeks','months','hours','minutes'].includes(ex.unit||''));
+      if(monEl&&(anchorHasMonth||isSubYear)){
+        monEl.value=String(baseDate.getMonth()+1).padStart(2,'0');
+      }
+      if(dayEl&&(anchorHasDay||isSubYear)){
+        dayEl.value=String(baseDate.getDate());
+      }
     }
   }
 }
@@ -3437,7 +3446,7 @@ function renderRelTypesSection(){
       const isPaired=pairedTypes.has(t);
       const bg=isCustom?'var(--al)':'var(--bg2)';const border=isPaired?'var(--am)':isCustom?'var(--am)':'var(--cb)';
       const color=isCustom?'var(--accent)':'var(--text)';const fw=isCustom?'600':'400';
-      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t}${isPaired?` <span style="font-size:9px;color:var(--am);">🔗</span>`:''} <span onclick="libListsRenameRel('${esc(t)}')" style="margin-left:2px;cursor:pointer;font-size:10px;" title="Rename">✏️</span>  <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
+      return `<span style="display:inline-block;background:${bg};border:0.5px solid ${border};color:${color};border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:${fw};">${relEmoji(t)} ${t}${isPaired?` <span style="font-size:9px;color:var(--am);" title="Paired type">↔</span>`:''} <span onclick="libListsRenameRel('${esc(t)}')" style="margin-left:2px;cursor:pointer;font-size:10px;" title="Rename">✏️</span>  <span onclick="libListsRemoveRel('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`;
     }).join('')}</div>`:'<div style="font-size:11px;color:var(--t3);font-style:italic;margin-bottom:8px;">No active types.</div>'}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
       <button class="btn btn-sm btn-primary" onclick="libListsAddRel()" style="font-size:12px;">+ Add type</button>
@@ -3462,8 +3471,15 @@ function libListsRenameRel(oldName){
   const allExisting=[...(library.customRelTypes||[]).filter(t=>t!==oldName),...ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deleted.has(t))];
   if(allExisting.includes(newName)){alert('That name already exists.');return;}
   const isBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
-  if(isBuiltin){
-    // For built-ins: add the new name as a custom type and delete the old built-in from view
+  const newIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(newName);
+  if(newIsBuiltin){
+    // Renaming TO a built-in name — restore that built-in and remove the old custom type
+    library.deletedRelTypes=(library.deletedRelTypes||[]).filter(t=>t!==newName);
+    library.customRelTypes=(library.customRelTypes||[]).filter(t=>t!==oldName);
+    // Remove any custom pair that involved the old name
+    library.customRelPairs=(library.customRelPairs||[]).filter(p=>p.typeA!==oldName&&p.typeB!==oldName);
+  } else if(isBuiltin){
+    // Renaming a built-in to a new custom name — hide the built-in, add as custom
     if(!library.customRelTypes)library.customRelTypes=[];
     if(!library.deletedRelTypes)library.deletedRelTypes=[];
     library.customRelTypes.push(newName);
@@ -5636,12 +5652,10 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     if(offsetActive){
       entry.timeOffset=`${od}${on} ${ou}`;
       if(oe)entry.timeOffsetFrom=oe;
-      // #524 — additive extra offsets
       const extras=getOffsetExtras();
-      if(extras.length)entry.offsetExtras=extras;
-      else delete entry.offsetExtras;
+      entry.offsetExtras=extras.length?extras:null;
     }
-    else{delete entry.timeOffset;delete entry.timeOffsetFrom;delete entry.offsetExtras;}
+    else{entry.timeOffset='';entry.timeOffsetFrom='';entry.offsetExtras=null;}
     // #303 — compute numeric sort value from anchor so entry lands in correct position
     if(offsetActive && oe){
       const anchor=findAnchorEntry(oe);
@@ -9127,7 +9141,7 @@ function cascadeDependentDates(anchorEntry){
       };
       // Compute total days from primary + any extras (#524 additive offsets)
       let days=sign*toDays(num,unit);
-      (e.offsetExtras||[]).forEach(ex=>{ days+=sign*toDays(parseFloat(ex.num)||0,ex.unit||'days'); });
+      (e.offsetExtras||[]).filter(Boolean).forEach(ex=>{ days+=sign*toDays(parseFloat(ex.num)||0,ex.unit||'days'); });
       if(!aMonth){
         // Year-only anchor — convert total days to years
         const yearShift=Math.round(days/365.25);
@@ -9691,6 +9705,7 @@ function renderRefs(){
         ${r.refType==='book'&&!r.refDone?`<div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <span style="color:#1D9E75;font-size:11px;cursor:pointer;" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${esc(r.content)}'))">📚 Open StoryGraph</span>
           <span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="markAddedToStoryGraph(${r.id})">✅ Mark as added</span>
+          <span style="color:var(--t2);font-size:11px;cursor:pointer;" onclick="convertRefToBook('${currentId}',${r.id})">📖 + Want to Read</span>
         </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
