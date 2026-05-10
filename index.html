@@ -314,25 +314,28 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
 
     <div id="web-panel" class="panel" style="padding:8px 10px 85px;">
-      <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:6px;">Drag empty space to pan · Drag a node to reposition · Tap to focus · Pinch / scroll to zoom</div>
-      <div class="fscroll" id="web-filter-bar"></div>
-      <!-- xlsx #408 — search bar: typing pans/zooms to the matching node + spotlights it -->
-      <div style="position:relative;margin-bottom:6px;">
-        <input type="text" id="web-search" placeholder="🔍 Search character on web…" oninput="webSearchOn()" onkeydown="if(event.key==='Enter'){webSearchPick();event.preventDefault();}" style="width:100%;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/>
-        <button onclick="document.getElementById('web-search').value='';webSearchOn();webSpotlightClear();" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
-        <div id="web-search-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+      <div style="position:sticky;top:0;z-index:20;background:var(--bg);padding-bottom:4px;">
+        <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:4px;">Drag empty space to pan · Drag a node to reposition · Tap to focus · Pinch / scroll to zoom</div>
+        <div class="fscroll" id="web-filter-bar"></div>
+        <!-- xlsx #408 — search bar: typing pans/zooms to the matching node + spotlights it -->
+        <div style="position:relative;margin-bottom:4px;">
+          <input type="text" id="web-search" placeholder="🔍 Search character on web…" oninput="webSearchOn()" onkeydown="if(event.key==='Enter'){webSearchPick();event.preventDefault();}" style="width:100%;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/>
+          <button onclick="document.getElementById('web-search').value='';webSearchOn();webSpotlightClear();" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+          <div id="web-search-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:4px;margin-bottom:4px;">
+          <button class="btn btn-sm" onclick="webZoom(-1)" title="Zoom out" style="padding:4px 10px;font-size:14px;">−</button>
+          <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
+          <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
+        </div>
       </div>
-      <div style="display:flex;justify-content:center;gap:4px;margin-bottom:6px;">
-        <button class="btn btn-sm" onclick="webZoom(-1)" title="Zoom out" style="padding:4px 10px;font-size:14px;">−</button>
-        <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
-        <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
-      </div>
-      <div class="web-wrap" id="web-wrap" style="position:relative;"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
+      <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;"><svg id="web-svg" style="display:block;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
 
     <div id="timeline-panel" class="panel" style="padding:10px 11px 85px;">
-      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</div>
+      <div id="tl-tip-bar" style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:7px 10px;margin-bottom:10px;display:flex;align-items:flex-start;gap:6px;"><span style="flex:1;"><strong>Timeline tip:</strong> Log chronological beats here — "Year 1815," "Three weeks pass," "Chapter 4 occurs two days after Ch.3." For major emotional turning points use the <em>Event</em> entry type. For relative time, use ± offset from a prior event.</span><button onclick="_tlTipToggle(true)" title="Hide tip" style="background:transparent;border:0;color:var(--t3);font-size:16px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;">×</button></div>
+      <div id="tl-tip-reopen" style="display:none;margin-bottom:8px;"><button onclick="_tlTipToggle(false)" title="Show timeline tip" style="background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;font-weight:700;">?</button></div>
       <!-- #314 — location filter -->
       <div class="fscroll" id="tl-loc-filter" style="display:none;margin-bottom:8px;"></div>
       <!-- xlsx #342 — sort toggle: Story chronology (default, by evdate) vs Reading order (strict chap/page) -->
@@ -1362,7 +1365,10 @@ const REL_EMOJI={
   'Master':'👑','Servant':'🫡',
   'Complicated':'🌀','Unknown':'❓',
 };
-function relEmoji(type){return REL_EMOJI[type]||'🏷️';}
+function relEmoji(type){
+  if(!type)return'🏷️';
+  return REL_EMOJI[type]||REL_EMOJI[type.charAt(0).toUpperCase()+type.slice(1)]||'🏷️';
+}
 const REL_GENDER_MAP={
   'Husband':'Male','Wife':'Female',
   'Father':'Male','Mother':'Female',
@@ -3559,8 +3565,13 @@ function libListsAddRel(){
   library.customRelTypes.push(v);save();renderLibLists();
 }
 function libListsRenameRel(oldName){
-  const newName=(prompt(`Rename "${oldName}" to:`,oldName)||"").trim();
-  if(!newName||newName===oldName)return;
+  const rawName=(prompt(`Rename "${oldName}" to:`,oldName)||"").trim();
+  if(!rawName||rawName===oldName)return;
+  // #529-6 deep fix: if user typed a name that matches a builtin (case-insensitively),
+  // snap it to the builtin's exact case so the entire builtin-restore path works correctly.
+  const builtinMatch=ALL_BUILTIN_REL_TYPES.find(t=>t.toLowerCase()===rawName.toLowerCase());
+  const newName=builtinMatch||rawName;
+  if(newName===oldName)return;
   if(!library.customRelTypes)library.customRelTypes=[];
   if(!library.deletedRelTypes)library.deletedRelTypes=[];
   if(!library.customRelPairs)library.customRelPairs=[];
@@ -3575,6 +3586,8 @@ function libListsRenameRel(oldName){
     library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==newName);
     library.customRelTypes=library.customRelTypes.filter(t=>t!==oldName);
     if(isBuiltin&&!library.deletedRelTypes.includes(oldName))library.deletedRelTypes.push(oldName);
+    // #529-6: remove any stale custom pairs that were created when the builtin was renamed away
+    library.customRelPairs=library.customRelPairs.filter(p=>p.typeA!==oldName&&p.typeB!==oldName);
   } else if(isBuiltin){
     library.customRelTypes.push(newName);
     if(!library.deletedRelTypes.includes(oldName))library.deletedRelTypes.push(oldName);
@@ -3607,10 +3620,16 @@ function libListsRenameRel(oldName){
   });
   save();renderLibLists();
   if(typeof renderAll==="function")renderAll();
-  // Also force-refresh char screen if open (rename affects character B's profile label)
-  if(typeof currentCharName!=='undefined'&&currentCharName&&typeof renderCharDetail==='function'){
-    try{renderCharDetail(currentCharName);}catch(_){}
+  // #529-6 — after rename, force-refresh char profile if ANY char is being viewed,
+  // not just the one that was open when the rename happened.
+  if(typeof renderCharDetail==='function'){
+    if(typeof currentCharName!=='undefined'&&currentCharName){
+      try{renderCharDetail(currentCharName);}catch(_){}
+    }
   }
+  // Also refresh the chars tab list (shows rel badges) and log (shows rel cards)
+  if(typeof renderChars==='function'){try{renderChars();}catch(_){}}
+  if(typeof renderEntries==='function'){try{renderEntries();}catch(_){}}
 }
 function libListsAddPair(){
   const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
@@ -5815,6 +5834,9 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
             if(entry.evdateMonth){assembled+='-'+entry.evdateMonth;if(entry.evdateDay)assembled+='-'+String(entry.evdateDay).padStart(2,'0');}
             entry.evdate=assembled;
             const yearEl=document.getElementById('ae-evdate-year');if(yearEl)yearEl.value=newYr;
+            // #524-fix: push fully-assembled date into hidden ae-evdate so the Event
+            // branch below (which re-reads ae-evdate) doesn't clobber month/day.
+            const _aeEvEl=document.getElementById('ae-evdate');if(_aeEvEl)_aeEvEl.value=assembled;
           } else {
             const yr=Math.round(computed/10000);
             entry.evdate=String(yr);entry.evdateYear=String(yr);
@@ -8783,8 +8805,6 @@ function renderTimeline(){
   };
   // #570 — compute cumulative span from first to last dated entry
   let cumHTML='';
-  // #570 follow-up — banner is closable; honor user's preference, default open
-  const _spanHidden=(book()?._tlSpanHidden===true);
   if(dated.length>=2){
     const first=dated[0],last=dated[dated.length-1];
     const jf=_toJulian(first),jl=_toJulian(last);
@@ -8801,17 +8821,10 @@ function renderTimeline(){
       if(diff<1000)spanStr=`~${diff} year${diff===1?'':'s'}`;
     }
     if(spanStr){
-      if(_spanHidden){
-        // Re-open chip — small ? button placed next to the (forthcoming) "All" filter,
-        // so it sits at the start of the filter bar.
-        cumHTML=`<div style="margin-bottom:8px;"><button onclick="_tlSpanToggle(false)" title="Show story span" style="background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;font-weight:700;">?</button></div>`;
-      } else {
-        cumHTML=`<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
-          <span style="font-size:14px;">⏳</span>
-          <span style="flex:1;"><strong>Story spans ${spanStr}</strong><span style="color:var(--t3);font-weight:400;"> — from ${(first.evdate||'').replace(/-/g,'/')||'first entry'} to ${(last.evdate||'').replace(/-/g,'/')||'last entry'}</span></span>
-          <button onclick="_tlSpanToggle(true)" title="Hide" style="background:transparent;border:0;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;">×</button>
-        </div>`;
-      }
+      cumHTML=`<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
+        <span style="font-size:14px;">⏳</span>
+        <span><strong>Story spans ${spanStr}</strong><span style="color:var(--t3);font-weight:400;"> — from ${(first.evdate||'').replace(/-/g,'/')||'first entry'} to ${(last.evdate||'').replace(/-/g,'/')||'last entry'}</span></span>
+      </div>`;
     }
   }
   // #270 — render dated items, then undated bucket at bottom
@@ -8828,6 +8841,8 @@ function renderTimeline(){
   html+='</div>';
   // #398 — drafts block at top
   list.innerHTML=draftHTML+cumHTML+html;
+  // #570-2 — restore tip visibility after innerHTML reset
+  _tlTipInit();
 }
 // #314 — timeline location filter
 function setTlLocFilter(loc){
@@ -8839,6 +8854,25 @@ function setTlLocFilter(loc){
 function _tlSpanToggle(hide){
   const b=book();if(!b)return;
   b._tlSpanHidden=!!hide;save();renderTimeline();
+}
+// #570-2 — closable timeline tip
+function _tlTipToggle(hide){
+  const tip=document.getElementById('tl-tip-bar');
+  const reopen=document.getElementById('tl-tip-reopen');
+  if(tip)tip.style.display=hide?'none':'flex';
+  if(reopen)reopen.style.display=hide?'block':'none';
+  // Persist in localStorage per library
+  try{localStorage.setItem('tl_tip_hidden',hide?'1':'');}catch(e){}
+}
+// On timeline render, restore tip visibility from localStorage
+function _tlTipInit(){
+  try{
+    const h=localStorage.getItem('tl_tip_hidden');
+    const tip=document.getElementById('tl-tip-bar');
+    const reopen=document.getElementById('tl-tip-reopen');
+    if(tip)tip.style.display=h?'none':'flex';
+    if(reopen)reopen.style.display=h?'block':'none';
+  }catch(e){}
 }
 // #521 — Reading-time estimate widget for the Stats tab.
 // Speeds are derived from the user's own session log (filtered by mode):
@@ -10059,10 +10093,26 @@ function renderChaps(){
       </div>`;
     }).join('');
 
-    const todoSection=(openTodos.length||openQs.length)?`
+    // Also render empty-but-addable stubs for common types that have no entries yet
+    const ALWAYS_SHOW=['Character','Quote','Event','Timeline','Theme','Relationship'];
+    const stubSections=ALWAYS_SHOW.filter(t=>!tg[t]).map(type=>{
+      const tsid=`ct-${num}-stub-${type.replace(/[^a-z0-9]/gi,'_')}`;
+      const addBtn=TYPE_ADD.find(x=>x.type===type);
+      return `<div class="csec" style="margin-left:4px;">
+        <div class="csec-header" onclick="toggleSec('${tsid}')">
+          <div class="csec-label" style="flex:1;font-size:12px;color:var(--t3);">${type} (0)</div>
+          ${addBtn?`<button class="btn btn-sm" onclick="event.stopPropagation();_chapAddEntry('${type}',${num})" style="font-size:10px;padding:2px 7px;margin-right:6px;">${addBtn.label}</button>`:''}
+          <span class="csec-toggle" id="${tsid}-tog">▸</span>
+        </div>
+        <div id="${tsid}" style="display:none;padding:0 2px;font-size:11px;color:var(--t3);padding:6px 4px;">No ${type.toLowerCase()} entries yet for this chapter.</div>
+      </div>`;
+    }).join('');
+
+    const todoSectionHTML=((openTodos.length||openQs.length)?`
       <div class="csec" style="margin-left:4px;">
-        <div class="csec-header" onclick="toggleSec('${sid}-todos')">
+        <div class="csec-header" onclick="toggleSec('${sid}-todos')" style="display:flex;align-items:center;">
           <div class="csec-label" style="flex:1;font-size:12px;color:var(--accent);">✅ To-Do (${openTodos.length+openQs.length})</div>
+          <button class="btn btn-sm" onclick="event.stopPropagation();_chapAddTodoInline(${num})" style="font-size:10px;padding:2px 7px;margin-right:6px;">+ To-Do</button>
           <span class="csec-toggle" id="${sid}-todos-tog">▾</span>
         </div>
         <div id="${sid}-todos">
@@ -10075,26 +10125,22 @@ function renderChaps(){
             <span style="flex:1;font-size:13px;">${e.content||''}</span>
             <button class="btn btn-sm" onclick="editEntry(${e.id})" style="font-size:10px;">Edit</button>
           </div>`).join('')}
-          <button class="btn btn-sm" onclick="_chapAddTodoInline(${num})" style="width:100%;font-size:12px;margin-top:4px;">+ Add to-do</button>
         </div>
-      </div>`:
-      `<div style="margin:0 4px 8px;"><button class="btn btn-sm" onclick="_chapAddTodoInline(${num})" style="width:100%;font-size:12px;">+ Add to-do</button></div>`;
+      </div>` : '');
 
     return `<div style="background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);margin-bottom:10px;">
       <div onclick="toggleSec('${sid}')" style="display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;">
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;">Ch.${num}${title?' <span style=\'font-weight:400;color:var(--t2);font-size:12px;\'>— '+title+'</span>':''}</div>
-          <div style="font-size:11px;color:var(--t3);">${[c.count+' entr'+(c.count===1?'y':'ies'),pr,openTodos.length+openQs.length?'⚠️ '+(openTodos.length+openQs.length)+' open to-do':''].filter(Boolean).join(' · ')}</div>
+          <div style="font-size:11px;color:var(--t3);">${[pr,openTodos.length+openQs.length?'⚠️ '+(openTodos.length+openQs.length)+' open':''].filter(Boolean).join(' · ')}</div>
         </div>
-        <button class="btn btn-sm" onclick="event.stopPropagation();_chapEditInfo(${num})" style="font-size:10px;padding:3px 8px;flex-shrink:0;">✏️ Edit</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation();_chapAddTodoInline(${num})" style="font-size:10px;padding:3px 8px;flex-shrink:0;">+ To-Do</button>
+        <button class="btn btn-sm" onclick="event.stopPropagation();_chapEditInfo(${num})" style="font-size:10px;padding:3px 8px;flex-shrink:0;">✏️</button>
         <span class="csec-toggle" id="${sid}-tog">${ci===0?'▾':'▸'}</span>
       </div>
       <div id="${sid}" style="display:${ci===0?'block':'none'};padding:0 10px 10px;">
-        ${todoSection}
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin:0 4px 8px;">
-          ${TYPE_ADD.map(x=>`<button class="btn btn-sm" onclick="_chapAddEntry('${x.type}',${num})" style="font-size:10px;padding:2px 7px;">${x.label}</button>`).join('')}
-        </div>
-        ${typeSections||'<div style="font-size:12px;color:var(--t3);padding:6px 4px;">No entries yet for this chapter.</div>'}
+        ${todoSectionHTML}
+        ${typeSections}${stubSections}${!typeSections&&!stubSections?'<div style="font-size:12px;color:var(--t3);padding:6px 4px;">No entries yet for this chapter.</div>':''}
       </div>
     </div>`;
   }).join('');
@@ -10323,9 +10369,9 @@ function renderRefs(){
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${r.storyGraphAdded?'✅ Added to StoryGraph'+(r.storyGraphAddedDate?' · '+r.storyGraphAddedDate:''):(doneLabel[r.refType]||'Done')}</div>${r.storyGraphSourceBook?`<div style="font-size:10px;color:var(--t3);">📖 Discovered via: <em>${r.storyGraphSourceBook}</em></div>`:''}`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
         ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${esc(r.content)}'))" style="font-size:10px;touch-action:manipulation;">📚 StoryGraph</button>
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();markAddedToStoryGraph(${r.id})" style="font-size:10px;touch-action:manipulation;">✅ Mark added</button>
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();convertRefToBook('${currentId}',${r.id})" style="font-size:10px;touch-action:manipulation;">📖 Want to Read</button>
+          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(this.dataset.title))" data-title="${esc(r.content)}" style="font-size:10px;touch-action:manipulation;">📚 StoryGraph</button>
+          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();markAddedToStoryGraph(+this.dataset.rid)" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;">✅ Mark added</button>
+          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();convertRefToBook(this.dataset.bid,+this.dataset.rid)" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;">📖 Want to Read</button>
         </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
