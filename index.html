@@ -405,6 +405,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="stats-content"></div>
     </div>
 
+    <!-- #569 — Chapter profiles tab -->
+    <div id="chaps-panel" class="panel" style="padding:10px 11px 85px;">
+      <div id="chaps-list"></div>
+    </div>
+
   </div>
   <button class="fab" onclick="openAddSheet()">+</button>
 </div>
@@ -801,7 +806,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <!-- #303/#335 -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required)</span></label>
-        <div style="position:relative;"><input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · Ch.4 · Year 3 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/><button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button></div>
+        <div style="position:relative;"><input type="text" id="ae-evdate-year" placeholder="e.g. 1943 · c.1850 · 1920s · Spring 1942 · Ch.4 · Unknown" oninput="_yearAutoFilled=false;" style="padding-right:30px;"/><button type="button" onclick="document.getElementById('ae-evdate-year').value='';_yearAutoFilled=false;" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button></div>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px;">Fuzzy dates OK: <em>c.1850</em> (circa) · <em>1920s</em> (decade) · <em>Spring 1942</em> · <em>Early 1800s</em></div>
       </div>
       <div class="r2">
         <div class="fg"><label>Month <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
@@ -874,6 +880,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <button type="button" onclick="_oeClear()" title="Clear" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);font-size:18px;padding:2px 6px;cursor:pointer;line-height:1;">×</button>
             <div id="ae-offset-event-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:60;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
           </div>
+        </div>
+        <!-- #524 — computed date preview -->
+        <div id="ae-offset-preview" style="display:none;margin-top:6px;padding:6px 10px;background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);font-size:12px;color:var(--accent);">
+          📅 Estimated date: <strong id="ae-offset-preview-val"></strong> <span style="color:var(--t3);font-weight:400;">(auto-filled from offset)</span>
         </div>
       </div>
       <!-- #253 — Supporting quote + speaker auto-tag + quote page (flows to Quote page display) -->
@@ -1298,20 +1308,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
-  fiction:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  memoir:   {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
-  mystery:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
-  scifi:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
-  history:  {tabs:['log','quotes','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Location','Place','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  selfhelp: {tabs:['log','quotes','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Location','Objection','Principle','Question','Quote','Reference','Timeline','Translation','Word / Vocabulary']},
-  poetry:   {tabs:['log','quotes','words','questions','refs','todo','stats'],types:['Emotion','Image','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
-  essays:   {tabs:['log','quotes','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  anthology:{tabs:['log','quotes','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  graphic:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  shortfiction:{tabs:['log','quotes','chars','timeline','words','questions','refs','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Location','Quote','Reference','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
-  play:     {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  other:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  fiction:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  memoir:   {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
+  mystery:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
+  scifi:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
+  history:  {tabs:['log','quotes','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Location','Place','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  selfhelp: {tabs:['log','quotes','timeline','words','questions','refs','chaps','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Location','Objection','Principle','Question','Quote','Reference','Timeline','Translation','Word / Vocabulary']},
+  poetry:   {tabs:['log','quotes','words','questions','refs','chaps','todo','stats'],types:['Emotion','Image','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
+  essays:   {tabs:['log','quotes','timeline','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
+  anthology:{tabs:['log','quotes','chars','timeline','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Character','Concept','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
+  graphic:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  shortfiction:{tabs:['log','quotes','chars','timeline','words','questions','refs','chaps','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Location','Quote','Reference','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
+  play:     {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  other:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
 };
 const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',other:'Other'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
@@ -1617,6 +1627,16 @@ function anchorChanged(anchorLabel){
       }
       if(dayEl&&(anchorHasDay||isSubYear)){
         dayEl.value=String(baseDate.getDate());
+      }
+      // #524 — live preview chip
+      const prevEl=document.getElementById('ae-offset-preview');
+      const prevVal=document.getElementById('ae-offset-preview-val');
+      if(prevEl&&prevVal){
+        const yr=String(baseDate.getFullYear());
+        const mo=(anchorHasMonth||isSubYear)?String(baseDate.getMonth()+1).padStart(2,'0'):'';
+        const dy=(anchorHasDay||isSubYear)&&mo?String(baseDate.getDate()):'';
+        prevVal.textContent=[yr,mo,dy].filter(Boolean).join('/');
+        prevEl.style.display='';
       }
     }
   }
@@ -3500,7 +3520,35 @@ function renderRelTypesSection(){
     </div>
     ${pairs.length?`<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:5px;">Linked pairs (reciprocal messaging)</div>${pairs.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border-radius:var(--r);padding:6px 10px;margin-bottom:4px;font-size:12px;border:0.5px solid var(--am);"><span style="flex:1;"><strong>${p.typeA}</strong> ↔ <strong>${p.typeB}</strong><div style="font-size:10px;color:var(--t3);margin-top:1px;">A's card: "${p.phraseA||'is '+p.typeA.toLowerCase()+' of'}" · B's card: "${p.phraseB||'is '+p.typeB.toLowerCase()+' of'}"</div></span><button class="btn btn-sm" onclick="libListsEditPair(${i})" style="font-size:10px;flex-shrink:0;">Edit</button><button class="btn btn-sm" onclick="libListsRemovePair(${i})" style="font-size:10px;color:var(--red);flex-shrink:0;">×</button></div>`).join('')}</div>`:''}
     ${deletedBuiltins.length?`<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11px;color:var(--t3);">Restore deleted (${deletedBuiltins.length})</summary><div style="margin-top:6px;">${deletedBuiltins.map(t=>`<span style="display:inline-block;background:transparent;border:0.5px dashed var(--cb);color:var(--t3);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;text-decoration:line-through;">${t}</span> <button class="btn btn-sm" onclick="libListsRestoreRel('${esc(t)}')" style="font-size:10px;padding:2px 6px;margin:1px 0;">Restore</button>`).join(' ')}</div></details>`:''}
+  </div>
+  <div class="divider"></div>
+  <div style="font-size:13px;font-weight:700;margin-bottom:8px;">🗂 Custom Entry Types</div>
+  <div style="font-size:11px;color:var(--t2);margin-bottom:10px;">Add your own entry types that appear in the entry form alongside built-in types.</div>
+  <div style="margin-bottom:10px;">${(library.customEntryTypes||[]).map(t=>`<span style="display:inline-block;background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:600;">${t} <span onclick="libListsRenameEntryType('${esc(t)}')" style="cursor:pointer;font-size:10px;margin-left:2px;" title="Rename">✏️</span><span onclick="libListsRemoveEntryType('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`).join('')||'<span style="font-size:11px;color:var(--t3);font-style:italic;">No custom types yet.</span>'}</div>
+  <button class="btn btn-sm btn-primary" onclick="libListsAddEntryType()" style="font-size:12px;">+ Add entry type</button>
   </div>`;
+}
+function libListsAddEntryType(){
+  const v=(prompt('New entry type name (e.g. "Scene", "Motif", "Object"):')||'').trim();
+  if(!v)return;
+  if(!library.customEntryTypes)library.customEntryTypes=[];
+  if(library.customEntryTypes.includes(v)){alert('Already exists.');return;}
+  library.customEntryTypes.push(v);save();renderLibLists();
+}
+function libListsRenameEntryType(oldName){
+  const newName=(prompt(`Rename "${oldName}" to:`,oldName)||'').trim();
+  if(!newName||newName===oldName)return;
+  if(!library.customEntryTypes)library.customEntryTypes=[];
+  if(library.customEntryTypes.includes(newName)){alert('That name already exists.');return;}
+  library.customEntryTypes=library.customEntryTypes.map(t=>t===oldName?newName:t);
+  // Rename in all entries
+  Object.values(library).forEach(b=>{if(!b||!b.entries)return;b.entries.forEach(e=>{if(e.type===oldName)e.type=newName;});});
+  save();renderLibLists();if(typeof renderAll==='function')renderAll();
+}
+function libListsRemoveEntryType(name){
+  if(!confirm(`Remove custom type "${name}"? Existing entries of this type are kept but won't appear in the type dropdown.`))return;
+  library.customEntryTypes=(library.customEntryTypes||[]).filter(t=>t!==name);
+  save();renderLibLists();
 }
 function libListsAddRel(){
   const v=(prompt('New relationship type:')||'').trim();if(!v)return;
@@ -3543,7 +3591,12 @@ function libListsRenameRel(oldName){
     if(!b||!b.entries)return;
     b.entries.forEach(e=>{if(e.relType===oldName){e.relType=newName;if(e.content===oldName)e.content=newName;}});
   });
-  save();renderLibLists();if(typeof renderAll==="function")renderAll();
+  save();renderLibLists();
+  if(typeof renderAll==="function")renderAll();
+  // Also force-refresh char screen if open (rename affects character B's profile label)
+  if(typeof currentCharName!=='undefined'&&currentCharName&&typeof renderCharDetail==='function'){
+    try{renderCharDetail(currentCharName);}catch(_){}
+  }
 }
 function libListsAddPair(){
   const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
@@ -3742,7 +3795,7 @@ function buildTabs(){
     if(charsIdx>=0)tabs.splice(charsIdx+1,0,'web');
     else tabs.push('web');
   }
-  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats'};
+  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats',chaps:'Chapters'};
   document.getElementById('tab-bar').innerHTML=tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${lbl[t]||t}</button>`).join('');
   tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
 }
@@ -3753,12 +3806,13 @@ function switchTab(t,btn){
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
   if(t==='web')renderWeb();if(t==='chars')renderChars();if(t==='quotes')renderQuotes();
   if(t==='timeline')renderTimeline();if(t==='map'){renderMap();_osmInvalidate();}
+  if(t==='chaps')renderChaps();
   if(t==='words')renderWords();if(t==='questions')renderQuestions();if(t==='refs')renderRefs();
   if(t==='todo')renderTodo();if(t==='stats')renderStats();
 }
 function forceTab(t){
   activeTab=t;
-  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats'};
+  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats',chaps:'Chapters'};
   document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.toggle('active',b.textContent===(lbl[t]||t)));
   document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
   const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
@@ -4297,11 +4351,11 @@ function buildCharRoleSelect(preserveVal){
 function buildTypeSelect(){
   if(!currentId)return;
   const cfg=GENRES[book().genre]||GENRES.fiction;
-  // #517 — Image / Diagram is universal across genres
-  // #542 — Relationship is universal across genres
   let types=cfg.types.slice();
   if(!types.includes('Image / Diagram'))types.push('Image / Diagram');
   if(!types.includes('Relationship'))types.push('Relationship');
+  // #438 — custom entry types
+  (library.customEntryTypes||[]).forEach(t=>{if(t&&!types.includes(t))types.push(t);});
   types.sort((a,b)=>a.localeCompare(b));
   document.getElementById('ae-type').innerHTML=types.map(t=>`<option>${t}</option>`).join('');
   buildCharRoleSelect();
@@ -4948,6 +5002,7 @@ function clearAEForm(){
   document.getElementById('ae-offset-dir').value='+';document.getElementById('ae-offset-unit').value='days';clearOffsetExtras();
   const skEl=document.getElementById('ae-sortkey');if(skEl)skEl.value='';
   const offTog=document.getElementById('ae-offset-toggle');if(offTog){offTog.checked=false;document.getElementById('ae-offset-block').style.display='none';}
+  const _prevChip=document.getElementById('ae-offset-preview');if(_prevChip)_prevChip.style.display='none';
   // #342 follow-up — clear offset-event picker (hidden field, search input, panel).
   const _oeH=document.getElementById('ae-offset-event');if(_oeH)_oeH.value='';
   const _oeS=document.getElementById('ae-offset-event-search');if(_oeS)_oeS.value='';
@@ -5439,6 +5494,7 @@ function submitEntry(){
   const isEvent=type==='Event';const isRef=type==='Reference';
   const isDial=type==='Dialogue';const isLoc=type==='Location';
   const isTrans=type==='Translation';const isTheme=type==='Theme';
+  const isOrg=type==='Group / Organization';
   let content='',cn='';
   if(isChar){
     cn=document.getElementById('ae-cn').value.trim();
@@ -5545,6 +5601,13 @@ function submitEntry(){
   if(['Quote','Line/stanza','Narrator quote'].includes(type)){
     const spk=cddGet('ae-speaker');
     if(!spk){reqFail('ae-speaker-search','Please select a speaker');validationFail=true;}
+    // #466 — page number required for new quote rows
+    const _pgEl=document.getElementById('ae-pg');
+    const _pgVal=(_pgEl?.value||'').trim();
+    if(!_pgVal){
+      if(_pgEl){_pgEl.style.borderColor='#E24B4A';_pgEl.focus();}
+      validationFail=true;
+    }
   }
   if(isChar){
     // #397 — Role no longer blocks submission. Missing role is still surfaced on
@@ -7014,6 +7077,7 @@ function renderAll(){
   if(activeTab==='quotes')renderQuotes();if(activeTab==='timeline')renderTimeline();
   if(activeTab==='map')renderMap();if(activeTab==='words')renderWords();
   if(activeTab==='questions')renderQuestions();if(activeTab==='refs')renderRefs();
+  if(activeTab==='chaps')renderChaps();
   if(activeTab==='todo')renderTodo();if(activeTab==='stats')renderStats();
   buildFilterBar();
   if(currentCharName&&document.getElementById('char-screen').classList.contains('active'))renderCharDetail(currentCharName);
@@ -7819,8 +7883,8 @@ function renderWeb(){
 
   // ── Generational layout with force-based horizontal spacing ───
   const NR=26;
-  const LABEL_H=26;
-  const PAD=NR+LABEL_H+12;
+  const LABEL_H=42; // increased from 26 to accommodate 2-line name + profession
+  const PAD=NR+LABEL_H+18;
   const nameToChar={};chars.forEach(c=>nameToChar[c.name]=c);
 
   // 1. Assign generation (row) to each character using relationship hierarchy
@@ -8405,23 +8469,27 @@ function webSpotlightOn(name){
   const ov=document.getElementById('web-spotlight-overlay');
   if(!wrap||!svg||!st||!ov)return;
   const node=st.chars.find(c=>c.name===name);if(!node)return;
-  // Scale: SVG viewBox units to CSS pixels
-  const pxPerUnit=svg.clientWidth/st.viewW;
+  // pxPerUnit: ratio of rendered SVG pixel width to SVG viewBox width
+  const svgRect=svg.getBoundingClientRect();
+  const pxW=svgRect.width||svg.clientWidth||1;
+  const pxPerUnit=pxW/st.viewW;
   const nodePixX=node.x*pxPerUnit;
   const nodePixY=node.y*pxPerUnit;
   // Scroll node to centre of wrap
   const targetSL=Math.max(0,nodePixX-wrap.clientWidth/2);
   const targetST=Math.max(0,nodePixY-wrap.clientHeight/2);
   wrap.scrollTo({left:targetSL,top:targetST,behavior:'smooth'});
-  // After scroll settles, place spotlight relative to wrap
   setTimeout(()=>{
-    const spotX=nodePixX-wrap.scrollLeft;
-    const spotY=nodePixY-wrap.scrollTop;
+    // Recalculate after scroll: node position relative to wrap's top-left
+    const wrapRect=wrap.getBoundingClientRect();
+    const svgRect2=svg.getBoundingClientRect();
+    const spotX=svgRect2.left - wrapRect.left + nodePixX;
+    const spotY=svgRect2.top - wrapRect.top + nodePixY;
     ov.style.setProperty('--spot-x',spotX+'px');
     ov.style.setProperty('--spot-y',spotY+'px');
-    ov.style.setProperty('--spot-r',(st.NR*1.8*pxPerUnit)+'px');
+    ov.style.setProperty('--spot-r',(st.NR*2.2*pxPerUnit)+'px');
     ov.style.display='';
-  },350);
+  },380);
 }
 function webSpotlightClear(){
   const ov=document.getElementById('web-spotlight-overlay');if(ov)ov.style.display='none';
@@ -8534,9 +8602,9 @@ function renderTimeline(){
   // a parseable evdate (offset entries with computedSortNum but no evdate are skipped
   // since the gap isn't meaningful in real time units).
   const _yearOf=e=>{
-    const d=e.evdate||'';
-    const m=d.match(/^-?(\d{1,6})/);
-    return m?(+m[1])*(d.startsWith('-')?-1:1):null;
+    const raw=e.evdateYear||(e.evdate?(e.evdate.replace(/^-/,'').split('-')[0]):'')
+      ||(e.computedSortNum!=null?String(Math.round(e.computedSortNum/10000)):'');
+    if(!raw)return null;const m=raw.match(/(-?\d+)/);return m?+m[1]:null;
   };
   const _toJulian=e=>{
     // Returns a real day-count for entries with year+month+day; null otherwise.
@@ -9116,12 +9184,23 @@ function reorderTimelineDragDrop(draggedId,targetId){
 
 // ── Timeline sort helpers (global) ──────────────────────────────// Convert an evdate string to a sortable number. Returns null for undated.
 function evdateToNum(evdate, evdateMonth, evdateDay){
-  const d=evdate||'';
+  const d=(evdate||'').trim();
   if(!d)return null;
-  const m=d.match(/^-?(\d{1,6})/);
+  // Direct year at start (handles YYYY-MM-DD and YYYY)
+  const m=d.match(/^-?(\d{4,6})/);
   if(m)return Number(m[1])*10000
     +(evdateMonth?Number(evdateMonth)*100:0)
     +(evdateDay?Number(evdateDay):0);
+  // #278 — fuzzy date patterns
+  // "c.1850" or "circa 1850"
+  const circa=d.match(/\bc(?:irca)?\.?\s*(\d{3,6})\b/i);
+  if(circa)return Number(circa[1])*10000;
+  // "1920s" → 1920
+  const decade=d.match(/\b(\d{3,5})s\b/i);
+  if(decade)return Number(decade[1])*10000;
+  // "Spring 1942" / "Early 1800s" / "Late 1900" — extract 4-digit year
+  const embedded=d.match(/\b(\d{4,6})\b/);
+  if(embedded)return Number(embedded[1])*10000;
   return null; // narrative label — use string compare elsewhere
 }
 
@@ -9218,9 +9297,13 @@ function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
 // ═══════════════════════════════════════════════════════════════
 // #218/#303 — Timeline sort helper functions
 function evdateToNum(evdate, evdateMonth, evdateDay){
-  const d=evdate||'';if(!d)return null;
-  const m=d.match(/^-?(\d{1,6})/);
+  const d=(evdate||'').trim();if(!d)return null;
+  const m=d.match(/^-?(\d{4,6})/);
   if(m){return Number(m[1])*10000+(evdateMonth?Number(evdateMonth):0)*100+(evdateDay?Number(evdateDay):0);}
+  // #278 fuzzy: c.1850, 1920s, Spring 1942
+  const circa=d.match(/\bc(?:irca)?\.?\s*(\d{3,6})\b/i);if(circa)return Number(circa[1])*10000;
+  const decade=d.match(/\b(\d{3,5})s\b/i);if(decade)return Number(decade[1])*10000;
+  const embedded=d.match(/\b(\d{4,6})\b/);if(embedded)return Number(embedded[1])*10000;
   return null;
 }
 function computeOffsetSortNum(anchorEvdate,anchorMonth,anchorDay,dir,num,unit){
@@ -9456,7 +9539,11 @@ function renderMap(){
   filteredLocNames=ordered;
   if(!filteredLocNames.length&&mapQ){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match "'+mapQ+'"</div>';return;}
   if(!filteredLocNames.length){list.innerHTML=locDraftHTML+chipsHTML+'<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px;">No locations match the active filters.</div>';return;}
-  list.innerHTML=locDraftHTML+headerHTML+chipsHTML+filteredLocNames.map(loc=>{
+  // #381 — group by country → city with collapsible section headers
+  const _locCountry=(name)=>{const d=allLocData.find(x=>x._name===name)||{};return d.country||d._eCountry||'';};
+  const _locCity=(name)=>{const d=allLocData.find(x=>x._name===name)||{};return d.city||d._eCity||'';};
+  const anyCountry=filteredLocNames.some(n=>_locCountry(n));
+  const _renderCard=(loc)=>{
     const locData=getLocations().find(l=>l.name===loc)||{};
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
@@ -9505,7 +9592,32 @@ function renderMap(){
       </div>
       ${charsMentioned.length?`<div class="inv-row" style="margin-top:5px;">${charsMentioned.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="event.stopPropagation();openCharDetail('${esc(c)}',false)">${c}</span>`;}).join('')}</div>`:''}
     </div>`;
-  }).join('');
+  
+  };
+  let listHTML='';
+  if(anyCountry){
+    const byCountry={};
+    filteredLocNames.forEach(n=>{const co=_locCountry(n)||'_none';(byCountry[co]=byCountry[co]||[]).push(n);});
+    const sortedCountries=Object.keys(byCountry).sort((a,b)=>(a==='_none'?1:b==='_none'?-1:a.localeCompare(b)));
+    sortedCountries.forEach(country=>{
+      const locs=byCountry[country];
+      const byCity={};
+      locs.forEach(n=>{const ci=_locCity(n)||'';(byCity[ci]=byCity[ci]||[]).push(n);});
+      const cid='lch-'+country.replace(/[^a-z0-9]/gi,'_');
+      const cityParts=Object.keys(byCity).sort((a,b)=>a.localeCompare(b)).map(city=>{
+        const clocs=byCity[city];
+        const cardsHTML=clocs.map(l=>_renderCard(l)).join('');
+        if(!city)return cardsHTML;
+        const ccid=cid+'-'+city.replace(/[^a-z0-9]/gi,'_');
+        return `<div style="margin-bottom:4px;"><div onclick="toggleSec('${ccid}')" style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><span style="font-size:11px;font-weight:600;color:var(--t2);">🏙 ${city}</span><span style="flex:1;height:0.5px;background:var(--cb);"></span><span id="${ccid}-tog" style="font-size:10px;color:var(--t3);">▾</span></div><div id="${ccid}" style="padding-left:8px;">${cardsHTML}</div></div>`;
+      }).join('');
+      const label=country==='_none'?'📍 Other':'🌍 '+country;
+      listHTML+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${cid}')" style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">${label}</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${locs.length}</span><span id="${cid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${cid}" style="padding:4px 0 0;">${cityParts}</div></div>`;
+    });
+  } else {
+    listHTML=filteredLocNames.map(l=>_renderCard(l)).join('');
+  }
+  list.innerHTML=locDraftHTML+headerHTML+chipsHTML+listHTML;
 }
 function openGallery(){renderGallery('all');openSheet('gallery-overlay');}
 function setGalFilter(f){
@@ -9780,6 +9892,111 @@ function renderChapDetail(num){
   if(!chapEntries.length){html+=`<div class="empty"><div class="empty-text">No entries for Ch.${num} yet</div></div>`;}
   body.innerHTML=html;
 }
+function renderChaps(){
+  const el=document.getElementById('chaps-list');if(!el)return;
+  if(!currentId){el.innerHTML='<div class="empty"><div class="empty-text">Open a book first</div></div>';return;}
+  const chaps=_getChapList();
+  if(!chaps.length){el.innerHTML='<div class="empty"><div class="empty-icon">📑</div><div class="empty-text">No chapters yet — add Chapter entries or set up chapters in book settings.</div></div>';return;}
+
+  const TYPE_ADD=[
+    {label:'+ Quote',type:'Quote'},{label:'+ Character',type:'Character'},{label:'+ Dialogue',type:'Dialogue'},
+    {label:'+ Event',type:'Event'},{label:'+ Theme',type:'Theme'},{label:'+ Characteristic',type:'Characteristic'},
+    {label:'+ Timeline',type:'Timeline'},{label:'+ Location',type:'Location'},{label:'+ Vocab',type:'Word / Vocabulary'},
+    {label:'+ Question',type:'Question'},{label:'+ Reference',type:'Reference'},
+  ];
+
+  el.innerHTML=chaps.map(c=>{
+    const num=c.num;
+    const sid='ct-'+num;
+    const all=entries();
+    const chapEntries=all.filter(e=>String(e.chapNum||'').trim()===String(num));
+    const chapSetup=(book().chapters||[]).find(ch=>+ch.ch===num);
+    const title=chapSetup?.title||chapEntries.find(e=>e.type==='Chapter')?.content||'';
+    const pr=chapSetup?.start?'pp.'+chapSetup.start+(chapSetup.end&&chapSetup.end!==chapSetup.start?'–'+chapSetup.end:''):'';
+    const todos=(chapSetup?.todos||[]);
+    const openTodos=todos.filter(t=>!t.done);
+    const openQs=chapEntries.filter(e=>e.type==='Question'&&!e.answered);
+
+    // Group entries by type
+    const ORDER=['Character','Person','Suspect','Relationship','Quote','Line/stanza','Narrator quote','Dialogue','Event','Timeline','Theme','Location','Characteristic','Word / Vocabulary','Question','Reference','Chapter'];
+    const tg={};
+    chapEntries.forEach(e=>{if(!tg[e.type])tg[e.type]=[];tg[e.type].push(e);});
+    const types=[...ORDER.filter(t=>tg[t]),...Object.keys(tg).filter(t=>!ORDER.includes(t))];
+
+    const typeSections=types.map(type=>{
+      const arr=tg[type].slice().sort((a,b)=>(+a.pageNum||0)-(+b.pageNum||0));
+      const tsid=`ct-${num}-${type.replace(/[^a-z0-9]/gi,'_')}`;
+      const addBtn=TYPE_ADD.find(x=>x.type===type);
+      return `<div class="csec" style="margin-left:4px;">
+        <div class="csec-header" onclick="toggleSec('${tsid}')">
+          <div class="csec-label" style="flex:1;font-size:12px;">${type} (${arr.length})</div>
+          ${addBtn?`<button class="btn btn-sm" onclick="event.stopPropagation();_chapAddEntry('${type}',${num})" style="font-size:10px;padding:2px 7px;margin-right:6px;">${addBtn.label}</button>`:''}
+          <span class="csec-toggle" id="${tsid}-tog">▾</span>
+        </div>
+        <div id="${tsid}" style="padding:0 2px;">${arr.map(e=>ecHTML(e,false,true)).join('')}</div>
+      </div>`;
+    }).join('');
+
+    const todoSection=(openTodos.length||openQs.length)?`
+      <div class="csec" style="margin-left:4px;">
+        <div class="csec-header" onclick="toggleSec('${sid}-todos')">
+          <div class="csec-label" style="flex:1;font-size:12px;color:var(--accent);">✅ To-Do (${openTodos.length+openQs.length})</div>
+          <span class="csec-toggle" id="${sid}-todos-tog">▾</span>
+        </div>
+        <div id="${sid}-todos">
+          ${openTodos.map((t,i)=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--card);border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;">
+            <input type="checkbox" ${t.done?'checked':''} onchange="chapTodoToggle(${num},${i},this.checked);renderChaps();" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:2px;"/>
+            <span style="font-size:13px;">${t.text||''}</span>
+          </div>`).join('')}
+          ${openQs.map(e=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:var(--card);border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;">
+            <span style="font-size:11px;color:var(--t3);">❓</span>
+            <span style="flex:1;font-size:13px;">${e.content||''}</span>
+            <button class="btn btn-sm" onclick="editEntry(${e.id})" style="font-size:10px;">Edit</button>
+          </div>`).join('')}
+          <button class="btn btn-sm" onclick="_chapAddTodoInline(${num})" style="width:100%;font-size:12px;margin-top:4px;">+ Add to-do</button>
+        </div>
+      </div>`:
+      `<div style="margin:0 4px 8px;"><button class="btn btn-sm" onclick="_chapAddTodoInline(${num})" style="width:100%;font-size:12px;">+ Add to-do</button></div>`;
+
+    return `<div style="background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);margin-bottom:10px;">
+      <div onclick="toggleSec('${sid}')" style="display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;">Ch.${num}${title?' <span style=\'font-weight:400;color:var(--t2);font-size:12px;\'>— '+title+'</span>':''}</div>
+          <div style="font-size:11px;color:var(--t3);">${[c.count+' entr'+(c.count===1?'y':'ies'),pr,openTodos.length+openQs.length?'⚠️ '+(openTodos.length+openQs.length)+' open to-do':''].filter(Boolean).join(' · ')}</div>
+        </div>
+        <span class="csec-toggle" id="${sid}-tog">▸</span>
+      </div>
+      <div id="${sid}" style="display:none;padding:0 10px 10px;">
+        ${todoSection}
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin:0 4px 8px;">
+          ${TYPE_ADD.map(x=>`<button class="btn btn-sm" onclick="_chapAddEntry('${x.type}',${num})" style="font-size:10px;padding:2px 7px;">${x.label}</button>`).join('')}
+        </div>
+        ${typeSections||'<div style="font-size:12px;color:var(--t3);padding:6px 4px;">No entries yet for this chapter.</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+function _chapAddEntry(type,chapNum){
+  buildTypeSelect();clearAEForm();
+  document.getElementById('ae-edit-id').value='';
+  document.getElementById('ae-type').value=type;onTypeChange();
+  const chEl=document.getElementById('ae-ch');if(chEl)chEl.value=String(chapNum);
+  document.getElementById('ae-sheet-title').textContent='Add '+type+' (Ch.'+chapNum+')';
+  openSheet('ae-overlay');
+}
+function _chapAddTodoInline(chapNum){
+  const text=(prompt('New to-do for Chapter '+chapNum+':')||'').trim();if(!text)return;
+  const b=book();if(!b)return;
+  if(!b.chapters)b.chapters=[];
+  let chap=b.chapters.find(c=>+c.ch===chapNum);
+  if(!chap){chap={ch:chapNum,title:'',start:0,end:0,todos:[]};b.chapters.push(chap);}
+  if(!chap.todos)chap.todos=[];
+  chap.todos.push({text,done:false,created:Date.now()});
+  // Also create a Question entry tagged to this chapter for to-do page sync
+  const qEntry={id:Date.now(),type:'Question',content:text,chapNum:String(chapNum),answered:false,created:Date.now()};
+  book().entries.unshift(qEntry);
+  save();renderChaps();if(activeTab==='todo')renderTodo();
+}
 function chapTodoToggle(chapNum,idx,done){
   const b=book();if(!b)return;
   const chap=(b.chapters||[]).find(c=>+c.ch===chapNum);if(!chap)return;
@@ -10041,6 +10258,19 @@ function renderTodo(){
     todos.push({cat:'Drafts',text:`Complete draft: "${(e.content||e.cn||'').slice(0,40)}"`,verb:'Complete',color:'#993C1D',action:`editEntry(${e.id})`,id:e.id,noIgnore:true});
   });
 
+  // #341 — Duplicate scanner: find entries with same type + near-identical content
+  const _normForDup=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,60);
+  const dupMap={};
+  all.filter(e=>!e.isDraft&&!['Relationship','Reference'].includes(e.type)).forEach(e=>{
+    const key=e.type+'|'+_normForDup(e.cn||e.content);
+    if(!dupMap[key])dupMap[key]=[];
+    dupMap[key].push(e);
+  });
+  Object.values(dupMap).filter(g=>g.length>1).forEach(g=>{
+    const names=g.map(e=>`"${(e.cn||e.content||'').slice(0,30)}"`).join(' + ');
+    todos.push({cat:'Duplicates',text:`Possible duplicate ${g[0].type}: ${names}`,verb:'Review',color:'#9B2226',action:`editEntry(${g[0].id})`,id:g[0].id});
+  });
+
   // Filter out any items that the user has already ignored for this book
   const ignored=getIgnoredTodos();
   const ignoredSet=new Set(ignored.map(i=>i.cat+'|'+i.text));
@@ -10070,7 +10300,7 @@ function renderTodo(){
 
   const cats={};
   displayTodos.forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
-  const catOrder=['Drafts','Characters','Missing pages','Vocabulary','Questions','References'];
+  const catOrder=['Drafts','Duplicates','Characters','Missing pages','Vocabulary','Questions','References'];
   const orderedCats=[...catOrder.filter(c=>cats[c]),...Object.keys(cats).filter(c=>!catOrder.includes(c))];
 
   list.innerHTML=orderedCats.map(cat=>`
