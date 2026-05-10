@@ -3619,17 +3619,20 @@ function libListsRenameRel(oldName){
     });
   });
   save();renderLibLists();
+  // #529-7: Force immediate re-render of ALL affected views
   if(typeof renderAll==="function")renderAll();
-  // #529-6 — after rename, force-refresh char profile if ANY char is being viewed,
-  // not just the one that was open when the rename happened.
-  if(typeof renderCharDetail==='function'){
-    if(typeof currentCharName!=='undefined'&&currentCharName){
-      try{renderCharDetail(currentCharName);}catch(_){}
-    }
-  }
-  // Also refresh the chars tab list (shows rel badges) and log (shows rel cards)
-  if(typeof renderChars==='function'){try{renderChars();}catch(_){}}
+  // Force the entries list specifically (in case renderAll is batched or debounced)
   if(typeof renderEntries==='function'){try{renderEntries();}catch(_){}}
+  if(typeof renderChars==='function'){try{renderChars();}catch(_){}}
+  if(typeof renderCharDetail==='function'&&typeof currentCharName!=='undefined'&&currentCharName){
+    try{renderCharDetail(currentCharName);}catch(_){}
+  }
+  // Small toast to confirm the rename happened
+  const _toast=document.createElement('div');
+  _toast.textContent=`✅ Renamed "${oldName}" → "${newName}"`;
+  _toast.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;z-index:9999;pointer-events:none;box-shadow:0 3px 12px rgba(0,0,0,0.25);';
+  document.body.appendChild(_toast);
+  setTimeout(()=>_toast.remove(),2200);
 }
 function libListsAddPair(){
   const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
@@ -5849,6 +5852,39 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const sk=document.getElementById('ae-sortkey');if(sk&&sk.value!=='')entry.sortKey=+sk.value;
     entry.tlSq=document.getElementById('ae-tl-sq').value.trim();entry.tlSqPg=document.getElementById('ae-tl-sq-pg')?.value.trim()||'';entry.tlSpeaker=cddGet('ae-tl-speaker')||'';
     const _tlQIds=new Set(getTlAttachedQuoteIds());entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&Array.isArray(q.attachedEventIds)&&q.attachedEventIds.includes(entry.id)).forEach(q=>_tlQIds.add(Number(q.id)));const _prevTlQ=new Set((entry.attachedQuoteIds||[]).map(Number));entry.attachedQuoteIds=[..._tlQIds];[..._tlQIds].filter(id=>!_prevTlQ.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q){if(!Array.isArray(q.attachedEventIds))q.attachedEventIds=[];if(!q.attachedEventIds.includes(entry.id))q.attachedEventIds.push(entry.id);}});[..._prevTlQ].filter(id=>!_tlQIds.has(id)).forEach(qid=>{const q=entries().find(x=>x.id===qid);if(q&&Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(eid=>eid!==entry.id);});
+    // #524 final guard — if this is an offset entry, re-derive evdate from scratch
+    // here so nothing downstream can clobber it. This is the last write to evdate.
+    if(offsetActive && oe){
+      const _ag=findAnchorEntry(oe);
+      if(_ag){
+        const _aY=_ag.evdateYear||(_ag.evdate||'').split('-')[0]||'';
+        const _aM=_ag.evdateMonth||'';
+        const _aD=_ag.evdateDay||'';
+        const _aYN=parseInt(_aY)||null;
+        if(_aYN!==null){
+          const _UNIT={days:1,weeks:7,months:30.44,years:365.25,decades:3652.5,centuries:36525,hours:1/24,minutes:1/1440};
+          const _sign=od==='-'?-1:1;
+          let _days=_sign*(parseFloat(on)||0)*(_UNIT[(ou||'').toLowerCase()]||1);
+          const _extras=getOffsetExtras();
+          _extras.filter(Boolean).forEach(ex=>{_days+=_sign*(parseFloat(ex.num)||0)*(_UNIT[(ex.unit||'').toLowerCase()]||1);});
+          const _aM2=_aM?+_aM:1;const _aD2=_aD?+_aD:1;
+          const _bd=new Date(_aYN,_aM2-1,_aD2);_bd.setDate(_bd.getDate()+Math.round(_days));
+          const _nY=String(_bd.getFullYear());
+          const _subY=['days','weeks','months','hours','minutes'];
+          const _allU=[ou,...(_extras.filter(Boolean).map(ex=>(ex.unit||'').toLowerCase()))];
+          const _isSub=_allU.some(u=>_subY.includes(u));
+          const _nM=(_aM||_isSub)?String(_bd.getMonth()+1).padStart(2,'0'):'';
+          const _nD=((_aD||_isSub)&&_nM)?String(_bd.getDate()):'';
+          entry.evdateYear=_nY;
+          entry.evdateMonth=_nM;
+          entry.evdateDay=_nD;
+          let _ev=_nY;if(_nM){_ev+='-'+_nM;if(_nD)_ev+='-'+_nD.padStart(2,'0');}
+          entry.evdate=_ev;
+          // Update hidden field so any subsequent reader also gets the right value
+          const _ef=document.getElementById('ae-evdate');if(_ef)_ef.value=_ev;
+        }
+      }
+    }
   }
   if(isEvent){
     entry.eventSig=document.getElementById('ae-event-sig').value;
@@ -8466,13 +8502,14 @@ function setupWebDrag(){
         svg.style.width=(st.viewW*s)+'px';
         svg.setAttribute('width',st.viewW*s);
         svg.setAttribute('height',st.viewH*s);
-        // #537 — Re-position scroll so the original focal point stays under the
-        // midpoint of the user's two fingers (focal-point pinch zoom). Without
-        // this, zooming "moves away" from where the user is pinching.
-        const newFocalX=pinchStart.focalX*ratio;
-        const newFocalY=pinchStart.focalY*ratio;
-        wrap.scrollLeft=newFocalX-pinchStart.viewportX;
-        wrap.scrollTop=newFocalY-pinchStart.viewportY;
+        // #537 — Keep world-space focal point under the CURRENT finger midpoint.
+        // Use current midpoint viewport position (not the stored start position)
+        // so translation + pinch work together smoothly.
+        const wr=wrap.getBoundingClientRect();
+        const curMidX=(e.touches[0].clientX+e.touches[1].clientX)/2-wr.left;
+        const curMidY=(e.touches[0].clientY+e.touches[1].clientY)/2-wr.top;
+        wrap.scrollLeft=pinchStart.focalX*ratio-curMidX;
+        wrap.scrollTop=pinchStart.focalY*ratio-curMidY;
       }
       e.preventDefault();
     } else if(e.touches.length===1&&(dragNode||panStart)){
@@ -8499,6 +8536,7 @@ function webZoom(dir){
   if(dir===0){
     // Reset: clear saved positions for this book+filter AND reset zoom
     window._webZoom.scale=1;
+    window._webCenteredOn=null; // force re-center on main char
     try{
       const k='webPos:'+currentId+':'+activeWebFilter;
       localStorage.removeItem(k);
@@ -9448,7 +9486,9 @@ function computeOffsetSortNum(anchorEvdate,anchorMonth,anchorDay,dir,num,unit){
   return base+(sign*n*(unitMap[(unit||'').toLowerCase()]||1))*10000;
 }
 function findAnchorEntry(label){
-  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).find(e=>(e.content||'')===(label||''));
+  const lc=(label||'').trim().toLowerCase();
+  if(!lc)return undefined;
+  return entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).find(e=>(e.content||'').trim().toLowerCase()===lc);
 }
 // #524 — When an anchor event's year/month/day changes, auto-update all dependent events.
 // Propagates recursively so chains (A→B→C) fully resolve.
@@ -10369,9 +10409,9 @@ function renderRefs(){
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${r.storyGraphAdded?'✅ Added to StoryGraph'+(r.storyGraphAddedDate?' · '+r.storyGraphAddedDate:''):(doneLabel[r.refType]||'Done')}</div>${r.storyGraphSourceBook?`<div style="font-size:10px;color:var(--t3);">📖 Discovered via: <em>${r.storyGraphSourceBook}</em></div>`:''}`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
         ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(this.dataset.title))" data-title="${esc(r.content)}" style="font-size:10px;touch-action:manipulation;">📚 StoryGraph</button>
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();markAddedToStoryGraph(+this.dataset.rid)" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;">✅ Mark added</button>
-          <button class="btn btn-sm" ontouchstart="void(0)" onclick="event.stopPropagation();convertRefToBook(this.dataset.bid,+this.dataset.rid)" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;">📖 Want to Read</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(this.dataset.title))" data-title="${esc(r.content)}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">📚 StoryGraph</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();markAddedToStoryGraph(+this.dataset.rid)" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">✅ Mark added</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();(function(bid,rid){var bk=library[bid];if(!bk){alert('Could not find book: '+bid);return;}var ref=bk.entries.find(function(e){return e.id===rid;});if(!ref){alert('Could not find ref: '+rid);return;}convertRefToBook(bid,rid);})(this.dataset.bid,+this.dataset.rid);" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">📖 Want to Read</button>
         </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
@@ -10382,6 +10422,19 @@ function renderRefs(){
   if(undone.length)html+=`<div style="font-size:10px;font-weight:700;color:#BA7517;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:7px;">To explore (${undone.length}) 🟡</div>`+undone.map(rc).join('');
   if(done.length)html+=`<div style="font-size:10px;font-weight:700;color:#1D9E75;letter-spacing:0.06em;text-transform:uppercase;margin:12px 0 7px;">Done (${done.length}) 🟢</div>`+done.map(rc).join('');
   list.innerHTML=html;
+  // #550 deep fix — delegated listener so iOS taps that bypass inline onclick still fire.
+  if(!list._wtrBound){
+    list._wtrBound=true;
+    const handleWtr=(e)=>{
+      const btn=e.target.closest('[data-bid][data-rid]');
+      if(!btn)return;
+      e.stopPropagation();
+      if(e.type==='touchend')e.preventDefault();
+      convertRefToBook(btn.dataset.bid,+btn.dataset.rid);
+    };
+    list.addEventListener('click',handleWtr,true);
+    list.addEventListener('touchend',handleWtr,{passive:false,capture:true});
+  }
 }
 function setRefFilter(t){activeRefFilter=t;renderRefs();}
 function toggleRef(id){const e=entries().find(x=>x.id===id);if(!e)return;e.refDone=!e.refDone;save();renderRefs();}
