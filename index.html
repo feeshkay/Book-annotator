@@ -327,7 +327,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
         <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
       </div>
-      <div class="web-wrap" id="web-wrap" style="position:relative;"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 60%,rgba(0,0,0,0.55) 70%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div></div>
+      <div class="web-wrap" id="web-wrap" style="position:relative;"><svg id="web-svg" style="display:block;margin:0 auto;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
 
@@ -1308,20 +1308,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
-  fiction:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','chars','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  memoir:   {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
-  mystery:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
-  scifi:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
-  history:  {tabs:['log','quotes','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Location','Place','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  selfhelp: {tabs:['log','quotes','timeline','words','questions','refs','chaps','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Location','Objection','Principle','Question','Quote','Reference','Timeline','Translation','Word / Vocabulary']},
-  poetry:   {tabs:['log','quotes','words','questions','refs','chaps','todo','stats'],types:['Emotion','Image','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
-  essays:   {tabs:['log','quotes','timeline','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  anthology:{tabs:['log','quotes','chars','timeline','words','questions','refs','chaps','todo','stats'],types:['Argument','Chapter','Character','Concept','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  graphic:  {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  shortfiction:{tabs:['log','quotes','chars','timeline','words','questions','refs','chaps','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Location','Quote','Reference','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
-  play:     {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  other:    {tabs:['log','quotes','chars','web','timeline','map','words','questions','refs','chaps','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chaps','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
+  mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
+  scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
+  history:  {tabs:['log','quotes','chaps','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Location','Place','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
+  selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Location','Objection','Principle','Question','Quote','Reference','Timeline','Translation','Word / Vocabulary']},
+  poetry:   {tabs:['log','quotes','chaps','words','questions','refs','todo','stats'],types:['Emotion','Image','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
+  essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
+  anthology:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
+  graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  shortfiction:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Location','Quote','Reference','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
+  play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
 };
 const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',other:'Other'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
@@ -3589,7 +3589,21 @@ function libListsRenameRel(oldName){
   }
   Object.values(library).forEach(b=>{
     if(!b||!b.entries)return;
-    b.entries.forEach(e=>{if(e.relType===oldName){e.relType=newName;if(e.content===oldName)e.content=newName;}});
+    b.entries.forEach(e=>{
+      if(e.relType===oldName){
+        e.relType=newName;
+        // Update content if it stored just the name
+        if(e.content===oldName)e.content=newName;
+        // Update content if it stored the "A — type — B" format (line 4205 shape)
+        else if(e.type==='Relationship'&&e.relA&&e.relB){
+          // Rebuild from canonical pieces. Tolerate em-dash or hyphen separators.
+          const expectedOld=`${e.relA} — ${oldName} — ${e.relB}`;
+          if(e.content===expectedOld||e.content===`${e.relA} - ${oldName} - ${e.relB}`){
+            e.content=`${e.relA} — ${newName} — ${e.relB}`;
+          }
+        }
+      }
+    });
   });
   save();renderLibLists();
   if(typeof renderAll==="function")renderAll();
@@ -8175,6 +8189,23 @@ function renderWeb(){
   // #298 — Stash render state on svg for drag/zoom to access
   svg._webState={chars:chars,rels:dedupedRels,NR:NR,posKey:posKey,viewW:W,viewH:H};
   setupWebDrag();
+  // #537 — On first render of this book/filter, scroll to the main character so
+  // the user sees them centered. Skipped on subsequent re-renders to respect any
+  // user pan/scroll. Tracked per-key so re-entry to a different filter re-centers.
+  if(!window._webCenteredOn||window._webCenteredOn!==posKey){
+    window._webCenteredOn=posKey;
+    const mainCh=chars.find(c=>c.role==='main')||chars[0];
+    if(mainCh){
+      setTimeout(()=>{
+        const wr=document.getElementById('web-wrap');
+        if(!wr)return;
+        const sR=svg.getBoundingClientRect();const pxPerUnit=(sR.width||svg.clientWidth||1)/W;
+        const tL=Math.max(0,mainCh.x*pxPerUnit-wr.clientWidth/2);
+        const tT=Math.max(0,mainCh.y*pxPerUnit-wr.clientHeight/2);
+        wr.scrollTo({left:tL,top:tT,behavior:'smooth'});
+      },50);
+    }
+  }
 }
 function setupWebDrag(){
   const wrap=document.getElementById('web-wrap');
@@ -8381,7 +8412,23 @@ function setupWebDrag(){
       dragNode=null;panStart=null;
       const dx=e.touches[0].clientX-e.touches[1].clientX;
       const dy=e.touches[0].clientY-e.touches[1].clientY;
-      pinchStart={dist:Math.sqrt(dx*dx+dy*dy),scale:window._webZoom.scale||1};
+      // #537 — record focal point (midpoint between fingers) in WRAP coords for
+      // focal-zoom: we keep that point under the user's fingers as we rescale.
+      const wr=wrap.getBoundingClientRect();
+      const fxClient=(e.touches[0].clientX+e.touches[1].clientX)/2;
+      const fyClient=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      // World-space focal point (in the wrap content, scroll-included).
+      const focalX=fxClient-wr.left+wrap.scrollLeft;
+      const focalY=fyClient-wr.top+wrap.scrollTop;
+      pinchStart={
+        dist:Math.sqrt(dx*dx+dy*dy),
+        scale:window._webZoom.scale||1,
+        focalX:focalX,
+        focalY:focalY,
+        // local fxy = where in the visible viewport the midpoint sat
+        viewportX:fxClient-wr.left,
+        viewportY:fyClient-wr.top,
+      };
     }
   };
   wrap.ontouchmove=(e)=>{
@@ -8390,8 +8437,21 @@ function setupWebDrag(){
       const dy=e.touches[0].clientY-e.touches[1].clientY;
       const d=Math.sqrt(dx*dx+dy*dy);
       const s=Math.max(0.4,Math.min(3,pinchStart.scale*(d/pinchStart.dist)));
+      const ratio=s/pinchStart.scale;
       window._webZoom.scale=s;
-      const st=svg._webState;if(st){svg.style.width=(st.viewW*s)+'px';svg.setAttribute('width',st.viewW*s);svg.setAttribute('height',st.viewH*s);}
+      const st=svg._webState;
+      if(st){
+        svg.style.width=(st.viewW*s)+'px';
+        svg.setAttribute('width',st.viewW*s);
+        svg.setAttribute('height',st.viewH*s);
+        // #537 — Re-position scroll so the original focal point stays under the
+        // midpoint of the user's two fingers (focal-point pinch zoom). Without
+        // this, zooming "moves away" from where the user is pinching.
+        const newFocalX=pinchStart.focalX*ratio;
+        const newFocalY=pinchStart.focalY*ratio;
+        wrap.scrollLeft=newFocalX-pinchStart.viewportX;
+        wrap.scrollTop=newFocalY-pinchStart.viewportY;
+      }
       e.preventDefault();
     } else if(e.touches.length===1&&(dragNode||panStart)){
       const t=e.touches[0];onMoveStart(t.clientX,t.clientY);
@@ -8467,6 +8527,7 @@ function webSpotlightOn(name){
   const wrap=document.getElementById('web-wrap');
   const svg=document.getElementById('web-svg');const st=svg?._webState;
   const ov=document.getElementById('web-spotlight-overlay');
+  const ring=document.getElementById('web-spotlight-ring');
   if(!wrap||!svg||!st||!ov)return;
   const node=st.chars.find(c=>c.name===name);if(!node)return;
   // pxPerUnit: ratio of rendered SVG pixel width to SVG viewBox width
@@ -8485,14 +8546,25 @@ function webSpotlightOn(name){
     const svgRect2=svg.getBoundingClientRect();
     const spotX=svgRect2.left - wrapRect.left + nodePixX;
     const spotY=svgRect2.top - wrapRect.top + nodePixY;
+    const radius=st.NR*2.2*pxPerUnit;
     ov.style.setProperty('--spot-x',spotX+'px');
     ov.style.setProperty('--spot-y',spotY+'px');
-    ov.style.setProperty('--spot-r',(st.NR*2.2*pxPerUnit)+'px');
+    ov.style.setProperty('--spot-r',radius+'px');
     ov.style.display='';
+    // #537 — yellow glowing ring around the spotlighted node, on top of dimmed overlay
+    if(ring){
+      const ringR=st.NR*pxPerUnit+6;
+      ring.style.left=(spotX-ringR)+'px';
+      ring.style.top=(spotY-ringR)+'px';
+      ring.style.width=(ringR*2)+'px';
+      ring.style.height=(ringR*2)+'px';
+      ring.style.display='';
+    }
   },380);
 }
 function webSpotlightClear(){
   const ov=document.getElementById('web-spotlight-overlay');if(ov)ov.style.display='none';
+  const ring=document.getElementById('web-spotlight-ring');if(ring)ring.style.display='none';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -8532,6 +8604,21 @@ function renderTimeline(){
       let day=e.evdateDay?Number(e.evdateDay):0;
       if(!mon&&d.includes('-')){const parts=d.split('-');if(parts[1])mon=Number(parts[1]);if(parts[2])day=Number(parts[2]);}
       return Number(m[1])*10000+mon*100+day;
+    }
+    // #278 — fuzzy date patterns: "c.1850" / "C1745", "1920s", "Spring 1942", "Late 1800s"
+    const circa=d.match(/\bc(?:irca)?\.?\s*(\d{3,6})\b/i);
+    if(circa){
+      const mon=e.evdateMonth?Number(e.evdateMonth):0;
+      const day=e.evdateDay?Number(e.evdateDay):0;
+      return Number(circa[1])*10000+mon*100+day;
+    }
+    const decade=d.match(/\b(\d{3,5})s\b/i);
+    if(decade)return Number(decade[1])*10000;
+    const embedded=d.match(/\b(\d{4,6})\b/);
+    if(embedded){
+      const mon=e.evdateMonth?Number(e.evdateMonth):0;
+      const day=e.evdateDay?Number(e.evdateDay):0;
+      return Number(embedded[1])*10000+mon*100+day;
     }
     return d; // narrative label — string compare
   }
@@ -8696,6 +8783,8 @@ function renderTimeline(){
   };
   // #570 — compute cumulative span from first to last dated entry
   let cumHTML='';
+  // #570 follow-up — banner is closable; honor user's preference, default open
+  const _spanHidden=(book()?._tlSpanHidden===true);
   if(dated.length>=2){
     const first=dated[0],last=dated[dated.length-1];
     const jf=_toJulian(first),jl=_toJulian(last);
@@ -8712,10 +8801,17 @@ function renderTimeline(){
       if(diff<1000)spanStr=`~${diff} year${diff===1?'':'s'}`;
     }
     if(spanStr){
-      cumHTML=`<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
-        <span style="font-size:14px;">⏳</span>
-        <span><strong>Story spans ${spanStr}</strong><span style="color:var(--t3);font-weight:400;"> — from ${(first.evdate||'').replace(/-/g,'/')||'first entry'} to ${(last.evdate||'').replace(/-/g,'/')||'last entry'}</span></span>
-      </div>`;
+      if(_spanHidden){
+        // Re-open chip — small ? button placed next to the (forthcoming) "All" filter,
+        // so it sits at the start of the filter bar.
+        cumHTML=`<div style="margin-bottom:8px;"><button onclick="_tlSpanToggle(false)" title="Show story span" style="background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;font-weight:700;">?</button></div>`;
+      } else {
+        cumHTML=`<div style="background:var(--al);border:0.5px solid var(--am);border-radius:var(--r);padding:7px 12px;margin-bottom:8px;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;">⏳</span>
+          <span style="flex:1;"><strong>Story spans ${spanStr}</strong><span style="color:var(--t3);font-weight:400;"> — from ${(first.evdate||'').replace(/-/g,'/')||'first entry'} to ${(last.evdate||'').replace(/-/g,'/')||'last entry'}</span></span>
+          <button onclick="_tlSpanToggle(true)" title="Hide" style="background:transparent;border:0;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;">×</button>
+        </div>`;
+      }
     }
   }
   // #270 — render dated items, then undated bucket at bottom
@@ -8738,6 +8834,11 @@ function setTlLocFilter(loc){
   const bar=document.getElementById('tl-loc-filter');
   if(bar)bar.dataset.active=loc;
   renderTimeline();
+}
+// #570 — closable cumulative-span banner
+function _tlSpanToggle(hide){
+  const b=book();if(!b)return;
+  b._tlSpanHidden=!!hide;save();renderTimeline();
 }
 // #521 — Reading-time estimate widget for the Stats tab.
 // Speeds are derived from the user's own session log (filtered by mode):
@@ -9356,17 +9457,38 @@ function cascadeDependentDates(anchorEntry){
       // Compute total days from primary + any extras (#524 additive offsets)
       let days=sign*toDays(num,unit);
       (e.offsetExtras||[]).filter(Boolean).forEach(ex=>{ days+=sign*toDays(parseFloat(ex.num)||0,ex.unit||'days'); });
-      if(!aMonth){
-        // Year-only anchor — convert total days to years
+      // #524-fix — sub-year offset (days/weeks/months) deserves month/day precision
+      // even when the anchor only has a year. Treat missing month/day as Jan 1.
+      const subYearUnits=['day','days','week','weeks','month','months','hour','hours','minute','minutes'];
+      const allUnits=[unit, ...((e.offsetExtras||[]).filter(Boolean).map(ex=>(ex.unit||'').toLowerCase()))];
+      const isSubYear=allUnits.some(u=>subYearUnits.includes(u));
+      if(!aMonth && !isSubYear){
+        // Year-only anchor + year/decade/century offset — convert to years
         const yearShift=Math.round(days/365.25);
         const newYr=String(+aYear+yearShift);
-        if(e.evdateYear!==newYr){e.evdateYear=newYr;e.evdate=newYr;anyChange=true;changed=true;}
+        const newEv=newYr;
+        if(e.evdateYear!==newYr||e.evdate!==newEv){
+          e.evdateYear=newYr;e.evdate=newEv;
+          // Don't clobber stored evdateMonth/Day; but do clear since the result is year-only.
+          e.evdateMonth='';e.evdateDay='';
+          anyChange=true;changed=true;
+        }
         return;
       }
       const res=addDaysToDate(aYear,aMonth||1,aDay||1,days);
-      const newYr=res.year;const newMn=aMonth?res.month:'';const newDy=aDay?res.day:'';
-      if(e.evdateYear!==newYr||e.evdateMonth!==newMn||e.evdateDay!==newDy){
-        e.evdateYear=newYr;e.evdate=newYr;e.evdateMonth=newMn;e.evdateDay=newDy;
+      const newYr=res.year;
+      // If anchor had month, keep month/day from result.
+      // If anchor had no month BUT offset is sub-year, still preserve month/day so
+      // the result reads "1990-01-15" rather than "1990".
+      const keepMonth=aMonth||isSubYear;
+      const keepDay=aDay||isSubYear;
+      const newMn=keepMonth?res.month:'';
+      const newDy=keepDay?res.day:'';
+      // Rebuild evdate string to match.
+      let newEv=newYr;
+      if(newMn){newEv+='-'+String(newMn).padStart(2,'0');if(newDy)newEv+='-'+String(newDy).padStart(2,'0');}
+      if(e.evdateYear!==newYr||e.evdateMonth!==newMn||e.evdateDay!==newDy||e.evdate!==newEv){
+        e.evdateYear=newYr;e.evdate=newEv;e.evdateMonth=newMn;e.evdateDay=newDy;
         anyChange=true;changed=true;
       }
     });
@@ -9905,7 +10027,7 @@ function renderChaps(){
     {label:'+ Question',type:'Question'},{label:'+ Reference',type:'Reference'},
   ];
 
-  el.innerHTML=chaps.map(c=>{
+  el.innerHTML=chaps.map((c,ci)=>{
     const num=c.num;
     const sid='ct-'+num;
     const all=entries();
@@ -9964,9 +10086,10 @@ function renderChaps(){
           <div style="font-size:14px;font-weight:700;">Ch.${num}${title?' <span style=\'font-weight:400;color:var(--t2);font-size:12px;\'>— '+title+'</span>':''}</div>
           <div style="font-size:11px;color:var(--t3);">${[c.count+' entr'+(c.count===1?'y':'ies'),pr,openTodos.length+openQs.length?'⚠️ '+(openTodos.length+openQs.length)+' open to-do':''].filter(Boolean).join(' · ')}</div>
         </div>
-        <span class="csec-toggle" id="${sid}-tog">▸</span>
+        <button class="btn btn-sm" onclick="event.stopPropagation();_chapEditInfo(${num})" style="font-size:10px;padding:3px 8px;flex-shrink:0;">✏️ Edit</button>
+        <span class="csec-toggle" id="${sid}-tog">${ci===0?'▾':'▸'}</span>
       </div>
-      <div id="${sid}" style="display:none;padding:0 10px 10px;">
+      <div id="${sid}" style="display:${ci===0?'block':'none'};padding:0 10px 10px;">
         ${todoSection}
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin:0 4px 8px;">
           ${TYPE_ADD.map(x=>`<button class="btn btn-sm" onclick="_chapAddEntry('${x.type}',${num})" style="font-size:10px;padding:2px 7px;">${x.label}</button>`).join('')}
@@ -9975,6 +10098,21 @@ function renderChaps(){
       </div>
     </div>`;
   }).join('');
+}
+// #569 — inline chapter info edit (title + page range)
+function _chapEditInfo(num){
+  const b=book();if(!b)return;
+  if(!b.chapters)b.chapters=[];
+  let chap=b.chapters.find(c=>+c.ch===num);
+  if(!chap){chap={ch:num,title:'',start:0,end:0,todos:[]};b.chapters.push(chap);}
+  const newTitle=prompt('Chapter title:',chap.title||'');
+  if(newTitle===null)return; // cancelled
+  chap.title=newTitle.trim();
+  const newStart=prompt('Start page (number):',chap.start||'');
+  if(newStart!==null){const n=parseInt(newStart);chap.start=Number.isFinite(n)?n:0;}
+  const newEnd=prompt('End page (number):',chap.end||'');
+  if(newEnd!==null){const n=parseInt(newEnd);chap.end=Number.isFinite(n)?n:0;}
+  save();renderChaps();
 }
 function _chapAddEntry(type,chapNum){
   buildTypeSelect();clearAEForm();
@@ -9985,17 +10123,15 @@ function _chapAddEntry(type,chapNum){
   openSheet('ae-overlay');
 }
 function _chapAddTodoInline(chapNum){
-  const text=(prompt('New to-do for Chapter '+chapNum+':')||'').trim();if(!text)return;
-  const b=book();if(!b)return;
-  if(!b.chapters)b.chapters=[];
-  let chap=b.chapters.find(c=>+c.ch===chapNum);
-  if(!chap){chap={ch:chapNum,title:'',start:0,end:0,todos:[]};b.chapters.push(chap);}
-  if(!chap.todos)chap.todos=[];
-  chap.todos.push({text,done:false,created:Date.now()});
-  // Also create a Question entry tagged to this chapter for to-do page sync
-  const qEntry={id:Date.now(),type:'Question',content:text,chapNum:String(chapNum),answered:false,created:Date.now()};
-  book().entries.unshift(qEntry);
-  save();renderChaps();if(activeTab==='todo')renderTodo();
+  // #569 follow-up — open full Question entry form (the entry type used for to-dos)
+  // pre-filled with the chapter number, so user can fill in all fields a normal
+  // to-do entry needs.
+  buildTypeSelect();clearAEForm();
+  document.getElementById('ae-edit-id').value='';
+  document.getElementById('ae-type').value='Question';onTypeChange();
+  const chEl=document.getElementById('ae-ch');if(chEl)chEl.value=String(chapNum);
+  document.getElementById('ae-sheet-title').textContent='Add to-do (Ch.'+chapNum+')';
+  openSheet('ae-overlay');
 }
 function chapTodoToggle(chapNum,idx,done){
   const b=book();if(!b)return;
