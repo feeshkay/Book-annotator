@@ -3247,11 +3247,19 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   let books=Object.values(library).filter(b=>b.status===libTab).sort((a,b)=>b.created-a.created);
-  // For 'want' tab also pull book references
+  // For 'want' tab also pull book references not already in library
   let wantRefs=[];
   if(libTab==='want'){
+    // Build set of all library book titles (lowercased) so we don't show refs that are already books
+    const libTitles=new Set(Object.values(library).filter(b=>b&&b.title).map(b=>b.title.toLowerCase().trim()));
     Object.values(library).forEach(bk=>{
-      (bk.entries||[]).filter(e=>e.type==='Reference'&&e.refType==='book'&&!e.refDone).forEach(e=>wantRefs.push({title:e.content,author:e.refAuthor||'',fromBook:bk.title,refId:e.id,bookId:bk.id}));
+      (bk.entries||[]).filter(e=>
+        e.type==='Reference'&&
+        e.refType==='book'&&
+        !e.refDone&&
+        // Skip if the ref title already matches an existing library book
+        !libTitles.has((e.content||'').toLowerCase().trim())
+      ).forEach(e=>wantRefs.push({title:e.content,author:e.refAuthor||'',fromBook:bk.title,refId:e.id,bookId:bk.id}));
     });
   }
   if(!books.length&&!wantRefs.length){body.innerHTML='';empty.style.display='';return;}
@@ -3312,23 +3320,24 @@ function convertRefToBook(bookId,refId){
   library[id]={id,title:ref.content,author:ref.refAuthor||'',genre:'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),why,gr:ref.refUrl||'',origLang:'',transLang:''};
   // Mark the reference as done so it doesn't show as duplicate in want-to-read
   ref.refDone=true;ref.convertedToBook=id;
-  // Switch library to Want to Read tab so the book is visible when user navigates back
+  // Switch library to Want to Read tab
   libTab='want';
+  save();
+  // Navigate to library want tab immediately so user can see the book
+  show('lib-screen','book-screen');
+  renderLibrary();
+  // Highlight the Want to Read tab button
   try{
     document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
     const wantBtn=document.getElementById('lib-tab-want');
     if(wantBtn)wantBtn.classList.add('active');
   }catch(e){}
-  save();
-  try{renderRefs();}catch(e){}
-  try{renderLibrary();}catch(e){}
-  // Toast confirmation — no confirm() dialog because iOS Safari blocks it from touchend
+  // Toast
   const t=document.createElement('div');
-  t.innerHTML=`✅ <strong>"${ref.content}"</strong> added to Want to Read<br><span style="font-size:11px;opacity:0.9;">Tap here to open it now</span>`;
-  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:12px 20px;border-radius:14px;font-size:13px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;cursor:pointer;line-height:1.4;';
-  t.onclick=()=>{t.remove();openBook(id);};
+  t.innerHTML=`✅ <strong>"${ref.content}"</strong> added to Want to Read`;
+  t.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;';
   document.body.appendChild(t);
-  setTimeout(()=>{try{t.remove();}catch(e){}},5000);
+  setTimeout(()=>{try{t.remove();}catch(e){}},3000);
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
@@ -6362,9 +6371,37 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       const relType=evTypes.includes('Marriage')?'Spouse':'Ex-spouse';
       const hasRel=entries().some(e=>e.type==='Relationship'&&((e.relA===charA&&e.relB===charB)||(e.relA===charB&&e.relB===charA))&&e.relType===relType);
       if(!hasRel){
-        const newId=Date.now()+Math.floor(Math.random()*1000);
-        book().entries.unshift({id:newId,type:'Relationship',content:`${charA} — ${relType} — ${charB}`,relType,relA:charA,relB:charB,pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',date:entry.date||localDate(),location:'',involved:[charA,charB],note:`Added from Event: ${entry.content}`});
-        sideChanged=true;
+        // #28-1: If genders unknown, ask via gender picker before creating the gendered rel
+        const ceA=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charA);
+        const ceB=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charB);
+        const makeRel=(rt)=>{
+          const newId=Date.now()+Math.floor(Math.random()*1000);
+          book().entries.unshift({id:newId,type:'Relationship',content:`${charA} — ${rt} — ${charB}`,relType:rt,relA:charA,relB:charB,pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',date:entry.date||localDate(),location:'',involved:[charA,charB],note:`Added from Event: ${entry.content}`});
+          save();renderAll();
+        };
+        if(relType==='Spouse'&&ceA&&!ceA.gender){
+          // Ask gender for A, then B if needed
+          pickGenderSheet(charA,(genderA)=>{
+            if(genderA&&genderA!=='Unknown'&&ceA){ceA.gender=genderA;save();}
+            if(ceB&&!ceB.gender){
+              pickGenderSheet(charB,(genderB)=>{
+                if(genderB&&genderB!=='Unknown'&&ceB){ceB.gender=genderB;save();}
+                // Determine gendered spouse label from A's gender perspective
+                const sA=genderA==='Male'?'Husband':genderA==='Female'?'Wife':'Spouse';
+                makeRel(sA);
+              });
+            } else {
+              const sA=genderA==='Male'?'Husband':genderA==='Female'?'Wife':'Spouse';
+              makeRel(sA);
+            }
+          });
+        } else {
+          // Genders known or it's a Divorce — create with appropriate label
+          const gA=ceA?.gender||'';
+          const rt2=relType==='Spouse'?(gA==='Male'?'Husband':gA==='Female'?'Wife':'Spouse'):relType;
+          makeRel(rt2);
+          sideChanged=true;
+        }
       }
     }
     if(sideChanged){save();backfillTimelineSortNums();}
@@ -7798,6 +7835,7 @@ function renderCharDetail(name){
       ${chapsMentioned.length?`<div style="font-size:10px;color:var(--t3);">Chapters: ${chapsMentioned.map(c=>`<span onclick="setFilter('ch:${c}');forceTab('log')" style="color:var(--accent);cursor:pointer;">Ch.${c}</span>`).join(', ')}</div>`:''}
       ${ce?.lang?`<div style="font-size:10px;color:var(--t3);">Languages: ${ce.lang}</div>`:''}
       ${(()=>{
+        try{
         // #620 — compute age: find birth entry, find latest timeline entry, compute diff
         const allE=entries();
         // Match birth entry: must mention character either via involved[] or via content containing their name
@@ -7822,6 +7860,7 @@ function renderCharDetail(name){
         const status=ce?.charStatus||'unknown';
         const isDeceased=status==='deceased';
         return `<div style="font-size:10px;color:var(--accent);font-weight:600;margin-top:1px;">🎂 ${isDeceased?'Died at':'Story age'}: ~${age}</div>`;
+        }catch(e){return '';}
       })()}
       ${charExtraPhotos.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${charExtraPhotos.map(p=>`<img src="${p}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:''}
     </div>`;
@@ -7983,28 +8022,31 @@ function renderCharDetail(name){
     }
   }
   // #620 — find birth year for age display on character timeline events
-  const _charBirthEntry=(()=>{
+  let _charBirthEntry=null,_charBirthYear=null;
+  try{
     const nl=name.toLowerCase();
-    return all.find(e=>
+    _charBirthEntry=(all.find(e=>
       ['Timeline','Event','Date/Period'].includes(e.type)&&
       /\b(birth|born)\b/i.test(e.content||'')&&
       (e.evdate||e.evdateYear)&&
       ((e.involved||[]).some(c=>(c||'').toLowerCase()===nl)||
        (e.content||'').toLowerCase().includes(nl))
-    );
-  })();
-  const _charBirthYear=_charBirthEntry?parseInt(_charBirthEntry.evdateYear||(_charBirthEntry.evdate||'').split('-')[0])||null:null;
+    )||null);
+    _charBirthYear=_charBirthEntry?parseInt(_charBirthEntry.evdateYear||(_charBirthEntry.evdate||'').split('-')[0])||null:null;
+  }catch(e){}
   const _charAgeAt=(ev)=>{
-    if(!_charBirthYear||isNaN(_charBirthYear))return '';
-    const eY=parseInt((ev.evdateYear||(ev.evdate||'').split('-')[0])||'');
-    if(!eY||isNaN(eY))return '';
-    let age=eY-_charBirthYear;
-    const bM=_charBirthEntry?+(_charBirthEntry.evdateMonth||0):0;
-    const bD=_charBirthEntry?+(_charBirthEntry.evdateDay||0):0;
-    const eM=+ev.evdateMonth||0;const eD=+ev.evdateDay||0;
-    if(bM&&eM&&(eM<bM||(eM===bM&&eD<bD)))age--;
-    if(age<0||age>150)return '';
-    return ` <span style="font-size:10px;color:var(--accent);font-weight:600;">(age ${age})</span>`;
+    try{
+      if(!_charBirthYear||isNaN(_charBirthYear))return '';
+      const eY=parseInt((ev.evdateYear||(ev.evdate||'').split('-')[0])||'');
+      if(!eY||isNaN(eY))return '';
+      let age=eY-_charBirthYear;
+      const bM=_charBirthEntry?+(_charBirthEntry.evdateMonth||0):0;
+      const bD=_charBirthEntry?+(_charBirthEntry.evdateDay||0):0;
+      const eM=+ev.evdateMonth||0;const eD=+ev.evdateDay||0;
+      if(bM&&eM&&(eM<bM||(eM===bM&&eD<bD)))age--;
+      if(age<0||age>150)return '';
+      return ` <span style="font-size:10px;color:var(--accent);font-weight:600;">(age ${age})</span>`;
+    }catch(e){return '';}
   };
   html+=`<div class="csec">
     <div class="csec-header" onclick="toggleSec('char-events')">
