@@ -329,7 +329,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
         </div>
       </div>
-      <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;"><svg id="web-svg" style="display:block;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
+      <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;max-height:65vh;"><svg id="web-svg" style="display:block;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
 
@@ -3292,11 +3292,16 @@ function bookCardHTML(b,i){
   </div>`;
 }
 function convertRefToBook(bookId,refId){
-  const bk=library[bookId];if(!bk)return;
-  const ref=bk.entries.find(e=>e.id===refId);if(!ref)return;
+  const bk=library[bookId];if(!bk){alert('Could not find this book.');return;}
+  const ref=bk.entries.find(e=>e.id===refId);if(!ref){alert('Could not find this reference.');return;}
   // Check if a book with this title already exists
-  const existing=Object.values(library).find(b=>b.title.toLowerCase()===ref.content.toLowerCase()&&b.id!==bookId);
-  if(existing){if(!confirm(`"${ref.content}" already exists in your library. Open it?`))return;openBook(existing.id);closeSheet('settings-overlay');return;}
+  const existing=Object.values(library).find(b=>b&&b.title&&b.title.toLowerCase()===(ref.content||'').toLowerCase()&&b.id!==bookId);
+  if(existing){
+    // Already exists — just open it, no confirm dialog (iOS blocks confirm from touchend)
+    openBook(existing.id);
+    try{closeSheet('settings-overlay');}catch(e){}
+    return;
+  }
   // Build "why reading" from reference info
   const whyParts=[];
   if(ref.refAuthor)whyParts.push(`by ${ref.refAuthor}`);
@@ -3307,9 +3312,16 @@ function convertRefToBook(bookId,refId){
   library[id]={id,title:ref.content,author:ref.refAuthor||'',genre:'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),why,gr:ref.refUrl||'',origLang:'',transLang:''};
   // Mark the reference as done so it doesn't show as duplicate in want-to-read
   ref.refDone=true;ref.convertedToBook=id;
-  save();renderLibrary();
-  // Ask if they want to open it now
-  if(confirm(`"${ref.content}" added to Want to Read! Open it now to set it up?`)){openBook(id);}
+  save();
+  try{renderRefs();}catch(e){}
+  try{renderLibrary();}catch(e){}
+  // Toast confirmation — no confirm() dialog because iOS Safari blocks it from touchend
+  const t=document.createElement('div');
+  t.innerHTML=`✅ <strong>"${ref.content}"</strong> added to Want to Read<br><span style="font-size:11px;opacity:0.9;">Tap here to open it now</span>`;
+  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:12px 20px;border-radius:14px;font-size:13px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;cursor:pointer;line-height:1.4;';
+  t.onclick=()=>{t.remove();openBook(id);};
+  document.body.appendChild(t);
+  setTimeout(()=>{try{t.remove();}catch(e){}},5000);
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
@@ -3565,74 +3577,111 @@ function libListsAddRel(){
   library.customRelTypes.push(v);save();renderLibLists();
 }
 function libListsRenameRel(oldName){
-  const rawName=(prompt(`Rename "${oldName}" to:`,oldName)||"").trim();
-  if(!rawName||rawName===oldName)return;
-  // #529-6 deep fix: if user typed a name that matches a builtin (case-insensitively),
-  // snap it to the builtin's exact case so the entire builtin-restore path works correctly.
+  // #529-9: ground-up rewrite. Single code path. No silent returns. Toast on success AND failure.
+  let rawName;
+  try{rawName=prompt(`Rename "${oldName}" to:`,oldName);}
+  catch(e){alert('Rename failed: prompt blocked');return;}
+  if(rawName===null)return; // user cancelled
+  rawName=(rawName||'').trim();
+  if(!rawName){alert('Name cannot be empty.');return;}
+  if(rawName===oldName)return; // no change
+
+  // Normalize to builtin casing if it matches one case-insensitively
   const builtinMatch=ALL_BUILTIN_REL_TYPES.find(t=>t.toLowerCase()===rawName.toLowerCase());
   const newName=builtinMatch||rawName;
   if(newName===oldName)return;
-  if(!library.customRelTypes)library.customRelTypes=[];
-  if(!library.deletedRelTypes)library.deletedRelTypes=[];
-  if(!library.customRelPairs)library.customRelPairs=[];
-  const deleted=new Set(library.deletedRelTypes);
-  // Collision check: newName already active (excluding oldName itself)
-  const activeBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deleted.has(t));
+
+  // Ensure arrays exist
+  library.customRelTypes=library.customRelTypes||[];
+  library.deletedRelTypes=library.deletedRelTypes||[];
+  library.customRelPairs=library.customRelPairs||[];
+
+  // Collision check: newName must not be an active type (excluding oldName)
+  const deletedSet=new Set(library.deletedRelTypes);
+  const activeBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deletedSet.has(t));
   const activeCustoms=library.customRelTypes.filter(t=>t!==oldName&&!ALL_BUILTIN_REL_TYPES.includes(t));
-  if(activeBuiltins.includes(newName)||activeCustoms.includes(newName)){alert("That name already exists.");return;}
-  const isBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
+  if(activeBuiltins.includes(newName)||activeCustoms.includes(newName)){
+    alert(`"${newName}" already exists in your relationship types.`);
+    return;
+  }
+
+  const oldIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
   const newIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(newName);
-  if(newIsBuiltin){
-    library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==newName);
-    library.customRelTypes=library.customRelTypes.filter(t=>t!==oldName);
-    if(isBuiltin&&!library.deletedRelTypes.includes(oldName))library.deletedRelTypes.push(oldName);
-    // #529-6: remove any stale custom pairs that were created when the builtin was renamed away
-    library.customRelPairs=library.customRelPairs.filter(p=>p.typeA!==oldName&&p.typeB!==oldName);
-  } else if(isBuiltin){
-    library.customRelTypes.push(newName);
+
+  // Update active/deleted lists
+  if(oldIsBuiltin){
+    // Hide the old builtin
     if(!library.deletedRelTypes.includes(oldName))library.deletedRelTypes.push(oldName);
   } else {
-    library.customRelTypes=library.customRelTypes.map(t=>t===oldName?newName:t);
+    // Remove old from customs
+    library.customRelTypes=library.customRelTypes.filter(t=>t!==oldName);
   }
-  library.customRelPairs.forEach(p=>{if(p.typeA===oldName)p.typeA=newName;if(p.typeB===oldName)p.typeB=newName;});
-  if(isBuiltin&&!newIsBuiltin&&RECIPROCAL[oldName]){
+  if(newIsBuiltin){
+    // Un-hide the new builtin
+    library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==newName);
+  } else {
+    // Add new as custom (if not already)
+    if(!library.customRelTypes.includes(newName))library.customRelTypes.push(newName);
+  }
+
+  // Update any custom pair that references oldName
+  library.customRelPairs.forEach(p=>{
+    if(p.typeA===oldName){p.typeA=newName;p.phraseA='is '+newName.toLowerCase()+' of';}
+    if(p.typeB===oldName){p.typeB=newName;p.phraseB='is '+newName.toLowerCase()+' of';}
+  });
+
+  // If old was a builtin with a known reciprocal, and we have no pair yet for newName,
+  // create one so phrases display correctly
+  if(oldIsBuiltin&&!newIsBuiltin&&RECIPROCAL[oldName]){
     const recip=RECIPROCAL[oldName];
-    const alreadyPaired=library.customRelPairs.some(p=>p.typeA===newName||p.typeB===newName);
-    if(!alreadyPaired)library.customRelPairs.push({typeA:newName,typeB:recip,phraseA:"is "+newName.toLowerCase()+" of",phraseB:"is "+recip.toLowerCase()+" of"});
+    const hasPair=library.customRelPairs.some(p=>p.typeA===newName||p.typeB===newName);
+    if(!hasPair){
+      library.customRelPairs.push({
+        typeA:newName,typeB:recip,
+        phraseA:'is '+newName.toLowerCase()+' of',
+        phraseB:'is '+recip.toLowerCase()+' of'
+      });
+    }
   }
+
+  // Update ALL entries across ALL books
+  let entriesUpdated=0;
   Object.values(library).forEach(b=>{
-    if(!b||!b.entries)return;
+    if(!b||typeof b!=='object'||!Array.isArray(b.entries))return;
     b.entries.forEach(e=>{
       if(e.relType===oldName){
         e.relType=newName;
-        // Update content if it stored just the name
-        if(e.content===oldName)e.content=newName;
-        // Update content if it stored the "A — type — B" format (line 4205 shape)
-        else if(e.type==='Relationship'&&e.relA&&e.relB){
-          // Rebuild from canonical pieces. Tolerate em-dash or hyphen separators.
-          const expectedOld=`${e.relA} — ${oldName} — ${e.relB}`;
-          if(e.content===expectedOld||e.content===`${e.relA} - ${oldName} - ${e.relB}`){
-            e.content=`${e.relA} — ${newName} — ${e.relB}`;
-          }
+        entriesUpdated++;
+        // Rebuild content if it stored the "A — type — B" pattern
+        if(e.type==='Relationship'&&e.relA&&e.relB){
+          e.content=`${e.relA} — ${newName} — ${e.relB}`;
+        } else if(e.content===oldName){
+          e.content=newName;
         }
       }
     });
   });
-  save();renderLibLists();
-  // #529-7: Force immediate re-render of ALL affected views
-  if(typeof renderAll==="function")renderAll();
-  // Force the entries list specifically (in case renderAll is batched or debounced)
-  if(typeof renderEntries==='function'){try{renderEntries();}catch(_){}}
-  if(typeof renderChars==='function'){try{renderChars();}catch(_){}}
-  if(typeof renderCharDetail==='function'&&typeof currentCharName!=='undefined'&&currentCharName){
-    try{renderCharDetail(currentCharName);}catch(_){}
-  }
-  // Small toast to confirm the rename happened
-  const _toast=document.createElement('div');
-  _toast.textContent=`✅ Renamed "${oldName}" → "${newName}"`;
-  _toast.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;z-index:9999;pointer-events:none;box-shadow:0 3px 12px rgba(0,0,0,0.25);';
-  document.body.appendChild(_toast);
-  setTimeout(()=>_toast.remove(),2200);
+
+  // SAVE — fire and forget but synchronous mutation already happened
+  try{save();}catch(e){console.error('save error',e);}
+
+  // Re-render EVERYTHING that could display the rel type
+  try{if(typeof renderLibLists==='function')renderLibLists();}catch(e){}
+  try{if(typeof renderAll==='function')renderAll();}catch(e){}
+  try{if(typeof renderEntries==='function')renderEntries();}catch(e){}
+  try{if(typeof renderChars==='function')renderChars();}catch(e){}
+  try{
+    if(typeof renderCharDetail==='function'&&typeof currentCharName!=='undefined'&&currentCharName){
+      renderCharDetail(currentCharName);
+    }
+  }catch(e){}
+
+  // Toast confirmation — placed on body, fixed position, very visible
+  const t=document.createElement('div');
+  t.textContent=`✅ Renamed "${oldName}" → "${newName}" (${entriesUpdated} entries updated)`;
+  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2800);
 }
 function libListsAddPair(){
   const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
@@ -8463,31 +8512,32 @@ function setupWebDrag(){
 
   // Touch events (single finger = drag/pan; two fingers = pinch zoom)
   wrap.ontouchstart=(e)=>{
-    if(e.touches.length===1){
-      const t=e.touches[0];
-      onDownStart(e,t.clientX,t.clientY,t.target);
-    } else if(e.touches.length===2){
+    if(e.touches.length===2){
+      // Pinch zoom — block scroll, manually rescale
       dragNode=null;panStart=null;
       const dx=e.touches[0].clientX-e.touches[1].clientX;
       const dy=e.touches[0].clientY-e.touches[1].clientY;
-      // #537 — record focal point (midpoint between fingers) in WRAP coords for
-      // focal-zoom: we keep that point under the user's fingers as we rescale.
       const wr=wrap.getBoundingClientRect();
       const fxClient=(e.touches[0].clientX+e.touches[1].clientX)/2;
       const fyClient=(e.touches[0].clientY+e.touches[1].clientY)/2;
-      // World-space focal point (in the wrap content, scroll-included).
       const focalX=fxClient-wr.left+wrap.scrollLeft;
       const focalY=fyClient-wr.top+wrap.scrollTop;
       pinchStart={
         dist:Math.sqrt(dx*dx+dy*dy),
         scale:window._webZoom.scale||1,
-        focalX:focalX,
-        focalY:focalY,
-        // local fxy = where in the visible viewport the midpoint sat
-        viewportX:fxClient-wr.left,
-        viewportY:fyClient-wr.top,
+        focalX:focalX,focalY:focalY,
       };
+      return;
     }
+    // Single-touch: only intercept if it's on a node (for drag). Otherwise let
+    // native scroll handle the panning — no preventDefault, no manual scrollLeft.
+    const t=e.touches[0];
+    const nodeEl=t.target.closest?.('.web-node');
+    if(nodeEl){
+      onDownStart(e,t.clientX,t.clientY,t.target);
+      // Don't preventDefault yet — only if drag activates (in onMoveStart).
+    }
+    // else: let iOS handle native scroll
   };
   wrap.ontouchmove=(e)=>{
     if(pinchStart&&e.touches.length===2){
@@ -8502,9 +8552,6 @@ function setupWebDrag(){
         svg.style.width=(st.viewW*s)+'px';
         svg.setAttribute('width',st.viewW*s);
         svg.setAttribute('height',st.viewH*s);
-        // #537 — Keep world-space focal point under the CURRENT finger midpoint.
-        // Use current midpoint viewport position (not the stored start position)
-        // so translation + pinch work together smoothly.
         const wr=wrap.getBoundingClientRect();
         const curMidX=(e.touches[0].clientX+e.touches[1].clientX)/2-wr.left;
         const curMidY=(e.touches[0].clientY+e.touches[1].clientY)/2-wr.top;
@@ -8512,10 +8559,12 @@ function setupWebDrag(){
         wrap.scrollTop=pinchStart.focalY*ratio-curMidY;
       }
       e.preventDefault();
-    } else if(e.touches.length===1&&(dragNode||panStart)){
+    } else if(e.touches.length===1&&dragNode){
+      // Node drag in progress — handle manually and block native scroll
       const t=e.touches[0];onMoveStart(t.clientX,t.clientY);
       e.preventDefault();
     }
+    // else: let iOS handle native single-finger scrolling
   };
   wrap.ontouchend=onUpEnd;
   wrap.ontouchcancel=onUpEnd;
@@ -9525,7 +9574,7 @@ function cascadeDependentDates(anchorEntry){
       const sign=m[1]==='-'?-1:1;const num=parseFloat(m[2])||0;const unit=m[3].toLowerCase();
       // Helper: convert a {num,unit} pair to days (approximate)
       const toDays=(n,u)=>{
-        const U={day:1,days:1,week:7,weeks:7,month:30.44,months:30.44,year:365.25,years:365.25,hour:1/24,hours:1/24,minute:1/1440,minutes:1/1440};
+        const U={day:1,days:1,week:7,weeks:7,month:30.44,months:30.44,year:365.25,years:365.25,decade:3652.5,decades:3652.5,century:36525,centuries:36525,hour:1/24,hours:1/24,minute:1/1440,minutes:1/1440};
         return Math.round((n||0)*(U[u]||1));
       };
       // Compute total days from primary + any extras (#524 additive offsets)
@@ -10408,10 +10457,10 @@ function renderRefs(){
         ${r.refDateRead?`<div style="font-size:10px;color:var(--t3);">📅 ${r.refDateRead}</div>`:''}
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${r.storyGraphAdded?'✅ Added to StoryGraph'+(r.storyGraphAddedDate?' · '+r.storyGraphAddedDate:''):(doneLabel[r.refType]||'Done')}</div>${r.storyGraphSourceBook?`<div style="font-size:10px;color:var(--t3);">📖 Discovered via: <em>${r.storyGraphSourceBook}</em></div>`:''}`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
-        ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation();">
           <button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(this.dataset.title))" data-title="${esc(r.content)}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">📚 StoryGraph</button>
           <button class="btn btn-sm" onclick="event.stopPropagation();markAddedToStoryGraph(+this.dataset.rid)" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">✅ Mark added</button>
-          <button class="btn btn-sm" onclick="event.stopPropagation();(function(bid,rid){var bk=library[bid];if(!bk){alert('Could not find book: '+bid);return;}var ref=bk.entries.find(function(e){return e.id===rid;});if(!ref){alert('Could not find ref: '+rid);return;}convertRefToBook(bid,rid);})(this.dataset.bid,+this.dataset.rid);" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">📖 Want to Read</button>
+          <div role="button" tabindex="0" class="wtr-btn" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:rgba(46,134,193,0.3);display:inline-block;padding:5px 11px;background:var(--bg2);border:0.5px solid #2E86C1;color:#2E86C1;border-radius:var(--r);font-weight:600;user-select:none;">📖 Want to Read</div>
         </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
@@ -10422,18 +10471,18 @@ function renderRefs(){
   if(undone.length)html+=`<div style="font-size:10px;font-weight:700;color:#BA7517;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:7px;">To explore (${undone.length}) 🟡</div>`+undone.map(rc).join('');
   if(done.length)html+=`<div style="font-size:10px;font-weight:700;color:#1D9E75;letter-spacing:0.06em;text-transform:uppercase;margin:12px 0 7px;">Done (${done.length}) 🟢</div>`+done.map(rc).join('');
   list.innerHTML=html;
-  // #550 deep fix — delegated listener so iOS taps that bypass inline onclick still fire.
+  // #550 deep fix — delegated listener finds .wtr-btn class. Use click only (no touchend
+  // preventDefault) so iOS Safari delivers the click without blocking.
   if(!list._wtrBound){
     list._wtrBound=true;
-    const handleWtr=(e)=>{
-      const btn=e.target.closest('[data-bid][data-rid]');
+    list.addEventListener('click',(e)=>{
+      const btn=e.target.closest('.wtr-btn');
       if(!btn)return;
       e.stopPropagation();
-      if(e.type==='touchend')e.preventDefault();
-      convertRefToBook(btn.dataset.bid,+btn.dataset.rid);
-    };
-    list.addEventListener('click',handleWtr,true);
-    list.addEventListener('touchend',handleWtr,{passive:false,capture:true});
+      const bid=btn.dataset.bid;const rid=+btn.dataset.rid;
+      if(!bid||!rid)return;
+      convertRefToBook(bid,rid);
+    },false);
   }
 }
 function setRefFilter(t){activeRefFilter=t;renderRefs();}
