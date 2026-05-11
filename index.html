@@ -329,7 +329,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
         </div>
       </div>
-      <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;max-height:65vh;"><svg id="web-svg" style="display:block;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
+      <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;max-height:65vh;"><svg id="web-svg" style="display:block;touch-action:pan-x pan-y;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
       <div id="web-empty" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>
     </div>
 
@@ -3312,6 +3312,13 @@ function convertRefToBook(bookId,refId){
   library[id]={id,title:ref.content,author:ref.refAuthor||'',genre:'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),why,gr:ref.refUrl||'',origLang:'',transLang:''};
   // Mark the reference as done so it doesn't show as duplicate in want-to-read
   ref.refDone=true;ref.convertedToBook=id;
+  // Switch library to Want to Read tab so the book is visible when user navigates back
+  libTab='want';
+  try{
+    document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
+    const wantBtn=document.getElementById('lib-tab-want');
+    if(wantBtn)wantBtn.classList.add('active');
+  }catch(e){}
   save();
   try{renderRefs();}catch(e){}
   try{renderLibrary();}catch(e){}
@@ -4582,7 +4589,13 @@ function onTypeChange(){
   // and let _oeFilter() render filtered results into #ae-offset-event-list.
   if(isTL||isEvent){
     const editingId=Number(document.getElementById('ae-edit-id')?.value||0)||null;
-    const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>(b.evdate||'').localeCompare(a.evdate||'')||(+b.chapNum||0)-(+a.chapNum||0));
+    const evEntries=entries().filter(e=>['Timeline','Event'].includes(e.type)&&e.id!==editingId&&(e.evdate||e.content)).sort((a,b)=>{
+      // #630 — sort chronologically (first event to last)
+      const sa=a.computedSortNum!=null?a.computedSortNum:evdateSort_global(a);
+      const sb=b.computedSortNum!=null?b.computedSortNum:evdateSort_global(b);
+      if(sa!==sb&&sa&&sb)return sa-sb;
+      return (a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0);
+    });
     window._oeOptions=evEntries.map(e=>({val:e.content||'',tag:e.type==='Event'?'⭐':'🕒',date:e.evdate||'',label:(e.content||'').slice(0,80)}));
     if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
   }
@@ -6326,6 +6339,36 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
 
   save();
   if(['Timeline','Event','Date/Period'].includes(type)){backfillTimelineSortNums();cascadeDependentDates(entry);}
+  // #28 — Event-type side effects: auto-update characters/relationships
+  if(type==='Event'){
+    const evTypes=entry.eventTypes||[];
+    const involved=(entry.involved||[]).filter(Boolean);
+    let sideChanged=false;
+    // Death → mark involved characters as deceased
+    if(evTypes.includes('Death')){
+      involved.forEach(charName=>{
+        const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charName);
+        if(ce&&ce.charStatus!=='deceased'){ce.charStatus='deceased';sideChanged=true;}
+      });
+    }
+    // Birth → if a single character is involved and has no intro, set intro to this event's chapter/page
+    if(evTypes.includes('Birth')&&involved.length===1){
+      const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===involved[0]);
+      if(ce&&!ce.charIntroCh&&entry.chapNum){ce.charIntroCh=String(entry.chapNum);ce.charIntro=[entry.chapNum?'Ch.'+entry.chapNum:'',entry.pageNum?'p.'+entry.pageNum:''].filter(Boolean).join(', ');sideChanged=true;}
+    }
+    // Marriage / Divorce → auto-create or remove a Relationship entry between the first two involved characters
+    if((evTypes.includes('Marriage')||evTypes.includes('Divorce'))&&involved.length>=2){
+      const [charA,charB]=involved;
+      const relType=evTypes.includes('Marriage')?'Spouse':'Ex-spouse';
+      const hasRel=entries().some(e=>e.type==='Relationship'&&((e.relA===charA&&e.relB===charB)||(e.relA===charB&&e.relB===charA))&&e.relType===relType);
+      if(!hasRel){
+        const newId=Date.now()+Math.floor(Math.random()*1000);
+        book().entries.unshift({id:newId,type:'Relationship',content:`${charA} — ${relType} — ${charB}`,relType,relA:charA,relB:charB,pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',date:entry.date||localDate(),location:'',involved:[charA,charB],note:`Added from Event: ${entry.content}`});
+        sideChanged=true;
+      }
+    }
+    if(sideChanged){save();backfillTimelineSortNums();}
+  }
   _clearDirty();closeSheet('ae-overlay');renderAll();buildTypeSelect();
   // Feature 3: Navigate to the view that best fits the saved entry type
   postSaveNavigate(entry,type);
@@ -7757,7 +7800,16 @@ function renderCharDetail(name){
       ${(()=>{
         // #620 — compute age: find birth entry, find latest timeline entry, compute diff
         const allE=entries();
-        const birthE=allE.find(e=>['Timeline','Event','Date/Period'].includes(e.type)&&(e.involved||[]).includes(name)&&/\b(birth|born)\b/i.test(e.content||'')&&(e.evdate||e.evdateYear));
+        // Match birth entry: must mention character either via involved[] or via content containing their name
+        const nameLc=name.toLowerCase();
+        const birthE=allE.find(e=>
+          ['Timeline','Event','Date/Period'].includes(e.type)&&
+          /\b(birth|born)\b/i.test(e.content||'')&&
+          (e.evdate||e.evdateYear)&&
+          ((e.involved||[]).some(c=>(c||'').toLowerCase()===nameLc)||
+           (e.content||'').toLowerCase().includes(nameLc)||
+           (e.cn||'').toLowerCase()===nameLc)
+        );
         if(!birthE)return '';
         const bY=parseInt(birthE.evdateYear||(birthE.evdate||'').split('-')[0]);if(!bY||isNaN(bY))return '';
         // Latest timeline date in the book
@@ -7930,7 +7982,30 @@ function renderCharDetail(name){
       });
     }
   }
-  const _charEvSortCur=window._charEvSort||'date';
+  // #620 — find birth year for age display on character timeline events
+  const _charBirthEntry=(()=>{
+    const nl=name.toLowerCase();
+    return all.find(e=>
+      ['Timeline','Event','Date/Period'].includes(e.type)&&
+      /\b(birth|born)\b/i.test(e.content||'')&&
+      (e.evdate||e.evdateYear)&&
+      ((e.involved||[]).some(c=>(c||'').toLowerCase()===nl)||
+       (e.content||'').toLowerCase().includes(nl))
+    );
+  })();
+  const _charBirthYear=_charBirthEntry?parseInt(_charBirthEntry.evdateYear||(_charBirthEntry.evdate||'').split('-')[0])||null:null;
+  const _charAgeAt=(ev)=>{
+    if(!_charBirthYear||isNaN(_charBirthYear))return '';
+    const eY=parseInt((ev.evdateYear||(ev.evdate||'').split('-')[0])||'');
+    if(!eY||isNaN(eY))return '';
+    let age=eY-_charBirthYear;
+    const bM=_charBirthEntry?+(_charBirthEntry.evdateMonth||0):0;
+    const bD=_charBirthEntry?+(_charBirthEntry.evdateDay||0):0;
+    const eM=+ev.evdateMonth||0;const eD=+ev.evdateDay||0;
+    if(bM&&eM&&(eM<bM||(eM===bM&&eD<bD)))age--;
+    if(age<0||age>150)return '';
+    return ` <span style="font-size:10px;color:var(--accent);font-weight:600;">(age ${age})</span>`;
+  };
   html+=`<div class="csec">
     <div class="csec-header" onclick="toggleSec('char-events')">
       <div class="csec-label" style="flex:1;color:${col.stroke};">Character timeline (${combined.length})</div>
@@ -7942,7 +8017,7 @@ function renderCharDetail(name){
   if(combined.length){
     html+=combined.map(e=>{
       const labelType=e.type==='Event'?(e.eventTypes||[]).join(', ')||'Event':e.type;
-      return`<div class="citem"><div class="ilabel" style="color:${col.text};">${labelType}${e.evdate?' — '+e.evdate:''}</div>${e.content}${pgT(e)}${act(e)}</div>`;
+      return`<div class="citem"><div class="ilabel" style="color:${col.text};">${labelType}${e.evdate?' — '+e.evdate:''}</div>${e.content}${_charAgeAt(e)}${pgT(e)}${act(e)}</div>`;
     }).join('');
   } else {
     html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No events yet — tap + Event to add one.</div>`;
@@ -8250,8 +8325,10 @@ function renderWeb(){
     if(r.relType){
       // Position label at the curve midpoint (same as Bezier midpoint).
       const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
-      const recip=getReciprocal(r.relType);
-      const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
+      // Strip any leading emoji/whitespace from relType (some older entries stored emoji prefix)
+      const cleanType=(r.relType||'').replace(/^[\p{Emoji}\s]+/u,'').trim()||r.relType;
+      const recip=getReciprocal(cleanType);
+      const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
       const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
       const tw=label.length*5+14;
       const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -8305,10 +8382,13 @@ function renderWeb(){
       g.appendChild(ti);
     }
 
+    // Deceased mark: subtle gray overlay instead of emoji
     if(n.status==='deceased'){
-      const x=document.createElementNS('http://www.w3.org/2000/svg','text');
-      x.setAttribute('x',n.x+nodeR-4);x.setAttribute('y',n.y-nodeR+6);
-      x.setAttribute('font-size','10');x.textContent='🪦';g.appendChild(x);
+      const deadCircle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      deadCircle.setAttribute('cx',n.x);deadCircle.setAttribute('cy',n.y);
+      deadCircle.setAttribute('r',nodeR);
+      deadCircle.setAttribute('fill','rgba(100,100,100,0.35)');
+      g.appendChild(deadCircle);
     }
 
     // Name label below node — split on space
@@ -8446,8 +8526,9 @@ function setupWebDrag(){
       svg.insertBefore(path,svg.firstChild); // draw below nodes
       if(r.relType){
         const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
-        const recip=RECIPROCAL[r.relType];
-        const fullLabel=(recip&&recip!==r.relType)?`${r.relType} | ${recip}`:r.relType;
+        const cleanType=(r.relType||'').replace(/^[\p{Emoji}\s]+/u,'').trim()||r.relType;
+        const recip=RECIPROCAL[cleanType];
+        const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
         const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
         const tw=label.length*5+14;
         const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -8558,7 +8639,9 @@ function setupWebDrag(){
   window.onmouseup=onUpEnd;
 
   // Touch events (single finger = drag/pan; two fingers = pinch zoom)
-  wrap.ontouchstart=(e)=>{
+  // Use addEventListener (not .ontouchstart property) so we can mark as passive
+  // for single-touch, letting iOS handle native scroll without the 300ms listener wait.
+  wrap.addEventListener('touchstart',(e)=>{
     if(e.touches.length===2){
       // Pinch zoom — block scroll, manually rescale
       dragNode=null;panStart=null;
@@ -8576,17 +8659,16 @@ function setupWebDrag(){
       };
       return;
     }
-    // Single-touch: only intercept if it's on a node (for drag). Otherwise let
-    // native scroll handle the panning — no preventDefault, no manual scrollLeft.
+    // Single-touch: only intercept if it's on a node (for drag).
     const t=e.touches[0];
     const nodeEl=t.target.closest?.('.web-node');
     if(nodeEl){
       onDownStart(e,t.clientX,t.clientY,t.target);
-      // Don't preventDefault yet — only if drag activates (in onMoveStart).
     }
-    // else: let iOS handle native scroll
-  };
-  wrap.ontouchmove=(e)=>{
+    // else: native scroll handles panning
+  },{passive:true});
+
+  wrap.addEventListener('touchmove',(e)=>{
     if(pinchStart&&e.touches.length===2){
       const dx=e.touches[0].clientX-e.touches[1].clientX;
       const dy=e.touches[0].clientY-e.touches[1].clientY;
@@ -8596,8 +8678,9 @@ function setupWebDrag(){
       window._webZoom.scale=s;
       const st=svg._webState;
       if(st){
-        svg.style.width=(st.viewW*s)+'px';
-        svg.setAttribute('width',st.viewW*s);
+        const minW=wrap.clientWidth||st.viewW;
+        const svgW=Math.max(st.viewW*s,minW);
+        svg.style.width=svgW+'px';svg.setAttribute('width',svgW);
         svg.setAttribute('height',st.viewH*s);
         const wr=wrap.getBoundingClientRect();
         const curMidX=(e.touches[0].clientX+e.touches[1].clientX)/2-wr.left;
@@ -8607,14 +8690,13 @@ function setupWebDrag(){
       }
       e.preventDefault();
     } else if(e.touches.length===1&&dragNode){
-      // Node drag in progress — handle manually and block native scroll
       const t=e.touches[0];onMoveStart(t.clientX,t.clientY);
       e.preventDefault();
     }
-    // else: let iOS handle native single-finger scrolling
-  };
-  wrap.ontouchend=onUpEnd;
-  wrap.ontouchcancel=onUpEnd;
+  },{passive:false});
+
+  wrap.addEventListener('touchend',onUpEnd,{passive:true});
+  wrap.addEventListener('touchcancel',onUpEnd,{passive:true});
 
   // Wheel zoom (desktop)
   wrap.onwheel=(e)=>{
