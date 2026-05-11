@@ -3333,6 +3333,10 @@ function openBook(id){
   _scrubThemeQuoteCrossLinks();
   document.getElementById('bs-title').textContent=book().title;
   backfillTimelineSortNums();
+  // #524-9 migration — one-time re-cascade all offset entries to fix stale evdates
+  // caused by the pre-B63 bug where cascadeDependentDates toDays was missing
+  // decades/centuries. Run once per book per app-version flag.
+  _migrateCascadeEvdates();
   show('book-screen','lib-screen');buildTabs();buildTypeSelect();populateEventTypePicks();renderAll();
 }
 // xlsx #431 follow-up (Batch 36) — Scrub the theme↔quote bidirectional cross-link
@@ -3577,15 +3581,45 @@ function libListsAddRel(){
   library.customRelTypes.push(v);save();renderLibLists();
 }
 function libListsRenameRel(oldName){
-  // #529-9: ground-up rewrite. Single code path. No silent returns. Toast on success AND failure.
-  let rawName;
-  try{rawName=prompt(`Rename "${oldName}" to:`,oldName);}
-  catch(e){alert('Rename failed: prompt blocked');return;}
-  if(rawName===null)return; // user cancelled
-  rawName=(rawName||'').trim();
-  if(!rawName){alert('Name cannot be empty.');return;}
-  if(rawName===oldName)return; // no change
-
+  // #529-9 v2: iOS WKWebView blocks prompt()/alert()/confirm() in some contexts.
+  // Use an in-app rename overlay instead.
+  _showRenameRelOverlay(oldName);
+}
+function _showToast(msg,bg='#1D9E75',ms=2800){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText=`position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;`;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),ms);
+}
+function _showRenameRelOverlay(oldName){
+  // Remove any existing overlay
+  const ex=document.getElementById('_renameRelOverlay');if(ex)ex.remove();
+  const ov=document.createElement('div');
+  ov.id='_renameRelOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:20px 18px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Rename relationship type</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:12px;">Renaming: <strong>${oldName}</strong></div>
+    <input id="_renameRelInput" type="text" value="${oldName}" style="width:100%;font-size:15px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--bg2);color:var(--text);box-sizing:border-box;margin-bottom:14px;" placeholder="New name…" autocorrect="off" autocapitalize="words" spellcheck="false"/>
+    <div style="display:flex;gap:8px;">
+      <button onclick="document.getElementById('_renameRelOverlay').remove();" style="flex:1;padding:10px;border-radius:10px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">Cancel</button>
+      <button id="_renameRelOk" style="flex:2;padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Rename</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const inp=document.getElementById('_renameRelInput');
+  inp.focus();inp.select();
+  const doRename=()=>{
+    const rawName=(inp.value||'').trim();
+    ov.remove();
+    if(!rawName||rawName===oldName)return;
+    _doRenameRel(oldName,rawName);
+  };
+  document.getElementById('_renameRelOk').onclick=doRename;
+  inp.onkeydown=(e)=>{if(e.key==='Enter')doRename();if(e.key==='Escape')ov.remove();};
+  ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
+}
+function _doRenameRel(oldName,rawName){
   // Normalize to builtin casing if it matches one case-insensitively
   const builtinMatch=ALL_BUILTIN_REL_TYPES.find(t=>t.toLowerCase()===rawName.toLowerCase());
   const newName=builtinMatch||rawName;
@@ -3601,7 +3635,7 @@ function libListsRenameRel(oldName){
   const activeBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deletedSet.has(t));
   const activeCustoms=library.customRelTypes.filter(t=>t!==oldName&&!ALL_BUILTIN_REL_TYPES.includes(t));
   if(activeBuiltins.includes(newName)||activeCustoms.includes(newName)){
-    alert(`"${newName}" already exists in your relationship types.`);
+    _showToast(`"${newName}" already exists in your relationship types.`,'#E24B4A');
     return;
   }
 
@@ -3677,11 +3711,7 @@ function libListsRenameRel(oldName){
   }catch(e){}
 
   // Toast confirmation — placed on body, fixed position, very visible
-  const t=document.createElement('div');
-  t.textContent=`✅ Renamed "${oldName}" → "${newName}" (${entriesUpdated} entries updated)`;
-  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;';
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2800);
+  _showToast(`✅ Renamed "${oldName}" → "${newName}" (${entriesUpdated} entries updated)`);
 }
 function libListsAddPair(){
   const typeA=(prompt('Type A label (e.g. Owner, or an existing type like Teacher):')||'').trim();if(!typeA)return;
@@ -7724,6 +7754,23 @@ function renderCharDetail(name){
       ${ce?.charIntro?`<div style="font-size:10px;color:var(--t3);">Introduced: ${ce.charIntro}</div>`:''}
       ${chapsMentioned.length?`<div style="font-size:10px;color:var(--t3);">Chapters: ${chapsMentioned.map(c=>`<span onclick="setFilter('ch:${c}');forceTab('log')" style="color:var(--accent);cursor:pointer;">Ch.${c}</span>`).join(', ')}</div>`:''}
       ${ce?.lang?`<div style="font-size:10px;color:var(--t3);">Languages: ${ce.lang}</div>`:''}
+      ${(()=>{
+        // #620 — compute age: find birth entry, find latest timeline entry, compute diff
+        const allE=entries();
+        const birthE=allE.find(e=>['Timeline','Event','Date/Period'].includes(e.type)&&(e.involved||[]).includes(name)&&/\b(birth|born)\b/i.test(e.content||'')&&(e.evdate||e.evdateYear));
+        if(!birthE)return '';
+        const bY=parseInt(birthE.evdateYear||(birthE.evdate||'').split('-')[0]);if(!bY||isNaN(bY))return '';
+        // Latest timeline date in the book
+        const datedE=allE.filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&(e.evdate||e.evdateYear));
+        if(!datedE.length)return '';
+        datedE.sort((a,b)=>evdateSort_global(b)-evdateSort_global(a));
+        const lastE=datedE[0];
+        const lY=parseInt(lastE.evdateYear||(lastE.evdate||'').split('-')[0]);if(!lY||isNaN(lY))return '';
+        const age=lY-bY;if(age<0||age>150)return '';
+        const status=ce?.charStatus||'unknown';
+        const isDeceased=status==='deceased';
+        return `<div style="font-size:10px;color:var(--accent);font-weight:600;margin-top:1px;">🎂 ${isDeceased?'Died at':'Story age'}: ~${age}</div>`;
+      })()}
       ${charExtraPhotos.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">${charExtraPhotos.map(p=>`<img src="${p}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:0.5px solid var(--cb);"/>`).join('')}</div>`:''}
     </div>`;
 
@@ -8595,8 +8642,17 @@ function webZoom(dir){
   }
   window._webZoom.scale=Math.max(0.4,Math.min(3,window._webZoom.scale*(dir>0?1.15:0.85)));
   const svg=document.getElementById('web-svg');
+  const wrap=document.getElementById('web-wrap');
   const st=svg?._webState;
-  if(st){const s=window._webZoom.scale;svg.style.width=(st.viewW*s)+'px';svg.setAttribute('width',st.viewW*s);svg.setAttribute('height',st.viewH*s);}
+  if(st){
+    const s=window._webZoom.scale;
+    // Keep SVG at least as wide as wrap so there's always a scroll surface
+    const minW=wrap?wrap.clientWidth:0;
+    const svgW=Math.max(st.viewW*s,minW);
+    svg.style.width=svgW+'px';
+    svg.setAttribute('width',svgW);
+    svg.setAttribute('height',st.viewH*s);
+  }
 }
 function setWebFilter(f){activeWebFilter=f;renderWeb();}
 
@@ -8886,6 +8942,36 @@ function renderTimeline(){
           }).join('');
         })()}
         ${item.note?`<div class="enote">${item.note}</div>`:''}
+        ${(()=>{
+          // #620 — show character ages at this timeline moment for involved characters
+          const involvedChars=(item.involved||[]).filter(c=>c&&c!=='undefined'&&c!=='null');
+          if(!involvedChars.length)return '';
+          // Find birth year for each character (from Timeline/Event entries mentioning
+          // "birth" or "born" in content, tagged to that character)
+          const allEntries=entries();
+          const ageChips=involvedChars.map(charName=>{
+            const birthEntry=allEntries.find(e=>
+              ['Timeline','Event','Date/Period'].includes(e.type)&&
+              (e.involved||[]).includes(charName)&&
+              /\b(birth|born)\b/i.test(e.content||'')&&
+              (e.evdate||e.evdateYear)
+            );
+            if(!birthEntry)return '';
+            const bY=parseInt(birthEntry.evdateYear||(birthEntry.evdate||'').split('-')[0]);
+            const eY=parseInt((item.evdateYear||(item.evdate||'').split('-')[0])||'');
+            if(!bY||!eY||isNaN(bY)||isNaN(eY))return '';
+            const bM=+birthEntry.evdateMonth||0,bD=+birthEntry.evdateDay||0;
+            const eM=+item.evdateMonth||0,eD=+item.evdateDay||0;
+            let age=eY-bY;
+            // Adjust if birthday hasn't happened yet in the event year
+            if(bM&&eM&&(eM<bM||(eM===bM&&eD<bD)))age--;
+            if(age<0||age>150)return '';
+            const cc=getCC(charName);
+            return `<span style="font-size:10px;display:inline-block;padding:2px 7px;border-radius:10px;background:${cc.bg};color:${cc.text};margin-right:3px;margin-top:2px;font-weight:600;">${charName}: age ${age}</span>`;
+          }).filter(Boolean).join('');
+          if(!ageChips)return '';
+          return `<div style="margin-top:3px;">${ageChips}</div>`;
+        })()}
         <div class="eactions"><span class="tl-drag-handle" title="Long-press / drag to reorder" style="padding:4px 6px;cursor:grab;color:var(--t3);font-size:14px;user-select:none;touch-action:none;">☰</span><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
@@ -9618,6 +9704,61 @@ function cascadeDependentDates(anchorEntry){
     if(!anyChange)break;
   }
   if(changed){backfillTimelineSortNums();save();renderTimeline();}
+}
+// #524-9 migration — re-cascade all offset entries to fix stale evdates.
+// Runs once per book (flagged in book._cascadeMigV to avoid repeated runs).
+// #620 — global version of evdateSort for use outside renderTimeline
+function evdateSort_global(e){
+  if(e&&e.computedSortNum!=null)return e.computedSortNum;
+  const d=(e&&(e.evdate||e.evdateYear))||'';if(!d)return 0;
+  const m=d.match(/^-?(\d{1,6})/);
+  if(m){
+    const mon=e&&e.evdateMonth?Number(e.evdateMonth):0;
+    const day=e&&e.evdateDay?Number(e.evdateDay):0;
+    return Number(m[1])*10000+mon*100+day;
+  }
+  const circa=d.match(/\bc(?:irca)?\.?\s*(\d{3,6})\b/i);if(circa)return Number(circa[1])*10000;
+  const decade=d.match(/\b(\d{3,5})s\b/i);if(decade)return Number(decade[1])*10000;
+  const emb=d.match(/\b(\d{4,6})\b/);if(emb)return Number(emb[1])*10000;
+  return 0;
+}
+function _migrateCascadeEvdates(){
+  const b=book();if(!b)return;
+  if(b._cascadeMigV===2)return; // already migrated
+  const UNIT={day:1,days:1,week:7,weeks:7,month:30.44,months:30.44,year:365.25,years:365.25,decade:3652.5,decades:3652.5,century:36525,centuries:36525,hour:1/24,hours:1/24,minute:1/1440,minutes:1/1440};
+  const tl=(b.entries||[]).filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&e.timeOffset&&e.timeOffsetFrom);
+  if(!tl.length){b._cascadeMigV=2;return;}
+  let changed=false;
+  // Multi-pass for offset chains
+  for(let pass=0;pass<8;pass++){
+    let any=false;
+    tl.forEach(e=>{
+      const anchor=findAnchorEntry(e.timeOffsetFrom);if(!anchor)return;
+      const aY=anchor.evdateYear||((anchor.evdate||'').split('-')[0])||'';
+      const aM=anchor.evdateMonth||'';const aD=anchor.evdateDay||'';
+      const aYN=parseInt(aY)||null;if(aYN===null)return;
+      const m=e.timeOffset.match(/^([+-])([\d.]+)\s+(\w+)/);if(!m)return;
+      const sign=m[1]==='-'?-1:1;
+      let days=sign*(parseFloat(m[2])||0)*(UNIT[m[3].toLowerCase()]||1);
+      (e.offsetExtras||[]).filter(Boolean).forEach(ex=>{days+=sign*(parseFloat(ex.num)||0)*(UNIT[(ex.unit||'').toLowerCase()]||1);});
+      const aM2=aM?+aM:1;const aD2=aD?+aD:1;
+      const bd=new Date(aYN,aM2-1,aD2);bd.setDate(bd.getDate()+Math.round(days));
+      const nY=String(bd.getFullYear());
+      const subY=['day','days','week','weeks','month','months','hour','hours','minute','minutes'];
+      const allU=[m[3],...((e.offsetExtras||[]).filter(Boolean).map(ex=>(ex.unit||'').toLowerCase()))];
+      const isSub=allU.some(u=>subY.includes(u));
+      const nM=(aM||isSub)?String(bd.getMonth()+1).padStart(2,'0'):'';
+      const nD=((aD||isSub)&&nM)?String(bd.getDate()):'';
+      let ev=nY;if(nM){ev+='-'+nM;if(nD)ev+='-'+nD.padStart(2,'0');}
+      if(e.evdate!==ev||e.evdateYear!==nY){
+        e.evdate=ev;e.evdateYear=nY;e.evdateMonth=nM;e.evdateDay=nD;
+        any=true;changed=true;
+      }
+    });
+    if(!any)break;
+  }
+  b._cascadeMigV=2;
+  if(changed)save();
 }
 function backfillTimelineSortNums(){
   if(!currentId)return;
@@ -10457,10 +10598,10 @@ function renderRefs(){
         ${r.refDateRead?`<div style="font-size:10px;color:var(--t3);">📅 ${r.refDateRead}</div>`:''}
         ${r.refDone?`<div style="font-size:10px;color:#1D9E75;font-weight:600;">${r.storyGraphAdded?'✅ Added to StoryGraph'+(r.storyGraphAddedDate?' · '+r.storyGraphAddedDate:''):(doneLabel[r.refType]||'Done')}</div>${r.storyGraphSourceBook?`<div style="font-size:10px;color:var(--t3);">📖 Discovered via: <em>${r.storyGraphSourceBook}</em></div>`:''}`:''}
         ${r.refUrl?`<div style="margin-top:3px;"><a href="${r.refUrl}" onclick="event.preventDefault();openLink('${r.refUrl}')" style="color:var(--accent);font-size:11px;">🔗 Open link</a></div>`:`<div style="margin-top:3px;"><span style="color:var(--accent);font-size:11px;cursor:pointer;" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(r.content)}${r.refAuthor?' by '+esc(r.refAuthor):''}'))">🔍 Search on Google</span></div>`}
-        ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation();">
+        ${r.refType==='book'&&!r.refDone?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-sm" onclick="event.stopPropagation();openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent(this.dataset.title))" data-title="${esc(r.content)}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">📚 StoryGraph</button>
           <button class="btn btn-sm" onclick="event.stopPropagation();markAddedToStoryGraph(+this.dataset.rid)" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;">✅ Mark added</button>
-          <div role="button" tabindex="0" class="wtr-btn" data-bid="${currentId}" data-rid="${r.id}" style="font-size:10px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:rgba(46,134,193,0.3);display:inline-block;padding:5px 11px;background:var(--bg2);border:0.5px solid #2E86C1;color:#2E86C1;border-radius:var(--r);font-weight:600;user-select:none;">📖 Want to Read</div>
+          <div role="button" tabindex="0" class="wtr-btn" data-bid="${currentId}" data-rid="${r.id}" onclick="event.stopPropagation();convertRefToBook(this.dataset.bid,+this.dataset.rid);" style="font-size:10px;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:rgba(46,134,193,0.3);display:inline-block;padding:5px 11px;background:var(--bg2);border:0.5px solid #2E86C1;color:#2E86C1;border-radius:var(--r);font-weight:600;user-select:none;">📖 Want to Read</div>
         </div>`:''}
         ${r.note?`<div class="enote">${r.note}</div>`:''}
         <div class="eactions"><button class="btn-edit" onclick="editEntry(${r.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${r.id})">Delete</button></div>
