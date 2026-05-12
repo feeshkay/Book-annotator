@@ -1969,6 +1969,18 @@ function _migrateLibrary(){
       const REAL_BUILTINS=new Set(['Mother','Father','Child','Parent','Sibling','Brother','Sister','Grandmother','Grandfather','Grandchild','Spouse','Husband','Wife','Partner','Son','Daughter','Aunt','Uncle','Niece','Nephew','Cousin']);
       library.customRelTypes=library.customRelTypes.filter(t=>!REAL_BUILTINS.has(t));
     }
+    // Remove customRelPairs that duplicate built-in reciprocals
+    // (e.g. Mother↔Child was added when someone renamed Mother→custom and back)
+    if(library.customRelPairs){
+      library.customRelPairs=library.customRelPairs.filter(p=>{
+        const builtinRecip=RECIPROCAL[p.typeA];
+        // If both typeA and typeB are builtins AND their reciprocal matches, remove the pair
+        if(builtinRecip&&builtinRecip===p.typeB&&ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB)){
+          return false; // remove
+        }
+        return true;
+      });
+    }
     // Update any entries where relType is a builtin but got stuck as lower-case
     Object.values(library).forEach(b=>{
       if(!b||!b.entries)return;
@@ -3488,6 +3500,8 @@ function openLibStats(){
 // (the only library-level list today) with hooks to add more (rel types, char
 // roles, trait types) once those move from constants → library.lists.*.
 function openLibLists(){
+  // Run migration to clean up any stale pairs/customs before rendering
+  try{_migrateLibrary();save();}catch(e){}
   openSheet('lib-lists-overlay');
   renderLibLists();
 }
@@ -8427,7 +8441,7 @@ function renderWeb(){
       // Position label at the curve midpoint (same as Bezier midpoint).
       const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
       // Strip any leading emoji/whitespace from relType (some older entries stored emoji prefix)
-      const cleanType=(r.relType||'').replace(/^[\p{Emoji}\s]+/u,'').trim()||r.relType;
+      const cleanType=((r.relType||'').replace(/^[^\w]+/,'').trim())||r.relType;
       const recip=getReciprocal(cleanType);
       const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
       const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
@@ -8627,7 +8641,7 @@ function setupWebDrag(){
       svg.insertBefore(path,svg.firstChild); // draw below nodes
       if(r.relType){
         const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
-        const cleanType=(r.relType||'').replace(/^[\p{Emoji}\s]+/u,'').trim()||r.relType;
+        const cleanType=((r.relType||'').replace(/^[^\w]+/,'').trim())||r.relType;
         const recip=RECIPROCAL[cleanType];
         const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
         const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
