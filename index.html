@@ -260,10 +260,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div style="font-size:10px;color:var(--t3);text-align:center;padding:6px 0 4px;">Data lives on this device only · Private to you</div>
     <!-- reading/want tabs -->
     <div style="display:flex;gap:0;border-bottom:0.5px solid var(--cb);">
-      <button class="tab active" id="lib-tab-reading" onclick="switchLibTab('reading',this)" style="flex:1;">Currently Reading</button>
-      <button class="tab" id="lib-tab-want" onclick="switchLibTab('want',this)" style="flex:1;">Want to Read</button>
+      <button class="tab active" id="lib-tab-reading" onclick="switchLibTab('reading',this)" style="flex:1;">Reading</button>
+      <button class="tab" id="lib-tab-want" onclick="switchLibTab('want',this)" style="flex:1;">Want</button>
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
+      <button class="tab" id="lib-tab-gallery" onclick="switchLibTab('gallery',this)" style="flex:1;">📷</button>
     </div>
+    <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
     <div id="lib-empty" class="empty" style="display:none;padding:40px 14px;">
       <div class="empty-icon">📚</div><div class="empty-text">No books here yet</div><div class="empty-sub">Tap + New to add one</div>
@@ -428,7 +430,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="char-hero" id="char-hero"></div>
   <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 80px;" id="char-body"></div>
   <!-- #266 — FAB on char screen: opens entry form with current char pre-filled in involved -->
-  <button onclick="openAddSheet();setTimeout(()=>{const c=document.getElementById('ae-inv-search');if(c)c.value=currentCharName||'';populateCdd('ae-inv',currentCharName?[currentCharName]:[]);},120);" style="position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;border:none;box-shadow:0 4px 14px rgba(0,0,0,0.3);cursor:pointer;z-index:40;display:none;" id="char-fab">+</button>
+  <button onclick="_charFabTap()" style="position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;border:none;box-shadow:0 4px 14px rgba(0,0,0,0.3);cursor:pointer;z-index:40;display:none;" id="char-fab">+</button>
 </div>
 
 <!-- ══ LOCATION DETAIL ══ -->
@@ -473,6 +475,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="nb-lookup-hint" style="display:none;font-size:11px;color:var(--accent);margin:-6px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);"></div>
 
     <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
+    <div class="r2">
+      <div class="fg"><label>Series <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="nb-series" placeholder="e.g. Harry Potter"/></div>
+      <div class="fg" style="max-width:90px;"><label>Book #</label><input type="number" id="nb-series-num" placeholder="1" min="1"/></div>
+    </div>
     <div class="r2">
       <div class="fg"><label>Genre / Type</label>
         <select id="nb-genre">
@@ -1313,20 +1319,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
-  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','chaps','chars','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Person','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Location','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
-  mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Location','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
-  scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
-  history:  {tabs:['log','quotes','chaps','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Location','Place','Question','Quote','Reference','Theme','Timeline','Translation','Word / Vocabulary']},
-  selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Key idea','Location','Objection','Principle','Question','Quote','Reference','Timeline','Translation','Word / Vocabulary']},
-  poetry:   {tabs:['log','quotes','chaps','words','questions','refs','todo','stats'],types:['Emotion','Image','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
-  essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  anthology:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Location','Question','Quote','Reference','Theme','Translation','Word / Vocabulary']},
-  graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  shortfiction:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Location','Quote','Reference','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
-  play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Location','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
+  memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
+  mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
+  scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
+  history:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Image / Diagram','Location','Place','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
+  selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Image / Diagram','Key idea','Location','Objection','Principle','Question','Quote','Reference','Relationship','Timeline','Translation','Word / Vocabulary']},
+  poetry:   {tabs:['log','quotes','chaps','words','questions','refs','todo','stats'],types:['Emotion','Image','Image / Diagram','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
+  essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
+  anthology:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
+  graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  shortfiction:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Image / Diagram','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
+  play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
 };
 const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',other:'Other'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
@@ -3293,21 +3299,59 @@ function switchLibTab(tab,btn){
 function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
-  let books=Object.values(library).filter(b=>b.status===libTab).sort((a,b)=>b.created-a.created);
-  // wantRefs section removed (#631) — was causing reading books to appear in want tab
-  // References tab on each book already shows "Want to Read" button for book refs
-  let wantRefs=[];
-  if(!books.length&&!wantRefs.length){body.innerHTML='';empty.style.display='';return;}
+  const seriesBar=document.getElementById('lib-series-bar');
+  // #179 — Gallery tab
+  if(libTab==='gallery'){
+    if(seriesBar)seriesBar.style.display='none';
+    empty.style.display='none';
+    const photos=[];
+    Object.values(library).forEach(bk=>{
+      if(!bk||!bk.entries)return;
+      bk.entries.forEach(e=>{
+        [e.photo,...(e.photos||[])].filter(p=>p&&p.startsWith('data:')).forEach(p=>{
+          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id});
+        });
+      });
+    });
+    if(!photos.length){body.innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--t3);">No photos yet.<br><span style="font-size:12px;">Upload photos to character or location entries.</span></div>';return;}
+    const af=window._libGalleryFilter||'All';
+    const types=['All',...new Set(photos.map(p=>p.type))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+    const shown=af==='All'?photos:photos.filter(p=>p.type===af);
+    body.innerHTML=`<div style="padding:8px 12px 80px;">
+      <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;padding-bottom:2px;">
+        ${types.map(t=>`<button class="chip${af===t?' active':''}" data-gf="${esc(t)}" onclick="window._libGalleryFilter=this.dataset.gf;renderLibrary();">${t}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        ${shown.map(p=>`<div data-book="${p.bookId}" data-eid="${p.entryId}" onclick="openBook(this.dataset.book);setTimeout(()=>editEntry(+this.dataset.eid),300);" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
+          <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.5);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,18)):''}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+    return;
+  }
+  let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab).sort((a,b)=>{
+    if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
+    return b.created-a.created;
+  });
+  // #389 — series filter chips
+  const allSeries=[...new Set(books.map(b=>b.seriesName).filter(Boolean))].sort();
+  if(seriesBar){
+    if(allSeries.length){
+      const as=window._libSeriesFilter||'';
+      seriesBar.style.display='';
+      seriesBar.innerHTML=`<div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;">
+        <button class="chip${!as?' active':''}" onclick="window._libSeriesFilter='';renderLibrary();">All</button>
+        ${allSeries.map(s=>`<button class="chip${as===s?' active':''}" data-sf="${esc(s)}" onclick="window._libSeriesFilter=this.dataset.sf;renderLibrary();">${s}</button>`).join('')}
+      </div>`;
+      if(as)books=books.filter(b=>b.seriesName===as);
+    } else {
+      seriesBar.style.display='none';
+    }
+  }
+  if(!books.length){body.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  body.innerHTML=books.map((b,i)=>bookCardHTML(b,i)).join('')
-    +(wantRefs.length?`<div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin:14px 0 8px;">From your references</div>`+wantRefs.map(r=>`<div class="book-card" style="background:var(--bg2);">
-      <div class="book-cover" style="background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;">📚</div>
-      <div class="book-info"><div class="book-title">${r.title}</div>${r.author?`<div class="book-author">${r.author}</div>`:''}
-      <div style="font-size:10px;color:var(--t3);">From: ${r.fromBook}</div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-primary" onclick="openLink('https://app.thestorygraph.com/browse?search_term='+encodeURIComponent('${r.title.replace(/'/g,"\\'")}'))">StoryGraph</button>
-        <button class="btn btn-sm" onclick="convertRefToBook('${r.bookId}',${r.refId})">+ Add as book</button>
-      </div></div></div>`).join(''):``);
+  body.innerHTML=books.map((b,i)=>bookCardHTML(b,i)).join('');
 }
 function bookCardHTML(b,i){
   const col=SPINE[i%SPINE.length];
@@ -3321,6 +3365,7 @@ function bookCardHTML(b,i){
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
       <div class="book-title">${b.title}</div>
+      ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''}</div>`:''}
       <div class="book-author">${b.author||'—'}</div>
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
       ${stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:''}
@@ -3837,6 +3882,8 @@ function openEditBook(id){
   document.getElementById('nb-total').value=b.totalPages||'';
   document.getElementById('nb-rating').value=b.rating||'';
   document.getElementById('nb-cover-data').value=b.cover||'';
+  const sns=document.getElementById('nb-series');if(sns)sns.value=b.seriesName||'';
+  const snn=document.getElementById('nb-series-num');if(snn)snn.value=b.seriesNum||'';
   setPhotoBox('nb-cover-box',b.cover||'','Tap to upload cover','22');
   renderChapSetup(b.chapSetup);
   toggleRatingVis();
@@ -3853,7 +3900,7 @@ function saveBook(applyWiki){
   const editId=document.getElementById('nb-edit-id').value;
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||'')};
   // xlsx #435 (Batch 41) — duplicate chapter # warning. If two or more chapSetup
   // rows share the same chapNum, list them and let the user choose: keep going
   // (will create ambiguous Chapter log entries) or cancel and fix the numbers.
@@ -4516,10 +4563,29 @@ function buildTypeSelect(){
   let types=cfg.types.slice();
   if(!types.includes('Image / Diagram'))types.push('Image / Diagram');
   if(!types.includes('Relationship'))types.push('Relationship');
-  // #438 — custom entry types
+  if(!types.includes('Outfit'))types.push('Outfit');
   (library.customEntryTypes||[]).forEach(t=>{if(t&&!types.includes(t))types.push(t);});
-  types.sort((a,b)=>a.localeCompare(b));
-  document.getElementById('ae-type').innerHTML=types.map(t=>`<option>${t}</option>`).join('');
+  // #544 — Group into categories
+  const GROUPS=[
+    {label:'📝 Writing & Story',items:['Quote','Dialogue','Line/stanza','Narrator quote','Poem']},
+    {label:'👤 Characters & People',items:['Character','Person','Figure','Suspect','Characteristic','Outfit','Group / Organization']},
+    {label:'🔗 Relationships',items:['Relationship']},
+    {label:'📅 Time & Events',items:['Timeline','Event','Date/Period','Chapter','Act/Scene']},
+    {label:'🌍 World & Place',items:['Location','Place','Setting','Image / Diagram','Map location']},
+    {label:'💡 Ideas & Analysis',items:['Theme','Symbol','Concept','Argument','Evidence','Key idea','Principle','Actionable','Exercise','Objection','Reflection','Clue','Red herring','Plot twist','World element','Faction','Emotion','Technique']},
+    {label:'📖 Reference & Notes',items:['Reference','Question','Word / Vocabulary','Translation','Author note','Key idea']},
+  ];
+  const placed=new Set();
+  let html='';
+  GROUPS.forEach(g=>{
+    const groupItems=g.items.filter(t=>types.includes(t)&&!placed.has(t));
+    if(!groupItems.length)return;
+    groupItems.forEach(t=>placed.add(t));
+    html+=`<optgroup label="${g.label}">${groupItems.map(t=>`<option>${t}</option>`).join('')}</optgroup>`;
+  });
+  const custom=types.filter(t=>!placed.has(t)).sort((a,b)=>a.localeCompare(b));
+  if(custom.length)html+=`<optgroup label="✨ Other">${custom.map(t=>`<option>${t}</option>`).join('')}</optgroup>`;
+  document.getElementById('ae-type').innerHTML=html;
   buildCharRoleSelect();
 }
 function showTraitTypeHint(){
@@ -7831,6 +7897,28 @@ function renderTraitQuotes(t,strokeColor){
   if(!quotes.length)return '';
   return quotes.map(q=>`<div style="border-left:2px solid ${strokeColor};padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${q.text}"${q.pg?` — p.${q.pg}`:''}${q.speaker?` <span style="opacity:.7;">(${q.speaker})</span>`:''}</div>`).join('');
 }
+function _charFabTap(){
+  const name=currentCharName;
+  if(!name){openAddSheet();return;}
+  // Show a small confirm overlay asking if the entry is for this character
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99990;display:flex;align-items:flex-end;';
+  ov.innerHTML=`<div style="background:var(--card);border-radius:16px 16px 0 0;width:100%;padding:18px 18px 32px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Add an entry</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px;">Is this entry about <strong>${esc(name)}</strong>?</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button id="_fabYes" style="padding:12px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Yes — tag ${esc(name)} in Involved</button>
+      <button id="_fabNo" style="padding:12px;border-radius:12px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">No — open blank entry form</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('_fabYes').onclick=()=>{
+    ov.remove();openAddSheet();
+    setTimeout(()=>{try{populateCdd('ae-inv',[name]);}catch(e){}},150);
+  };
+  document.getElementById('_fabNo').onclick=()=>{ov.remove();openAddSheet();};
+  ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
+}
 function openCharDetail(name,fromWeb){
   if(!name||!currentId)return;
   currentCharName=name;
@@ -7995,7 +8083,33 @@ function renderCharDetail(name){
   // Personality traits — always show header
   html+=`<div class="csec">${secHdr('char-pers','Personality traits',persTraits.length,'Characteristic','Trait')}<div id="char-pers">`;
   if(persTraits.length){
-    html+=sortByPage(persTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">${t.traitType||'Trait'}</div>${t.content}${renderTraitQuotes(t,col.stroke)} ${nT(t)}${pgT(t)}${act(t)}</div>`).join('');
+    html+=sortByPage(persTraits).map((t,ti)=>{
+      const quotes=t.traitQuotes?.length?t.traitQuotes:(t.sq?[{text:t.sq,pg:t.sqp||'',speaker:t.traitSpeaker||''}]:[]);
+      const sid=`trait-q-${ti}`;
+      const qBlock=quotes.length
+        ?`<div id="${sid}" style="display:none;padding:4px 0 2px;">
+            ${quotes.map(q=>`<div style="border-left:2px solid ${col.stroke};padding-left:6px;margin-top:3px;font-size:11px;color:var(--t2);">"${q.text}"${q.pg?` — p.${q.pg}`:''}${q.speaker?` <span style="opacity:.7;">(${q.speaker})</span>`:''}</div>`).join('')}
+          </div>`
+        :`<div id="${sid}" style="display:none;padding:4px 0 2px;">
+            <span style="font-size:11px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openAddTypeForChar('Quote')">+ Add supporting quote</span>
+          </div>`;
+      const qCount=quotes.length?`<span style="font-size:10px;color:var(--t3);margin-right:6px;">${quotes.length}💬</span>`:'';
+      return`<div class="citem">
+        <div onclick="toggleSec('${sid}')" style="cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="flex:1;">
+              <span class="ilabel" style="color:${col.text};margin-right:6px;">${t.traitType||'Trait'}</span>
+              <span style="font-size:13px;">${t.content}</span>
+            </div>
+            ${qCount}
+            <span id="${sid}-tog" style="font-size:11px;color:var(--t3);">▸</span>
+          </div>
+          ${nT(t)}${pgT(t)}
+        </div>
+        ${qBlock}
+        ${act(t)}
+      </div>`;
+    }).join('');
   } else {
     html+=`<div style="font-size:11px;color:var(--t3);font-style:italic;padding:6px 2px;">No traits yet — tap + Trait to add one.</div>`;
   }
@@ -11450,6 +11564,13 @@ function openSync(){
 function setSyncStatus(msg,color){
   const el=document.getElementById('sync-status');
   if(el){el.textContent=msg;el.style.color=color||'var(--t2)';}
+  // Also show as a toast so it's visible even when the sync panel is scrolled/hidden
+  if(msg&&(msg.startsWith('✓')||msg.startsWith('✗')||msg.startsWith('⚠'))){
+    const t=document.createElement('div');
+    t.textContent=msg;
+    t.style.cssText=`position:fixed;top:60px;left:50%;transform:translateX(-50%);background:${color||'var(--card)'};color:${color&&color.startsWith('#')?'#fff':'var(--text)'};padding:9px 16px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;pointer-events:none;box-shadow:0 3px 12px rgba(0,0,0,0.3);max-width:90vw;text-align:center;`;
+    document.body.appendChild(t);setTimeout(()=>t.remove(),4000);
+  }
 }
 async function syncPush(){
   const token=document.getElementById('sync-token').value.trim();
