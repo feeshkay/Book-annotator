@@ -7788,7 +7788,19 @@ function openCharDetail(name,fromWeb){
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
-  try{renderCharDetail(name);}catch(err){console.error('renderCharDetail failed:',err);document.getElementById('char-hero').innerHTML='<div style="padding:12px;color:var(--red);font-size:13px;">Error loading profile. Tap back and try again.</div>';document.getElementById('char-body').innerHTML='';}
+  try{
+    renderCharDetail(name);
+  }catch(err){
+    console.error('renderCharDetail error:',err.message,err.stack);
+    const heroEl=document.getElementById('char-hero');
+    const bodyEl=document.getElementById('char-body');
+    if(heroEl)heroEl.innerHTML=`<div style="flex:1;padding:8px;"><div style="font-size:16px;font-weight:700;">${name}</div><div style="font-size:11px;color:var(--red);margin-top:4px;">⚠️ Profile error: ${err.message}</div></div>`;
+    if(bodyEl)bodyEl.innerHTML=`<div style="padding:16px;color:var(--t2);font-size:13px;">
+      <p>There was an error loading this character's profile.</p>
+      <p style="font-size:11px;color:var(--t3);font-family:monospace;">${err.message}</p>
+      <button class="btn" onclick="renderCharDetail('${esc(name)}');document.getElementById('char-body').innerHTML='Retried.'" style="margin-top:12px;">Retry</button>
+    </div>`;
+  }
   show('char-screen','book-screen');
   const cb=document.getElementById('char-body');if(cb)cb.scrollTop=0;
 }
@@ -7796,6 +7808,8 @@ function openCharDetail(name,fromWeb){
 function renderCharDetail(name){
   const col=getCC(name);const all=entries();
   const ce=all.find(e=>CT.includes(e.type)&&(e.cn||e.content)===name);
+  console.log('[RCD]',name,'ce:',!!ce,'entries:',all.length);
+  try{
   const ini=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const ph=ce?.photo?`<img src="${ce.photo}" style="width:100%;height:100%;object-fit:cover;"/>`:'';
   const roleLabel={main:'Main character',side:'Side character',minor:'Minor/Unnamed',stranger:'Stranger / One-liner',antagonist:'Antagonist',narrator:'Narrator',author:'Author',subject:'Subject',expert:'Expert / Academic',historical:'Historical figure',mentioned:'Mentioned',unknown:'Unknown role'}[ce?.charRole||'unknown']||'';
@@ -7873,7 +7887,7 @@ function renderCharDetail(name){
       ${ce?.charPhys?`<div style="font-size:12px;margin-bottom:6px;"><strong>Physical:</strong> ${ce.charPhys}</div>`:''}
       ${ce?.charDesc?`<div style="font-size:12px;font-style:italic;color:var(--t2);">${ce.charDesc}</div>`:''}
       <div style="margin-top:8px;">
-        <button class="btn btn-sm" onclick="suggestFamilyConnectionsForChar('${esc(name)}')" style="width:100%;padding:7px;font-size:12px;">🧬 Suggest relationships for ${esc(name)}</button>
+        <button class="btn btn-sm" onclick="suggestFamilyConnectionsForChar(this.dataset.n)" data-n="${esc(name)}" style="width:100%;padding:7px;font-size:12px;">🧬 Suggest relationships for ${esc(name)}</button>
       </div>
     </div>
   </div>`;
@@ -8083,6 +8097,10 @@ function renderCharDetail(name){
     <button class="btn" onclick="deleteEntry(${ce.id})" style="width:100%;color:var(--red);border-color:var(--red);background:var(--rl);font-size:13px;padding:10px;">🗑 Delete character</button>
   </div>`;}
   document.getElementById('char-body').innerHTML=html;
+  }catch(rcdErr){
+    console.error('[RCD] CAUGHT:',rcdErr.message,rcdErr.stack);
+    throw rcdErr; // rethrow so openCharDetail catch can display error
+  }
 }
 function csecBlock(col,label,arr,pgT,nT,act,id,sortFn){
   const sorted=sortFn?sortFn(arr):arr;
@@ -11369,11 +11387,21 @@ async function syncPush(){
   localStorage.setItem('sync-token',token);
   const data=JSON.stringify(library);
   const sizeKB=Math.round(data.length/1024);
-  // GitHub Gist files have an effective ~1MB limit; warn if approaching it
-  if(data.length>950*1024){
-    if(!confirm(`Your library is ${sizeKB}KB — approaching GitHub Gist's ~1MB single-file limit. Push anyway? (Pull may fail with truncation error on large data.)`))return;
+  setSyncStatus(`Preparing ${sizeKB}KB…`,'var(--t2)');
+  // Chunk if > 800KB to stay well under Gist limits
+  const CHUNK=800*1024;
+  let files={'book-annotator-meta.json':{content:JSON.stringify({version:2,chunks:Math.ceil(data.length/CHUNK),totalBytes:data.length,updated:Date.now()})}};
+  if(data.length<=CHUNK){
+    files['book-annotator-data.json']={content:data};
+  } else {
+    const numChunks=Math.ceil(data.length/CHUNK);
+    for(let i=0;i<numChunks;i++){
+      files[`book-annotator-chunk-${i}.json`]={content:data.slice(i*CHUNK,(i+1)*CHUNK)};
+    }
+    // Remove old single-file entry if switching to chunked
+    files['book-annotator-data.json']={content:'{"_chunked":true}'};
   }
-  const payload={description:'Book Annotator Sync',public:false,files:{'book-annotator-data.json':{content:data}}};
+  const payload={description:'Book Annotator Sync',public:false,files};
   try{
     let url='https://api.github.com/gists';let method='POST';
     if(gistId){url=`https://api.github.com/gists/${gistId}`;method='PATCH';}
@@ -11382,7 +11410,8 @@ async function syncPush(){
     const json=await res.json();
     localStorage.setItem('sync-gist-id',json.id);
     document.getElementById('sync-gist-id').value=json.id;
-    setSyncStatus(`✓ Pushed at ${new Date().toLocaleTimeString()} · Gist ID saved`,'#1D9E75');
+    const numChunks=Math.ceil(data.length/CHUNK);
+    setSyncStatus(`✓ Pushed at ${new Date().toLocaleTimeString()} · ${sizeKB}KB in ${numChunks} file(s) · Gist ID saved`,'#1D9E75');
   }catch(e){setSyncStatus('✗ Network error: '+e.message,'#E24B4A');}
 }
 async function syncPull(){
@@ -11396,29 +11425,50 @@ async function syncPull(){
     const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'}});
     if(!res.ok){const err=await res.json();setSyncStatus('✗ Error: '+(err.message||res.status),'#E24B4A');return;}
     const json=await res.json();
-    const fileObj=json.files?.['book-annotator-data.json'];
-    if(!fileObj){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
-    let fileContent=fileObj.content;
-    // GitHub truncates files > ~1MB in the API response. Fetch raw URL if so.
-    if(fileObj.truncated&&fileObj.raw_url){
-      setSyncStatus('Fetching full data…','var(--t2)');
-      const rawRes=await fetch(fileObj.raw_url);
-      if(rawRes.ok)fileContent=await rawRes.text();
+    // Detect chunked vs single file
+    const metaFile=json.files?.['book-annotator-meta.json'];
+    let fullData='';
+    if(metaFile){
+      let metaContent=metaFile.content;
+      if(metaFile.truncated&&metaFile.raw_url){const r=await fetch(metaFile.raw_url);if(r.ok)metaContent=await r.text();}
+      let meta;
+      try{meta=JSON.parse(metaContent);}catch(e){meta={version:1,chunks:1};}
+      if(meta.version===2&&meta.chunks>1){
+        // Reassemble chunks
+        setSyncStatus(`Reassembling ${meta.chunks} parts (${Math.round((meta.totalBytes||0)/1024)}KB)…`,'var(--t2)');
+        const parts=[];
+        for(let i=0;i<meta.chunks;i++){
+          const cf=json.files?.[`book-annotator-chunk-${i}.json`];
+          if(!cf){setSyncStatus(`✗ Missing chunk ${i}. Re-push from the source device.`,'#E24B4A');return;}
+          let content=cf.content;
+          if(cf.truncated&&cf.raw_url){setSyncStatus(`Fetching part ${i+1}/${meta.chunks}…`,'var(--t2)');const r=await fetch(cf.raw_url);if(r.ok)content=await r.text();}
+          parts.push(content||'');
+        }
+        fullData=parts.join('');
+      } else {
+        const singleFile=json.files?.['book-annotator-data.json'];
+        if(!singleFile){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
+        fullData=singleFile.content||'';
+        if(singleFile.truncated&&singleFile.raw_url){setSyncStatus('Fetching full data…','var(--t2)');const r=await fetch(singleFile.raw_url);if(r.ok)fullData=await r.text();}
+      }
+    } else {
+      const singleFile=json.files?.['book-annotator-data.json'];
+      if(!singleFile){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
+      fullData=singleFile.content||'';
+      if(singleFile.truncated&&singleFile.raw_url){setSyncStatus('Fetching full data…','var(--t2)');const r=await fetch(singleFile.raw_url);if(r.ok)fullData=await r.text();}
     }
-    if(!fileContent){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
+    if(!fullData){setSyncStatus('✗ Empty data received','#E24B4A');return;}
     let incoming;
-    try{
-      incoming=JSON.parse(fileContent);
-    }catch(parseErr){
-      // Common cause: gist content was truncated (large libraries > 1MB hit gist limits)
-      const size=fileContent.length;
-      const sizeKB=Math.round(size/1024);
-      setSyncStatus(`✗ Backup data is corrupted/truncated (${sizeKB}KB). Push from a working device to repair.`,'#E24B4A');
+    try{incoming=JSON.parse(fullData);}
+    catch(parseErr){
+      const sizeKB=Math.round(fullData.length/1024);
+      setSyncStatus(`✗ Data corrupted/truncated (${sizeKB}KB). Re-push from source device.`,'#E24B4A');
       return;
     }
     // Merge: incoming books win for their own entries, but we never lose local-only books
     let added=0,merged=0;
     Object.values(incoming).forEach(b=>{
+      if(!b||typeof b!=='object'||!b.id)return;
       if(!library[b.id]){library[b.id]=b;added++;}
       else{
         const ids=new Set(library[b.id].entries.map(e=>e.id));
@@ -11428,7 +11478,7 @@ async function syncPull(){
       }
     });
     save();renderLibrary();
-    setSyncStatus(`✓ Pulled at ${new Date().toLocaleTimeString()} · ${added} new book(s), ${merged} new entries`,'#1D9E75');
+    setSyncStatus(`✓ Pulled · ${added} new book(s), ${merged} new entries`,'#1D9E75');
   }catch(e){setSyncStatus('✗ '+e.message,'#E24B4A');}
 }
 
