@@ -41,7 +41,7 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);tra
 /* sheets */
 .sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;}
 .sheet-overlay.open{display:flex;}
-.sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:95vh;overflow-y:auto;}
+.sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:97vh;min-height:70vh;overflow-y:auto;}
 .sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 12px;}
 .sheet-x{position:absolute;right:10px;top:10px;font-size:22px;background:var(--bg3);color:var(--text);padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--cb);line-height:1;min-width:36px;text-align:center;z-index:20;}
 .sheet-title{font-size:16px;font-weight:600;margin-bottom:12px;}
@@ -263,6 +263,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="tab active" id="lib-tab-reading" onclick="switchLibTab('reading',this)" style="flex:1;">Reading</button>
       <button class="tab" id="lib-tab-want" onclick="switchLibTab('want',this)" style="flex:1;">Want</button>
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
+      <button class="tab" id="lib-tab-gallery" onclick="switchLibTab('gallery',this)" style="flex:1;">📷</button>
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
@@ -757,6 +758,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg">
         <label>Linked to relationship? <span style="font-weight:400;">(optional)</span></label>
         <select id="ae-quote-rel" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
+      </div>
+      <div class="fg" id="ae-trait-link-wrap" style="display:none;">
+        <label>Linked to character trait? <span style="font-weight:400;">(optional)</span></label>
+        <select id="ae-quote-trait" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px;">Links this quote to a personality/physical trait — it'll appear under that trait on the character's profile.</div>
       </div>
     </div>
 
@@ -1318,7 +1324,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
-  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Foreshadowing','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
   nonfiction:{tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
   memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
   mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
@@ -1784,6 +1790,7 @@ const TYPE_HINTS={
   'Question':{icon:'❓',desc:'Something you\'re uncertain about — unanswered mysteries, confusions, predictions.',tips:['Mark it answered when you find out — it moves to the Answered section.','Tag involved characters.','Ask: is this plot-related, character-related, or thematic?']},
   'Word / Vocabulary':{icon:'📖',desc:'An unfamiliar or interesting word.',tips:['Tap 🔍 Look up in Merriam-Webster to search instantly.','Add the context from the book — how it was used.','Add a translation if it\'s a foreign word.','Mark as defined when complete in the Vocabulary tab.']},
   'Reference':{icon:'🔖',desc:'Something to read, watch, or research — inspired by or mentioned in this book.',tips:['Books → consider adding to StoryGraph.','Add a link for quick access later.','Check it off when done — it moves to the completed section.','Appears in the To-Do tab if unfinished.']},
+  'Foreshadowing':{icon:'🔮',desc:'A hint, clue, or passage that hints at future events. Capture it while you spot it — you can revisit and annotate what it foreshadowed once you know.',tips:['Paste the quote or describe the moment in the content field.','Use "Note" to describe what it foreshadows (even speculatively — you can edit later).','Tag involved characters who are affected.','Link to the Timeline Event it foreshadows using "Attached to Event/Timeline" on the Quote.','Great to compare foreshadowing across a series once you finish.']},
   'Image / Diagram':{icon:'🖼',desc:'A photo, illustration, chart, or diagram from the book — or an image reference you found elsewhere.',tips:['Use "Upload photo" to attach the image directly.','Add a note explaining what it shows and why it matters.','Tag relevant characters or concepts in Characters Involved.','Great for diagrams, family trees, maps, evolution charts, etc.']},
   'Location':{icon:'📍',desc:'A specific place in the story where a scene occurs.',tips:['Real places get pinned on the map view.','Fictional places can have notes on their lore or significance.','Log the era/time period — helps with historical context.','Different from Setting — this is a specific scene-place, not the atmospheric context.']},
   'Dialogue':{icon:'💬',desc:'A multi-line conversation between characters.',tips:['Add each line with the speaker tagged.','Useful for capturing complex exchanges that one Quote entry can\'t hold.','Tag all characters in the "Characters involved" field.']},
@@ -1976,15 +1983,18 @@ function _migrateLibrary(){
     }
     // Remove customRelPairs that duplicate built-in reciprocals
     // (e.g. Mother↔Child was added when someone renamed Mother→custom and back)
-    if(library.customRelPairs){
-      library.customRelPairs=library.customRelPairs.filter(p=>{
-        const builtinRecip=RECIPROCAL[p.typeA];
-        // If both typeA and typeB are builtins AND their reciprocal matches, remove the pair
-        if(builtinRecip&&builtinRecip===p.typeB&&ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB)){
-          return false; // remove
-        }
-        return true;
-      });
+    // Version 3 — catches cases where RECIPROCAL check wasn't matching
+    if(!library._pairMigV||library._pairMigV<3){
+      library._pairMigV=3;
+      if(library.customRelPairs){
+        library.customRelPairs=library.customRelPairs.filter(p=>{
+          // Remove if EITHER typeA or typeB is a builtin with a known reciprocal matching the other
+          const builtinRecip=RECIPROCAL[p.typeA]||RECIPROCAL[p.typeB];
+          const bothBuiltin=ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB);
+          if(bothBuiltin){return false;} // any pair of two builtins is redundant — remove
+          return true;
+        });
+      }
     }
     // Update any entries where relType is a builtin but got stuck as lower-case
     Object.values(library).forEach(b=>{
@@ -2935,7 +2945,7 @@ function saveQuickLoc(){
 async function lookupBook(title){
   if(!title||title.length<3)return;
   try{
-    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series`);
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence`);
     const d=await r.json();
     const hint=document.getElementById('nb-lookup-hint');
     if(!d.docs||!d.docs.length){hint.style.display='';hint.innerHTML='No results found.';return;}
@@ -2965,19 +2975,6 @@ async function applyLookup(idx){
   if(b.first_sentence?.value){
     const sumEl=document.getElementById('nb-summary');
     if(sumEl&&!sumEl.value)sumEl.value=b.first_sentence.value;
-  }
-  // #389 — Auto-fill series from OpenLibrary series field
-  if(b.series&&b.series.length){
-    const sns=document.getElementById('nb-series');
-    if(sns&&!sns.value){
-      // series entries often look like "Harry Potter #3" or "Harry Potter, #3"
-      const raw=b.series[0]||'';
-      const numMatch=raw.match(/#\s*(\d+)/);
-      const seriesName=raw.replace(/#\s*\d+/,'').replace(/,\s*$/,'').trim();
-      if(sns)sns.value=seriesName||raw;
-      const snn=document.getElementById('nb-series-num');
-      if(snn&&numMatch)snn.value=numMatch[1];
-    }
   }
   // Auto-fetch and set cover photo
   if(b.cover_i){
@@ -3314,12 +3311,32 @@ function renderLibrary(){
   const seriesBar=document.getElementById('lib-series-bar');
   // #179 — Gallery tab
   if(libTab==='gallery'){
-    openLibGallery();
-    // Reset tab to reading so gallery doesn't stay as "active tab"
-    libTab='reading';
-    document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
-    const rb=document.getElementById('lib-tab-reading');if(rb)rb.classList.add('active');
-    renderLibrary();
+    if(seriesBar)seriesBar.style.display='none';
+    empty.style.display='none';
+    const photos=[];
+    Object.values(library).forEach(bk=>{
+      if(!bk||!bk.entries)return;
+      bk.entries.forEach(e=>{
+        [e.photo,...(e.photos||[])].filter(p=>p&&p.startsWith('data:')).forEach(p=>{
+          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id});
+        });
+      });
+    });
+    if(!photos.length){body.innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--t3);">No photos yet.<br><span style="font-size:12px;">Upload photos to character or location entries.</span></div>';return;}
+    const af=window._libGalleryFilter||'All';
+    const types=['All',...new Set(photos.map(p=>p.type))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+    const shown=af==='All'?photos:photos.filter(p=>p.type===af);
+    body.innerHTML=`<div style="padding:8px 12px 80px;">
+      <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;padding-bottom:2px;">
+        ${types.map(t=>`<button class="chip${af===t?' active':''}" data-gf="${esc(t)}" onclick="window._libGalleryFilter=this.dataset.gf;renderLibrary();">${t}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        ${shown.map(p=>`<div data-book="${p.bookId}" data-eid="${p.entryId}" onclick="openBook(this.dataset.book);setTimeout(()=>editEntry(+this.dataset.eid),300);" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
+          <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.5);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,18)):''}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
     return;
   }
   let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab).sort((a,b)=>{
@@ -3460,54 +3477,52 @@ function openLibSettings(){openSheet('lib-settings-overlay');}
 // xlsx #401 — Library usage stats. Tells the user which features and answer-options
 // they've used (and haven't) across ALL books in their library.
 function openLibGallery(){
-  // Collect all photos — deduplicate: only one photo per (entryId, photoUrl) combination
+  // Collect all photos — deduplicate per entry to prevent showing the same photo twice
   const photos=[];
   Object.values(library).forEach(bk=>{
     if(!bk||!bk.entries)return;
     bk.entries.forEach(e=>{
-      const seen=new Set();
-      // Use e.photos if it exists, else fall back to just e.photo — avoid duplicating
+      // Use photos[] if available, else e.photo. Avoid duplicating e.photo when it's photos[0]
       const photoArr=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
+      const seen=new Set();
       photoArr.forEach(p=>{
         if(p&&p.startsWith('data:')&&!seen.has(p)){
           seen.add(p);
-          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id,bookTitle:bk.title||''});
+          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id});
         }
       });
     });
   });
   const ov=document.createElement('div');
   ov.id='_galleryOv';
-  ov.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;';
+  ov.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
   const renderGrid=(af)=>{
     const types=['All',...new Set(photos.map(p=>p.type))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
     const shown=af==='All'?photos:photos.filter(p=>p.type===af);
+    const chipHtml=types.map(t=>`<button class="chip${af===t?' active':''}" onclick="window._galFn('${esc(t)}')" style="flex-shrink:0;">${t}</button>`).join('');
     const gridHtml=shown.length
-      ?shown.map(p=>`<div data-book="${p.bookId}" data-eid="${p.entryId}" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
+      ?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">${shown.map(p=>`<div data-bid="${p.bookId}" data-eid="${p.entryId}" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
           <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
-          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.5);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,20)):''}</div>
-        </div>`).join('')
-      :`<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--t3);">No ${af==='All'?'':''+af+' '}photos yet.</div>`;
-    ov.innerHTML=`<div style="background:var(--bg);border-bottom:0.5px solid var(--cb);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-      <button onclick="document.getElementById('_galleryOv').remove();" style="background:transparent;border:none;font-size:22px;color:var(--text);cursor:pointer;padding:0;">‹</button>
-      <div style="flex:1;font-size:16px;font-weight:700;">Photo Gallery</div>
-      <span style="font-size:12px;color:var(--t3);">${shown.length} photo${shown.length!==1?'s':''}</span>
-    </div>
-    <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 12px 4px;flex-shrink:0;">
-      ${types.map(t=>`<button class="chip${af===t?' active':''}" onclick="_galFilter('${esc(t)}')">${t}</button>`).join('')}
-    </div>
-    <div style="overflow-y:auto;flex:1;padding:8px 12px 40px;">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">${gridHtml}</div>
-    </div>`;
-    ov.querySelectorAll('[data-book]').forEach(el=>{
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.55);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,20)):''}</div>
+        </div>`).join('')}</div>`
+      :`<div style="padding:40px;text-align:center;color:var(--t3);">No ${af==='All'?'':''+af+' '}photos yet.</div>`;
+    ov.innerHTML=`
+      <div style="padding:10px 14px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--bg);">
+        <button onclick="document.getElementById('_galleryOv').remove();" style="background:transparent;border:none;font-size:22px;color:var(--text);cursor:pointer;padding:0;line-height:1;">‹</button>
+        <div style="flex:1;font-size:16px;font-weight:700;">Photo Gallery</div>
+        <span style="font-size:12px;color:var(--t3);">${shown.length} photo${shown.length!==1?'s':''}</span>
+      </div>
+      <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 12px 4px;flex-shrink:0;">${chipHtml}</div>
+      <div style="overflow-y:auto;flex:1;padding:8px 12px 40px;">${gridHtml}</div>`;
+    ov.querySelectorAll('[data-bid]').forEach(el=>{
       el.onclick=()=>{
         document.getElementById('_galleryOv').remove();
-        openBook(el.dataset.book);
+        openBook(el.dataset.bid);
         setTimeout(()=>editEntry(+el.dataset.eid),300);
       };
     });
   };
-  window._galFilter=(af)=>{window._libGalleryFilter=af;renderGrid(af);};
+  window._galFn=(af)=>{window._libGalleryFilter=af;renderGrid(af);};
   renderGrid(window._libGalleryFilter||'All');
   document.body.appendChild(ov);
 }
@@ -3687,67 +3702,21 @@ function renderRelTypesSection(){
   </div>`;
 }
 function libListsAddEntryType(){
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;';
-  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:20px 18px;width:100%;max-width:340px;">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px;">Add custom entry type</div>
-    <div class="fg" style="margin-bottom:10px;"><label>Type name *</label><input id="_cetName" type="text" placeholder='e.g. "Scene", "Motif"' style="width:100%;font-size:14px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--bg2);color:var(--text);box-sizing:border-box;" autocorrect="off"/></div>
-    <div class="fg" style="margin-bottom:14px;"><label>Description (shown on ? button)</label><textarea id="_cetDesc" placeholder="What is this type for? Tips for using it." rows="3" style="width:100%;font-size:13px;padding:9px 12px;border-radius:10px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);box-sizing:border-box;resize:vertical;"></textarea></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:10px;border-radius:10px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">Cancel</button>
-      <button id="_cetSave" style="flex:2;padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Add type</button>
-    </div>
-  </div>`;
-  document.body.appendChild(ov);
-  const nameEl=document.getElementById('_cetName');
-  nameEl.focus();
-  document.getElementById('_cetSave').onclick=()=>{
-    const v=(nameEl.value||'').trim();
-    if(!v){nameEl.style.borderColor='var(--red)';return;}
-    if(!library.customEntryTypes)library.customEntryTypes=[];
-    if(library.customEntryTypes.includes(v)){_showToast('That name already exists.','#E24B4A');return;}
-    library.customEntryTypes.push(v);
-    const desc=(document.getElementById('_cetDesc').value||'').trim();
-    if(desc){
-      if(!library.customEntryHints)library.customEntryHints={};
-      library.customEntryHints[v]=desc;
-    }
-    save();ov.remove();renderLibLists();
-  };
-  nameEl.onkeydown=(e)=>{if(e.key==='Enter')document.getElementById('_cetSave').click();};
+  const v=(prompt('New entry type name (e.g. "Scene", "Motif", "Object"):')||'').trim();
+  if(!v)return;
+  if(!library.customEntryTypes)library.customEntryTypes=[];
+  if(library.customEntryTypes.includes(v)){alert('Already exists.');return;}
+  library.customEntryTypes.push(v);save();renderLibLists();
 }
 function libListsRenameEntryType(oldName){
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;';
-  const existDesc=(library.customEntryHints||{})[oldName]||'';
-  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:20px 18px;width:100%;max-width:340px;">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px;">Edit type "${esc(oldName)}"</div>
-    <div class="fg" style="margin-bottom:10px;"><label>Type name</label><input id="_cetRName" type="text" value="${esc(oldName)}" style="width:100%;font-size:14px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--bg2);color:var(--text);box-sizing:border-box;" autocorrect="off"/></div>
-    <div class="fg" style="margin-bottom:14px;"><label>Description (shown on ? button)</label><textarea id="_cetRDesc" rows="3" style="width:100%;font-size:13px;padding:9px 12px;border-radius:10px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);box-sizing:border-box;resize:vertical;">${esc(existDesc)}</textarea></div>
-    <div style="display:flex;gap:8px;">
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:10px;border-radius:10px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">Cancel</button>
-      <button id="_cetRSave" style="flex:2;padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Save</button>
-    </div>
-  </div>`;
-  document.body.appendChild(ov);
-  document.getElementById('_cetRSave').onclick=()=>{
-    const newName=(document.getElementById('_cetRName').value||'').trim();
-    const desc=(document.getElementById('_cetRDesc').value||'').trim();
-    if(newName&&newName!==oldName){
-      if(!library.customEntryTypes)library.customEntryTypes=[];
-      if(library.customEntryTypes.includes(newName)){_showToast('That name already exists.','#E24B4A');return;}
-      library.customEntryTypes=library.customEntryTypes.map(t=>t===oldName?newName:t);
-      Object.values(library).forEach(b=>{if(!b||!b.entries)return;b.entries.forEach(e=>{if(e.type===oldName)e.type=newName;});});
-      if(library.customEntryHints){
-        if(library.customEntryHints[oldName]){library.customEntryHints[newName]=library.customEntryHints[oldName];delete library.customEntryHints[oldName];}
-      }
-    }
-    if(!library.customEntryHints)library.customEntryHints={};
-    const finalName=newName&&newName!==oldName?newName:oldName;
-    if(desc)library.customEntryHints[finalName]=desc;
-    else delete library.customEntryHints[finalName];
-    save();ov.remove();renderLibLists();if(typeof renderAll==='function')renderAll();
-  };
+  const newName=(prompt(`Rename "${oldName}" to:`,oldName)||'').trim();
+  if(!newName||newName===oldName)return;
+  if(!library.customEntryTypes)library.customEntryTypes=[];
+  if(library.customEntryTypes.includes(newName)){alert('That name already exists.');return;}
+  library.customEntryTypes=library.customEntryTypes.map(t=>t===oldName?newName:t);
+  // Rename in all entries
+  Object.values(library).forEach(b=>{if(!b||!b.entries)return;b.entries.forEach(e=>{if(e.type===oldName)e.type=newName;});});
+  save();renderLibLists();if(typeof renderAll==='function')renderAll();
 }
 function libListsRemoveEntryType(name){
   if(!confirm(`Remove custom type "${name}"? Existing entries of this type are kept but won't appear in the type dropdown.`))return;
@@ -4662,7 +4631,7 @@ function buildTypeSelect(){
     {label:'🔗 Relationships',items:['Relationship']},
     {label:'📅 Time & Events',items:['Timeline','Event','Date/Period','Chapter','Act/Scene']},
     {label:'🌍 World & Place',items:['Location','Place','Setting','Image / Diagram','Map location']},
-    {label:'💡 Ideas & Analysis',items:['Theme','Symbol','Concept','Argument','Evidence','Key idea','Principle','Actionable','Exercise','Objection','Reflection','Clue','Red herring','Plot twist','World element','Faction','Emotion','Technique']},
+    {label:'💡 Ideas & Analysis',items:['Theme','Symbol','Concept','Argument','Evidence','Key idea','Principle','Actionable','Exercise','Objection','Reflection','Clue','Red herring','Plot twist','Foreshadowing','World element','Faction','Emotion','Technique']},
     {label:'📖 Reference & Notes',items:['Reference','Question','Word / Vocabulary','Translation','Author note','Key idea']},
   ];
   const placed=new Set();
@@ -4702,13 +4671,14 @@ function showTypeHint(){
   const type=document.getElementById('ae-type').value;
   const hint=TYPE_HINTS[type];
   const hintEl=document.getElementById('ae-type-hint');
-  // Also check custom type hints
+  // Custom hint can override or supplement builtin hints
   const customDesc=(library&&library.customEntryHints&&library.customEntryHints[type])||'';
   if(!hint&&!customDesc){hintEl.style.display='none';return;}
   hintEl.style.display='';
   if(hint){
+    const descToShow=customDesc||hint.desc;
     hintEl.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
-      <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${hint.desc}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
+      <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${descToShow}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
       <button onclick="document.getElementById('ae-type-hint').style.display='none'" style="background:transparent;border:none;color:var(--accent);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;cursor:pointer;touch-action:manipulation;">×</button>
     </div>`;
   } else {
@@ -4781,6 +4751,7 @@ function onTypeChange(){
   if(isQ&&chars.length){cddFilter('ae-speaker');}
   if(isQ)populateQuoteThemeSelect('');
   if(isQ)populateQuoteRelSelect('');
+  if(isQ)populateQuoteTraitSelect([]);
   // xlsx #425 (Batch 41) — also populate the event/timeline attach picker.
   if(isQ){refreshAttachEventOptions();clearAttachedEvents();}
   if(isTheme){populateAttachQuoteSel();clearAttachedQuotes();}
@@ -5699,6 +5670,22 @@ function populateQuoteRelSelect(currentVal){
   sel.innerHTML='<option value="">— none —</option>'+rels.map(r=>{const label=`${r.relA||'?'} ↔ ${r.relB||'?'}${r.relType?' ('+r.relType+')':''}`;return`<option value="${r.id}">${label}</option>`;}).join('');
   if(currentVal)sel.value=currentVal;
 }
+function populateQuoteTraitSelect(involvedChars,currentVal){
+  const wrap=document.getElementById('ae-trait-link-wrap');
+  const sel=document.getElementById('ae-quote-trait');
+  if(!wrap||!sel)return;
+  const chars=involvedChars&&involvedChars.length?involvedChars:[];
+  if(!chars.length){wrap.style.display='none';sel.innerHTML='<option value="">— none —</option>';return;}
+  // Get all traits for the involved characters
+  const traits=entries().filter(e=>e.type==='Characteristic'&&chars.some(c=>(e.involved||[]).includes(c)||(e.cn||e.content||'').includes(c)));
+  if(!traits.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  sel.innerHTML='<option value="">— none —</option>'+traits.map(t=>{
+    const charNames=(t.involved||[]).join(', ')||t.cn||'';
+    return`<option value="${t.id}">${t.content}${charNames?' ('+charNames+')':''}</option>`;
+  }).join('');
+  if(currentVal)sel.value=currentVal;
+}
 function populateQuoteThemeSelect(currentVal){
   const sel=document.getElementById('ae-quote-theme');if(!sel)return;
   const themes=entries().filter(e=>e.type==='Theme').map(e=>e.content).filter(Boolean);
@@ -6027,7 +6014,17 @@ function submitEntry(){
     entry.attachedTheme=_multi[0]||'';
     // xlsx #425 (Batch 41) — also persist attached event/timeline ids.
     entry.attachedEventIds=getAttachedEventIds();
-    const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
+    const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;
+    const qtTrait=document.getElementById('ae-quote-trait')?.value;entry.traitLinkId=qtTrait?Number(qtTrait):null;
+    // If linked to a trait, add this quote to the trait's traitQuotes
+    if(entry.traitLinkId){
+      const traitEntry=entries().find(e=>e.id===entry.traitLinkId);
+      if(traitEntry){
+        if(!traitEntry.traitQuotes)traitEntry.traitQuotes=[];
+        const alreadyLinked=traitEntry.traitQuotes.some(q=>q.srcId===entry.id);
+        if(!alreadyLinked)traitEntry.traitQuotes.push({text:entry.content,pg:entry.pageNum||'',speaker:entry.speaker||entry.cn||'',srcId:entry.id});
+      }
+    }const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
   if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.traitQuotes=getTraitQuotes();// backward-compat legacy fields cleared
 entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(type==='Word / Vocabulary'){
@@ -7298,6 +7295,9 @@ function editEntry(id){
     if(e.emotion)document.getElementById('ae-emotion').value=e.emotion;if(e.speaker)cddSet('ae-speaker',e.speaker);
     if(e.qtOrig){document.getElementById('ae-qt-orig').value=e.qtOrig;document.getElementById('ae-qt-from').value=e.qtFrom||'';document.getElementById('ae-qt-to').value=e.qtTo||'';document.getElementById('ae-qt-rendered').value=e.qtRendered||'';document.getElementById('ae-qt-translator').value=e.qtTranslator||'';document.getElementById('ae-quote-trans').style.display='';document.getElementById('ae-qt-btn').textContent='− Hide translation';}
     if(['Quote','Narrator quote','Line/stanza'].includes(e.type)){setTimeout(()=>{populateQuoteThemeSelect();populateQuoteRelSelect(e.linkedRelId||'');
+      // Populate trait select based on involved chars
+      const inv=e.involved||[];
+      populateQuoteTraitSelect(inv,e.traitLinkId||'');
       // xlsx #429 (Batch 33) — load multi-theme attachments. Reads from attachedThemes[]
       // (new) or falls back to legacy single attachedTheme. ALSO reverse-scans Theme entries
       // that include this quote in their attachedQuoteIds[] (for self-healing display).
@@ -7999,38 +7999,35 @@ function renderTraitQuotes(t,strokeColor){
 function _charFabTap(){
   const name=currentCharName;
   if(!name){openAddSheet();return;}
+  // Show a small confirm overlay asking if the entry is for this character
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99990;display:flex;align-items:flex-end;';
-  ov.innerHTML=`<div style="background:var(--card);border-radius:16px 16px 0 0;width:100%;padding:18px 18px 36px;">
+  ov.innerHTML=`<div style="background:var(--card);border-radius:16px 16px 0 0;width:100%;padding:18px 18px 32px;">
     <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Add an entry</div>
-    <div style="font-size:13px;color:var(--t2);margin-bottom:18px;">Is this entry about <strong>${esc(name)}</strong>?</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px;">Is this entry about <strong>${esc(name)}</strong>?</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <button id="_fabYes" style="padding:12px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Yes — tag ${esc(name)}</button>
-      <button id="_fabNo" style="padding:12px;border-radius:12px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">No — open blank form</button>
+      <button id="_fabYes" style="padding:12px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Yes — tag ${esc(name)} in Involved</button>
+      <button id="_fabNo" style="padding:12px;border-radius:12px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;">No — open blank entry form</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
   document.getElementById('_fabYes').onclick=()=>{
-    ov.remove();
-    openAddSheet();
-    // Use multiple retries to ensure the form is ready
+    ov.remove();openAddSheet();
     let tries=0;
     const tryTag=()=>{
       tries++;
-      const invEl=document.getElementById('ae-inv');
-      if(invEl){
-        try{
-          // populateCdd sets the involved array and updates the display
-          populateCdd('ae-inv',[name]);
-          // Also try direct DOM update as fallback
-          const searchEl=document.getElementById('ae-inv-search');
-          if(searchEl)searchEl.placeholder='Tagged: '+name;
-        }catch(e){if(tries<10)setTimeout(tryTag,100);}
-      } else if(tries<15){
-        setTimeout(tryTag,100);
+      const typeEl=document.getElementById('ae-type');
+      if(!typeEl){if(tries<20)setTimeout(tryTag,100);return;}
+      // If Character/Characteristic type — no Involved field. Switch to Quote.
+      if(['Character','Characteristic','Location','Theme'].includes(typeEl.value)){
+        const opts=[...typeEl.options].map(o=>o.value);
+        const pref=['Quote','Event','Dialogue'].find(t=>opts.includes(t));
+        if(pref){typeEl.value=pref;try{onTypeChange();}catch(e){}}
+        setTimeout(tryTag,150);return;
       }
+      try{populateCdd('ae-inv',[name]);}catch(e){if(tries<15)setTimeout(tryTag,100);}
     };
-    setTimeout(tryTag,200);
+    setTimeout(tryTag,250);
   };
   document.getElementById('_fabNo').onclick=()=>{ov.remove();openAddSheet();};
   ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
@@ -8231,13 +8228,9 @@ function renderCharDetail(name){
   }
   html+=`</div></div>`;
 
-  const outfitEntries=all.filter(e=>e.type==='Outfit'&&(e.involved||[]).includes(name));
-  if(physTraits.length||outfitEntries.length){
-    const totalPhys=physTraits.length+outfitEntries.length;
-    html+=`<div class="csec">${secHdr('char-phys','Physical & Outfits',totalPhys,null)}<div id="char-phys">`
-    +sortByPage(physTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Physical</div>${t.content}${renderTraitQuotes(t,col.stroke)}${nT(t)}${pgT(t)}${act(t)}</div>`).join('')
-    +outfitEntries.map(e=>`<div class="citem"><div class="ilabel" style="color:${col.text};">👗 Outfit</div>${e.content}${e.photo?`<img src="${e.photo}" style="max-width:100%;border-radius:8px;margin-top:4px;"/>`:''} ${nT(e)}${pgT(e)}${act(e)}</div>`).join('')
-    +`</div></div>`;
+  if(physTraits.length){
+    html+=`<div class="csec">${secHdr('char-phys','Physical traits',physTraits.length,null)}<div id="char-phys">`
+    +sortByPage(physTraits).map(t=>`<div class="citem"><div class="ilabel" style="color:${col.text};">Physical</div>${t.content}${renderTraitQuotes(t,col.stroke)}${nT(t)}${pgT(t)}${act(t)}</div>`).join('')+`</div></div>`;
   }
   // Quotes & Dialogue — always show header (Add Quote)
   html+=`<div class="csec">${secHdr('char-quotes','Quotes & Dialogue',quotes.length,'Quote','Quote')}<div id="char-quotes">`;
@@ -9403,7 +9396,7 @@ function renderTimeline(){
           if(!ageChips)return '';
           return `<div style="margin-top:3px;">${ageChips}</div>`;
         })()}
-        <div class="eactions"><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" style="padding:4px 8px;font-size:11px;">Move…</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
+        <div class="eactions"><span class="tl-drag-handle" title="Long-press / drag to reorder" style="padding:4px 6px;cursor:grab;color:var(--t3);font-size:14px;user-select:none;touch-action:none;">☰</span><button class="btn-edit" onclick="moveTlEntry(${item.id},-1)" title="Move up" style="padding:4px 8px;">▲</button><button class="btn-edit" onclick="moveTlEntry(${item.id},1)" title="Move down" style="padding:4px 8px;">▼</button><button class="btn-edit" onclick="moveTlEntryPrompt(${item.id})" title="Move several / to named event" style="padding:4px 8px;">⤵</button><button class="btn-edit" onclick="editEntry(${item.id})">Edit</button><button class="btn-del" onclick="deleteEntry(${item.id})">Delete</button></div>
       </div>
     </div>${plusBtn}`;
   };
@@ -9739,22 +9732,20 @@ function moveTlEntryPrompt(id){
   const idx=sorted.findIndex(e=>e.id===id);
   if(idx<0)return;
   const entry=sorted[idx];
-  // Save originals for true undo
-  const origKeys=sorted.map(e=>({id:e.id,k:e.sortKey}));
+  // #502 — in-app visual picker instead of text prompt
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99990;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;';
   const sheet=document.createElement('div');
-  sheet.style.cssText='background:var(--card);border-radius:16px 16px 0 0;width:100%;max-height:80vh;display:flex;flex-direction:column;';
-  sheet.innerHTML=`<div style="padding:14px 16px 8px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:8px;">
-    <div style="flex:1;">
-      <div style="font-size:14px;font-weight:700;">Move entry</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:2px;">Tap Before or After any entry. × = cancel (no change).</div>
-    </div>
-    <button onclick="document.getElementById('_mvOv').remove();" style="background:transparent;border:none;color:var(--t3);font-size:22px;cursor:pointer;padding:0 4px;">×</button>
+  sheet.style.cssText='background:var(--card);border-radius:16px 16px 0 0;width:100%;max-height:75vh;display:flex;flex-direction:column;';
+  sheet.innerHTML=`<div style="padding:14px 16px 8px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;">
+    <div style="flex:1;font-size:14px;font-weight:700;">Move "${(entry.content||'').slice(0,35)}"</div>
+    <button onclick="this.closest('[data-ov]').remove()" style="background:transparent;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;">×</button>
   </div>
-  <div id="_mvPicker" style="overflow-y:auto;flex:1;padding:6px 12px 24px;"></div>`;
-  ov.id='_mvOv';
+  <div style="font-size:11px;color:var(--t3);padding:6px 16px;">Tap where to place it</div>
+  <div id="_mvPicker" style="overflow-y:auto;flex:1;padding:8px 12px 20px;"></div>`;
+  ov.dataset.ov='1';
   ov.appendChild(sheet);
+  ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
   document.body.appendChild(ov);
   const picker=sheet.querySelector('#_mvPicker');
   const doMove=(targetId,before)=>{
@@ -9768,76 +9759,55 @@ function moveTlEntryPrompt(id){
     insertAt=Math.max(0,Math.min(sorted.length,insertAt));
     sorted.splice(insertAt,0,moved);
     sorted.forEach((e,i)=>{e.sortKey=i*10;});
-    save();renderTimeline();
-    // Date update with true undo callback
-    suggestDateUpdateAfterMove(id,sorted,insertAt,()=>{
-      origKeys.forEach(({id:eid,k})=>{const e=sorted.find(x=>x.id===eid);if(e)e.sortKey=k;});
-      save();renderTimeline();
-    });
+    save();
+    suggestDateUpdateAfterMove(id,sorted,insertAt);
+    renderTimeline();
   };
-  const others=sorted.filter(e=>e.id!==id);
-  others.forEach(e=>{
+  // Render entry list with "↑ Place before" above each entry and "↓ Place after" below the last
+  sorted.forEach((e,i)=>{
+    if(e.id===id)return; // skip self
+    const isSelf=(i===idx);
     const div=document.createElement('div');
-    div.innerHTML=`<div style="display:flex;gap:2px;margin-bottom:1px;">
-      <button class="btn-before" data-tid="${e.id}" style="flex:1;background:var(--al);border:0.5px solid var(--am);border-radius:6px 0 0 6px;padding:4px 8px;font-size:11px;color:var(--accent);cursor:pointer;">⬆ Before</button>
-      <button class="btn-after" data-tid="${e.id}" style="flex:1;background:var(--al);border:0.5px solid var(--am);border-radius:0 6px 6px 0;padding:4px 8px;font-size:11px;color:var(--accent);cursor:pointer;">After ⬇</button>
-    </div>
-    <div style="padding:7px 10px;background:var(--bg2);border-radius:8px;border:0.5px solid var(--cb);font-size:13px;margin-bottom:6px;">${e.content||''}${e.evdate?` <span style="font-size:10px;color:var(--t3);">· ${e.evdate}</span>`:''}</div>`;
-    div.querySelector('.btn-before').onclick=()=>doMove(e.id,true);
-    div.querySelector('.btn-after').onclick=()=>doMove(e.id,false);
+    div.style.cssText='margin-bottom:2px;';
+    div.innerHTML=`<button data-tid="${e.id}" data-before="1" style="width:100%;text-align:left;background:transparent;border:none;padding:3px 6px;font-size:11px;color:var(--accent);cursor:pointer;border-radius:6px;">⬆ Place before this</button>
+      <div style="padding:6px 8px;background:var(--bg2);border-radius:8px;border:0.5px solid var(--cb);font-size:13px;">${e.content||''}${e.evdate?` <span style="font-size:10px;color:var(--t3);">· ${e.evdate}</span>`:''}</div>`;
     picker.appendChild(div);
+    div.querySelector('[data-before]').onclick=()=>doMove(e.id,true);
+    // Add "Place after" at the end
+    if(i===sorted.filter(x=>x.id!==id)[sorted.filter(x=>x.id!==id).length-1]?.indexOf){
+    }
   });
+  // Add final "place at end" option
   const endDiv=document.createElement('div');
-  const endBtn=document.createElement('button');
-  endBtn.style.cssText='width:100%;background:var(--al);border:0.5px solid var(--am);border-radius:8px;padding:9px;font-size:12px;color:var(--accent);cursor:pointer;margin-top:4px;';
-  endBtn.textContent='⬇ Place at very end of timeline';
-  endBtn.onclick=()=>{
-    ov.remove();
+  endDiv.innerHTML=`<button style="width:100%;text-align:left;background:transparent;border:none;padding:6px 6px;font-size:11px;color:var(--accent);cursor:pointer;border-radius:6px;">⬇ Place at end of timeline</button>`;
+  endDiv.querySelector('button').onclick=()=>{
     sorted.forEach((e,i)=>{e.sortKey=i*10;});
     const moved=sorted.splice(idx,1)[0];
     sorted.push(moved);
     sorted.forEach((e,i)=>{e.sortKey=i*10;});
-    save();renderTimeline();
+    save();renderTimeline();ov.remove();
   };
-  endDiv.appendChild(endBtn);
   picker.appendChild(endDiv);
 }
 
-// #218-C — date-suggest after a move using in-app overlay. undoCb: called if user picks "Undo Move".
-function suggestDateUpdateAfterMove(id,sortedArr,insertAt,undoCb){
+// #218-C — cleaner date-suggest after a move. Inline prompt with the neighbour's date pre-filled.
+function suggestDateUpdateAfterMove(id,sortedArr,insertAt){
   const moved=sortedArr.find(e=>e.id===id);if(!moved)return;
   const prev=sortedArr[insertAt-1];
   const next=sortedArr[insertAt+1];
+  // Find the closest dated neighbour
   const neighbour=(prev&&(prev.evdateYear||prev.evdate))?prev:((next&&(next.evdateYear||next.evdate))?next:null);
   if(!neighbour)return;
   const nDate=neighbour.evdateYear||neighbour.evdate||'';
   if(!nDate)return;
-  const currentDate=moved.evdateYear||moved.evdate||'none';
-  if(nDate===currentDate)return;
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99995;display:flex;align-items:center;justify-content:center;padding:20px;';
-  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:18px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
-    <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Update date after moving?</div>
-    <div style="font-size:12px;color:var(--t2);margin-bottom:12px;">
-      The neighbouring entry "<strong>${esc((neighbour.content||'').slice(0,35))}</strong>" is dated <strong>${nDate}</strong>.<br>
-      This entry is currently <strong>${currentDate}</strong>.
-    </div>
-    <input id="_sdaInput" type="text" value="${nDate}" style="width:100%;font-size:14px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--bg2);color:var(--text);box-sizing:border-box;margin-bottom:12px;" autocorrect="off"/>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <button id="_sdaUpdate" style="padding:10px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Update date</button>
-      <button id="_sdaKeep" style="padding:10px;border-radius:10px;border:0.5px solid var(--am);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;">Keep current date (${currentDate})</button>
-      ${undoCb?`<button id="_sdaUndo" style="padding:10px;border-radius:10px;border:0.5px solid var(--red);background:transparent;color:var(--red);font-size:13px;cursor:pointer;">↩ Undo this move entirely</button>`:''}
-    </div>
-  </div>`;
-  document.body.appendChild(ov);
-  const inp=document.getElementById('_sdaInput');
-  document.getElementById('_sdaUpdate').onclick=()=>{
-    const v=(inp.value||'').trim();ov.remove();
-    if(v&&v!==currentDate){moved.evdateYear=v;moved.evdate=v;save();}
-  };
-  document.getElementById('_sdaKeep').onclick=()=>ov.remove();
-  if(undoCb){document.getElementById('_sdaUndo').onclick=()=>{ov.remove();undoCb();};}
-  inp.onkeydown=(e)=>{if(e.key==='Enter')document.getElementById('_sdaUpdate').click();};
+  const currentDate=moved.evdateYear||moved.evdate||'(none)';
+  const newDate=prompt(`Entry moved to a new position.\n\nNeighbour ("${(neighbour.content||'').slice(0,40)}") is dated:  ${nDate}\nThis entry is currently dated:  ${currentDate}\n\nUpdate this entry's date? (Leave blank or press Cancel to keep as-is.)`,nDate);
+  if(newDate==null)return; // cancelled
+  const trimmed=newDate.trim();
+  if(!trimmed||trimmed===currentDate)return;
+  moved.evdateYear=trimmed;
+  moved.evdate=trimmed;
+  save();
 }
 
 // #387 — Timeline drag-and-drop reorder
@@ -11825,27 +11795,13 @@ async function syncPull(){
     }
     // Merge: incoming books win for their own entries, but we never lose local-only books
     let added=0,merged=0;
-    // First merge library-level settings (custom types, pairs, etc.)
-    const LIB_KEYS=['customRelTypes','customEntryTypes','customEntryHints','customRelPairs','deletedRelTypes','deletedEventTypes','customEventTypes'];
-    LIB_KEYS.forEach(key=>{
-      const inc=incoming[key];const loc=library[key];
-      if(!inc)return;
-      if(Array.isArray(inc)){
-        const locArr=Array.isArray(loc)?loc:[];
-        const merged=[...new Set([...locArr,...inc])];
-        library[key]=merged;
-      } else if(typeof inc==='object'&&inc!==null){
-        library[key]={...inc,...(loc||{})};// local wins on conflict
-      }
-    });
-    // Then merge books
     Object.values(incoming).forEach(b=>{
       if(!b||typeof b!=='object'||!b.id)return;
       if(!library[b.id]){library[b.id]=b;added++;}
       else{
-        const ids=new Set((library[b.id].entries||[]).map(e=>e.id));
+        const ids=new Set(library[b.id].entries.map(e=>e.id));
         const newEntries=(b.entries||[]).filter(e=>!ids.has(e.id));
-        library[b.id].entries=[...(library[b.id].entries||[]),...newEntries];
+        library[b.id].entries=[...library[b.id].entries,...newEntries];
         merged+=newEntries.length;
       }
     });
@@ -13624,8 +13580,8 @@ function _swipeInit(){/* removed */}
       <!-- xlsx #401 — Library stats + manage answer lists -->
       <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Library stats &amp; lists</label>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibStats()" style="width:100%;margin-bottom:6px;">📊 Library usage stats</button>
-        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibLists()" style="width:100%;margin-bottom:6px;">📋 Manage answer lists</button>
-        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibGallery()" style="width:100%;">📷 Photo gallery</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibGallery()" style="width:100%;margin-bottom:6px;">📷 Photo gallery</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibLists()" style="width:100%;">📋 Manage answer lists</button>
       </div>
       <div class="divider"></div>
       <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Backup &amp; sync</label>
