@@ -7999,6 +7999,7 @@ function renderCharDetail(name){
   html+=`</div></div>`;
   // Character timeline — always show header (Add Event)
   let combined=[];
+  const _charEvSort=window._charEvSort||'date';
   {
     const tlForChar=all.filter(e=>['Timeline','Date/Period'].includes(e.type)&&(e.involved?.includes(name)||e.speaker===name));
     const seen=new Map();
@@ -8010,7 +8011,6 @@ function renderCharDetail(name){
     });
     combined=[...seen.values()];
     // #571 — sort by date or chapter based on stored preference
-    const _charEvSort=window._charEvSort||'date';
     if(_charEvSort==='chapter'){
       combined.sort((a,b)=>(+a.chapNum||9999)-(+b.chapNum||9999)||(+a.pageNum||9999)-(+b.pageNum||9999));
     } else {
@@ -11425,39 +11425,61 @@ async function syncPull(){
     const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'}});
     if(!res.ok){const err=await res.json();setSyncStatus('✗ Error: '+(err.message||res.status),'#E24B4A');return;}
     const json=await res.json();
+    const gistFiles=json.files||{};
     // Detect chunked vs single file
-    const metaFile=json.files?.['book-annotator-meta.json'];
+    const metaFile=gistFiles['book-annotator-meta.json'];
     let fullData='';
     if(metaFile){
-      let metaContent=metaFile.content;
-      if(metaFile.truncated&&metaFile.raw_url){const r=await fetch(metaFile.raw_url);if(r.ok)metaContent=await r.text();}
-      let meta;
-      try{meta=JSON.parse(metaContent);}catch(e){meta={version:1,chunks:1};}
+      let metaContent=metaFile.content||'';
+      if(metaFile.truncated&&metaFile.raw_url){const r=await fetch(metaFile.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)metaContent=await r.text();}
+      let meta={version:1,chunks:1};
+      try{meta=JSON.parse(metaContent);}catch(e){}
       if(meta.version===2&&meta.chunks>1){
         // Reassemble chunks
-        setSyncStatus(`Reassembling ${meta.chunks} parts (${Math.round((meta.totalBytes||0)/1024)}KB)…`,'var(--t2)');
+        setSyncStatus(`Reassembling ${meta.chunks} parts…`,'var(--t2)');
         const parts=[];
         for(let i=0;i<meta.chunks;i++){
-          const cf=json.files?.[`book-annotator-chunk-${i}.json`];
-          if(!cf){setSyncStatus(`✗ Missing chunk ${i}. Re-push from the source device.`,'#E24B4A');return;}
-          let content=cf.content;
-          if(cf.truncated&&cf.raw_url){setSyncStatus(`Fetching part ${i+1}/${meta.chunks}…`,'var(--t2)');const r=await fetch(cf.raw_url);if(r.ok)content=await r.text();}
-          parts.push(content||'');
+          const cf=gistFiles[`book-annotator-chunk-${i}.json`];
+          if(!cf){setSyncStatus(`✗ Missing chunk ${i}. Re-push from source device.`,'#E24B4A');return;}
+          let content=cf.content||'';
+          if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)content=await r.text();}
+          parts.push(content);
         }
         fullData=parts.join('');
       } else {
-        const singleFile=json.files?.['book-annotator-data.json'];
-        if(!singleFile){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
-        fullData=singleFile.content||'';
-        if(singleFile.truncated&&singleFile.raw_url){setSyncStatus('Fetching full data…','var(--t2)');const r=await fetch(singleFile.raw_url);if(r.ok)fullData=await r.text();}
+        // Meta exists but single-file
+        const sf=gistFiles['book-annotator-data.json'];
+        if(sf&&sf.content&&!sf.content.includes('"_chunked"')){
+          fullData=sf.content;
+          if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)fullData=await r.text();}
+        }
       }
     } else {
-      const singleFile=json.files?.['book-annotator-data.json'];
-      if(!singleFile){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
-      fullData=singleFile.content||'';
-      if(singleFile.truncated&&singleFile.raw_url){setSyncStatus('Fetching full data…','var(--t2)');const r=await fetch(singleFile.raw_url);if(r.ok)fullData=await r.text();}
+      // No meta file — look for single data file or any chunk files
+      const sf=gistFiles['book-annotator-data.json'];
+      if(sf&&sf.content&&!sf.content.includes('"_chunked"')){
+        fullData=sf.content;
+        if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)fullData=await r.text();}
+      } else {
+        // Try to find chunk files directly (old chunked push without meta)
+        const chunkKeys=Object.keys(gistFiles).filter(k=>k.startsWith('book-annotator-chunk-')).sort();
+        if(chunkKeys.length){
+          const parts=[];
+          for(const k of chunkKeys){
+            const cf=gistFiles[k];let content=cf.content||'';
+            if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)content=await r.text();}
+            parts.push(content);
+          }
+          fullData=parts.join('');
+        }
+      }
     }
-    if(!fullData){setSyncStatus('✗ Empty data received','#E24B4A');return;}
+    if(!fullData){
+      // Last resort: show what files ARE in the gist
+      const fileList=Object.keys(gistFiles).join(', ')||'(none)';
+      setSyncStatus(`✗ No book data found. Gist files: ${fileList}. Re-push from your other device.`,'#E24B4A');
+      return;
+    }
     let incoming;
     try{incoming=JSON.parse(fullData);}
     catch(parseErr){
