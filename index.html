@@ -3247,21 +3247,9 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   let books=Object.values(library).filter(b=>b.status===libTab).sort((a,b)=>b.created-a.created);
-  // For 'want' tab also pull book references not already in library
+  // wantRefs section removed (#631) — was causing reading books to appear in want tab
+  // References tab on each book already shows "Want to Read" button for book refs
   let wantRefs=[];
-  if(libTab==='want'){
-    // Build set of all library book titles (lowercased) so we don't show refs that are already books
-    const libTitles=new Set(Object.values(library).filter(b=>b&&b.title).map(b=>b.title.toLowerCase().trim()));
-    Object.values(library).forEach(bk=>{
-      (bk.entries||[]).filter(e=>
-        e.type==='Reference'&&
-        e.refType==='book'&&
-        !e.refDone&&
-        // Skip if the ref title already matches an existing library book
-        !libTitles.has((e.content||'').toLowerCase().trim())
-      ).forEach(e=>wantRefs.push({title:e.content,author:e.refAuthor||'',fromBook:bk.title,refId:e.id,bookId:bk.id}));
-    });
-  }
   if(!books.length&&!wantRefs.length){body.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   body.innerHTML=books.map((b,i)=>bookCardHTML(b,i)).join('')
@@ -3320,24 +3308,18 @@ function convertRefToBook(bookId,refId){
   library[id]={id,title:ref.content,author:ref.refAuthor||'',genre:'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),why,gr:ref.refUrl||'',origLang:'',transLang:''};
   // Mark the reference as done so it doesn't show as duplicate in want-to-read
   ref.refDone=true;ref.convertedToBook=id;
-  // Switch library to Want to Read tab
   libTab='want';
   save();
-  // Navigate to library want tab immediately so user can see the book
-  show('lib-screen','book-screen');
-  renderLibrary();
-  // Highlight the Want to Read tab button
-  try{
-    document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
-    const wantBtn=document.getElementById('lib-tab-want');
-    if(wantBtn)wantBtn.classList.add('active');
-  }catch(e){}
-  // Toast
-  const t=document.createElement('div');
-  t.innerHTML=`✅ <strong>"${ref.content}"</strong> added to Want to Read`;
-  t.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.35);font-weight:600;max-width:90vw;text-align:center;';
-  document.body.appendChild(t);
-  setTimeout(()=>{try{t.remove();}catch(e){}},3000);
+  // Navigate to library and show want tab immediately
+  goLib();
+  // Ensure want tab is active after goLib (which calls renderLibrary with libTab='want')
+  setTimeout(()=>{
+    try{
+      document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
+      const wb=document.getElementById('lib-tab-want');if(wb)wb.classList.add('active');
+    }catch(e){}
+  },50);
+  _showToast(`✅ "${ref.content}" added to Want to Read`);
 }
 function openBook(id){
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
@@ -6365,42 +6347,36 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       const ce=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===involved[0]);
       if(ce&&!ce.charIntroCh&&entry.chapNum){ce.charIntroCh=String(entry.chapNum);ce.charIntro=[entry.chapNum?'Ch.'+entry.chapNum:'',entry.pageNum?'p.'+entry.pageNum:''].filter(Boolean).join(', ');sideChanged=true;}
     }
-    // Marriage / Divorce → auto-create or remove a Relationship entry between the first two involved characters
+    // Marriage / Divorce → auto-create Relationship between the first two involved characters
     if((evTypes.includes('Marriage')||evTypes.includes('Divorce'))&&involved.length>=2){
       const [charA,charB]=involved;
       const relType=evTypes.includes('Marriage')?'Spouse':'Ex-spouse';
-      const hasRel=entries().some(e=>e.type==='Relationship'&&((e.relA===charA&&e.relB===charB)||(e.relA===charB&&e.relB===charA))&&e.relType===relType);
+      const hasRel=entries().some(e=>e.type==='Relationship'&&
+        ((e.relA===charA&&e.relB===charB)||(e.relA===charB&&e.relB===charA))&&
+        ['Spouse','Husband','Wife','Ex-spouse'].includes(e.relType));
       if(!hasRel){
-        // #28-1: If genders unknown, ask via gender picker before creating the gendered rel
         const ceA=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charA);
         const ceB=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content)===charB);
-        const makeRel=(rt)=>{
+        // Always store relType='Spouse'/'Ex-spouse' — _labelForGender renders Husband/Wife correctly
+        // based on character gender. This avoids the Wife↔Wife reciprocal bug.
+        const makeRel=()=>{
           const newId=Date.now()+Math.floor(Math.random()*1000);
-          book().entries.unshift({id:newId,type:'Relationship',content:`${charA} — ${rt} — ${charB}`,relType:rt,relA:charA,relB:charB,pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',date:entry.date||localDate(),location:'',involved:[charA,charB],note:`Added from Event: ${entry.content}`});
+          book().entries.unshift({id:newId,type:'Relationship',content:`${charA} — ${relType} — ${charB}`,relType,relA:charA,relB:charB,pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',date:entry.date||localDate(),location:'',involved:[charA,charB],note:`Added from Event: ${entry.content}`});
           save();renderAll();
         };
-        if(relType==='Spouse'&&ceA&&!ceA.gender){
-          // Ask gender for A, then B if needed
-          pickGenderSheet(charA,(genderA)=>{
-            if(genderA&&genderA!=='Unknown'&&ceA){ceA.gender=genderA;save();}
-            if(ceB&&!ceB.gender){
-              pickGenderSheet(charB,(genderB)=>{
-                if(genderB&&genderB!=='Unknown'&&ceB){ceB.gender=genderB;save();}
-                // Determine gendered spouse label from A's gender perspective
-                const sA=genderA==='Male'?'Husband':genderA==='Female'?'Wife':'Spouse';
-                makeRel(sA);
-              });
-            } else {
-              const sA=genderA==='Male'?'Husband':genderA==='Female'?'Wife':'Spouse';
-              makeRel(sA);
-            }
-          });
+        if(relType==='Spouse'){
+          // Ask gender for A if unknown, then B if unknown, then create rel
+          const askA=(cb)=>{
+            if(ceA&&!ceA.gender){pickGenderSheet(charA,(g)=>{if(g&&g!=='Unknown'&&ceA){ceA.gender=g;save();}cb();});}
+            else cb();
+          };
+          const askB=(cb)=>{
+            if(ceB&&!ceB.gender){pickGenderSheet(charB,(g)=>{if(g&&g!=='Unknown'&&ceB){ceB.gender=g;save();}cb();});}
+            else cb();
+          };
+          askA(()=>askB(makeRel));
         } else {
-          // Genders known or it's a Divorce — create with appropriate label
-          const gA=ceA?.gender||'';
-          const rt2=relType==='Spouse'?(gA==='Male'?'Husband':gA==='Female'?'Wife':'Spouse'):relType;
-          makeRel(rt2);
-          sideChanged=true;
+          makeRel();sideChanged=true;
         }
       }
     }
@@ -8051,7 +8027,7 @@ function renderCharDetail(name){
   html+=`<div class="csec">
     <div class="csec-header" onclick="toggleSec('char-events')">
       <div class="csec-label" style="flex:1;color:${col.stroke};">Character timeline (${combined.length})</div>
-      <span style="font-size:10px;background:var(--bg2);border:0.5px solid var(--cb);border-radius:10px;padding:2px 8px;cursor:pointer;color:var(--t3);white-space:nowrap;" onclick="event.stopPropagation();window._charEvSort=_charEvSortCur==='date'?'chapter':'date';renderCharDetail('${name}');">Sort: ${_charEvSortCur==='date'?'📅 Date':'📑 Chapter'}</span>
+      <span style="font-size:10px;background:var(--bg2);border:0.5px solid var(--cb);border-radius:10px;padding:2px 8px;cursor:pointer;color:var(--t3);white-space:nowrap;" onclick="event.stopPropagation();window._charEvSort=window._charEvSort==='date'?'chapter':'date';renderCharDetail('${name}');">Sort: ${_charEvSort==='date'?'📅 Date':'📑 Chapter'}</span>
       <button class="btn btn-sm" onclick="event.stopPropagation();openAddSheet('Event')" style="font-size:10px;margin-left:4px;flex-shrink:0;">+ Event</button>
       <span class="csec-toggle" id="char-events-tog">▾</span>
     </div>
