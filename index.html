@@ -7405,7 +7405,19 @@ function ecHTML(e,compact,fromTab){
     const _pairs=(library&&library.customRelPairs)||[];
     const _hasPair=e.relType&&_pairs.some(p=>p.typeA===e.relType||p.typeB===e.relType);
     const _rp=e.relType&&_hasPair?getRelPhrase(e.relType,true):'';
-    const relPhrase=e.relType?(_hasPair&&_rp?`<span style="font-size:11px;color:var(--t2);">${_rp}</span>`:`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(e.relType)} <strong style="color:var(--text);">${e.relType.toLowerCase()}</strong> of</span>`):'<span style="font-size:11px;color:var(--t2);">↔</span>';
+    // #28-3 — gender-map relType for display so "Spouse" becomes "husband"/"wife"
+    // based on relA's gender. Stored relType stays canonical (Spouse/Parent/etc.).
+    let _displayType=e.relType||'';
+    try{
+      if(e.relType&&typeof RELTYPE_TRUNK!=='undefined'&&typeof _labelForGender==='function'){
+        const _aEntry=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===e.relA);
+        const _aGender=_aEntry?.gender||'Unknown';
+        const _trunk=RELTYPE_TRUNK[e.relType]||e.relType;
+        const _mapped=_labelForGender(_trunk,_aGender);
+        if(_mapped)_displayType=_mapped;
+      }
+    }catch(_){}
+    const relPhrase=e.relType?(_hasPair&&_rp?`<span style="font-size:11px;color:var(--t2);">${_rp}</span>`:`<span style="font-size:11px;color:var(--t2);">is ${relEmoji(_displayType)} <strong style="color:var(--text);">${_displayType.toLowerCase()}</strong> of</span>`):'<span style="font-size:11px;color:var(--t2);">↔</span>';
     // #340 — Surface "Quick-added" badge so quick-rels are visually distinct.
     const qaBadge=e.note==='Quick-added'?'<span class="pbadge" style="background:#fef3c7;color:#92400e;font-weight:700;margin-left:6px;">⚡ Quick-added</span>':'';
     const linkedQs=entries().filter(q=>['Quote','Narrator quote','Line/stanza'].includes(q.type)&&q.linkedRelId===e.id);
@@ -7776,7 +7788,8 @@ function openCharDetail(name,fromWeb){
   document.getElementById('char-screen-title').textContent=name;
   document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
-  renderCharDetail(name);show('char-screen','book-screen');
+  try{renderCharDetail(name);}catch(err){console.error('renderCharDetail failed:',err);document.getElementById('char-hero').innerHTML='<div style="padding:12px;color:var(--red);font-size:13px;">Error loading profile. Tap back and try again.</div>';document.getElementById('char-body').innerHTML='';}
+  show('char-screen','book-screen');
   const cb=document.getElementById('char-body');if(cb)cb.scrollTop=0;
 }
 
@@ -11355,6 +11368,11 @@ async function syncPush(){
   setSyncStatus('Pushing…','var(--t2)');
   localStorage.setItem('sync-token',token);
   const data=JSON.stringify(library);
+  const sizeKB=Math.round(data.length/1024);
+  // GitHub Gist files have an effective ~1MB limit; warn if approaching it
+  if(data.length>950*1024){
+    if(!confirm(`Your library is ${sizeKB}KB — approaching GitHub Gist's ~1MB single-file limit. Push anyway? (Pull may fail with truncation error on large data.)`))return;
+  }
   const payload={description:'Book Annotator Sync',public:false,files:{'book-annotator-data.json':{content:data}}};
   try{
     let url='https://api.github.com/gists';let method='POST';
@@ -11378,9 +11396,26 @@ async function syncPull(){
     const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`,'Accept':'application/vnd.github.v3+json'}});
     if(!res.ok){const err=await res.json();setSyncStatus('✗ Error: '+(err.message||res.status),'#E24B4A');return;}
     const json=await res.json();
-    const fileContent=json.files?.['book-annotator-data.json']?.content;
+    const fileObj=json.files?.['book-annotator-data.json'];
+    if(!fileObj){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
+    let fileContent=fileObj.content;
+    // GitHub truncates files > ~1MB in the API response. Fetch raw URL if so.
+    if(fileObj.truncated&&fileObj.raw_url){
+      setSyncStatus('Fetching full data…','var(--t2)');
+      const rawRes=await fetch(fileObj.raw_url);
+      if(rawRes.ok)fileContent=await rawRes.text();
+    }
     if(!fileContent){setSyncStatus('✗ No data found in Gist','#E24B4A');return;}
-    const incoming=JSON.parse(fileContent);
+    let incoming;
+    try{
+      incoming=JSON.parse(fileContent);
+    }catch(parseErr){
+      // Common cause: gist content was truncated (large libraries > 1MB hit gist limits)
+      const size=fileContent.length;
+      const sizeKB=Math.round(size/1024);
+      setSyncStatus(`✗ Backup data is corrupted/truncated (${sizeKB}KB). Push from a working device to repair.`,'#E24B4A');
+      return;
+    }
     // Merge: incoming books win for their own entries, but we never lose local-only books
     let added=0,merged=0;
     Object.values(incoming).forEach(b=>{
