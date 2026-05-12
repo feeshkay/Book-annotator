@@ -426,7 +426,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
   <div class="char-hero" id="char-hero"></div>
-  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 40px;" id="char-body"></div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 80px;" id="char-body"></div>
+  <!-- #266 — FAB on char screen: opens entry form with current char pre-filled in involved -->
+  <button onclick="openAddSheet();setTimeout(()=>{const c=document.getElementById('ae-inv-search');if(c)c.value=currentCharName||'';populateCdd('ae-inv',currentCharName?[currentCharName]:[]);},120);" style="position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;border:none;box-shadow:0 4px 14px rgba(0,0,0,0.3);cursor:pointer;z-index:40;display:none;" id="char-fab">+</button>
 </div>
 
 <!-- ══ LOCATION DETAIL ══ -->
@@ -1366,8 +1368,8 @@ const REL_EMOJI={
   'Complicated':'🌀','Unknown':'❓',
 };
 function relEmoji(type){
-  if(!type)return'🏷️';
-  return REL_EMOJI[type]||REL_EMOJI[type.charAt(0).toUpperCase()+type.slice(1)]||'🏷️';
+  if(!type)return'';
+  return REL_EMOJI[type]||REL_EMOJI[type.charAt(0).toUpperCase()+type.slice(1)]||'';
 }
 const REL_GENDER_MAP={
   'Husband':'Male','Wife':'Female',
@@ -1933,18 +1935,51 @@ async function load(){
   // Try IDB first
   try{
     const v=await _idbGet('library');
-    if(v&&typeof v==='object'){library=v;return;}
+    if(v&&typeof v==='object'){library=v;_migrateLibrary();return;}
   }catch(e){/* fall through */}
   // Migrate from localStorage if present
   try{
     const d=localStorage.getItem(LS_KEY);
     if(d){
       library=JSON.parse(d);
+      _migrateLibrary();
       // Migrate to IDB so future saves have room
       try{await _idbPut('library',library);localStorage.setItem(LS_KEY+'-source','idb');}catch(e){}
       return;
     }
   }catch(e){library={};}
+}
+// #659 — one-time migrations run after library loads
+function _migrateLibrary(){
+  try{
+    // Restore Mother (and other builtins) if they got stuck in deletedRelTypes
+    // from a rename round-trip. Builtins should never be permanently deleted.
+    if(library.deletedRelTypes){
+      const builtinsThatGotDeleted=['Mother','Father','Child','Parent','Sibling','Brother','Sister','Grandmother','Grandfather','Grandchild','Spouse','Partner','Son','Daughter'];
+      // Remove them from deleted — they ARE built-in and should show unless user explicitly hid them
+      // Only remove if there's no custom type with that name (which would mean user actively renamed)
+      const customs=new Set(library.customRelTypes||[]);
+      library.deletedRelTypes=library.deletedRelTypes.filter(t=>{
+        if(builtinsThatGotDeleted.includes(t)&&!customs.has(t)){return false;} // restore
+        return true;
+      });
+    }
+    // Remove Mother/Father/etc. from customRelTypes if they got added there by rename
+    if(library.customRelTypes){
+      const REAL_BUILTINS=new Set(['Mother','Father','Child','Parent','Sibling','Brother','Sister','Grandmother','Grandfather','Grandchild','Spouse','Husband','Wife','Partner','Son','Daughter','Aunt','Uncle','Niece','Nephew','Cousin']);
+      library.customRelTypes=library.customRelTypes.filter(t=>!REAL_BUILTINS.has(t));
+    }
+    // Update any entries where relType is a builtin but got stuck as lower-case
+    Object.values(library).forEach(b=>{
+      if(!b||!b.entries)return;
+      b.entries.forEach(e=>{
+        if(e.type==='Relationship'&&e.relType){
+          const normalised=['Mother','Father','Child','Parent','Sibling','Brother','Sister','Grandmother','Grandfather','Grandchild','Spouse','Husband','Wife','Partner','Son','Daughter','Aunt','Uncle','Niece','Nephew','Cousin'].find(r=>r.toLowerCase()===e.relType.toLowerCase());
+          if(normalised&&normalised!==e.relType){e.relType=normalised;}
+        }
+      });
+    });
+  }catch(e){console.warn('_migrateLibrary error:',e);}
 }
 function book(){return library[currentId];}
 function entries(){return book()?.entries||[];}
@@ -7786,8 +7821,13 @@ function openCharDetail(name,fromWeb){
   if(!name||!currentId)return;
   currentCharName=name;
   document.getElementById('char-screen-title').textContent=name;
-  document.getElementById('char-back-btn').onclick=()=>{show('book-screen','char-screen');if(fromWeb)forceTab('web');};
+  document.getElementById('char-back-btn').onclick=()=>{
+    show('book-screen','char-screen');
+    const fab=document.getElementById('char-fab');if(fab)fab.style.display='none';
+    if(fromWeb)forceTab('web');
+  };
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
+  const fab=document.getElementById('char-fab');if(fab)fab.style.display='';
   try{
     renderCharDetail(name);
   }catch(err){
@@ -7922,12 +7962,12 @@ function renderCharDetail(name){
       }catch(e){/* fall through to ungendered label */}
       const relEmojiStr=relEmoji(relLabel);
       const oc=getCC(other);
-      // Format as "Other's [relationship]" for clarity
-      const relDisplay=relLabel?`${relEmojiStr} ${other}'s <strong>${relLabel.toLowerCase()}</strong>`:'';
+      // #28: "👰 Wife — B" format is unambiguous (A sees their wife B)
+      const relDisplay=relLabel?`${relEmojiStr} <strong>${relLabel}</strong> — `:'';
       return`<div class="citem">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          ${relDisplay?`<span style="font-size:12px;color:var(--t2);">${relDisplay}</span>`:''}
           <span style="font-weight:700;color:${oc.text};cursor:pointer;" onclick="openCharDetail('${esc(other)}',false)">${other}</span>
-          ${relDisplay?`<span style="font-size:12px;color:var(--t2);">— ${relDisplay}</span>`:''}
         </div>
         
         ${pgT(r)}${act(r)}
@@ -8363,8 +8403,20 @@ function renderWeb(){
     const cx=(x1+x2)/2+px*curveAmt, cy=(y1+y2)/2+py*curveAmt;
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d',`M${x1},${y1} Q${cx},${cy} ${x2},${y2}`);
-    path.setAttribute('stroke',A.col.stroke+'66');
-    path.setAttribute('stroke-width','1.5');
+    // #651 — two-tone edge: A's color → B's color via SVG linearGradient
+    const gradId=`eg${edgeIdx}`;
+    const defs=svg.querySelector('defs')||svg.insertBefore(document.createElementNS('http://www.w3.org/2000/svg','defs'),svg.firstChild);
+    const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+    grad.setAttribute('id',gradId);grad.setAttribute('gradientUnits','userSpaceOnUse');
+    grad.setAttribute('x1',x1);grad.setAttribute('y1',y1);
+    grad.setAttribute('x2',x2);grad.setAttribute('y2',y2);
+    const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s1.setAttribute('offset','0%');s1.setAttribute('stop-color',A.col.stroke);s1.setAttribute('stop-opacity','0.6');
+    const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s2.setAttribute('offset','100%');s2.setAttribute('stop-color',B.col.stroke);s2.setAttribute('stop-opacity','0.6');
+    grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);
+    path.setAttribute('stroke',`url(#${gradId})`);
+    path.setAttribute('stroke-width','2');
     path.setAttribute('fill','none');
     path.setAttribute('data-edge-a',A.name);
     path.setAttribute('data-edge-b',B.name);
@@ -9439,56 +9491,62 @@ function moveTlEntryPrompt(id){
   const idx=sorted.findIndex(e=>e.id===id);
   if(idx<0)return;
   const entry=sorted[idx];
-  // Build choice list of other events
-  const others=sorted.filter(e=>e.id!==id).map((e,i)=>({e,i:sorted.indexOf(e),label:e.content||(e.evdate||'untitled')}));
-  const listStr=others.map((o,i)=>`${i+1}. ${o.label.slice(0,50)}`).join('\n');
-  const input=prompt(`Move "${entry.content||'this entry'}"
-
-Options:
-  • Type a NUMBER OF POSITIONS to shift (e.g. "+5" moves 5 down, "-3" moves 3 up)
-  • Or type "before N" or "after N" to place relative to a listed event below
-  • Or just type the number N to place before that event
-
-${listStr}`);
-  if(!input)return;
-  const inp=input.trim().toLowerCase();
-  // ── New: pure +/- delta shift
-  const deltaMatch=inp.match(/^([+\-])(\d+)$/);
-  if(deltaMatch){
-    const dir=deltaMatch[1]==='-'?-1:1;
-    const n=parseInt(deltaMatch[2],10);
-    if(!n){alert('Enter a non-zero number of positions.');return;}
-    let newIdx=idx+(dir*n);
-    newIdx=Math.max(0,Math.min(sorted.length-1,newIdx));
-    if(newIdx===idx)return;
+  // #502 — in-app visual picker instead of text prompt
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99990;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;';
+  const sheet=document.createElement('div');
+  sheet.style.cssText='background:var(--card);border-radius:16px 16px 0 0;width:100%;max-height:75vh;display:flex;flex-direction:column;';
+  sheet.innerHTML=`<div style="padding:14px 16px 8px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;">
+    <div style="flex:1;font-size:14px;font-weight:700;">Move "${(entry.content||'').slice(0,35)}"</div>
+    <button onclick="this.closest('[data-ov]').remove()" style="background:transparent;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0 4px;">×</button>
+  </div>
+  <div style="font-size:11px;color:var(--t3);padding:6px 16px;">Tap where to place it</div>
+  <div id="_mvPicker" style="overflow-y:auto;flex:1;padding:8px 12px 20px;"></div>`;
+  ov.dataset.ov='1';
+  ov.appendChild(sheet);
+  ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
+  document.body.appendChild(ov);
+  const picker=sheet.querySelector('#_mvPicker');
+  const doMove=(targetId,before)=>{
+    ov.remove();
+    const tIdx=sorted.findIndex(e=>e.id===targetId);
+    if(tIdx<0)return;
     sorted.forEach((e,i)=>{e.sortKey=i*10;});
     const moved=sorted.splice(idx,1)[0];
-    sorted.splice(newIdx,0,moved);
+    let insertAt=tIdx>idx?tIdx-1:tIdx;
+    if(!before)insertAt++;
+    insertAt=Math.max(0,Math.min(sorted.length,insertAt));
+    sorted.splice(insertAt,0,moved);
     sorted.forEach((e,i)=>{e.sortKey=i*10;});
     save();
-    suggestDateUpdateAfterMove(id,sorted,newIdx);
+    suggestDateUpdateAfterMove(id,sorted,insertAt);
     renderTimeline();
-    return;
-  }
-  let targetIdx=-1, insertBefore=true;
-  const afterMatch=inp.match(/^after\s+(\d+)$/);
-  const beforeMatch=inp.match(/^before\s+(\d+)$/);
-  const numMatch=inp.match(/^(\d+)$/);
-  if(afterMatch){const n=parseInt(afterMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=false;}}
-  else if(beforeMatch){const n=parseInt(beforeMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
-  else if(numMatch){const n=parseInt(numMatch[1])-1;if(n>=0&&n<others.length){targetIdx=others[n].i;insertBefore=true;}}
-  if(targetIdx<0){alert('Not a valid input. Try a number, "before N", "after N", "+N", or "-N".');return;}
-  // Assign sort keys
-  sorted.forEach((e,i)=>{e.sortKey=i*10;});
-  // Remove entry from sorted, insert at target
-  const moved=sorted.splice(idx,1)[0];
-  let insertAt=targetIdx>idx?targetIdx-1:targetIdx;
-  if(!insertBefore)insertAt++;
-  sorted.splice(insertAt,0,moved);
-  sorted.forEach((e,i)=>{e.sortKey=i*10;});
-  save();
-  suggestDateUpdateAfterMove(id,sorted,insertAt);
-  renderTimeline();
+  };
+  // Render entry list with "↑ Place before" above each entry and "↓ Place after" below the last
+  sorted.forEach((e,i)=>{
+    if(e.id===id)return; // skip self
+    const isSelf=(i===idx);
+    const div=document.createElement('div');
+    div.style.cssText='margin-bottom:2px;';
+    div.innerHTML=`<button data-tid="${e.id}" data-before="1" style="width:100%;text-align:left;background:transparent;border:none;padding:3px 6px;font-size:11px;color:var(--accent);cursor:pointer;border-radius:6px;">⬆ Place before this</button>
+      <div style="padding:6px 8px;background:var(--bg2);border-radius:8px;border:0.5px solid var(--cb);font-size:13px;">${e.content||''}${e.evdate?` <span style="font-size:10px;color:var(--t3);">· ${e.evdate}</span>`:''}</div>`;
+    picker.appendChild(div);
+    div.querySelector('[data-before]').onclick=()=>doMove(e.id,true);
+    // Add "Place after" at the end
+    if(i===sorted.filter(x=>x.id!==id)[sorted.filter(x=>x.id!==id).length-1]?.indexOf){
+    }
+  });
+  // Add final "place at end" option
+  const endDiv=document.createElement('div');
+  endDiv.innerHTML=`<button style="width:100%;text-align:left;background:transparent;border:none;padding:6px 6px;font-size:11px;color:var(--accent);cursor:pointer;border-radius:6px;">⬇ Place at end of timeline</button>`;
+  endDiv.querySelector('button').onclick=()=>{
+    sorted.forEach((e,i)=>{e.sortKey=i*10;});
+    const moved=sorted.splice(idx,1)[0];
+    sorted.push(moved);
+    sorted.forEach((e,i)=>{e.sortKey=i*10;});
+    save();renderTimeline();ov.remove();
+  };
+  picker.appendChild(endDiv);
 }
 
 // #218-C — cleaner date-suggest after a move. Inline prompt with the neighbour's date pre-filled.
@@ -11431,7 +11489,7 @@ async function syncPull(){
     let fullData='';
     if(metaFile){
       let metaContent=metaFile.content||'';
-      if(metaFile.truncated&&metaFile.raw_url){const r=await fetch(metaFile.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)metaContent=await r.text();}
+      if(metaFile.truncated&&metaFile.raw_url){const r=await fetch(metaFile.raw_url);if(r.ok)metaContent=await r.text();}
       let meta={version:1,chunks:1};
       try{meta=JSON.parse(metaContent);}catch(e){}
       if(meta.version===2&&meta.chunks>1){
@@ -11442,7 +11500,7 @@ async function syncPull(){
           const cf=gistFiles[`book-annotator-chunk-${i}.json`];
           if(!cf){setSyncStatus(`✗ Missing chunk ${i}. Re-push from source device.`,'#E24B4A');return;}
           let content=cf.content||'';
-          if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)content=await r.text();}
+          if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url);if(r.ok)content=await r.text();}
           parts.push(content);
         }
         fullData=parts.join('');
@@ -11451,7 +11509,7 @@ async function syncPull(){
         const sf=gistFiles['book-annotator-data.json'];
         if(sf&&sf.content&&!sf.content.includes('"_chunked"')){
           fullData=sf.content;
-          if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)fullData=await r.text();}
+          if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url);if(r.ok)fullData=await r.text();}
         }
       }
     } else {
@@ -11459,7 +11517,7 @@ async function syncPull(){
       const sf=gistFiles['book-annotator-data.json'];
       if(sf&&sf.content&&!sf.content.includes('"_chunked"')){
         fullData=sf.content;
-        if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)fullData=await r.text();}
+        if(sf.truncated&&sf.raw_url){const r=await fetch(sf.raw_url);if(r.ok)fullData=await r.text();}
       } else {
         // Try to find chunk files directly (old chunked push without meta)
         const chunkKeys=Object.keys(gistFiles).filter(k=>k.startsWith('book-annotator-chunk-')).sort();
@@ -11467,7 +11525,7 @@ async function syncPull(){
           const parts=[];
           for(const k of chunkKeys){
             const cf=gistFiles[k];let content=cf.content||'';
-            if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url,{headers:{'Authorization':`token ${token}`}});if(r.ok)content=await r.text();}
+            if(cf.truncated&&cf.raw_url){const r=await fetch(cf.raw_url);if(r.ok)content=await r.text();}
             parts.push(content);
           }
           fullData=parts.join('');
