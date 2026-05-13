@@ -735,6 +735,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="divider" style="margin:10px 0 8px;"></div>
       <div class="fg">
         <label>Attached to theme(s)? <span style="font-weight:400;">(optional — tap multiple)</span></label>
+        <input type="text" id="ae-quote-theme-search" placeholder="🔍 Search themes…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
         <!-- xlsx #429 (Batch 33) — multi-theme picker. Replaces single-select. -->
         <div style="display:flex;gap:6px;margin-bottom:6px;">
           <select id="ae-quote-theme" style="flex:1;"><option value="">— pick a theme to add —</option></select>
@@ -748,6 +749,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
            attachedQuoteIds[]. -->
       <div class="fg">
         <label>Attached to event/timeline? <span style="font-weight:400;">(optional — tap multiple)</span></label>
+        <input type="text" id="ae-quote-event-search" placeholder="🔍 Search events/timelines…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
           <select id="ae-quote-event" style="flex:1;"><option value="">— pick an event/timeline to add —</option></select>
           <button type="button" class="btn btn-sm" onclick="addQuoteEvent()" style="flex-shrink:0;">+ Attach</button>
@@ -756,10 +758,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="fg">
         <label>Linked to relationship? <span style="font-weight:400;">(optional)</span></label>
+        <input type="text" id="ae-quote-rel-search" placeholder="🔍 Search relationships…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
         <select id="ae-quote-rel" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
       </div>
       <div class="fg" id="ae-trait-link-wrap" style="display:none;">
         <label>Linked to character trait? <span style="font-weight:400;">(optional)</span></label>
+        <input type="text" id="ae-quote-trait-search" placeholder="🔍 Search traits…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
         <select id="ae-quote-trait" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
         <div style="font-size:10px;color:var(--t3);margin-top:3px;">Links this quote to a personality/physical trait — it'll appear under that trait on the character's profile.</div>
       </div>
@@ -1294,7 +1298,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="exportPDF()">Download PDF</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
-      <button class="btn" onclick="closeSheet('settings-overlay');openGallery()">🖼 Photo gallery</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openLibGallery()">🖼 Photo gallery</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
@@ -1981,12 +1985,16 @@ function _migrateLibrary(){
       const REAL_BUILTINS=new Set(['Mother','Father','Child','Parent','Sibling','Brother','Sister','Grandmother','Grandfather','Grandchild','Spouse','Husband','Wife','Partner','Son','Daughter','Aunt','Uncle','Niece','Nephew','Cousin']);
       library.customRelTypes=library.customRelTypes.filter(t=>!REAL_BUILTINS.has(t));
     }
-    // Remove customRelPairs that duplicate built-in reciprocals
+    // Remove customRelPairs that touch built-in reciprocals on EITHER side (case-insensitive).
+    // Builtins already have RECIPROCAL entries, so any pair touching one is redundant and
+    // causes spurious ↔ chips + accent borders on Manage Lists. #659-5.
     // Always run — version check removed to ensure user libraries get cleaned
     if(library.customRelPairs){
+      const builtinLower=new Set(ALL_BUILTIN_REL_TYPES.map(t=>t.toLowerCase()));
       library.customRelPairs=library.customRelPairs.filter(p=>{
-        const bothBuiltin=ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB);
-        if(bothBuiltin)return false;
+        const aL=(p.typeA||'').toLowerCase();
+        const bL=(p.typeB||'').toLowerCase();
+        if(builtinLower.has(aL)||builtinLower.has(bL))return false;
         return true;
       });
     }
@@ -2405,6 +2413,8 @@ function cddRenderChips(prefix){
     const cc=getCC(v);
     return `<span class="cdd-chip" style="background:${cc.bg};color:${cc.text};border-color:${cc.stroke};">${v}<button type="button" class="cdd-chip-x" onclick="cddRemoveChip('${prefix}','${esc(v)}')">×</button></span>`;
   }).join('');
+  // #317-4 — when involved chars change on entry form, re-filter quote links.
+  if(prefix==='ae-inv'&&typeof _repopulateQuoteLinks==='function')_repopulateQuoteLinks();
 }
 function cddRemoveChip(prefix,value){
   if(!cddMultiValues[prefix])return;
@@ -3325,9 +3335,10 @@ function renderLibrary(){
     if(allSeries.length){
       const as=window._libSeriesFilter||'';
       seriesBar.style.display='';
-      seriesBar.innerHTML=`<div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;">
+      seriesBar.innerHTML=`<div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;align-items:center;">
         <button class="chip${!as?' active':''}" onclick="window._libSeriesFilter='';renderLibrary();">All</button>
         ${allSeries.map(s=>`<button class="chip${as===s?' active':''}" data-sf="${esc(s)}" onclick="window._libSeriesFilter=this.dataset.sf;renderLibrary();">${s}</button>`).join('')}
+        ${as?`<button class="chip" style="background:var(--al);color:var(--accent);border-color:var(--am);font-weight:600;flex-shrink:0;" onclick="openSeriesView('${esc(as)}')">📚 View series</button>`:''}
       </div>`;
       if(as)books=books.filter(b=>b.seriesName===as);
     } else {
@@ -3350,7 +3361,7 @@ function bookCardHTML(b,i){
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
       <div class="book-title">${b.title}</div>
-      ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''}</div>`:''}
+      ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;cursor:pointer;" onclick="event.stopPropagation();openSeriesView('${esc(b.seriesName)}')" title="View series">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''} 📚</div>`:''}
       <div class="book-author">${b.author||'—'}</div>
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
       ${stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:''}
@@ -3453,54 +3464,181 @@ function openLibSettings(){openSheet('lib-settings-overlay');}
 // xlsx #401 — Library usage stats. Tells the user which features and answer-options
 // they've used (and haven't) across ALL books in their library.
 function openLibGallery(){
-  // Collect all photos — deduplicate per entry to prevent showing the same photo twice
+  // #179-4: use existing gallery-overlay sheet so it renders reliably from any context
   const photos=[];
-  Object.values(library).forEach(bk=>{
+  const seen=new Set();
+  Object.values(library||{}).forEach(bk=>{
     if(!bk||!bk.entries)return;
     bk.entries.forEach(e=>{
-      // Use photos[] if available, else e.photo. Avoid duplicating e.photo when it's photos[0]
       const photoArr=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
-      const seen=new Set();
       photoArr.forEach(p=>{
-        if(p&&p.startsWith('data:')&&!seen.has(p)){
+        if(p&&typeof p==='string'&&!seen.has(p)){
           seen.add(p);
-          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id});
+          photos.push({photo:p,type:e.type||'Other',content:e.content||e.cn||'',bookId:bk.id,entryId:e.id,bookTitle:bk.title||''});
         }
       });
     });
   });
-  const ov=document.createElement('div');
-  ov.id='_galleryOv';
-  ov.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:9998;display:flex;flex-direction:column;overflow:hidden;';
-  const renderGrid=(af)=>{
-    const types=['All',...new Set(photos.map(p=>p.type))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-    const shown=af==='All'?photos:photos.filter(p=>p.type===af);
-    const chipHtml=types.map(t=>`<button class="chip${af===t?' active':''}" onclick="window._galFn('${esc(t)}')" style="flex-shrink:0;">${t}</button>`).join('');
-    const gridHtml=shown.length
-      ?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">${shown.map(p=>`<div data-bid="${p.bookId}" data-eid="${p.entryId}" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
-          <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
-          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.55);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,20)):''}</div>
-        </div>`).join('')}</div>`
-      :`<div style="padding:40px;text-align:center;color:var(--t3);">No ${af==='All'?'':''+af+' '}photos yet.</div>`;
-    ov.innerHTML=`
-      <div style="padding:10px 14px;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--bg);">
-        <button onclick="document.getElementById('_galleryOv').remove();" style="background:transparent;border:none;font-size:22px;color:var(--text);cursor:pointer;padding:0;line-height:1;">‹</button>
-        <div style="flex:1;font-size:16px;font-weight:700;">Photo Gallery</div>
-        <span style="font-size:12px;color:var(--t3);">${shown.length} photo${shown.length!==1?'s':''}</span>
-      </div>
-      <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:8px 12px 4px;flex-shrink:0;">${chipHtml}</div>
-      <div style="overflow-y:auto;flex:1;padding:8px 12px 40px;">${gridHtml}</div>`;
-    ov.querySelectorAll('[data-bid]').forEach(el=>{
-      el.onclick=()=>{
-        document.getElementById('_galleryOv').remove();
-        openBook(el.dataset.bid);
-        setTimeout(()=>editEntry(+el.dataset.eid),300);
-      };
+  window._libGalleryPhotos=photos;
+  const types=['All',...[...new Set(photos.map(p=>p.type))].sort()];
+  const chipsBar=document.querySelector('#gallery-overlay .sheet-inner > div:first-child');
+  if(chipsBar){
+    chipsBar.innerHTML=types.map(t=>`<button class="chip${(window._libGalleryFilter||'All')===t?' active':''}" onclick="setLibGalFilter('${esc(t)}')" style="flex-shrink:0;">${t}</button>`).join('');
+  }
+  renderLibGallery(window._libGalleryFilter||'All');
+  openSheet('gallery-overlay');
+}
+function setLibGalFilter(f){
+  window._libGalleryFilter=f;
+  document.querySelectorAll('#gallery-overlay .chip').forEach(b=>b.classList.remove('active'));
+  const btns=document.querySelectorAll('#gallery-overlay .chip');
+  btns.forEach(b=>{if(b.textContent.trim()===f)b.classList.add('active');});
+  renderLibGallery(f);
+}
+function renderLibGallery(f){
+  const photos=window._libGalleryPhotos||[];
+  const shown=f==='All'?photos:photos.filter(p=>p.type===f);
+  const grid=document.getElementById('gallery-grid');
+  const empty=document.getElementById('gallery-empty');
+  if(!grid)return;
+  if(!shown.length){
+    grid.innerHTML='';
+    if(empty){empty.style.display='';empty.textContent=photos.length?`No ${f} photos yet.`:'No photos yet. Upload photos to character, location, word, or entry forms.';}
+    return;
+  }
+  if(empty)empty.style.display='none';
+  grid.innerHTML=shown.map(p=>`<div data-bid="${esc(p.bookId)}" data-eid="${p.entryId}" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);" onclick="_libGalTap('${esc(p.bookId)}',${p.entryId})">
+    <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"/>
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.55);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc((p.content+'').slice(0,20)):''}</div>
+  </div>`).join('');
+}
+function _libGalTap(bookId,entryId){
+  closeSheet('gallery-overlay');
+  setTimeout(()=>{openBook(bookId);setTimeout(()=>editEntry(+entryId),250);},120);
+}
+// #696 — Series view: aggregate chars/events/rels across all books in a series.
+let _svTab='chars';
+let _svSeries='';
+function openSeriesView(seriesName){
+  if(!seriesName)return;
+  _svSeries=seriesName;
+  _svTab='chars';
+  const books=Object.values(library||{}).filter(b=>b&&b.seriesName===seriesName).sort((a,b)=>(+a.seriesNum||0)-(+b.seriesNum||0));
+  document.getElementById('series-view-title').textContent=`📚 ${seriesName}`;
+  const meta=document.getElementById('series-view-meta');
+  if(meta)meta.innerHTML=`${books.length} book${books.length!==1?'s':''} · ${books.map(b=>`<span style="color:var(--accent);font-weight:600;">${esc(b.title)}${b.seriesNum?' #'+b.seriesNum:''}</span>`).join(' · ')}`;
+  document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
+  const ct=document.getElementById('sv-tab-chars');if(ct)ct.classList.add('active');
+  renderSeriesView();
+  openSheet('series-view-overlay');
+}
+function switchSeriesTab(tab,btn){
+  _svTab=tab;
+  document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderSeriesView();
+}
+function _seriesBooks(){return Object.values(library||{}).filter(b=>b&&b.seriesName===_svSeries).sort((a,b)=>(+a.seriesNum||0)-(+b.seriesNum||0));}
+function renderSeriesView(){
+  const body=document.getElementById('series-view-body');if(!body)return;
+  const books=_seriesBooks();
+  if(!books.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No books in this series.</div>';return;}
+  const bookLabel=(b)=>`${b.title}${b.seriesNum?' #'+b.seriesNum:''}`;
+  if(_svTab==='chars'){
+    // Aggregate by character name; track which books each appears in
+    const byName={};
+    books.forEach(b=>{
+      (b.entries||[]).forEach(e=>{
+        if(CT.includes(e.type)){
+          const nm=(e.cn||e.content||'').trim();
+          if(!nm)return;
+          if(!byName[nm])byName[nm]={name:nm,books:[],photos:[],roles:new Set(),descs:[]};
+          byName[nm].books.push({bookId:b.id,bookLabel:bookLabel(b),entryId:e.id,seriesNum:+b.seriesNum||0});
+          if(e.photo&&!byName[nm].photos.includes(e.photo))byName[nm].photos.push(e.photo);
+          if(e.charRole)byName[nm].roles.add(e.charRole);
+          if(e.charDesc)byName[nm].descs.push(e.charDesc);
+        }
+      });
     });
-  };
-  window._galFn=(af)=>{window._libGalleryFilter=af;renderGrid(af);};
-  renderGrid(window._libGalleryFilter||'All');
-  document.body.appendChild(ov);
+    const list=Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!list.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No characters yet in this series.</div>';return;}
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Characters appearing in series books. Tap to open in their first book.</div>`+list.map(c=>{
+      const cc=getCC(c.name);
+      const photo=c.photos[0]?`<img src="${c.photos[0]}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>`:`<div style="width:42px;height:42px;border-radius:50%;background:${cc.bg};color:${cc.text};display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:14px;">${c.name.slice(0,2).toUpperCase()}</div>`;
+      const bookChips=c.books.sort((a,b)=>a.seriesNum-b.seriesNum).map(bk=>`<span class="chip" onclick="event.stopPropagation();_svOpenEntry('${bk.bookId}',${bk.entryId})" style="background:var(--bg2);font-size:10px;cursor:pointer;">${esc(bk.bookLabel)}</span>`).join('');
+      const first=c.books[0];
+      const roleStr=[...c.roles].filter(Boolean).join(' · ');
+      return `<div onclick="_svOpenEntry('${first.bookId}',${first.entryId})" style="display:flex;gap:10px;padding:10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;align-items:center;">
+        ${photo}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${esc(c.name)}</div>
+          ${roleStr?`<div style="font-size:11px;color:var(--t3);">${esc(roleStr)}</div>`:''}
+          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">${bookChips}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } else if(_svTab==='events'){
+    // Aggregate Event, Timeline, Date/Period entries across books, sorted by evdate
+    const evs=[];
+    books.forEach(b=>{
+      (b.entries||[]).forEach(e=>{
+        if(['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft){
+          evs.push({bookId:b.id,bookLabel:bookLabel(b),seriesNum:+b.seriesNum||0,entry:e});
+        }
+      });
+    });
+    evs.sort((a,b)=>{
+      const da=(a.entry.evdate||'');const db=(b.entry.evdate||'');
+      if(da&&db&&da!==db)return da.localeCompare(db);
+      if(a.seriesNum!==b.seriesNum)return a.seriesNum-b.seriesNum;
+      return (a.entry.content||'').localeCompare(b.entry.content||'');
+    });
+    if(!evs.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No events/timeline entries yet in this series.</div>';return;}
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Chronological timeline across all series books.</div>`+evs.map(o=>{
+      const e=o.entry;
+      const icon=e.type==='Event'?'⭐':'📅';
+      const dateStr=e.evdate?`<span style="font-weight:600;color:var(--accent);">${esc(e.evdate)}</span>`:'<span style="color:var(--t3);">(no date)</span>';
+      const inv=(e.involved||[]).length?`<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px;">${(e.involved||[]).slice(0,5).map(n=>{const cc=getCC(n);return `<span class="cbadge" style="background:${cc.bg};color:${cc.text};font-size:10px;">${esc(n)}</span>`;}).join('')}</div>`:'';
+      return `<div onclick="_svOpenEntry('${o.bookId}',${e.id})" style="padding:8px 10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+          <div style="font-size:11px;">${icon} ${dateStr}</div>
+          <div style="font-size:10px;color:var(--t3);">${esc(o.bookLabel)}</div>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px;">${esc(e.content||'(untitled)')}</div>
+        ${e.note?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${esc((e.note||'').slice(0,140))}${(e.note||'').length>140?'…':''}</div>`:''}
+        ${inv}
+      </div>`;
+    }).join('');
+  } else if(_svTab==='rels'){
+    // Aggregate Relationship entries; dedupe by sorted pair+type
+    const pairMap={};
+    books.forEach(b=>{
+      (b.entries||[]).forEach(e=>{
+        if(e.type==='Relationship'){
+          const a=e.relA||'?',c=e.relB||'?',t=e.relType||'';
+          const key=[a,c].sort().join('|')+'|'+t;
+          if(!pairMap[key])pairMap[key]={relA:a,relB:c,relType:t,books:[]};
+          pairMap[key].books.push({bookId:b.id,bookLabel:bookLabel(b),entryId:e.id,seriesNum:+b.seriesNum||0,note:e.note||''});
+        }
+      });
+    });
+    const rels=Object.values(pairMap).sort((a,b)=>(a.relA+a.relB).localeCompare(b.relA+b.relB));
+    if(!rels.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No relationship entries yet in this series.</div>';return;}
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Relationships across the series. Tap a book chip to open the entry.</div>`+rels.map(r=>{
+      const ca=getCC(r.relA),cb=getCC(r.relB);
+      const first=r.books.sort((a,b)=>a.seriesNum-b.seriesNum)[0];
+      const bookChips=r.books.map(bk=>`<span class="chip" onclick="event.stopPropagation();_svOpenEntry('${bk.bookId}',${bk.entryId})" style="background:var(--bg2);font-size:10px;cursor:pointer;">${esc(bk.bookLabel)}</span>`).join('');
+      const emo=relEmoji(r.relType)||'';
+      return `<div onclick="_svOpenEntry('${first.bookId}',${first.entryId})" style="padding:9px 10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);cursor:pointer;">
+        <div style="font-size:13px;"><span class="cbadge" style="background:${ca.bg};color:${ca.text};">${esc(r.relA)}</span> <span style="color:var(--t2);">↔</span> <span class="cbadge" style="background:${cb.bg};color:${cb.text};">${esc(r.relB)}</span> ${r.relType?`<span style="font-size:11px;color:var(--t2);">${emo} ${esc(r.relType)}</span>`:''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;">${bookChips}</div>
+      </div>`;
+    }).join('');
+  }
+}
+function _svOpenEntry(bookId,entryId){
+  closeSheet('series-view-overlay');
+  setTimeout(()=>{openBook(bookId);if(entryId)setTimeout(()=>editEntry(+entryId),250);},120);
 }
 function openLibStats(){
   openSheet('lib-stats-overlay');
@@ -4725,6 +4863,10 @@ function onTypeChange(){
   _cddEnsureRegistered();
 
   if(isQ&&chars.length){cddFilter('ae-speaker');}
+  if(isQ){
+    // #317-4 — clear any leftover search filters from previous open
+    ['ae-quote-theme-search','ae-quote-event-search','ae-quote-rel-search','ae-quote-trait-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  }
   if(isQ)populateQuoteThemeSelect('');
   if(isQ)populateQuoteRelSelect('');
   if(isQ)populateQuoteTraitSelect([]);
@@ -5640,9 +5782,15 @@ function toggleQuoteTrans(){
   const d=document.getElementById('ae-quote-trans');const b=document.getElementById('ae-qt-btn');
   const open=d.style.display==='none';d.style.display=open?'':'none';b.textContent=open?'− Hide translation':'＋ Add translation';
 }
-function populateQuoteRelSelect(currentVal){
+function populateQuoteRelSelect(currentVal,involvedChars){
   const sel=document.getElementById('ae-quote-rel');if(!sel)return;
-  const rels=entries().filter(e=>e.type==='Relationship');
+  const chars=(involvedChars&&involvedChars.length)?involvedChars:[];
+  let rels=entries().filter(e=>e.type==='Relationship');
+  if(chars.length){
+    rels=rels.filter(r=>chars.includes(r.relA)||chars.includes(r.relB));
+  }
+  const search=(document.getElementById('ae-quote-rel-search')?.value||'').toLowerCase().trim();
+  if(search)rels=rels.filter(r=>((r.relA||'')+' '+(r.relB||'')+' '+(r.relType||'')).toLowerCase().includes(search));
   sel.innerHTML='<option value="">— none —</option>'+rels.map(r=>{const label=`${r.relA||'?'} ↔ ${r.relB||'?'}${r.relType?' ('+r.relType+')':''}`;return`<option value="${r.id}">${label}</option>`;}).join('');
   if(currentVal)sel.value=currentVal;
 }
@@ -5652,7 +5800,6 @@ function populateQuoteTraitSelect(involvedChars,currentVal){
   if(!wrap||!sel)return;
   wrap.style.display='';
   const chars=involvedChars&&involvedChars.length?involvedChars:[];
-  // If no involved chars, show all character traits in the book
   const allTraits=entries().filter(e=>e.type==='Characteristic');
   let traits;
   if(chars.length){
@@ -5660,8 +5807,10 @@ function populateQuoteTraitSelect(involvedChars,currentVal){
   } else {
     traits=allTraits;
   }
+  const search=(document.getElementById('ae-quote-trait-search')?.value||'').toLowerCase().trim();
+  if(search)traits=traits.filter(t=>((t.content||'')+' '+((t.involved||[]).join(' '))+' '+(t.cn||'')).toLowerCase().includes(search));
   if(!traits.length){
-    sel.innerHTML='<option value="">— no traits yet (add a Characteristic entry first) —</option>';
+    sel.innerHTML='<option value="">— no matching traits (add a Characteristic entry first) —</option>';
     return;
   }
   sel.innerHTML='<option value="">— none —</option>'+traits.map(t=>{
@@ -5670,12 +5819,54 @@ function populateQuoteTraitSelect(involvedChars,currentVal){
   }).join('');
   if(currentVal)sel.value=currentVal;
 }
-function populateQuoteThemeSelect(currentVal){
+function populateQuoteThemeSelect(currentVal,involvedChars){
   const sel=document.getElementById('ae-quote-theme');if(!sel)return;
-  const themes=entries().filter(e=>e.type==='Theme').map(e=>e.content).filter(Boolean);
+  const chars=(involvedChars&&involvedChars.length)?involvedChars:[];
+  let themeEntries=entries().filter(e=>e.type==='Theme');
+  if(chars.length){
+    themeEntries=themeEntries.filter(t=>{
+      const inv=t.involved||[];
+      if(chars.some(c=>inv.includes(c)))return true;
+      // Also include themes if any attached quote's speaker/involved overlaps with chars
+      const ids=t.themeQuotes||[];
+      if(ids.length){
+        return entries().some(q=>ids.includes(q.id)&&(chars.includes(q.speaker)||(q.involved||[]).some(c=>chars.includes(c))));
+      }
+      return false;
+    });
+  }
+  const search=(document.getElementById('ae-quote-theme-search')?.value||'').toLowerCase().trim();
+  if(search)themeEntries=themeEntries.filter(t=>(t.content||'').toLowerCase().includes(search));
+  const themes=themeEntries.map(e=>e.content).filter(Boolean);
   sel.innerHTML='<option value="">— pick a theme to add —</option>'+themes.map(t=>`<option value="${t}">${t}</option>`).join('');
-  // xlsx #429 — multi-theme: don't pre-select, themes are tracked in _attachedThemeNames.
   if(currentVal&&!Array.isArray(currentVal))sel.value=currentVal;
+}
+// #317-4 — re-populate all quote link selects whenever involved changes.
+// Filters: each connection (theme, event, rel, trait) is filtered to entries
+// involving the selected character(s). Search inputs filter further.
+function _repopulateQuoteLinks(){
+  try{
+    const type=document.getElementById('ae-type')?.value;
+    if(!['Quote','Narrator quote','Line/stanza'].includes(type))return;
+    const inv=(typeof cddGet==='function'?cddGet('ae-inv'):[])||[];
+    // Preserve current values
+    const themeSel=document.getElementById('ae-quote-theme');
+    const relSel=document.getElementById('ae-quote-rel');
+    const traitSel=document.getElementById('ae-quote-trait');
+    const eventSel=document.getElementById('ae-quote-event');
+    const themeV=themeSel?themeSel.value:'';
+    const relV=relSel?relSel.value:'';
+    const traitV=traitSel?traitSel.value:'';
+    const eventV=eventSel?eventSel.value:'';
+    populateQuoteThemeSelect(themeV,inv);
+    populateQuoteRelSelect(relV,inv);
+    populateQuoteTraitSelect(inv,traitV);
+    refreshAttachEventOptions();
+    if(themeSel&&themeV)themeSel.value=themeV;
+    if(relSel&&relV)relSel.value=relV;
+    if(traitSel&&traitV)traitSel.value=traitV;
+    if(eventSel&&eventV)eventSel.value=eventV;
+  }catch(e){console.warn('_repopulateQuoteLinks:',e);}
 }
 function quickAddThemeForQuote(){
   const name=prompt('New theme name:');if(!name||!name.trim())return;
@@ -5772,7 +5963,16 @@ function loadAttachedEvents(ids){_attachedEventIds=(ids||[]).map(Number).filter(
 // Populate the event/timeline dropdown when the Quote form opens.
 function refreshAttachEventOptions(){
   const sel=document.getElementById('ae-quote-event');if(!sel)return;
-  const evs=entries().filter(e=>['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft);
+  let evs=entries().filter(e=>['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft);
+  const involvedChars=(typeof cddGet==='function'?cddGet('ae-inv'):null)||[];
+  if(involvedChars.length){
+    evs=evs.filter(e=>{
+      const inv=e.involved||[];
+      return involvedChars.some(c=>inv.includes(c));
+    });
+  }
+  const search=(document.getElementById('ae-quote-event-search')?.value||'').toLowerCase().trim();
+  if(search)evs=evs.filter(e=>((e.content||'')+' '+(e.evdate||'')).toLowerCase().includes(search));
   evs.sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(a.content||'').localeCompare(b.content||''));
   sel.innerHTML='<option value="">— pick an event/timeline to add —</option>'
     +evs.map(e=>{const icon=e.type==='Event'?'⭐':'📅';const d=e.evdate?` · ${e.evdate}`:'';return `<option value="${e.id}">${icon} ${esc((e.content||'(untitled)').slice(0,40))}${d}</option>`;}).join('');
@@ -13447,6 +13647,25 @@ function _swipeInit(){/* removed */}
       </div>
       <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
       <div id="gallery-empty" style="display:none;text-align:center;padding:24px;font-size:13px;color:var(--t2);">No photos yet. Upload photos to character, location, word, or entry forms.</div>
+    </div>
+  </div>
+</div>
+
+<!-- #696 — Series view: characters/timeline/relationships across all books in a series -->
+<div class="sheet-overlay" id="series-view-overlay" onclick="mc('series-view-overlay',event)">
+  <div class="sheet" style="max-height:92vh;">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title" id="series-view-title">📚 Series</div>
+      <button class="sheet-x" onclick="closeSheet('series-view-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div id="series-view-meta" style="font-size:11px;color:var(--t2);margin-bottom:10px;"></div>
+      <div style="display:flex;gap:0;border-bottom:0.5px solid var(--cb);margin-bottom:10px;">
+        <button class="tab active" id="sv-tab-chars" onclick="switchSeriesTab('chars',this)" style="flex:1;">👥 Characters</button>
+        <button class="tab" id="sv-tab-events" onclick="switchSeriesTab('events',this)" style="flex:1;">📅 Timeline</button>
+        <button class="tab" id="sv-tab-rels" onclick="switchSeriesTab('rels',this)" style="flex:1;">🔗 Relationships</button>
+      </div>
+      <div id="series-view-body"></div>
     </div>
   </div>
 </div>
