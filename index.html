@@ -41,7 +41,7 @@ button{font-family:inherit;cursor:pointer;border:none;border-radius:var(--r);tra
 /* sheets */
 .sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;}
 .sheet-overlay.open{display:flex;}
-.sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:97vh;min-height:70vh;overflow-y:auto;}
+.sheet{background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:16px max(15px,env(safe-area-inset-left,0px)) calc(16px + var(--sb)) max(15px,env(safe-area-inset-right,0px));width:100%;max-height:92vh;min-height:80vh;overflow-y:auto;}
 .sheet-handle{width:36px;height:4px;background:var(--t3);border-radius:2px;margin:0 auto 12px;}
 .sheet-x{position:absolute;right:10px;top:10px;font-size:22px;background:var(--bg3);color:var(--text);padding:4px 9px;border-radius:var(--r);border:0.5px solid var(--cb);line-height:1;min-width:36px;text-align:center;z-index:20;}
 .sheet-title{font-size:16px;font-weight:600;margin-bottom:12px;}
@@ -263,7 +263,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="tab active" id="lib-tab-reading" onclick="switchLibTab('reading',this)" style="flex:1;">Reading</button>
       <button class="tab" id="lib-tab-want" onclick="switchLibTab('want',this)" style="flex:1;">Want</button>
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
-      <button class="tab" id="lib-tab-gallery" onclick="switchLibTab('gallery',this)" style="flex:1;">📷</button>
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
@@ -1792,6 +1791,7 @@ const TYPE_HINTS={
   'Reference':{icon:'🔖',desc:'Something to read, watch, or research — inspired by or mentioned in this book.',tips:['Books → consider adding to StoryGraph.','Add a link for quick access later.','Check it off when done — it moves to the completed section.','Appears in the To-Do tab if unfinished.']},
   'Foreshadowing':{icon:'🔮',desc:'A hint, clue, or passage that hints at future events. Capture it while you spot it — you can revisit and annotate what it foreshadowed once you know.',tips:['Paste the quote or describe the moment in the content field.','Use "Note" to describe what it foreshadows (even speculatively — you can edit later).','Tag involved characters who are affected.','Link to the Timeline Event it foreshadows using "Attached to Event/Timeline" on the Quote.','Great to compare foreshadowing across a series once you finish.']},
   'Image / Diagram':{icon:'🖼',desc:'A photo, illustration, chart, or diagram from the book — or an image reference you found elsewhere.',tips:['Use "Upload photo" to attach the image directly.','Add a note explaining what it shows and why it matters.','Tag relevant characters or concepts in Characters Involved.','Great for diagrams, family trees, maps, evolution charts, etc.']},
+  'Outfit':{icon:'👗',desc:'A specific outfit or look worn by a character in a scene. Captures wardrobe, costume, and visual presentation.',tips:['Tag the character(s) wearing it in Characters Involved.','Note the chapter and page where it appears.','Upload a reference photo if you have one.','Consider what the outfit says about the character or scene — power, vulnerability, disguise, mood?','Outfits also appear under each character\'s Physical & Outfits section on their profile.']},
   'Location':{icon:'📍',desc:'A specific place in the story where a scene occurs.',tips:['Real places get pinned on the map view.','Fictional places can have notes on their lore or significance.','Log the era/time period — helps with historical context.','Different from Setting — this is a specific scene-place, not the atmospheric context.']},
   'Dialogue':{icon:'💬',desc:'A multi-line conversation between characters.',tips:['Add each line with the speaker tagged.','Useful for capturing complex exchanges that one Quote entry can\'t hold.','Tag all characters in the "Characters involved" field.']},
   'Clue':{icon:'🔎',desc:'A piece of evidence or hint in a mystery.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','What does it point toward?']},
@@ -1982,19 +1982,17 @@ function _migrateLibrary(){
       library.customRelTypes=library.customRelTypes.filter(t=>!REAL_BUILTINS.has(t));
     }
     // Remove customRelPairs that duplicate built-in reciprocals
-    // (e.g. Mother↔Child was added when someone renamed Mother→custom and back)
-    // Version 3 — catches cases where RECIPROCAL check wasn't matching
-    if(!library._pairMigV||library._pairMigV<3){
-      library._pairMigV=3;
-      if(library.customRelPairs){
-        library.customRelPairs=library.customRelPairs.filter(p=>{
-          // Remove if EITHER typeA or typeB is a builtin with a known reciprocal matching the other
-          const builtinRecip=RECIPROCAL[p.typeA]||RECIPROCAL[p.typeB];
-          const bothBuiltin=ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB);
-          if(bothBuiltin){return false;} // any pair of two builtins is redundant — remove
-          return true;
-        });
-      }
+    // Always run — version check removed to ensure user libraries get cleaned
+    if(library.customRelPairs){
+      library.customRelPairs=library.customRelPairs.filter(p=>{
+        const bothBuiltin=ALL_BUILTIN_REL_TYPES.includes(p.typeA)&&ALL_BUILTIN_REL_TYPES.includes(p.typeB);
+        if(bothBuiltin)return false;
+        return true;
+      });
+    }
+    // Remove any builtin names from customRelTypes
+    if(library.customRelTypes){
+      library.customRelTypes=library.customRelTypes.filter(t=>!ALL_BUILTIN_REL_TYPES.includes(t));
     }
     // Update any entries where relType is a builtin but got stuck as lower-case
     Object.values(library).forEach(b=>{
@@ -2945,7 +2943,7 @@ function saveQuickLoc(){
 async function lookupBook(title){
   if(!title||title.length<3)return;
   try{
-    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence`);
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series`);
     const d=await r.json();
     const hint=document.getElementById('nb-lookup-hint');
     if(!d.docs||!d.docs.length){hint.style.display='';hint.innerHTML='No results found.';return;}
@@ -2975,6 +2973,14 @@ async function applyLookup(idx){
   if(b.first_sentence?.value){
     const sumEl=document.getElementById('nb-summary');
     if(sumEl&&!sumEl.value)sumEl.value=b.first_sentence.value;
+  }
+  // #389 — auto-fill series from OpenLibrary
+  if(b.series&&b.series.length){
+    const raw=b.series[0]||'';
+    const numMatch=raw.match(/#\s*(\d+)/)||raw.match(/(\d+)$/);
+    const seriesName=raw.replace(/#\s*\d+/,'').replace(/\s+\d+\s*$/,'').replace(/,\s*$/,'').trim();
+    const sns=document.getElementById('nb-series');if(sns&&!sns.value)sns.value=seriesName||raw;
+    const snn=document.getElementById('nb-series-num');if(snn&&!snn.value&&numMatch)snn.value=numMatch[1];
   }
   // Auto-fetch and set cover photo
   if(b.cover_i){
@@ -3309,36 +3315,6 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   const seriesBar=document.getElementById('lib-series-bar');
-  // #179 — Gallery tab
-  if(libTab==='gallery'){
-    if(seriesBar)seriesBar.style.display='none';
-    empty.style.display='none';
-    const photos=[];
-    Object.values(library).forEach(bk=>{
-      if(!bk||!bk.entries)return;
-      bk.entries.forEach(e=>{
-        [e.photo,...(e.photos||[])].filter(p=>p&&p.startsWith('data:')).forEach(p=>{
-          photos.push({photo:p,type:e.type||'Other',content:e.content||'',bookId:bk.id,entryId:e.id});
-        });
-      });
-    });
-    if(!photos.length){body.innerHTML='<div style="padding:40px 14px;text-align:center;color:var(--t3);">No photos yet.<br><span style="font-size:12px;">Upload photos to character or location entries.</span></div>';return;}
-    const af=window._libGalleryFilter||'All';
-    const types=['All',...new Set(photos.map(p=>p.type))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-    const shown=af==='All'?photos:photos.filter(p=>p.type===af);
-    body.innerHTML=`<div style="padding:8px 12px 80px;">
-      <div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;padding-bottom:2px;">
-        ${types.map(t=>`<button class="chip${af===t?' active':''}" data-gf="${esc(t)}" onclick="window._libGalleryFilter=this.dataset.gf;renderLibrary();">${t}</button>`).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
-        ${shown.map(p=>`<div data-book="${p.bookId}" data-eid="${p.entryId}" onclick="openBook(this.dataset.book);setTimeout(()=>editEntry(+this.dataset.eid),300);" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);">
-          <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>
-          <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.5);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc(p.content.slice(0,18)):''}</div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-    return;
-  }
   let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab).sort((a,b)=>{
     if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
     return b.created-a.created;
@@ -5674,12 +5650,20 @@ function populateQuoteTraitSelect(involvedChars,currentVal){
   const wrap=document.getElementById('ae-trait-link-wrap');
   const sel=document.getElementById('ae-quote-trait');
   if(!wrap||!sel)return;
-  const chars=involvedChars&&involvedChars.length?involvedChars:[];
-  if(!chars.length){wrap.style.display='none';sel.innerHTML='<option value="">— none —</option>';return;}
-  // Get all traits for the involved characters
-  const traits=entries().filter(e=>e.type==='Characteristic'&&chars.some(c=>(e.involved||[]).includes(c)||(e.cn||e.content||'').includes(c)));
-  if(!traits.length){wrap.style.display='none';return;}
   wrap.style.display='';
+  const chars=involvedChars&&involvedChars.length?involvedChars:[];
+  // If no involved chars, show all character traits in the book
+  const allTraits=entries().filter(e=>e.type==='Characteristic');
+  let traits;
+  if(chars.length){
+    traits=allTraits.filter(t=>chars.some(c=>(t.involved||[]).includes(c)||(t.cn||t.content||'').includes(c)));
+  } else {
+    traits=allTraits;
+  }
+  if(!traits.length){
+    sel.innerHTML='<option value="">— no traits yet (add a Characteristic entry first) —</option>';
+    return;
+  }
   sel.innerHTML='<option value="">— none —</option>'+traits.map(t=>{
     const charNames=(t.involved||[]).join(', ')||t.cn||'';
     return`<option value="${t.id}">${t.content}${charNames?' ('+charNames+')':''}</option>`;
@@ -8018,16 +8002,25 @@ function _charFabTap(){
       tries++;
       const typeEl=document.getElementById('ae-type');
       if(!typeEl){if(tries<20)setTimeout(tryTag,100);return;}
-      // If Character/Characteristic type — no Involved field. Switch to Quote.
       if(['Character','Characteristic','Location','Theme'].includes(typeEl.value)){
         const opts=[...typeEl.options].map(o=>o.value);
         const pref=['Quote','Event','Dialogue'].find(t=>opts.includes(t));
         if(pref){typeEl.value=pref;try{onTypeChange();}catch(e){}}
-        setTimeout(tryTag,150);return;
+        setTimeout(tryTag,200);return;
       }
-      try{populateCdd('ae-inv',[name]);}catch(e){if(tries<15)setTimeout(tryTag,100);}
+      const chipsEl=document.getElementById('ae-inv-chips');
+      if(!chipsEl){if(tries<15)setTimeout(tryTag,100);return;}
+      try{
+        if(typeof cddMultiValues!=='undefined'){
+          if(!cddMultiValues['ae-inv'])cddMultiValues['ae-inv']=[];
+          if(!cddMultiValues['ae-inv'].includes(name))cddMultiValues['ae-inv'].push(name);
+          if(typeof cddRenderChips==='function')cddRenderChips('ae-inv');
+          // Also update trait dropdown
+          if(typeof populateQuoteTraitSelect==='function')populateQuoteTraitSelect([name]);
+        }
+      }catch(e){if(tries<10)setTimeout(tryTag,100);}
     };
-    setTimeout(tryTag,250);
+    setTimeout(tryTag,300);
   };
   document.getElementById('_fabNo').onclick=()=>{ov.remove();openAddSheet();};
   ov.onclick=(e)=>{if(e.target===ov)ov.remove();};
