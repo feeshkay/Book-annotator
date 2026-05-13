@@ -592,9 +592,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
       <div class="r2">
-        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this);_patriDebounced();" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
+        <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this);_patriDebounced();_seriesNameSuggest('char');" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
       </div>
+      <!-- #696-2 — series suggest box: matches characters from sibling books in the same series. -->
+      <div id="ae-series-suggest-char" style="display:none;font-size:11px;margin:-4px 0 8px;padding:6px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);color:var(--accent);"></div>
       <!-- #393 — patrilineal last-name suggester -->
       <div id="ae-patri-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:6px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);"></div>
       <div class="r3">
@@ -662,7 +664,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CONTENT (non-char) -->
     <div id="ae-content-section">
-      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" oninput="_markDirty()" onblur="checkDuplicateEntry(this.value.trim());if(document.getElementById('ae-type')?.value==='Location')stdLocAutofill();"></textarea></div>
+      <div class="fg"><label id="ae-clabel">Content</label><textarea id="ae-content" placeholder="Enter content…" oninput="_markDirty();_seriesNameSuggest('loc');" onblur="checkDuplicateEntry(this.value.trim());if(document.getElementById('ae-type')?.value==='Location')stdLocAutofill();"></textarea></div>
+      <!-- #696-2 — series suggest box: matches locations from sibling books in the same series. -->
+      <div id="ae-series-suggest-loc" style="display:none;font-size:11px;margin:-4px 0 8px;padding:6px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);color:var(--accent);"></div>
     </div>
 
     <!-- THEME QUOTES -->
@@ -733,38 +737,52 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Translator <span style="font-weight:400;">(optional)</span></label><input type="text" id="ae-qt-translator" placeholder="e.g. Edith Grossman, Gregory Rabassa, mine…"/></div>
       </div>
       <div class="divider" style="margin:10px 0 8px;"></div>
+      <!-- #317-5 — combined search+picker for theme. Tap to add; chips show below. -->
       <div class="fg">
         <label>Attached to theme(s)? <span style="font-weight:400;">(optional — tap multiple)</span></label>
-        <input type="text" id="ae-quote-theme-search" placeholder="🔍 Search themes…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
-        <!-- xlsx #429 (Batch 33) — multi-theme picker. Replaces single-select. -->
-        <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <select id="ae-quote-theme" style="flex:1;"><option value="">— pick a theme to add —</option></select>
-          <button type="button" class="btn btn-sm" onclick="addQuoteTheme()" style="flex-shrink:0;">+ Attach</button>
-          <button type="button" class="btn btn-sm" onclick="quickAddThemeForQuote()" style="flex-shrink:0;">+ New</button>
+        <div style="position:relative;margin-bottom:6px;">
+          <div style="display:flex;gap:6px;align-items:stretch;">
+            <input type="text" id="ae-quote-theme-search" placeholder="🔍 Search or pick a theme…" autocomplete="off" oninput="_qcOpen('theme')" onfocus="_qcOpen('theme')" style="flex:1;font-size:14px;padding:8px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
+            <button type="button" class="btn btn-sm" onclick="quickAddThemeForQuote()" style="flex-shrink:0;">+ New</button>
+          </div>
+          <div class="cdd-list" id="ae-quote-theme-list" style="position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;display:none;"></div>
         </div>
+        <select id="ae-quote-theme" style="display:none;"><option value=""></option></select>
         <div id="ae-quote-themes-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       </div>
-      <!-- xlsx #425 (Batch 41) — Attach quote to event/timeline entry, parallel
-           to the theme attach above. Multi-pick. Persists into chosen entry's
-           attachedQuoteIds[]. -->
+      <!-- #317-5 — combined search+picker for event/timeline -->
       <div class="fg">
         <label>Attached to event/timeline? <span style="font-weight:400;">(optional — tap multiple)</span></label>
-        <input type="text" id="ae-quote-event-search" placeholder="🔍 Search events/timelines…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
-        <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <select id="ae-quote-event" style="flex:1;"><option value="">— pick an event/timeline to add —</option></select>
-          <button type="button" class="btn btn-sm" onclick="addQuoteEvent()" style="flex-shrink:0;">+ Attach</button>
+        <div style="position:relative;margin-bottom:6px;">
+          <input type="text" id="ae-quote-event-search" placeholder="🔍 Search or pick an event/timeline…" autocomplete="off" oninput="_qcOpen('event')" onfocus="_qcOpen('event')" style="width:100%;font-size:14px;padding:8px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
+          <div class="cdd-list" id="ae-quote-event-list" style="position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;display:none;"></div>
         </div>
+        <select id="ae-quote-event" style="display:none;"><option value=""></option></select>
         <div id="ae-quote-events-list" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
       </div>
+      <!-- #317-5 — combined search+picker for relationship (single-pick) -->
       <div class="fg">
         <label>Linked to relationship? <span style="font-weight:400;">(optional)</span></label>
-        <input type="text" id="ae-quote-rel-search" placeholder="🔍 Search relationships…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
-        <select id="ae-quote-rel" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
+        <div style="position:relative;">
+          <div style="display:flex;gap:6px;align-items:stretch;">
+            <input type="text" id="ae-quote-rel-search" placeholder="🔍 Search or pick a relationship…" autocomplete="off" oninput="_qcOpen('rel')" onfocus="_qcOpen('rel')" style="flex:1;font-size:14px;padding:8px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
+            <button type="button" class="btn btn-sm" onclick="_qcClear('rel')" style="flex-shrink:0;padding:0 9px;color:var(--t3);" title="Clear">×</button>
+          </div>
+          <div class="cdd-list" id="ae-quote-rel-list" style="position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;display:none;"></div>
+        </div>
+        <select id="ae-quote-rel" style="display:none;"><option value=""></option></select>
       </div>
+      <!-- #317-5 — combined search+picker for trait (single-pick) -->
       <div class="fg" id="ae-trait-link-wrap" style="display:none;">
         <label>Linked to character trait? <span style="font-weight:400;">(optional)</span></label>
-        <input type="text" id="ae-quote-trait-search" placeholder="🔍 Search traits…" oninput="_repopulateQuoteLinks()" style="width:100%;font-size:12px;padding:5px 8px;margin-bottom:5px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);"/>
-        <select id="ae-quote-trait" style="width:100%;font-size:13px;"><option value="">— none —</option></select>
+        <div style="position:relative;">
+          <div style="display:flex;gap:6px;align-items:stretch;">
+            <input type="text" id="ae-quote-trait-search" placeholder="🔍 Search or pick a trait…" autocomplete="off" oninput="_qcOpen('trait')" onfocus="_qcOpen('trait')" style="flex:1;font-size:14px;padding:8px 11px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
+            <button type="button" class="btn btn-sm" onclick="_qcClear('trait')" style="flex-shrink:0;padding:0 9px;color:var(--t3);" title="Clear">×</button>
+          </div>
+          <div class="cdd-list" id="ae-quote-trait-list" style="position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:2px;display:none;"></div>
+        </div>
+        <select id="ae-quote-trait" style="display:none;"><option value=""></option></select>
         <div style="font-size:10px;color:var(--t3);margin-top:3px;">Links this quote to a personality/physical trait — it'll appear under that trait on the character's profile.</div>
       </div>
     </div>
@@ -1298,7 +1316,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="exportPDF()">Download PDF</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
-      <button class="btn" onclick="closeSheet('settings-overlay');openLibGallery()">🖼 Photo gallery</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(openLibGallery,180);">🖼 Photo gallery</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
@@ -1940,6 +1958,14 @@ async function _doSave(){
 
 function save(){
   if(_saveQueued)return;
+  // #724 — stamp the currently-open book's updated timestamp so sync can resolve
+  // last-write-wins. Library-level metadata changes (custom rel types/pairs) get
+  // synced via union-merge so they don't need a per-book timestamp.
+  try{
+    if(typeof currentId!=='undefined'&&currentId&&library&&library[currentId]&&!library[currentId]._deleted){
+      library[currentId].updated=Date.now();
+    }
+  }catch(e){}
   _saveQueued=true;
   Promise.resolve().then(async()=>{
     _saveQueued=false;
@@ -1998,9 +2024,16 @@ function _migrateLibrary(){
         return true;
       });
     }
-    // Remove any builtin names from customRelTypes
+    // Remove any builtin names from customRelTypes (case-insensitive, trimmed) — #659-6
     if(library.customRelTypes){
-      library.customRelTypes=library.customRelTypes.filter(t=>!ALL_BUILTIN_REL_TYPES.includes(t));
+      const builtinLower2=new Set(ALL_BUILTIN_REL_TYPES.map(t=>t.toLowerCase().trim()));
+      library.customRelTypes=library.customRelTypes.filter(t=>{
+        if(!t)return false;
+        return !builtinLower2.has((t+'').toLowerCase().trim());
+      });
+      // Dedupe (preserve order)
+      const seenCt=new Set();
+      library.customRelTypes=library.customRelTypes.filter(t=>{const k=(t+'').toLowerCase().trim();if(seenCt.has(k))return false;seenCt.add(k);return true;});
     }
     // Update any entries where relType is a builtin but got stuck as lower-case
     Object.values(library).forEach(b=>{
@@ -3464,15 +3497,18 @@ function openLibSettings(){openSheet('lib-settings-overlay');}
 // xlsx #401 — Library usage stats. Tells the user which features and answer-options
 // they've used (and haven't) across ALL books in their library.
 function openLibGallery(){
-  // #179-4: use existing gallery-overlay sheet so it renders reliably from any context
-  const photos=[];
-  const seen=new Set();
+  // #179-5 — Build a fresh full-screen overlay appended to body. Bypass all
+  // sheet machinery and existing gallery-overlay DOM. If a previous overlay
+  // exists, remove it first.
+  try{document.getElementById('_libGalRoot')?.remove();}catch(e){}
+  // Collect photos across the whole library.
+  const photos=[];const seen=new Set();
   Object.values(library||{}).forEach(bk=>{
     if(!bk||!bk.entries)return;
     bk.entries.forEach(e=>{
       const photoArr=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
       photoArr.forEach(p=>{
-        if(p&&typeof p==='string'&&!seen.has(p)){
+        if(p&&typeof p==='string'&&p.length>4&&!seen.has(p)){
           seen.add(p);
           photos.push({photo:p,type:e.type||'Other',content:e.content||e.cn||'',bookId:bk.id,entryId:e.id,bookTitle:bk.title||''});
         }
@@ -3480,41 +3516,155 @@ function openLibGallery(){
     });
   });
   window._libGalleryPhotos=photos;
-  const types=['All',...[...new Set(photos.map(p=>p.type))].sort()];
-  const chipsBar=document.querySelector('#gallery-overlay .sheet-inner > div:first-child');
-  if(chipsBar){
-    chipsBar.innerHTML=types.map(t=>`<button class="chip${(window._libGalleryFilter||'All')===t?' active':''}" onclick="setLibGalFilter('${esc(t)}')" style="flex-shrink:0;">${t}</button>`).join('');
-  }
-  renderLibGallery(window._libGalleryFilter||'All');
-  openSheet('gallery-overlay');
+  window._libGalleryFilter=window._libGalleryFilter||'All';
+  const root=document.createElement('div');
+  root.id='_libGalRoot';
+  // Important: very high z-index, no transform on body, position:fixed using
+  // 100vw/100dvh — works even when body has overflow:hidden or transforms.
+  root.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;background:var(--bg);z-index:100000;display:flex;flex-direction:column;overflow:hidden;';
+  root.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--cb);background:var(--bg);flex-shrink:0;padding-top:max(12px,env(safe-area-inset-top,12px));">
+      <button id="_libGalBack" style="background:transparent;border:none;font-size:24px;color:var(--accent);cursor:pointer;padding:4px 8px;line-height:1;">‹</button>
+      <div style="flex:1;font-size:16px;font-weight:700;">🖼 Photo gallery</div>
+      <span id="_libGalCount" style="font-size:11px;color:var(--t3);"></span>
+    </div>
+    <div id="_libGalChips" class="fscroll" style="display:flex;gap:5px;padding:8px 12px 4px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--bg);"></div>
+    <div id="_libGalScroll" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 40px;">
+      <div id="_libGalGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;"></div>
+      <div id="_libGalEmpty" style="display:none;text-align:center;padding:40px 20px;font-size:13px;color:var(--t2);">No photos yet. Upload photos to character, location, word, or entry forms.</div>
+    </div>`;
+  document.body.appendChild(root);
+  document.getElementById('_libGalBack').onclick=closeLibGallery;
+  _libGalRender();
 }
-function setLibGalFilter(f){
-  window._libGalleryFilter=f;
-  document.querySelectorAll('#gallery-overlay .chip').forEach(b=>b.classList.remove('active'));
-  const btns=document.querySelectorAll('#gallery-overlay .chip');
-  btns.forEach(b=>{if(b.textContent.trim()===f)b.classList.add('active');});
-  renderLibGallery(f);
-}
-function renderLibGallery(f){
+function closeLibGallery(){try{document.getElementById('_libGalRoot')?.remove();}catch(e){}}
+function setLibGalFilter(f){window._libGalleryFilter=f;_libGalRender();}
+function _libGalRender(){
+  const root=document.getElementById('_libGalRoot');if(!root)return;
   const photos=window._libGalleryPhotos||[];
+  const f=window._libGalleryFilter||'All';
+  const chips=document.getElementById('_libGalChips');
+  const grid=document.getElementById('_libGalGrid');
+  const empty=document.getElementById('_libGalEmpty');
+  const count=document.getElementById('_libGalCount');
+  const types=['All',...[...new Set(photos.map(p=>p.type))].sort()];
+  if(chips){
+    chips.innerHTML=types.map(t=>`<button class="chip${f===t?' active':''}" style="flex-shrink:0;" onclick="setLibGalFilter('${esc(t)}')">${esc(t)}</button>`).join('');
+  }
   const shown=f==='All'?photos:photos.filter(p=>p.type===f);
-  const grid=document.getElementById('gallery-grid');
-  const empty=document.getElementById('gallery-empty');
-  if(!grid)return;
+  if(count)count.textContent=`${shown.length} photo${shown.length!==1?'s':''}`;
   if(!shown.length){
-    grid.innerHTML='';
-    if(empty){empty.style.display='';empty.textContent=photos.length?`No ${f} photos yet.`:'No photos yet. Upload photos to character, location, word, or entry forms.';}
+    if(grid)grid.innerHTML='';
+    if(empty){empty.style.display='';empty.textContent=photos.length?`No ${f} photos.`:'No photos yet. Upload photos to character, location, word, or entry forms.';}
     return;
   }
   if(empty)empty.style.display='none';
-  grid.innerHTML=shown.map(p=>`<div data-bid="${esc(p.bookId)}" data-eid="${p.entryId}" style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);" onclick="_libGalTap('${esc(p.bookId)}',${p.entryId})">
-    <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"/>
-    <div style="position:absolute;bottom:0;left:0;right:0;padding:2px 5px;background:rgba(0,0,0,0.55);font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.type)}${p.content?' · '+esc((p.content+'').slice(0,20)):''}</div>
-  </div>`).join('');
+  if(grid){
+    grid.innerHTML=shown.map(p=>`<div style="cursor:pointer;aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;background:var(--bg2);" onclick="_libGalTap('${esc(p.bookId)}',${p.entryId})">
+      <img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"/>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 5px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;">
+        <div style="font-weight:600;">${esc(p.type)}</div>
+        ${p.content?`<div style="opacity:0.85;">${esc((p.content+'').slice(0,22))}</div>`:''}
+      </div>
+    </div>`).join('');
+  }
 }
 function _libGalTap(bookId,entryId){
-  closeSheet('gallery-overlay');
-  setTimeout(()=>{openBook(bookId);setTimeout(()=>editEntry(+entryId),250);},120);
+  closeLibGallery();
+  // Close any open sheets that may be sitting on top
+  try{document.querySelectorAll('.sheet-overlay.open').forEach(o=>o.classList.remove('open'));}catch(e){}
+  setTimeout(()=>{openBook(bookId);if(entryId)setTimeout(()=>editEntry(+entryId),300);},100);
+}
+// #696-2 — Series-aware name suggest. When typing a Character name (or Location
+// content) in a book that belongs to a series, surface matches from sibling
+// books so the user can adopt the canonical name + inherit the existing entry
+// rather than creating a near-duplicate.
+function _seriesSiblings(){
+  const cur=book();
+  if(!cur||!cur.seriesName)return [];
+  return Object.values(library||{}).filter(b=>b&&b.title&&b.seriesName===cur.seriesName&&b.id!==cur.id);
+}
+function _seriesNameSuggest(kind){
+  const box=document.getElementById(kind==='char'?'ae-series-suggest-char':'ae-series-suggest-loc');
+  if(!box)return;
+  const cur=book();
+  if(!cur||!cur.seriesName){box.style.display='none';return;}
+  const inputEl=document.getElementById(kind==='char'?'ae-cn':'ae-content');
+  const q=(inputEl?.value||'').trim().toLowerCase();
+  if(q.length<2){box.style.display='none';return;}
+  const siblings=_seriesSiblings();
+  if(!siblings.length){box.style.display='none';return;}
+  // Collect candidate entries from siblings.
+  const cands=[];
+  const wantTypes=kind==='char'?CT:['Location'];
+  siblings.forEach(sb=>{
+    (sb.entries||[]).forEach(e=>{
+      if(!wantTypes.includes(e.type))return;
+      const nm=(kind==='char'?(e.cn||e.content):e.content)||'';
+      if(!nm)return;
+      const nmL=nm.toLowerCase();
+      // Match if name contains query OR query contains name (e.g. typing partial)
+      if(nmL.includes(q)||q.includes(nmL.slice(0,Math.min(nmL.length,8)))){
+        cands.push({entry:e,bookId:sb.id,bookTitle:sb.title,seriesNum:+sb.seriesNum||0,name:nm});
+      }
+    });
+  });
+  if(!cands.length){box.style.display='none';return;}
+  // Dedupe by name+book (keep best per book), keep top 5
+  const seenKey=new Set();
+  const top=[];
+  cands.sort((a,b)=>a.seriesNum-b.seriesNum||a.name.localeCompare(b.name));
+  for(const c of cands){
+    const k=c.name.toLowerCase()+'|'+c.bookId;
+    if(seenKey.has(k))continue;
+    seenKey.add(k);
+    top.push(c);
+    if(top.length>=5)break;
+  }
+  box.innerHTML=`<div style="font-weight:600;margin-bottom:4px;">📚 Found in series — pull to avoid duplicating?</div>`+
+    top.map(c=>`<div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
+      <span style="flex:1;min-width:0;"><strong>${esc(c.name)}</strong> <span style="color:var(--t3);">· ${esc(c.bookTitle)}${c.seriesNum?' #'+c.seriesNum:''}</span></span>
+      <button type="button" class="btn btn-sm" style="font-size:11px;flex-shrink:0;" onclick="_pullFromSeries('${kind}','${c.bookId}',${c.entry.id})">⇣ Pull</button>
+    </div>`).join('')+
+    `<div style="font-size:10px;color:var(--t3);margin-top:5px;">Pull copies the canonical name + key fields into this book's entry so the same person/place stays consistent across the series.</div>`;
+  box.style.display='';
+}
+function _pullFromSeries(kind,bookId,entryId){
+  const src=library[bookId];if(!src){alert('Source book missing.');return;}
+  const srcEntry=(src.entries||[]).find(e=>e.id===Number(entryId));
+  if(!srcEntry){alert('Source entry missing.');return;}
+  if(kind==='char'){
+    const name=srcEntry.cn||srcEntry.content||'';
+    document.getElementById('ae-cn').value=name;
+    if(srcEntry.nickname)document.getElementById('ae-nick').value=srcEntry.nickname;
+    if(srcEntry.gender){const g=document.getElementById('ae-gender');if(g)g.value=srcEntry.gender;}
+    if(srcEntry.pronouns){const p=document.getElementById('ae-pronouns');if(p)p.value=srcEntry.pronouns;}
+    if(srcEntry.charRole){buildCharRoleSelect(srcEntry.charRole);}
+    if(srcEntry.charStatus){const cs=document.getElementById('ae-cstatus');if(cs)cs.value=srcEntry.charStatus;}
+    if(srcEntry.charDesc&&!document.getElementById('ae-cdesc').value){document.getElementById('ae-cdesc').value=srcEntry.charDesc;}
+    if(srcEntry.charPhys&&!document.getElementById('ae-cphys').value){document.getElementById('ae-cphys').value=srcEntry.charPhys;}
+    if(srcEntry.charBg){const bg=document.getElementById('ae-cbg');if(bg&&!bg.value)bg.value=srcEntry.charBg;}
+    if(srcEntry.charProfession){const pr=document.getElementById('ae-cprofession');if(pr&&!pr.value)pr.value=srcEntry.charProfession;}
+    if(srcEntry.lang){const l=document.getElementById('ae-clang');if(l&&!l.value)l.value=srcEntry.lang;}
+    // Carry photos if any
+    const photos=(srcEntry.photos&&srcEntry.photos.length)?srcEntry.photos:(srcEntry.photo?[srcEntry.photo]:[]);
+    if(photos.length&&typeof setCharPhotos==='function')setCharPhotos(photos);
+    _showToast(`✅ Pulled ${name} from ${src.title}`);
+  } else {
+    // Location
+    document.getElementById('ae-content').value=srcEntry.content||'';
+    // Carry basic location fields if those input ids exist (best-effort)
+    ['ae-loc-building','ae-loc-address','ae-loc-city','ae-loc-region','ae-loc-country','ae-loc-lat','ae-loc-lng','ae-loc-note'].forEach(id=>{
+      const el=document.getElementById(id);if(!el)return;
+      const key=id.replace('ae-loc-','locField_');
+      const srcKey={'ae-loc-building':'locBuilding','ae-loc-address':'locAddress','ae-loc-city':'locCity','ae-loc-region':'locRegion','ae-loc-country':'locCountry','ae-loc-lat':'locLat','ae-loc-lng':'locLng','ae-loc-note':'note'}[id];
+      if(srcKey&&srcEntry[srcKey]&&!el.value)el.value=srcEntry[srcKey];
+    });
+    _showToast(`✅ Pulled "${srcEntry.content}" from ${src.title}`);
+  }
+  // Hide suggest box
+  const box=document.getElementById(kind==='char'?'ae-series-suggest-char':'ae-series-suggest-loc');
+  if(box)box.style.display='none';
 }
 // #696 — Series view: aggregate chars/events/rels across all books in a series.
 let _svTab='chars';
@@ -3774,10 +3924,18 @@ function libListsRestoreEv(name){
 }
 // #409 — custom relationship types
 const ALL_BUILTIN_REL_TYPES=[...new Set(REL_GROUPS.flatMap(g=>g.items).filter(t=>t!=='Custom…'))];
+const ALL_BUILTIN_REL_TYPES_LC=new Set(ALL_BUILTIN_REL_TYPES.map(t=>t.toLowerCase().trim()));
 function _activeRelTypes(){
   if(!library)return{builtins:ALL_BUILTIN_REL_TYPES,customs:[]};
   const deleted=new Set(library.deletedRelTypes||[]);
-  const customs=(library.customRelTypes||[]).filter(t=>!deleted.has(t)&&!ALL_BUILTIN_REL_TYPES.includes(t));
+  // #659-6 — never show a custom that case-insensitively matches a builtin.
+  // Prevents stale 'mother' / ' Mother ' / 'MOTHER' from showing as purple custom.
+  const customs=(library.customRelTypes||[]).filter(t=>{
+    if(!t)return false;
+    if(deleted.has(t))return false;
+    if(ALL_BUILTIN_REL_TYPES_LC.has((t+'').toLowerCase().trim()))return false;
+    return true;
+  });
   return{builtins:ALL_BUILTIN_REL_TYPES.filter(t=>!deleted.has(t)),customs};
 }
 function renderRelTypesSection(){
@@ -4063,7 +4221,15 @@ function openEditBook(id){
   closeSheet('settings-overlay');
   openSheet('nb-overlay');
 }
-function deleteBook(){if(!confirm('Delete this book and all annotations?'))return;delete library[currentId];save();goLib();}
+function deleteBook(){
+  if(!confirm('Delete this book and all annotations?'))return;
+  // #724 — tombstone delete so sync can propagate the deletion to other devices.
+  // Library Manage Lists / renderLibrary already filter b.title-less entries.
+  if(library[currentId]){
+    library[currentId]={id:currentId,_deleted:true,_deletedAt:Date.now(),updated:Date.now()};
+  }
+  save();goLib();
+}
 function saveBook(applyWiki){
   const titleEl=document.getElementById('nb-title');
   if(!titleEl){console.error('nb-title not found');return;}
@@ -4073,7 +4239,7 @@ function saveBook(applyWiki){
   const editId=document.getElementById('nb-edit-id').value;
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||'')};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
   // xlsx #435 (Batch 41) — duplicate chapter # warning. If two or more chapSetup
   // rows share the same chapNum, list them and let the user choose: keep going
   // (will create ambiguous Chapter log entries) or cancel and fix the numbers.
@@ -5848,26 +6014,113 @@ function _repopulateQuoteLinks(){
   try{
     const type=document.getElementById('ae-type')?.value;
     if(!['Quote','Narrator quote','Line/stanza'].includes(type))return;
-    const inv=(typeof cddGet==='function'?cddGet('ae-inv'):[])||[];
-    // Preserve current values
-    const themeSel=document.getElementById('ae-quote-theme');
-    const relSel=document.getElementById('ae-quote-rel');
-    const traitSel=document.getElementById('ae-quote-trait');
-    const eventSel=document.getElementById('ae-quote-event');
-    const themeV=themeSel?themeSel.value:'';
-    const relV=relSel?relSel.value:'';
-    const traitV=traitSel?traitSel.value:'';
-    const eventV=eventSel?eventSel.value:'';
-    populateQuoteThemeSelect(themeV,inv);
-    populateQuoteRelSelect(relV,inv);
-    populateQuoteTraitSelect(inv,traitV);
-    refreshAttachEventOptions();
-    if(themeSel&&themeV)themeSel.value=themeV;
-    if(relSel&&relV)relSel.value=relV;
-    if(traitSel&&traitV)traitSel.value=traitV;
-    if(eventSel&&eventV)eventSel.value=eventV;
+    // _qc combo picker — repopulate any open list on involved change.
+    ['theme','event','rel','trait'].forEach(k=>{
+      const list=document.getElementById(`ae-quote-${k}-list`);
+      if(list&&list.style.display!=='none')_qcOpen(k);
+    });
   }catch(e){console.warn('_repopulateQuoteLinks:',e);}
 }
+// #317-5 — Combined search+picker (cdd-style) for quote connections.
+function _qcInvolved(){try{return(cddGet('ae-inv')||[]);}catch(e){return[];}}
+function _qcItems(kind){
+  const inv=_qcInvolved();
+  const all=entries();
+  if(kind==='theme'){
+    let items=all.filter(e=>e.type==='Theme');
+    if(inv.length){
+      items=items.filter(t=>{
+        const i=t.involved||[];
+        if(inv.some(c=>i.includes(c)))return true;
+        const ids=t.themeQuotes||[];
+        if(ids.length){return all.some(q=>ids.includes(q.id)&&(inv.includes(q.speaker)||(q.involved||[]).some(c=>inv.includes(c))));}
+        return false;
+      });
+    }
+    return items.map(t=>({value:t.content,label:t.content,sub:(t.involved||[]).join(', ')}));
+  }
+  if(kind==='event'){
+    let items=all.filter(e=>['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft);
+    if(inv.length)items=items.filter(e=>(e.involved||[]).some(c=>inv.includes(c)));
+    items.sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(a.content||'').localeCompare(b.content||''));
+    return items.map(e=>{const icon=e.type==='Event'?'⭐':'📅';return{value:String(e.id),label:`${icon} ${(e.content||'(untitled)').slice(0,60)}`,sub:[e.evdate,(e.involved||[]).join(', ')].filter(Boolean).join(' · ')};});
+  }
+  if(kind==='rel'){
+    let items=all.filter(e=>e.type==='Relationship');
+    if(inv.length)items=items.filter(r=>inv.includes(r.relA)||inv.includes(r.relB));
+    return items.map(r=>({value:String(r.id),label:`${r.relA||'?'} ↔ ${r.relB||'?'}`,sub:r.relType||''}));
+  }
+  if(kind==='trait'){
+    let items=all.filter(e=>e.type==='Characteristic');
+    if(inv.length)items=items.filter(t=>inv.some(c=>(t.involved||[]).includes(c)||(t.cn||t.content||'').includes(c)));
+    return items.map(t=>({value:String(t.id),label:t.content||'(untitled)',sub:(t.involved||[]).join(', ')||t.cn||''}));
+  }
+  return [];
+}
+function _qcOpen(kind){
+  const search=document.getElementById(`ae-quote-${kind}-search`);
+  const list=document.getElementById(`ae-quote-${kind}-list`);
+  if(!search||!list)return;
+  const q=(search.value||'').toLowerCase().trim();
+  let items=_qcItems(kind);
+  if(q)items=items.filter(it=>((it.label||'')+' '+(it.sub||'')).toLowerCase().includes(q));
+  if(!items.length){
+    list.innerHTML=`<div class="cdd-empty" style="padding:10px 12px;font-size:12px;color:var(--t3);font-style:italic;">No matches${_qcInvolved().length?' for involved character(s)':''}.</div>`;
+  }else{
+    list.innerHTML=items.slice(0,40).map(it=>{
+      const val=esc(it.value).replace(/'/g,"\\'");
+      const lbl=esc(it.label).replace(/'/g,"\\'");
+      return `<div class="cdd-option" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--cb);" onclick="_qcPick('${kind}','${val}','${lbl}')">
+        <div style="font-weight:500;">${esc(it.label)}</div>
+        ${it.sub?`<div style="font-size:11px;color:var(--t3);margin-top:1px;">${esc(it.sub)}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+  list.style.display='';
+}
+function _qcClose(kind){const list=document.getElementById(`ae-quote-${kind}-list`);if(list)list.style.display='none';}
+function _qcPick(kind,value,label){
+  const sel=document.getElementById(`ae-quote-${kind}`);
+  const search=document.getElementById(`ae-quote-${kind}-search`);
+  if(kind==='theme'){
+    // multi-attach via _attachedThemeNames
+    if(!_attachedThemeNames.includes(value))_attachedThemeNames.push(value);
+    if(search)search.value='';
+    renderQuoteThemesList();
+  }else if(kind==='event'){
+    // multi-attach via _attachedEventIds
+    const id=Number(value);
+    if(id&&typeof _attachedEventIds!=='undefined'&&!_attachedEventIds.includes(id)){_attachedEventIds.push(id);}
+    if(search)search.value='';
+    if(typeof renderQuoteEventsList==='function')renderQuoteEventsList();
+  }else{
+    // single-pick (rel, trait)
+    if(sel){
+      if(!sel.querySelector(`option[value="${value}"]`)){
+        const opt=document.createElement('option');opt.value=value;opt.textContent=label;sel.appendChild(opt);
+      }
+      sel.value=value;
+    }
+    if(search)search.value=label;
+  }
+  _qcClose(kind);
+}
+function _qcClear(kind){
+  const sel=document.getElementById(`ae-quote-${kind}`);if(sel)sel.value='';
+  const search=document.getElementById(`ae-quote-${kind}-search`);if(search)search.value='';
+  _qcClose(kind);
+}
+// Close any open combo when tapping outside
+document.addEventListener('click',function(ev){
+  ['theme','event','rel','trait'].forEach(k=>{
+    const wrap=document.getElementById(`ae-quote-${k}-list`);
+    const search=document.getElementById(`ae-quote-${k}-search`);
+    if(!wrap||!search)return;
+    if(wrap.style.display==='none')return;
+    if(wrap.contains(ev.target)||search===ev.target)return;
+    wrap.style.display='none';
+  });
+},true);
 function quickAddThemeForQuote(){
   const name=prompt('New theme name:');if(!name||!name.trim())return;
   const n=name.trim();
@@ -7482,6 +7735,21 @@ function editEntry(id){
       // Populate trait select based on involved chars
       const inv=e.involved||[];
       populateQuoteTraitSelect(inv,e.traitLinkId||'');
+      // #317-5 — show display label in the combo's search input for existing links
+      try{
+        if(e.linkedRelId){
+          const r=entries().find(x=>x.id===Number(e.linkedRelId)&&x.type==='Relationship');
+          const s=document.getElementById('ae-quote-rel-search');const sel=document.getElementById('ae-quote-rel');
+          if(r&&s){s.value=`${r.relA||'?'} ↔ ${r.relB||'?'}${r.relType?' ('+r.relType+')':''}`;}
+          if(r&&sel){if(!sel.querySelector(`option[value="${e.linkedRelId}"]`)){const o=document.createElement('option');o.value=String(e.linkedRelId);o.textContent=s?s.value:'';sel.appendChild(o);}sel.value=String(e.linkedRelId);}
+        }
+        if(e.traitLinkId){
+          const t=entries().find(x=>x.id===Number(e.traitLinkId)&&x.type==='Characteristic');
+          const s=document.getElementById('ae-quote-trait-search');const sel=document.getElementById('ae-quote-trait');
+          if(t&&s){s.value=t.content||'(untitled)';}
+          if(t&&sel){if(!sel.querySelector(`option[value="${e.traitLinkId}"]`)){const o=document.createElement('option');o.value=String(e.traitLinkId);o.textContent=t.content||'';sel.appendChild(o);}sel.value=String(e.traitLinkId);}
+        }
+      }catch(_){}
       // xlsx #429 (Batch 33) — load multi-theme attachments. Reads from attachedThemes[]
       // (new) or falls back to legacy single attachedTheme. ALSO reverse-scans Theme entries
       // that include this quote in their attachedQuoteIds[] (for self-healing display).
@@ -11986,20 +12254,73 @@ async function syncPull(){
       setSyncStatus(`✗ Data corrupted/truncated (${sizeKB}KB). Re-push from source device.`,'#E24B4A');
       return;
     }
-    // Merge: incoming books win for their own entries, but we never lose local-only books
-    let added=0,merged=0;
-    Object.values(incoming).forEach(b=>{
+    // #724 — comprehensive merge:
+    //   • Library-level metadata (customRelTypes, customRelPairs, customEntryTypes,
+    //     deletedRelTypes, deletedEventTypes) is UNIONED across local+incoming.
+    //   • Books are merged with last-write-wins by `updated` timestamp. Tombstoned
+    //     (_deleted) books propagate deletes. Entries are merged by id (incoming
+    //     wins for shared ids when its book is newer).
+    let added=0,updatedCount=0,merged=0,deletedCount=0,mergedMeta=0;
+    // Library-level metadata
+    const LIB_META_KEYS=['customRelTypes','customRelPairs','customEntryTypes','deletedRelTypes','deletedEventTypes'];
+    LIB_META_KEYS.forEach(k=>{
+      if(!Array.isArray(incoming[k]))return;
+      if(!Array.isArray(library[k]))library[k]=[];
+      const before=library[k].length;
+      if(k==='customRelPairs'){
+        // Pairs are objects; dedupe by canonical key
+        const seen=new Set(library[k].map(p=>`${(p.typeA||'').toLowerCase()}|${(p.typeB||'').toLowerCase()}`));
+        incoming[k].forEach(p=>{
+          if(!p||!p.typeA||!p.typeB)return;
+          const key=`${(p.typeA+'').toLowerCase()}|${(p.typeB+'').toLowerCase()}`;
+          if(!seen.has(key)){library[k].push(p);seen.add(key);}
+        });
+      } else {
+        // String arrays — case-insensitive dedupe
+        const seen=new Set(library[k].map(x=>(x+'').toLowerCase().trim()));
+        incoming[k].forEach(x=>{
+          if(!x)return;
+          const lc=(x+'').toLowerCase().trim();
+          if(!seen.has(lc)){library[k].push(x);seen.add(lc);}
+        });
+      }
+      mergedMeta+=library[k].length-before;
+    });
+    // Books
+    Object.entries(incoming).forEach(([key,b])=>{
       if(!b||typeof b!=='object'||!b.id)return;
-      if(!library[b.id]){library[b.id]=b;added++;}
-      else{
-        const ids=new Set(library[b.id].entries.map(e=>e.id));
-        const newEntries=(b.entries||[]).filter(e=>!ids.has(e.id));
-        library[b.id].entries=[...library[b.id].entries,...newEntries];
-        merged+=newEntries.length;
+      if(LIB_META_KEYS.includes(key))return; // already handled
+      const local=library[b.id];
+      // Tombstone in incoming → apply deletion if local is older / missing
+      if(b._deleted){
+        const incTS=b._deletedAt||b.updated||0;
+        const locTS=local?(local.updated||local._deletedAt||0):0;
+        if(!local||incTS>=locTS){library[b.id]={id:b.id,_deleted:true,_deletedAt:incTS,updated:incTS};deletedCount++;}
+        return;
+      }
+      // Local tombstone is newer than incoming → keep deletion
+      if(local&&local._deleted&&(local._deletedAt||local.updated||0)>(b.updated||0))return;
+      if(!local||local._deleted){library[b.id]=b;added++;return;}
+      const locTS=local.updated||0;
+      const incTS=b.updated||0;
+      // Merge entries by id — keep all unique, prefer newer side for duplicates
+      const allEntries=new Map();
+      (local.entries||[]).forEach(e=>{if(e&&e.id!=null)allEntries.set(e.id,e);});
+      (b.entries||[]).forEach(e=>{
+        if(!e||e.id==null)return;
+        if(!allEntries.has(e.id)){allEntries.set(e.id,e);merged++;}
+        else if(incTS>locTS){allEntries.set(e.id,e);} // incoming book is newer → use its version
+      });
+      // Last-write-wins on book-level fields
+      if(incTS>=locTS){
+        library[b.id]={...local,...b,entries:[...allEntries.values()],updated:Math.max(incTS,locTS)};
+        if(incTS>locTS)updatedCount++;
+      } else {
+        library[b.id]={...local,entries:[...allEntries.values()]};
       }
     });
     save();renderLibrary();
-    setSyncStatus(`✓ Pulled · ${added} new book(s), ${merged} new entries`,'#1D9E75');
+    setSyncStatus(`✓ Pulled · ${added} new · ${updatedCount} updated · ${merged} new entries · ${deletedCount} deleted · ${mergedMeta} list items`,'#1D9E75');
   }catch(e){setSyncStatus('✗ '+e.message,'#E24B4A');}
 }
 
@@ -13792,7 +14113,7 @@ function _swipeInit(){/* removed */}
       <!-- xlsx #401 — Library stats + manage answer lists -->
       <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Library stats &amp; lists</label>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibStats()" style="width:100%;margin-bottom:6px;">📊 Library usage stats</button>
-        <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibGallery()" style="width:100%;margin-bottom:6px;">📷 Photo gallery</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');setTimeout(openLibGallery,180);" style="width:100%;margin-bottom:6px;">📷 Photo gallery</button>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibLists()" style="width:100%;">📋 Manage answer lists</button>
       </div>
       <div class="divider"></div>
