@@ -3703,7 +3703,6 @@ function renderSeriesView(){
   }
 }
 function openSeriesWebFull(){
-  // Build merged entries from all series books
   const books=_seriesBooks();
   const charMap={};const relMap={};
   books.forEach(b=>{
@@ -3717,31 +3716,40 @@ function openSeriesWebFull(){
   });
   const merged=[...Object.values(charMap),...Object.values(relMap)];
   if(!merged.length){_showToast('No characters or relationships in this series yet.','#E24B4A');return;}
+  const seriesLabel=_svSeries;
   window._webEntryOverride=merged;
   window._webIsSeriesMode=true;
-  window._webSeriesLabel=_svSeries;
-  // Open the first series book and navigate to the web tab
   const firstBook=books[0];
   closeSheet('series-view-overlay');
   setTimeout(()=>{
+    // Open the book — this resets activeTab='log' and calls renderAll (which calls renderWeb)
+    // We temporarily suppress the entry override during openBook's renderAll to avoid
+    // rendering into a hidden/zero-size panel. We'll renderWeb again after switching tabs.
+    const _savedOverride=window._webEntryOverride;
+    window._webEntryOverride=null; // suppress during openBook
     openBook(firstBook.id);
-    // switch to web tab after book opens
+    window._webEntryOverride=_savedOverride; // restore
+    // Now switch to web tab and render
     setTimeout(()=>{
       switchTab('web');
-      // Add a visible "📚 Series web" banner above the web panel
-      const _banner=document.createElement('div');
-      _banner.id='_seriesWebBanner';
-      _banner.style.cssText='position:sticky;top:0;z-index:30;background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;display:flex;align-items:center;gap:8px;';
-      _banner.innerHTML=`<span style="flex:1;">📚 ${esc(_svSeries)} — Series Relationship Web</span><button onclick="_closeSeriesWeb()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Exit series web</button>`;
-      const webPanel=document.getElementById('web-panel');
-      if(webPanel)webPanel.insertBefore(_banner,webPanel.firstChild);
-    },150);
-  },100);
+      // Render web with the series override AFTER the tab is visible
+      setTimeout(()=>{
+        renderWeb();
+        // Add banner
+        document.getElementById('_seriesWebBanner')?.remove();
+        const _banner=document.createElement('div');
+        _banner.id='_seriesWebBanner';
+        _banner.style.cssText='background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;display:flex;align-items:center;gap:8px;margin:-8px -10px 10px;';
+        _banner.innerHTML=`<span style="flex:1;">📚 ${esc(seriesLabel)} — Series Web (all books)</span><button onclick="_closeSeriesWeb()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Exit</button>`;
+        const webPanel=document.getElementById('web-panel');
+        if(webPanel)webPanel.insertBefore(_banner,webPanel.firstChild);
+      },80);
+    },80);
+  },120);
 }
 function _closeSeriesWeb(){
   window._webEntryOverride=null;window._webIsSeriesMode=false;
   document.getElementById('_seriesWebBanner')?.remove();
-  // Return to library
   goLib();
 }
 function _svOpenEntry(bookId,entryId){
@@ -4122,7 +4130,7 @@ function renderRelTypesSection(){
   return`<div style="margin-bottom:18px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
       <div style="font-size:13px;font-weight:600;">Relationship types</div>
-      <button class="btn btn-sm" onclick="libListsResetBuiltins()" style="font-size:10px;color:var(--t3);">🔄 Reset built-ins</button>
+      <button class="btn btn-sm" onclick="libListsNukeMotherNow()" style="font-size:10px;background:var(--red,#c0392b);color:#fff;border-color:var(--red,#c0392b);">🔄 Reset built-ins</button>
     </div>
     <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in relationship entry forms. Custom types shown in accent color. ✏️ = rename · ↔ = paired type.</div>
     ${allActive.length?`<div style="margin-bottom:10px;">${allActive.map(t=>{
@@ -4146,16 +4154,23 @@ function renderRelTypesSection(){
   <button class="btn btn-sm btn-primary" onclick="libListsAddEntryType()" style="font-size:12px;">+ Add entry type</button>
   </div>`;
 }
-function libListsResetBuiltins(){
-  if(!confirm('Reset all built-in relationship types to their defaults?\n\n• Removes any built-in names from your custom list\n• Removes any pairs that include a built-in type\n• Restores any hidden built-in types (like Mother, Father)\n\nYour custom types (e.g. Pet, Owner) are NOT affected.'))return;
-  // Nuclear scrub
-  library.customRelTypes=(library.customRelTypes||[]).filter(t=>t&&!_isBuiltinRel(t));
-  library.customRelPairs=(library.customRelPairs||[]).filter(p=>p&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
-  // Restore ALL builtins (clear deletedRelTypes of any builtin)
-  library.deletedRelTypes=(library.deletedRelTypes||[]).filter(t=>!_isBuiltinRel(t));
+function libListsNukeMotherNow(){
+  // Nuclear reset: remove ALL builtins from customRelTypes and customRelPairs,
+  // AND remove ALL builtins from deletedRelTypes so they're visible again.
+  library.customRelTypes=library.customRelTypes||[];
+  library.customRelPairs=library.customRelPairs||[];
+  library.deletedRelTypes=library.deletedRelTypes||[];
+  const removedCustom=library.customRelTypes.filter(t=>_isBuiltinRel(t));
+  const removedPairs=library.customRelPairs.filter(p=>_isBuiltinRel(p.typeA)||_isBuiltinRel(p.typeB));
+  const removedDeleted=library.deletedRelTypes.filter(t=>_isBuiltinRel(t));
+  library.customRelTypes=library.customRelTypes.filter(t=>!_isBuiltinRel(t));
+  library.customRelPairs=library.customRelPairs.filter(p=>!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
+  library.deletedRelTypes=library.deletedRelTypes.filter(t=>!_isBuiltinRel(t));
   save();renderLibLists();
-  _showToast('✅ Built-in relationship types reset to defaults');
+  const msg=`Reset complete.\nRemoved from customs: ${removedCustom.join(', ')||'none'}\nRemoved pairs: ${removedPairs.map(p=>p.typeA+'↔'+p.typeB).join(', ')||'none'}\nRestored built-ins: ${removedDeleted.join(', ')||'none'}`;
+  alert(msg);
 }
+function libListsResetBuiltins(){libListsNukeMotherNow();}
 function libListsAddEntryType(){
   const v=(prompt('New entry type name (e.g. "Scene", "Motif", "Object"):')||'').trim();
   if(!v)return;
