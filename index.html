@@ -3705,14 +3705,10 @@ function renderSeriesView(){
 function openSeriesWebFull(){
   // Build merged entries from all series books
   const books=_seriesBooks();
-  const charMap={};// name→entry (last book wins for character fields)
-  const relMap={};// pair+type key→entry
+  const charMap={};const relMap={};
   books.forEach(b=>{
     (b.entries||[]).forEach(e=>{
-      if(CT.includes(e.type)){
-        const nm=(e.cn||e.content||'').trim();
-        if(nm)charMap[nm.toLowerCase()]={...e,cn:nm,content:nm};
-      }
+      if(CT.includes(e.type)){const nm=(e.cn||e.content||'').trim();if(nm)charMap[nm.toLowerCase()]={...e,cn:nm,content:nm};}
       if(e.type==='Relationship'&&e.relA&&e.relB){
         const key=[e.relA,e.relB].sort().join('|||')+'|||'+(e.relType||'');
         if(!relMap[key])relMap[key]={...e};
@@ -3721,57 +3717,32 @@ function openSeriesWebFull(){
   });
   const merged=[...Object.values(charMap),...Object.values(relMap)];
   if(!merged.length){_showToast('No characters or relationships in this series yet.','#E24B4A');return;}
-  // Store override and open the web view full-screen
   window._webEntryOverride=merged;
-  window._webOverrideLabel=_svSeries+' — Series Web';
+  window._webIsSeriesMode=true;
+  window._webSeriesLabel=_svSeries;
+  // Open the first series book and navigate to the web tab
+  const firstBook=books[0];
   closeSheet('series-view-overlay');
-  // Navigate to book-screen web panel using existing tab/panel system
-  // First open a fake "series web" full-screen overlay that hosts the existing web DOM
-  try{document.getElementById('_svWebRoot')?.remove();}catch(e){}
-  const root=document.createElement('div');
-  root.id='_svWebRoot';
-  root.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999999;display:flex;flex-direction:column;overflow:hidden;';
-  root.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:0.5px solid var(--cb);background:var(--bg);flex-shrink:0;">
-    <button onclick="document.getElementById('_svWebRoot').remove();window._webEntryOverride=null;window._webOverrideLabel=null;renderWeb();" style="background:transparent;border:none;font-size:26px;color:var(--accent);cursor:pointer;padding:0 4px;line-height:1;">‹</button>
-    <div style="flex:1;font-size:16px;font-weight:700;">🕸 ${esc(_svSeries)} — Series Web</div>
-  </div>
-  <div class="fscroll" id="web-filter-bar-sv" style="display:flex;gap:5px;padding:8px 12px 4px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;"></div>
-  <div class="web-wrap" id="web-wrap-sv" style="position:relative;flex:1;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;">
-    <svg id="web-svg-sv" style="display:block;touch-action:pan-x pan-y;" height="500" viewBox="0 0 360 500"></svg>
-    <div id="web-spotlight-overlay-sv" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div>
-    <div id="web-spotlight-ring-sv" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div>
-  </div>
-  <div id="web-empty-sv" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>`;
-  document.body.appendChild(root);
-  // Temporarily swap the web DOM IDs so renderWeb() targets this overlay
-  const _swapIds=(from,to)=>{const el=document.getElementById(from);if(el)el.id=to;};
-  _swapIds('web-wrap','web-wrap-REAL');_swapIds('web-svg','web-svg-REAL');
-  _swapIds('web-filter-bar','web-filter-bar-REAL');
-  _swapIds('web-empty','web-empty-REAL');
-  _swapIds('web-spotlight-overlay','web-spotlight-overlay-REAL');
-  _swapIds('web-spotlight-ring','web-spotlight-ring-REAL');
-  _swapIds('web-wrap-sv','web-wrap');_swapIds('web-svg-sv','web-svg');
-  _swapIds('web-filter-bar-sv','web-filter-bar');
-  _swapIds('web-empty-sv','web-empty');
-  _swapIds('web-spotlight-overlay-sv','web-spotlight-overlay');
-  _swapIds('web-spotlight-ring-sv','web-spotlight-ring');
-  // Hook: when overlay closes, swap back and clear override
-  const origClose=root.querySelector('button').onclick;
-  root.querySelector('button').onclick=()=>{
-    _swapIds('web-wrap','web-wrap-sv');_swapIds('web-svg','web-svg-sv');
-    _swapIds('web-filter-bar','web-filter-bar-sv');
-    _swapIds('web-empty','web-empty-sv');
-    _swapIds('web-spotlight-overlay','web-spotlight-overlay-sv');
-    _swapIds('web-spotlight-ring','web-spotlight-ring-sv');
-    _swapIds('web-wrap-REAL','web-wrap');_swapIds('web-svg-REAL','web-svg');
-    _swapIds('web-filter-bar-REAL','web-filter-bar');
-    _swapIds('web-empty-REAL','web-empty');
-    _swapIds('web-spotlight-overlay-REAL','web-spotlight-overlay');
-    _swapIds('web-spotlight-ring-REAL','web-spotlight-ring');
-    root.remove();window._webEntryOverride=null;window._webOverrideLabel=null;
-    if(typeof renderWeb==='function')renderWeb();
-  };
-  setTimeout(()=>renderWeb(),60);
+  setTimeout(()=>{
+    openBook(firstBook.id);
+    // switch to web tab after book opens
+    setTimeout(()=>{
+      switchTab('web');
+      // Add a visible "📚 Series web" banner above the web panel
+      const _banner=document.createElement('div');
+      _banner.id='_seriesWebBanner';
+      _banner.style.cssText='position:sticky;top:0;z-index:30;background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;display:flex;align-items:center;gap:8px;';
+      _banner.innerHTML=`<span style="flex:1;">📚 ${esc(_svSeries)} — Series Relationship Web</span><button onclick="_closeSeriesWeb()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Exit series web</button>`;
+      const webPanel=document.getElementById('web-panel');
+      if(webPanel)webPanel.insertBefore(_banner,webPanel.firstChild);
+    },150);
+  },100);
+}
+function _closeSeriesWeb(){
+  window._webEntryOverride=null;window._webIsSeriesMode=false;
+  document.getElementById('_seriesWebBanner')?.remove();
+  // Return to library
+  goLib();
 }
 function _svOpenEntry(bookId,entryId){
   closeSheet('series-view-overlay');
@@ -4056,9 +4027,26 @@ function openLibLists(){
 }
 function renderLibLists(){
   const body=document.getElementById('lib-lists-body');if(!body)return;
-  // #659 — force-scrub at render time every time Manage Lists opens
-  if(library.customRelTypes)library.customRelTypes=library.customRelTypes.filter(t=>t&&!_isBuiltinRel(t));
-  if(library.customRelPairs)library.customRelPairs=library.customRelPairs.filter(p=>p&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
+  // #659 — nuclear: scrub + SYNC save every time Manage Lists opens
+  let _659Changed=false;
+  if(library.customRelTypes){
+    const before=library.customRelTypes.length;
+    library.customRelTypes=library.customRelTypes.filter(t=>t&&!_isBuiltinRel(t));
+    if(library.customRelTypes.length!==before)_659Changed=true;
+  }
+  if(library.customRelPairs){
+    const before=library.customRelPairs.length;
+    library.customRelPairs=library.customRelPairs.filter(p=>p&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
+    if(library.customRelPairs.length!==before)_659Changed=true;
+  }
+  // Also restore any builtin stuck in deletedRelTypes with no custom synonym
+  if(library.deletedRelTypes){
+    const customs=new Set((library.customRelTypes||[]).map(t=>(t||'').toLowerCase().trim()));
+    const before=library.deletedRelTypes.length;
+    library.deletedRelTypes=library.deletedRelTypes.filter(t=>!(_isBuiltinRel(t)&&!customs.has((t||'').toLowerCase().trim())));
+    if(library.deletedRelTypes.length!==before)_659Changed=true;
+  }
+  if(_659Changed)save();
   if(!library.customEventTypes)library.customEventTypes=[];
   if(!library.deletedEventTypes)library.deletedEventTypes=[];
   // xlsx #342 (Batch 30) — Per user: merge customs + built-ins into ONE alpha-sorted list
