@@ -3837,7 +3837,7 @@ function _seriesSuggest(){
   });
   if(!found.length){box.style.display='none';return;}
   const sibs2=_seriesSuggestSiblings();
-  const castBtns=sibs2.map(sb=>`<button type="button" class="btn btn-sm" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="if(confirm('Pull ALL characters, traits, and relationships from ${esc(sb.title)}? Existing entries in this book are NOT duplicated.'))_pullFullCast('${esc(sb.id)}')">📚 Pull full cast from ${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''}</button>`).join('');
+  const castBtns=sibs2.map(sb=>`<button type="button" class="btn btn-sm" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="if(confirm('Pull ALL characters, traits, relationships, locations, and events from ${esc(sb.title)}? Existing entries are NOT duplicated.'))_pullFullCast('${esc(sb.id)}')">📚 Pull full cast from ${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''}</button>`).join('');
   box.innerHTML=`<div style="font-weight:600;margin-bottom:5px;">📚 In series — pull to reuse?</div>`+
     found.slice(0,4).map(({e,sb,name})=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
       <span style="flex:1;"><strong>${esc(name)}</strong> <span style="color:var(--t3);">· ${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''}</span></span>
@@ -3893,7 +3893,7 @@ function _pullSeriesChar(bookId,entryId){
   const traits=(src.entries||[]).filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name));
   const rels=(src.entries||[]).filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name));
   if(traits.length||rels.length){
-    const msg=`Also copy ${traits.length} trait${traits.length!==1?'s':''} and ${rels.length} relationship${rels.length!==1?'s':''} from ${src.title} into this book?`;
+    const msg=`Also copy ${traits.length} trait${traits.length!==1?'s':''} and ${rels.length} relationship${rels.length!==1?'s':''} from ${src.title} into this book?\n\n(Use "Pull cast from series book…" in ⚙ settings to also pull locations and events.)`;
     if(confirm(msg)){
       _copyAssociatedEntries(src,name,traits,rels);
     }
@@ -3927,34 +3927,52 @@ function _copyAssociatedEntries(src,charName,traits,rels){
 function _pullFullCast(bookId){
   const src=library[bookId];if(!src)return;
   if(!book())return;
-  const chars=(src.entries||[]).filter(e=>CT.includes(e.type));
-  if(!chars.length){_showToast('No characters found in that book.','#E24B4A');return;}
-  const now=Date.now();let idx=0;let addedChars=0;let addedTraits=0;let addedRels=0;
-  const existingCharNames=new Set((book().entries||[]).filter(e=>CT.includes(e.type)).map(e=>(e.cn||e.content||'').toLowerCase()));
+  const srcEntries=src.entries||[];
+  const now=Date.now();let idx=0;
+  let addedChars=0,addedTraits=0,addedRels=0,addedLocs=0,addedEvents=0;
+
+  // Helper: dedup key for existing entries
+  const cur=()=>book().entries||[];
+  const hasKey=(type,key)=>cur().some(x=>x.type===type&&(x.cn||x.content||'').toLowerCase()===key);
+
+  // 1. Characters
+  const existingCharNames=new Set(cur().filter(e=>CT.includes(e.type)).map(e=>(e.cn||e.content||'').toLowerCase()));
+  const chars=srcEntries.filter(e=>CT.includes(e.type));
   chars.forEach(char=>{
-    const name=char.cn||char.content||'';
-    if(!name)return;
-    // Copy char if not already in current book
+    const name=char.cn||char.content||'';if(!name)return;
     if(!existingCharNames.has(name.toLowerCase())){
-      const copy={...char,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title};
-      book().entries.unshift(copy);existingCharNames.add(name.toLowerCase());addedChars++;
+      book().entries.unshift({...char,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});
+      existingCharNames.add(name.toLowerCase());addedChars++;
     }
-    // Copy traits for this char
-    const traits=(src.entries||[]).filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name));
-    traits.forEach(t=>{
-      const already=(book().entries||[]).some(x=>x.type==='Characteristic'&&(x.content||'').toLowerCase()===(t.content||'').toLowerCase()&&(x.involved||[]).includes(name));
+    // Traits
+    srcEntries.filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name)).forEach(t=>{
+      const already=cur().some(x=>x.type==='Characteristic'&&(x.content||'').toLowerCase()===(t.content||'').toLowerCase()&&(x.involved||[]).includes(name));
       if(!already){book().entries.unshift({...t,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedTraits++;}
     });
-    // Copy relationships
-    const rels=(src.entries||[]).filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name));
-    rels.forEach(r=>{
-      const already=(book().entries||[]).some(x=>x.type==='Relationship'&&((x.relA===r.relA&&x.relB===r.relB)||(x.relA===r.relB&&x.relB===r.relA))&&x.relType===r.relType);
+    // Relationships
+    srcEntries.filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name)).forEach(r=>{
+      const already=cur().some(x=>x.type==='Relationship'&&((x.relA===r.relA&&x.relB===r.relB)||(x.relA===r.relB&&x.relB===r.relA))&&x.relType===r.relType);
       if(!already){book().entries.unshift({...r,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedRels++;}
     });
   });
+
+  // 2. Locations
+  srcEntries.filter(e=>e.type==='Location').forEach(loc=>{
+    const key=(loc.content||'').toLowerCase();if(!key)return;
+    const already=cur().some(x=>x.type==='Location'&&(x.content||'').toLowerCase()===key);
+    if(!already){book().entries.unshift({...loc,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedLocs++;}
+  });
+
+  // 3. Events + Timeline
+  srcEntries.filter(e=>['Event','Timeline','Date/Period'].includes(e.type)).forEach(ev=>{
+    const key=(ev.content||'').toLowerCase();if(!key)return;
+    const already=cur().some(x=>['Event','Timeline','Date/Period'].includes(x.type)&&(x.content||'').toLowerCase()===key);
+    if(!already){book().entries.unshift({...ev,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedEvents++;}
+  });
+
   save();
-  closeSheet('series-cast-overlay');
-  _showToast(`✅ Pulled ${addedChars} characters, ${addedTraits} traits, ${addedRels} relationships from ${src.title}`);
+  try{document.getElementById('_castPickerOverlay')?.remove();}catch(e){}
+  _showToast(`✅ From ${src.title}: ${addedChars} chars · ${addedTraits} traits · ${addedRels} rels · ${addedLocs} locations · ${addedEvents} events`);
   if(typeof renderAll==='function')renderAll();
 }
 function _showSeriesCastPicker(){
@@ -3965,7 +3983,7 @@ function _showSeriesCastPicker(){
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
   ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:20px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
     <div style="font-size:16px;font-weight:700;margin-bottom:6px;">📚 Pull cast from series</div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">Copies all characters, their traits, and their relationships into this book. Existing entries are not duplicated.</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">Copies all characters, traits, relationships, locations, and events into this book. Existing entries are not duplicated.</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
       ${sibs.map(sb=>`<button class="btn" style="width:100%;text-align:left;" onclick="_pullFullCast('${esc(sb.id)}')">${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''} <span style="color:var(--t3);font-size:11px;">(${(sb.entries||[]).filter(e=>CT.includes(e.type)).length} characters)</span></button>`).join('')}
     </div>
