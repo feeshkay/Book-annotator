@@ -1322,6 +1322,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(()=>openLibGallery(!!currentId&&'book'),120);">🖼 Photo gallery</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
     </div>
+    <div id="series-cast-btn-row" class="fa" style="display:none;margin-bottom:8px;">
+      <button class="btn" style="background:var(--al);color:var(--accent);border-color:var(--am);width:100%;" onclick="closeSheet('settings-overlay');_showSeriesCastPicker()">📚 Pull cast from series book…</button>
+    </div>
     <div class="fa" style="margin-bottom:8px;">
       <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
     </div>
@@ -1994,13 +1997,26 @@ function _migrateLibrary(){
     // #659 — purge ANY entry in customRelTypes that matches a builtin (case-insensitive/trimmed)
     if(library.customRelTypes){
       library.customRelTypes=library.customRelTypes.filter(t=>t&&!_isBuiltinRel(t));
-      // dedupe
       const seen=new Set();
       library.customRelTypes=library.customRelTypes.filter(t=>{const k=t.toLowerCase().trim();if(seen.has(k))return false;seen.add(k);return true;});
     }
     // #659 — remove any customRelPairs where EITHER side is a builtin (case-insensitive)
     if(library.customRelPairs){
       library.customRelPairs=library.customRelPairs.filter(p=>p&&p.typeA&&p.typeB&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
+    }
+    // #659 — restore builtins from deletedRelTypes that have no custom replacement
+    // (catches the rename-back scenario where Mother ended up deleted but also removed from customs)
+    if(library.deletedRelTypes){
+      const customs=new Set((library.customRelTypes||[]).map(t=>t.toLowerCase().trim()));
+      library.deletedRelTypes=library.deletedRelTypes.filter(t=>{
+        // Keep in deleted only if there IS a custom replacement with a different name
+        // i.e. user explicitly hid it by deleting (not renaming)
+        if(_isBuiltinRel(t)&&!customs.has((t||'').toLowerCase().trim())){
+          // No custom replacement → restore it (remove from deletedRelTypes)
+          return false;
+        }
+        return true;
+      });
     }
     // Normalise relType case on Relationship entries (e.g. 'mother' → 'Mother')
     Object.values(library).forEach(b=>{
@@ -2137,6 +2153,11 @@ function getCC(name){
 function initCC(){if(!currentId)return;ccMap[currentId]={};entries().filter(e=>CT.includes(e.type)).forEach(e=>getCC(e.cn||e.content));}
 function show(on,...off){off.forEach(s=>{const el=document.getElementById(s);if(el)el.classList.remove('active');});const el=document.getElementById(on);if(el)el.classList.add('active');}
 function openSheet(id){
+  // #696-4 — show/hide Pull cast button based on whether current book is in a series
+  if(id==='settings-overlay'){
+    const row=document.getElementById('series-cast-btn-row');
+    if(row)row.style.display=(book()?.seriesName&&_seriesSuggestSiblings().length)?'flex':'none';
+  }
   const ov=document.getElementById(id);
   ov.classList.add('open');
   // #211: Reset scroll to top whenever a sheet opens
@@ -3668,7 +3689,119 @@ function renderSeriesView(){
         ${histHtml}
       </div>`;
     }).join('');
+  } else if(_svTab==='web'){
+    // #744 — Series relationship web: force-directed graph rendered on canvas
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Relationship web across all series books. Drag nodes to explore.</div>
+      <canvas id="sv-web-canvas" style="width:100%;height:420px;border-radius:var(--r);background:var(--bg2);display:block;touch-action:none;"></canvas>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;">Tap a character to see their relationships · Pinch or drag to explore</div>`;
+    setTimeout(()=>_renderSeriesWeb(books),80);
   }
+}
+function _renderSeriesWeb(books){
+  const canvas=document.getElementById('sv-web-canvas');if(!canvas)return;
+  const W=canvas.clientWidth,H=canvas.clientHeight||420;
+  canvas.width=W*window.devicePixelRatio||W;canvas.height=H*window.devicePixelRatio||H;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;ctx.scale(dpr,dpr);
+  // Collect unique characters and relationships
+  const charSet=new Set();const edges=[];
+  books.forEach(b=>{
+    (b.entries||[]).forEach(e=>{
+      if(CT.includes(e.type)&&(e.cn||e.content))charSet.add(e.cn||e.content);
+      if(e.type==='Relationship'&&e.relA&&e.relB){
+        charSet.add(e.relA);charSet.add(e.relB);
+        edges.push({a:e.relA,b:e.relB,type:e.relType||'',bookTitle:b.title||''});
+      }
+    });
+  });
+  const chars=[...charSet];if(!chars.length){ctx.fillStyle='var(--t3)';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('No characters yet',W/2,H/2);return;}
+  const idxOf=n=>chars.indexOf(n);
+  // Initial positions in circle
+  const nodes=chars.map((name,i)=>{
+    const angle=(2*Math.PI*i/chars.length)-Math.PI/2;
+    const r=Math.min(W,H)*0.35;
+    return{name,x:W/2+r*Math.cos(angle),y:H/2+r*Math.sin(angle),vx:0,vy:0};
+  });
+  // Force simulation (simplified)
+  const ITER=120,K=Math.sqrt(W*H/Math.max(nodes.length,1)),REPEL=K*K*2,ATTRACT=0.08;
+  for(let it=0;it<ITER;it++){
+    const cool=1-it/ITER;
+    // Repulsion
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y;
+      const d=Math.max(Math.sqrt(dx*dx+dy*dy),0.1);
+      const f=REPEL/d;
+      nodes[i].vx+=f*dx/d;nodes[i].vy+=f*dy/d;
+      nodes[j].vx-=f*dx/d;nodes[j].vy-=f*dy/d;
+    }
+    // Attraction along edges
+    edges.forEach(e=>{
+      const ni=nodes[idxOf(e.a)],nj=nodes[idxOf(e.b)];if(!ni||!nj)return;
+      const dx=nj.x-ni.x,dy=nj.y-ni.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),0.1);
+      const f=d*ATTRACT;
+      ni.vx+=f*dx/d;ni.vy+=f*dy/d;
+      nj.vx-=f*dx/d;nj.vy-=f*dy/d;
+    });
+    // Apply velocity + damping + bounds
+    nodes.forEach(n=>{
+      n.x+=n.vx*cool;n.y+=n.vy*cool;
+      n.vx*=0.5;n.vy*=0.5;
+      n.x=Math.max(48,Math.min(W-48,n.x));n.y=Math.max(24,Math.min(H-24,n.y));
+    });
+  }
+  let selectedNode=null;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const isDark=document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme:dark)').matches;
+    const edgeCol=isDark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.12)';
+    const edgeSel=isDark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)';
+    // Draw edges
+    edges.forEach(e=>{
+      const ni=nodes[idxOf(e.a)],nj=nodes[idxOf(e.b)];if(!ni||!nj)return;
+      const isSel=selectedNode&&(e.a===selectedNode.name||e.b===selectedNode.name);
+      ctx.beginPath();ctx.moveTo(ni.x,ni.y);ctx.lineTo(nj.x,nj.y);
+      ctx.strokeStyle=isSel?edgeSel:edgeCol;ctx.lineWidth=isSel?2:1;ctx.stroke();
+      // Label on edge
+      if(e.type&&isSel){
+        const mx=(ni.x+nj.x)/2,my=(ni.y+nj.y)/2;
+        ctx.font=`10px sans-serif`;ctx.fillStyle=isDark?'#aaa':'#666';ctx.textAlign='center';
+        ctx.fillText(e.type,mx,my-4);
+      }
+    });
+    // Draw nodes
+    nodes.forEach(n=>{
+      const cc=getCC(n.name);
+      const r=selectedNode?.name===n.name?22:16;
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.fillStyle=cc.bg;ctx.fill();
+      ctx.strokeStyle=selectedNode?.name===n.name?cc.stroke:'transparent';ctx.lineWidth=2;ctx.stroke();
+      ctx.font=`bold ${r>18?13:11}px sans-serif`;ctx.fillStyle=cc.text;ctx.textAlign='center';ctx.textBaseline='middle';
+      const initials=n.name.split(' ').map(p=>p[0]||'').join('').slice(0,2).toUpperCase();
+      ctx.fillText(initials,n.x,n.y);
+      // Name label below
+      ctx.font='9px sans-serif';ctx.fillStyle=isDark?'#ccc':'#444';ctx.textBaseline='top';
+      ctx.fillText(n.name.split(' ')[0],n.x,n.y+r+3);
+    });
+  }
+  draw();
+  // Interaction — tap to select
+  let drag=null;
+  function hitNode(x,y){return nodes.find(n=>{const dx=n.x-x,dy=n.y-y;return dx*dx+dy*dy<400;});}
+  canvas.onpointerdown=ev=>{
+    const rect=canvas.getBoundingClientRect();
+    const x=ev.clientX-rect.left,y=ev.clientY-rect.top;
+    const hit=hitNode(x,y);
+    if(hit){drag={node:hit,ox:x-hit.x,oy:y-hit.y};canvas.setPointerCapture(ev.pointerId);}
+    selectedNode=hit||null;draw();
+  };
+  canvas.onpointermove=ev=>{
+    if(!drag)return;
+    const rect=canvas.getBoundingClientRect();
+    drag.node.x=Math.max(48,Math.min(W-48,ev.clientX-rect.left-drag.ox));
+    drag.node.y=Math.max(24,Math.min(H-24,ev.clientY-rect.top-drag.oy));
+    draw();
+  };
+  canvas.onpointerup=()=>{drag=null;};
 }
 function _svOpenEntry(bookId,entryId){
   closeSheet('series-view-overlay');
@@ -3703,12 +3836,14 @@ function _seriesSuggest(){
     });
   });
   if(!found.length){box.style.display='none';return;}
+  const sibs2=_seriesSuggestSiblings();
+  const castBtns=sibs2.map(sb=>`<button type="button" class="btn btn-sm" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="if(confirm('Pull ALL characters, traits, and relationships from ${esc(sb.title)}? Existing entries in this book are NOT duplicated.'))_pullFullCast('${esc(sb.id)}')">📚 Pull full cast from ${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''}</button>`).join('');
   box.innerHTML=`<div style="font-weight:600;margin-bottom:5px;">📚 In series — pull to reuse?</div>`+
     found.slice(0,4).map(({e,sb,name})=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
       <span style="flex:1;"><strong>${esc(name)}</strong> <span style="color:var(--t3);">· ${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''}</span></span>
       <button type="button" class="btn btn-sm" style="font-size:11px;" onclick="_pullSeriesChar('${esc(sb.id)}',${e.id})">⇣ Pull</button>
     </div>`).join('')+
-    `<div style="font-size:10px;color:var(--t3);margin-top:4px;">Pull copies name, gender, pronouns, description and photo into this book — no duplicate entry needed.</div>`;
+    `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${castBtns}</div>`;
   box.style.display='';
 }
 function _seriesSuggestLoc(){
@@ -3740,28 +3875,104 @@ function _pullSeriesChar(bookId,entryId){
   const src=library[bookId];if(!src)return;
   const e=(src.entries||[]).find(x=>x.id===Number(entryId));if(!e)return;
   const name=e.cn||e.content||'';
+  // Fill form fields
   if(document.getElementById('ae-cn'))document.getElementById('ae-cn').value=name;
   if(e.nickname&&document.getElementById('ae-nick'))document.getElementById('ae-nick').value=e.nickname;
   if(e.gender){const g=document.getElementById('ae-gender');if(g)g.value=e.gender;}
   if(e.pronouns){const p=document.getElementById('ae-pronouns');if(p)p.value=e.pronouns;}
-  if(e.charDesc&&document.getElementById('ae-cdesc')&&!document.getElementById('ae-cdesc').value)document.getElementById('ae-cdesc').value=e.charDesc;
-  if(e.charPhys&&document.getElementById('ae-cphys')&&!document.getElementById('ae-cphys').value)document.getElementById('ae-cphys').value=e.charPhys;
+  if(e.charDesc&&document.getElementById('ae-cdesc'))document.getElementById('ae-cdesc').value=e.charDesc;
+  if(e.charPhys&&document.getElementById('ae-cphys'))document.getElementById('ae-cphys').value=e.charPhys;
   if(e.charRole){const cr=document.getElementById('ae-crole');if(cr)cr.value=e.charRole;}
   if(e.charStatus){const cs=document.getElementById('ae-cstatus');if(cs)cs.value=e.charStatus;}
   if(e.charProfession){const cp=document.getElementById('ae-cprofession');if(cp&&!cp.value)cp.value=e.charProfession;}
   if(e.lang){const cl=document.getElementById('ae-clang');if(cl&&!cl.value)cl.value=e.lang;}
-  // Copy photo if present
   const photos=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
   if(photos.length&&typeof setEntryPhotos==='function')setEntryPhotos(photos);
-  // #696-3: also copy this char's most recent Traits from source book as cross-references note
+  const box=document.getElementById('ae-series-char-hint');if(box)box.style.display='none';
+  // #696-4: offer to also copy associated trait + relationship entries
   const traits=(src.entries||[]).filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name));
   const rels=(src.entries||[]).filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name));
-  let hint='';
-  if(traits.length)hint+=`Traits in ${src.title}: ${traits.map(t=>t.content||'').filter(Boolean).slice(0,5).join(', ')}. `;
-  if(rels.length)hint+=`Relationships: ${rels.map(r=>`${r.relA===name?r.relB:r.relA} (${r.relType||'?'})`).slice(0,4).join(', ')}.`;
-  if(hint&&document.getElementById('ae-cdesc')&&!document.getElementById('ae-cdesc').value)document.getElementById('ae-cdesc').value=hint.trim();
-  const box=document.getElementById('ae-series-char-hint');if(box)box.style.display='none';
+  if(traits.length||rels.length){
+    const msg=`Also copy ${traits.length} trait${traits.length!==1?'s':''} and ${rels.length} relationship${rels.length!==1?'s':''} from ${src.title} into this book?`;
+    if(confirm(msg)){
+      _copyAssociatedEntries(src,name,traits,rels);
+    }
+  }
   _showToast(`✅ Pulled "${name}" from ${src.title}`);
+}
+function _copyAssociatedEntries(src,charName,traits,rels){
+  // Copy trait + rel entries into the current book with fresh IDs, preserving all fields
+  if(!book())return;
+  const now=Date.now();
+  let idx=0;
+  const existingNames=new Set((book().entries||[]).map(e=>(e.cn||e.content||'').toLowerCase()));
+  // Copy traits
+  traits.forEach(t=>{
+    const already=(book().entries||[]).some(x=>x.type==='Characteristic'&&(x.content||'').toLowerCase()===(t.content||'').toLowerCase()&&(x.involved||[]).includes(charName));
+    if(already)return;
+    const copy={...t,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title};
+    book().entries.unshift(copy);
+  });
+  // Copy relationships
+  rels.forEach(r=>{
+    const already=(book().entries||[]).some(x=>x.type==='Relationship'&&((x.relA===r.relA&&x.relB===r.relB)||(x.relA===r.relB&&x.relB===r.relA))&&x.relType===r.relType);
+    if(already)return;
+    const copy={...r,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title};
+    book().entries.unshift(copy);
+  });
+  save();
+  _showToast(`✅ Copied ${traits.length} traits + ${rels.length} relationships into this book`);
+}
+// #696-4: pull ALL characters + their traits/rels from the most recent series sibling book
+function _pullFullCast(bookId){
+  const src=library[bookId];if(!src)return;
+  if(!book())return;
+  const chars=(src.entries||[]).filter(e=>CT.includes(e.type));
+  if(!chars.length){_showToast('No characters found in that book.','#E24B4A');return;}
+  const now=Date.now();let idx=0;let addedChars=0;let addedTraits=0;let addedRels=0;
+  const existingCharNames=new Set((book().entries||[]).filter(e=>CT.includes(e.type)).map(e=>(e.cn||e.content||'').toLowerCase()));
+  chars.forEach(char=>{
+    const name=char.cn||char.content||'';
+    if(!name)return;
+    // Copy char if not already in current book
+    if(!existingCharNames.has(name.toLowerCase())){
+      const copy={...char,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title};
+      book().entries.unshift(copy);existingCharNames.add(name.toLowerCase());addedChars++;
+    }
+    // Copy traits for this char
+    const traits=(src.entries||[]).filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name));
+    traits.forEach(t=>{
+      const already=(book().entries||[]).some(x=>x.type==='Characteristic'&&(x.content||'').toLowerCase()===(t.content||'').toLowerCase()&&(x.involved||[]).includes(name));
+      if(!already){book().entries.unshift({...t,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedTraits++;}
+    });
+    // Copy relationships
+    const rels=(src.entries||[]).filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name));
+    rels.forEach(r=>{
+      const already=(book().entries||[]).some(x=>x.type==='Relationship'&&((x.relA===r.relA&&x.relB===r.relB)||(x.relA===r.relB&&x.relB===r.relA))&&x.relType===r.relType);
+      if(!already){book().entries.unshift({...r,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedRels++;}
+    });
+  });
+  save();
+  closeSheet('series-cast-overlay');
+  _showToast(`✅ Pulled ${addedChars} characters, ${addedTraits} traits, ${addedRels} relationships from ${src.title}`);
+  if(typeof renderAll==='function')renderAll();
+}
+function _showSeriesCastPicker(){
+  const sibs=_seriesSuggestSiblings();if(!sibs.length)return;
+  // Simple picker: show each sibling book as a button
+  try{document.getElementById('_castPickerOverlay')?.remove();}catch(e){}
+  const ov=document.createElement('div');ov.id='_castPickerOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:20px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">📚 Pull cast from series</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">Copies all characters, their traits, and their relationships into this book. Existing entries are not duplicated.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${sibs.map(sb=>`<button class="btn" style="width:100%;text-align:left;" onclick="_pullFullCast('${esc(sb.id)}')">${esc(sb.title)}${sb.seriesNum?' #'+sb.seriesNum:''} <span style="color:var(--t3);font-size:11px;">(${(sb.entries||[]).filter(e=>CT.includes(e.type)).length} characters)</span></button>`).join('')}
+    </div>
+    <button class="btn" style="width:100%;margin-top:10px;color:var(--t3);" onclick="document.getElementById('_castPickerOverlay').remove()">Cancel</button>
+  </div>`;
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  document.body.appendChild(ov);
 }
 function _pullSeriesLoc(bookId,entryId){
   const src=library[bookId];if(!src)return;
@@ -4041,36 +4252,35 @@ function _doRenameRel(oldName,rawName){
   const newName=builtinMatch||rawName;
   if(newName===oldName)return;
 
-  // Ensure arrays exist
   library.customRelTypes=library.customRelTypes||[];
   library.deletedRelTypes=library.deletedRelTypes||[];
   library.customRelPairs=library.customRelPairs||[];
 
-  // Collision check: newName must not be an active type (excluding oldName)
-  const deletedSet=new Set(library.deletedRelTypes);
-  const activeBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deletedSet.has(t));
-  const activeCustoms=library.customRelTypes.filter(t=>t!==oldName&&!ALL_BUILTIN_REL_TYPES.includes(t));
-  if(activeBuiltins.includes(newName)||activeCustoms.includes(newName)){
-    _showToast(`"${newName}" already exists in your relationship types.`,'#E24B4A');
-    return;
-  }
-
-  const oldIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
   const newIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(newName);
+  const oldIsBuiltin=ALL_BUILTIN_REL_TYPES.includes(oldName);
+
+  // Collision check — skip if renaming TO a builtin (we just un-delete it)
+  if(!newIsBuiltin){
+    const deletedSet=new Set(library.deletedRelTypes);
+    const activeBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>t!==oldName&&!deletedSet.has(t));
+    const activeCustoms=library.customRelTypes.filter(t=>t!==oldName&&!_isBuiltinRel(t));
+    if(activeBuiltins.includes(newName)||activeCustoms.includes(newName)){
+      _showToast(`"${newName}" already exists in your relationship types.`,'#E24B4A');
+      return;
+    }
+  }
 
   // Update active/deleted lists
   if(oldIsBuiltin){
-    // Hide the old builtin
     if(!library.deletedRelTypes.includes(oldName))library.deletedRelTypes.push(oldName);
   } else {
-    // Remove old from customs
     library.customRelTypes=library.customRelTypes.filter(t=>t!==oldName);
   }
   if(newIsBuiltin){
-    // Un-hide the new builtin
     library.deletedRelTypes=library.deletedRelTypes.filter(t=>t!==newName);
+    // Nuclear: also remove from customRelTypes in case it got stuck there
+    library.customRelTypes=library.customRelTypes.filter(t=>!_isBuiltinRel(t));
   } else {
-    // Add new as custom (if not already)
     if(!library.customRelTypes.includes(newName))library.customRelTypes.push(newName);
   }
 
@@ -13976,6 +14186,7 @@ function _swipeInit(){/* removed */}
         <button class="tab active" id="sv-tab-chars" onclick="switchSeriesTab('chars',this)" style="flex:1;">👥 Characters</button>
         <button class="tab" id="sv-tab-events" onclick="switchSeriesTab('events',this)" style="flex:1;">📅 Timeline</button>
         <button class="tab" id="sv-tab-rels" onclick="switchSeriesTab('rels',this)" style="flex:1;">🔗 Relationships</button>
+        <button class="tab" id="sv-tab-web" onclick="switchSeriesTab('web',this)" style="flex:1;">🕸 Web</button>
       </div>
       <div id="series-view-body"></div>
     </div>
