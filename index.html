@@ -736,6 +736,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>Translator <span style="font-weight:400;">(optional)</span></label><input type="text" id="ae-qt-translator" placeholder="e.g. Edith Grossman, Gregory Rabassa, mine…"/></div>
       </div>
       <div class="divider" style="margin:10px 0 8px;"></div>
+      <!-- #696-3 / #730 — series mode toggle. When on, all combo pickers also show
+           entries from other books in the same series. -->
+      <div id="ae-qc-series-row" style="display:none;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);">
+        <span style="font-size:12px;color:var(--accent);flex:1;">📚 This book is part of a series</span>
+        <button type="button" id="ae-qc-series-btn" class="btn btn-sm" onclick="_qcToggleSeries()" style="font-size:11px;background:var(--bg2);border-color:var(--cb);">Include series entries</button>
+      </div>
       <!-- Theme combo picker -->
       <div class="fg">
         <label>Attached to theme(s)? <span style="font-weight:400;">(optional)</span></label>
@@ -1313,7 +1319,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="exportPDF()">Download PDF</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
-      <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(openLibGallery,120);">🖼 Photo gallery</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(()=>openLibGallery(!!currentId&&'book'),120);">🖼 Photo gallery</button>
       <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
@@ -3458,24 +3464,26 @@ function openLibSettings(){openSheet('lib-settings-overlay');}
 // xlsx #401 — Library usage stats. Tells the user which features and answer-options
 // they've used (and haven't) across ALL books in their library.
 // #729 — gallery rebuilt as dynamic full-screen overlay appended to body.
-// No dependency on gallery-overlay sheet element; works from any screen.
-function openLibGallery(){
+// scope='book' → only current book's photos. Default → library-wide.
+function openLibGallery(scope){
   try{document.getElementById('_galRoot')?.remove();}catch(e){}
   const photos=[];const seen=new Set();
-  // Scan library-wide
-  Object.values(library||{}).forEach(bk=>{
-    if(!bk||!bk.title||!bk.entries)return;
+  const bookScope=scope==='book'&&currentId&&library[currentId];
+  const booksToScan=bookScope?[library[currentId]]:Object.values(library||{}).filter(b=>b&&b.title&&b.entries);
+  booksToScan.forEach(bk=>{
+    if(!bk||!bk.entries)return;
     bk.entries.forEach(e=>{
       const arr=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
       arr.forEach(p=>{if(p&&typeof p==='string'&&p.length>10&&!seen.has(p)){seen.add(p);photos.push({photo:p,type:e.type||'Other',content:e.content||e.cn||'',bookId:bk.id,entryId:e.id,bookTitle:bk.title});}});
     });
   });
   window._galPhotos=photos;window._galFilter='All';
+  const titleStr=bookScope?`📖 ${library[currentId].title} — Photos`:'🖼 Photo Gallery';
   const root=document.createElement('div');root.id='_galRoot';
   root.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:999999;display:flex;flex-direction:column;overflow:hidden;';
   root.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:14px 14px 10px;border-bottom:0.5px solid var(--cb);background:var(--bg);flex-shrink:0;">
     <button onclick="document.getElementById('_galRoot').remove();" style="background:transparent;border:none;font-size:26px;color:var(--accent);cursor:pointer;padding:0 4px;line-height:1;">‹</button>
-    <div style="flex:1;font-size:17px;font-weight:700;">🖼 Photo Gallery</div>
+    <div style="flex:1;font-size:17px;font-weight:700;">${esc(titleStr)}</div>
     <span id="_galCount" style="font-size:12px;color:var(--t3);"></span>
   </div>
   <div id="_galChips" style="display:flex;gap:5px;padding:8px 12px 4px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;"></div>
@@ -3631,11 +3639,24 @@ function renderSeriesView(){
       // Sort history by book number
       const hist=pair.history.sort((a,b)=>a.seriesNum-b.seriesNum||a.bookLabel.localeCompare(b.bookLabel));
       const histHtml=hist.map(h=>{
-        // Show both sides of reciprocal: relA is "relType" of relB — use RECIPROCAL for the other side
-        const recip=getReciprocal(h.relType);
-        const typeLabel=recip&&recip!==h.relType
-          ?`${esc(h.relA)}: ${esc(h.relType)} / ${esc(h.relB)}: ${esc(recip)}`
-          :`${esc(h.relType||'(no type)')}`;
+        // #730: show both sides. Look up the character genders from the series to get
+        // gender-aware reciprocal (Husband → Wife, Father → Mother, etc.)
+        const allSeriesEntries=_seriesBooks().flatMap(b=>b.entries||[]);
+        function charGender(name){const e=allSeriesEntries.find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name);return e?.gender||'';}
+        const gA=charGender(h.relA);const gB=charGender(h.relB);
+        // Gender-aware reciprocal using existing GENDER_RECIP maps
+        function genderRecip(type,gender){
+          const gm=gender==='Male'?GENDER_REL_MAP?.Male:gender==='Female'?GENDER_REL_MAP?.Female:gender==='Nonbinary'?GENDER_REL_MAP?.Nonbinary:null;
+          if(gm&&gm[type])return gm[type];
+          return RECIPROCAL[type]||type;
+        }
+        // relA has relType; relB has the reciprocal
+        const recipForB=genderRecip(h.relType,gB);
+        const recipForA=genderRecip(h.relType,gA)||h.relType;
+        const sameType=recipForB===h.relType;
+        const typeLabel=sameType
+          ?esc(h.relType||'(no type)')
+          :`${esc(h.relA)}: ${esc(h.relType)} / ${esc(h.relB)}: ${esc(recipForB)}`;
         return `<div onclick="event.stopPropagation();_svOpenEntry('${h.bookId}',${h.entryId})" style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;border-bottom:0.5px solid var(--cb);">
           <span class="chip" style="background:var(--bg2);font-size:10px;flex-shrink:0;">${esc(h.bookLabel)}</span>
           <span style="font-size:12px;flex:1;">${typeLabel}</span>
@@ -3727,9 +3748,18 @@ function _pullSeriesChar(bookId,entryId){
   if(e.charPhys&&document.getElementById('ae-cphys')&&!document.getElementById('ae-cphys').value)document.getElementById('ae-cphys').value=e.charPhys;
   if(e.charRole){const cr=document.getElementById('ae-crole');if(cr)cr.value=e.charRole;}
   if(e.charStatus){const cs=document.getElementById('ae-cstatus');if(cs)cs.value=e.charStatus;}
+  if(e.charProfession){const cp=document.getElementById('ae-cprofession');if(cp&&!cp.value)cp.value=e.charProfession;}
+  if(e.lang){const cl=document.getElementById('ae-clang');if(cl&&!cl.value)cl.value=e.lang;}
   // Copy photo if present
   const photos=(e.photos&&e.photos.length)?e.photos:(e.photo?[e.photo]:[]);
   if(photos.length&&typeof setEntryPhotos==='function')setEntryPhotos(photos);
+  // #696-3: also copy this char's most recent Traits from source book as cross-references note
+  const traits=(src.entries||[]).filter(x=>x.type==='Characteristic'&&(x.involved||[]).includes(name));
+  const rels=(src.entries||[]).filter(x=>x.type==='Relationship'&&(x.relA===name||x.relB===name));
+  let hint='';
+  if(traits.length)hint+=`Traits in ${src.title}: ${traits.map(t=>t.content||'').filter(Boolean).slice(0,5).join(', ')}. `;
+  if(rels.length)hint+=`Relationships: ${rels.map(r=>`${r.relA===name?r.relB:r.relA} (${r.relType||'?'})`).slice(0,4).join(', ')}.`;
+  if(hint&&document.getElementById('ae-cdesc')&&!document.getElementById('ae-cdesc').value)document.getElementById('ae-cdesc').value=hint.trim();
   const box=document.getElementById('ae-series-char-hint');if(box)box.style.display='none';
   _showToast(`✅ Pulled "${name}" from ${src.title}`);
 }
@@ -3889,15 +3919,21 @@ function renderRelTypesSection(){
   if(!library.customRelTypes)library.customRelTypes=[];
   if(!library.deletedRelTypes)library.deletedRelTypes=[];
   if(!library.customRelPairs)library.customRelPairs=[];
+  // #659 — force-scrub at render time (belt + suspenders: also runs in migration)
+  library.customRelTypes=library.customRelTypes.filter(t=>t&&!_isBuiltinRel(t));
+  library.customRelPairs=library.customRelPairs.filter(p=>p&&p.typeA&&p.typeB&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
   const{builtins,customs}=_activeRelTypes();
   const deleted=new Set(library.deletedRelTypes);
   const stripEmoji=s=>s.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{FE00}-\u{FEFF}\u{200D}\u{20E3} ]+/gu,'').trim();
   const allActive=[...builtins,...customs].sort((a,b)=>stripEmoji(a).localeCompare(stripEmoji(b),undefined,{sensitivity:'base'}));
   const deletedBuiltins=ALL_BUILTIN_REL_TYPES.filter(t=>deleted.has(t)).sort((a,b)=>stripEmoji(a).localeCompare(stripEmoji(b),undefined,{sensitivity:'base'}));
   const pairs=library.customRelPairs||[];
-  const pairedTypes=new Set(pairs.flatMap(p=>[p.typeA,p.typeB]));
+  const pairedTypes=new Set(pairs.flatMap(p=>[p.typeA,p.typeB]).filter(t=>!_isBuiltinRel(t)));
   return`<div style="margin-bottom:18px;">
-    <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Relationship types</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+      <div style="font-size:13px;font-weight:600;">Relationship types</div>
+      <button class="btn btn-sm" onclick="libListsResetBuiltins()" style="font-size:10px;color:var(--t3);">🔄 Reset built-ins</button>
+    </div>
     <div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Used in relationship entry forms. Custom types shown in accent color. ✏️ = rename · ↔ = paired type.</div>
     ${allActive.length?`<div style="margin-bottom:10px;">${allActive.map(t=>{
       const isCustom=customs.includes(t);
@@ -3919,6 +3955,16 @@ function renderRelTypesSection(){
   <div style="margin-bottom:10px;">${(library.customEntryTypes||[]).map(t=>`<span style="display:inline-block;background:var(--al);border:0.5px solid var(--am);color:var(--accent);border-radius:11px;padding:3px 9px;margin:2px 3px 2px 0;font-size:11px;font-weight:600;">${t} <span onclick="libListsRenameEntryType('${esc(t)}')" style="cursor:pointer;font-size:10px;margin-left:2px;" title="Rename">✏️</span><span onclick="libListsRemoveEntryType('${esc(t)}')" style="margin-left:2px;color:var(--red);font-weight:700;cursor:pointer;padding:0 3px;">×</span></span>`).join('')||'<span style="font-size:11px;color:var(--t3);font-style:italic;">No custom types yet.</span>'}</div>
   <button class="btn btn-sm btn-primary" onclick="libListsAddEntryType()" style="font-size:12px;">+ Add entry type</button>
   </div>`;
+}
+function libListsResetBuiltins(){
+  if(!confirm('Reset all built-in relationship types to their defaults?\n\n• Removes any built-in names from your custom list\n• Removes any pairs that include a built-in type\n• Restores any hidden built-in types (like Mother, Father)\n\nYour custom types (e.g. Pet, Owner) are NOT affected.'))return;
+  // Nuclear scrub
+  library.customRelTypes=(library.customRelTypes||[]).filter(t=>t&&!_isBuiltinRel(t));
+  library.customRelPairs=(library.customRelPairs||[]).filter(p=>p&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
+  // Restore ALL builtins (clear deletedRelTypes of any builtin)
+  library.deletedRelTypes=(library.deletedRelTypes||[]).filter(t=>!_isBuiltinRel(t));
+  save();renderLibLists();
+  _showToast('✅ Built-in relationship types reset to defaults');
 }
 function libListsAddEntryType(){
   const v=(prompt('New entry type name (e.g. "Scene", "Motif", "Object"):')||'').trim();
@@ -4977,6 +5023,12 @@ function onTypeChange(){
     ['ae-quote-theme-search','ae-quote-event-search','ae-quote-rel-search','ae-quote-trait-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     ['rel','trait'].forEach(k=>{const c=document.getElementById(`ae-quote-${k}-chip`);if(c)c.innerHTML='';});
     _qcCloseAll();
+    // #696-3 — reset series mode, show toggle only if book is in a series
+    _qcSeriesMode=false;
+    const seriesRow=document.getElementById('ae-qc-series-row');
+    const btn=document.getElementById('ae-qc-series-btn');
+    if(seriesRow){seriesRow.style.display=book()?.seriesName?'flex':'none';}
+    if(btn){btn.textContent='Include series entries';btn.style.background='var(--bg2)';btn.style.color='';btn.style.borderColor='var(--cb)';}
   }
   if(isQ)populateQuoteThemeSelect('');
   if(isQ)populateQuoteRelSelect('');
@@ -5962,32 +6014,57 @@ function _repopulateQuoteLinks(){
     if(list&&list.classList.contains('open'))_qcRender(k);
   });
 }
+let _qcSeriesMode=false; // toggle: include series books
 function _qcInv(){try{return cddGet('ae-inv')||[];}catch(e){return[];}}
+function _qcAllEntries(){
+  // When series mode is on AND current book is part of a series, union all series entries.
+  // Each entry tagged with its source book so we can show it.
+  const cur=book();
+  if(_qcSeriesMode&&cur&&cur.seriesName){
+    const sibs=Object.values(library||{}).filter(b=>b&&b.title&&b.seriesName===cur.seriesName&&b.id!==cur.id);
+    const local=entries().map(e=>({...e,_bookId:currentId,_bookTitle:cur.title,_bookNum:+cur.seriesNum||0}));
+    const remote=sibs.flatMap(b=>(b.entries||[]).map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0})));
+    return[...local,...remote];
+  }
+  return entries().map(e=>({...e,_bookId:currentId,_bookTitle:book()?.title||'',_bookNum:0}));
+}
 function _qcItems(kind){
   const inv=_qcInv();
-  const all=entries();
+  const all=_qcAllEntries();
+  const bookLabel=e=>_qcSeriesMode&&e._bookTitle?` [${e._bookTitle}${e._bookNum?' #'+e._bookNum:''}]`:'';
   if(kind==='theme'){
     let items=all.filter(e=>e.type==='Theme');
     if(inv.length){items=items.filter(t=>{const i=t.involved||[];if(inv.some(c=>i.includes(c)))return true;const ids=t.themeQuotes||[];return ids.length&&all.some(q=>ids.includes(q.id)&&(inv.includes(q.speaker)||(q.involved||[]).some(c=>inv.includes(c))));});}
-    return items.map(t=>({id:t.content,label:t.content,sub:(t.involved||[]).join(', ')}));
+    return items.map(t=>({id:t.content,label:t.content,sub:(t.involved||[]).join(', ')+bookLabel(t),bookId:t._bookId}));
   }
   if(kind==='event'){
     let items=all.filter(e=>['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft);
     if(inv.length)items=items.filter(e=>(e.involved||[]).some(c=>inv.includes(c)));
-    items.sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(a.content||'').localeCompare(b.content||''));
-    return items.map(e=>({id:String(e.id),label:(e.type==='Event'?'⭐ ':'📅 ')+(e.content||'(untitled)').slice(0,60),sub:[e.evdate,(e.involved||[]).join(', ')].filter(Boolean).join(' · ')}));
+    items.sort((a,b)=>(a._bookNum-b._bookNum)||(a.evdate||'').localeCompare(b.evdate||'')||(a.content||'').localeCompare(b.content||''));
+    return items.map(e=>({id:String(e.id),label:(e.type==='Event'?'⭐ ':'📅 ')+(e.content||'(untitled)').slice(0,60),sub:[e.evdate,(e.involved||[]).join(', ')].filter(Boolean).join(' · ')+bookLabel(e),bookId:e._bookId}));
   }
   if(kind==='rel'){
     let items=all.filter(e=>e.type==='Relationship');
     if(inv.length)items=items.filter(r=>inv.includes(r.relA)||inv.includes(r.relB));
-    return items.map(r=>({id:String(r.id),label:`${r.relA||'?'} ↔ ${r.relB||'?'}`,sub:r.relType||''}));
+    return items.map(r=>({id:String(r.id),label:`${r.relA||'?'} ↔ ${r.relB||'?'}`,sub:(r.relType||'')+bookLabel(r),bookId:r._bookId}));
   }
   if(kind==='trait'){
     let items=all.filter(e=>e.type==='Characteristic');
     if(inv.length)items=items.filter(t=>inv.some(c=>(t.involved||[]).includes(c)||(t.cn||t.content||'').includes(c)));
-    return items.map(t=>({id:String(t.id),label:t.content||'(untitled)',sub:(t.involved||[]).join(', ')||t.cn||''}));
+    return items.map(t=>({id:String(t.id),label:t.content||'(untitled)',sub:(t.involved||[]).join(', ')||t.cn||''+bookLabel(t),bookId:t._bookId}));
   }
   return[];
+}
+function _qcToggleSeries(){
+  _qcSeriesMode=!_qcSeriesMode;
+  const btn=document.getElementById('ae-qc-series-btn');
+  if(btn){
+    btn.textContent=_qcSeriesMode?'✓ Including series':'Include series entries';
+    btn.style.background=_qcSeriesMode?'var(--accent)':'var(--bg2)';
+    btn.style.color=_qcSeriesMode?'#fff':'';
+    btn.style.borderColor=_qcSeriesMode?'var(--accent)':'var(--cb)';
+  }
+  _repopulateQuoteLinks();
 }
 function _qcRender(kind){
   const input=document.getElementById(`ae-quote-${kind}-search`);
