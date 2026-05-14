@@ -2028,6 +2028,9 @@ function _migrateLibrary(){
         }
       });
     });
+    // Always save after migration so cleaned data is persisted to IDB
+    // Use queueMicrotask to avoid recursive save during load
+    queueMicrotask(()=>{try{save();}catch(e){}});
   }catch(e){console.warn('_migrateLibrary error:',e);}
 }
 function book(){return library[currentId];}
@@ -3690,118 +3693,85 @@ function renderSeriesView(){
       </div>`;
     }).join('');
   } else if(_svTab==='web'){
-    // #744 — Series relationship web: force-directed graph rendered on canvas
-    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Relationship web across all series books. Drag nodes to explore.</div>
-      <canvas id="sv-web-canvas" style="width:100%;height:420px;border-radius:var(--r);background:var(--bg2);display:block;touch-action:none;"></canvas>
-      <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;">Tap a character to see their relationships · Pinch or drag to explore</div>`;
-    setTimeout(()=>_renderSeriesWeb(books),80);
+    // #744 — Series relationship web reuses the existing renderWeb() engine.
+    // We build a merged entry set from all series books (chars deduped by name,
+    // most-recent-book version wins; rels kept all, deduped by pair+type).
+    body.innerHTML=`<div style="text-align:center;padding:20px;font-size:13px;color:var(--t2);">
+      <button class="btn btn-primary" style="width:100%;" onclick="openSeriesWebFull()">🕸 Open full series relationship web</button>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;">Opens in the full web view with filters, zoom, drag, and spotlight — same as a book's relationship web.</div>
+    </div>`;
   }
 }
-function _renderSeriesWeb(books){
-  const canvas=document.getElementById('sv-web-canvas');if(!canvas)return;
-  const W=canvas.clientWidth,H=canvas.clientHeight||420;
-  canvas.width=W*window.devicePixelRatio||W;canvas.height=H*window.devicePixelRatio||H;
-  const ctx=canvas.getContext('2d');
-  const dpr=window.devicePixelRatio||1;ctx.scale(dpr,dpr);
-  // Collect unique characters and relationships
-  const charSet=new Set();const edges=[];
+function openSeriesWebFull(){
+  // Build merged entries from all series books
+  const books=_seriesBooks();
+  const charMap={};// name→entry (last book wins for character fields)
+  const relMap={};// pair+type key→entry
   books.forEach(b=>{
     (b.entries||[]).forEach(e=>{
-      if(CT.includes(e.type)&&(e.cn||e.content))charSet.add(e.cn||e.content);
+      if(CT.includes(e.type)){
+        const nm=(e.cn||e.content||'').trim();
+        if(nm)charMap[nm.toLowerCase()]={...e,cn:nm,content:nm};
+      }
       if(e.type==='Relationship'&&e.relA&&e.relB){
-        charSet.add(e.relA);charSet.add(e.relB);
-        edges.push({a:e.relA,b:e.relB,type:e.relType||'',bookTitle:b.title||''});
+        const key=[e.relA,e.relB].sort().join('|||')+'|||'+(e.relType||'');
+        if(!relMap[key])relMap[key]={...e};
       }
     });
   });
-  const chars=[...charSet];if(!chars.length){ctx.fillStyle='var(--t3)';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('No characters yet',W/2,H/2);return;}
-  const idxOf=n=>chars.indexOf(n);
-  // Initial positions in circle
-  const nodes=chars.map((name,i)=>{
-    const angle=(2*Math.PI*i/chars.length)-Math.PI/2;
-    const r=Math.min(W,H)*0.35;
-    return{name,x:W/2+r*Math.cos(angle),y:H/2+r*Math.sin(angle),vx:0,vy:0};
-  });
-  // Force simulation (simplified)
-  const ITER=120,K=Math.sqrt(W*H/Math.max(nodes.length,1)),REPEL=K*K*2,ATTRACT=0.08;
-  for(let it=0;it<ITER;it++){
-    const cool=1-it/ITER;
-    // Repulsion
-    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
-      const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y;
-      const d=Math.max(Math.sqrt(dx*dx+dy*dy),0.1);
-      const f=REPEL/d;
-      nodes[i].vx+=f*dx/d;nodes[i].vy+=f*dy/d;
-      nodes[j].vx-=f*dx/d;nodes[j].vy-=f*dy/d;
-    }
-    // Attraction along edges
-    edges.forEach(e=>{
-      const ni=nodes[idxOf(e.a)],nj=nodes[idxOf(e.b)];if(!ni||!nj)return;
-      const dx=nj.x-ni.x,dy=nj.y-ni.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),0.1);
-      const f=d*ATTRACT;
-      ni.vx+=f*dx/d;ni.vy+=f*dy/d;
-      nj.vx-=f*dx/d;nj.vy-=f*dy/d;
-    });
-    // Apply velocity + damping + bounds
-    nodes.forEach(n=>{
-      n.x+=n.vx*cool;n.y+=n.vy*cool;
-      n.vx*=0.5;n.vy*=0.5;
-      n.x=Math.max(48,Math.min(W-48,n.x));n.y=Math.max(24,Math.min(H-24,n.y));
-    });
-  }
-  let selectedNode=null;
-  function draw(){
-    ctx.clearRect(0,0,W,H);
-    const isDark=document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme:dark)').matches;
-    const edgeCol=isDark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.12)';
-    const edgeSel=isDark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)';
-    // Draw edges
-    edges.forEach(e=>{
-      const ni=nodes[idxOf(e.a)],nj=nodes[idxOf(e.b)];if(!ni||!nj)return;
-      const isSel=selectedNode&&(e.a===selectedNode.name||e.b===selectedNode.name);
-      ctx.beginPath();ctx.moveTo(ni.x,ni.y);ctx.lineTo(nj.x,nj.y);
-      ctx.strokeStyle=isSel?edgeSel:edgeCol;ctx.lineWidth=isSel?2:1;ctx.stroke();
-      // Label on edge
-      if(e.type&&isSel){
-        const mx=(ni.x+nj.x)/2,my=(ni.y+nj.y)/2;
-        ctx.font=`10px sans-serif`;ctx.fillStyle=isDark?'#aaa':'#666';ctx.textAlign='center';
-        ctx.fillText(e.type,mx,my-4);
-      }
-    });
-    // Draw nodes
-    nodes.forEach(n=>{
-      const cc=getCC(n.name);
-      const r=selectedNode?.name===n.name?22:16;
-      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
-      ctx.fillStyle=cc.bg;ctx.fill();
-      ctx.strokeStyle=selectedNode?.name===n.name?cc.stroke:'transparent';ctx.lineWidth=2;ctx.stroke();
-      ctx.font=`bold ${r>18?13:11}px sans-serif`;ctx.fillStyle=cc.text;ctx.textAlign='center';ctx.textBaseline='middle';
-      const initials=n.name.split(' ').map(p=>p[0]||'').join('').slice(0,2).toUpperCase();
-      ctx.fillText(initials,n.x,n.y);
-      // Name label below
-      ctx.font='9px sans-serif';ctx.fillStyle=isDark?'#ccc':'#444';ctx.textBaseline='top';
-      ctx.fillText(n.name.split(' ')[0],n.x,n.y+r+3);
-    });
-  }
-  draw();
-  // Interaction — tap to select
-  let drag=null;
-  function hitNode(x,y){return nodes.find(n=>{const dx=n.x-x,dy=n.y-y;return dx*dx+dy*dy<400;});}
-  canvas.onpointerdown=ev=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=ev.clientX-rect.left,y=ev.clientY-rect.top;
-    const hit=hitNode(x,y);
-    if(hit){drag={node:hit,ox:x-hit.x,oy:y-hit.y};canvas.setPointerCapture(ev.pointerId);}
-    selectedNode=hit||null;draw();
+  const merged=[...Object.values(charMap),...Object.values(relMap)];
+  if(!merged.length){_showToast('No characters or relationships in this series yet.','#E24B4A');return;}
+  // Store override and open the web view full-screen
+  window._webEntryOverride=merged;
+  window._webOverrideLabel=_svSeries+' — Series Web';
+  closeSheet('series-view-overlay');
+  // Navigate to book-screen web panel using existing tab/panel system
+  // First open a fake "series web" full-screen overlay that hosts the existing web DOM
+  try{document.getElementById('_svWebRoot')?.remove();}catch(e){}
+  const root=document.createElement('div');
+  root.id='_svWebRoot';
+  root.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999999;display:flex;flex-direction:column;overflow:hidden;';
+  root.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:0.5px solid var(--cb);background:var(--bg);flex-shrink:0;">
+    <button onclick="document.getElementById('_svWebRoot').remove();window._webEntryOverride=null;window._webOverrideLabel=null;renderWeb();" style="background:transparent;border:none;font-size:26px;color:var(--accent);cursor:pointer;padding:0 4px;line-height:1;">‹</button>
+    <div style="flex:1;font-size:16px;font-weight:700;">🕸 ${esc(_svSeries)} — Series Web</div>
+  </div>
+  <div class="fscroll" id="web-filter-bar-sv" style="display:flex;gap:5px;padding:8px 12px 4px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;"></div>
+  <div class="web-wrap" id="web-wrap-sv" style="position:relative;flex:1;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;">
+    <svg id="web-svg-sv" style="display:block;touch-action:pan-x pan-y;" height="500" viewBox="0 0 360 500"></svg>
+    <div id="web-spotlight-overlay-sv" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div>
+    <div id="web-spotlight-ring-sv" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div>
+  </div>
+  <div id="web-empty-sv" class="empty" style="display:none"><div class="empty-icon">🕸️</div><div class="empty-text">No characters yet</div></div>`;
+  document.body.appendChild(root);
+  // Temporarily swap the web DOM IDs so renderWeb() targets this overlay
+  const _swapIds=(from,to)=>{const el=document.getElementById(from);if(el)el.id=to;};
+  _swapIds('web-wrap','web-wrap-REAL');_swapIds('web-svg','web-svg-REAL');
+  _swapIds('web-filter-bar','web-filter-bar-REAL');
+  _swapIds('web-empty','web-empty-REAL');
+  _swapIds('web-spotlight-overlay','web-spotlight-overlay-REAL');
+  _swapIds('web-spotlight-ring','web-spotlight-ring-REAL');
+  _swapIds('web-wrap-sv','web-wrap');_swapIds('web-svg-sv','web-svg');
+  _swapIds('web-filter-bar-sv','web-filter-bar');
+  _swapIds('web-empty-sv','web-empty');
+  _swapIds('web-spotlight-overlay-sv','web-spotlight-overlay');
+  _swapIds('web-spotlight-ring-sv','web-spotlight-ring');
+  // Hook: when overlay closes, swap back and clear override
+  const origClose=root.querySelector('button').onclick;
+  root.querySelector('button').onclick=()=>{
+    _swapIds('web-wrap','web-wrap-sv');_swapIds('web-svg','web-svg-sv');
+    _swapIds('web-filter-bar','web-filter-bar-sv');
+    _swapIds('web-empty','web-empty-sv');
+    _swapIds('web-spotlight-overlay','web-spotlight-overlay-sv');
+    _swapIds('web-spotlight-ring','web-spotlight-ring-sv');
+    _swapIds('web-wrap-REAL','web-wrap');_swapIds('web-svg-REAL','web-svg');
+    _swapIds('web-filter-bar-REAL','web-filter-bar');
+    _swapIds('web-empty-REAL','web-empty');
+    _swapIds('web-spotlight-overlay-REAL','web-spotlight-overlay');
+    _swapIds('web-spotlight-ring-REAL','web-spotlight-ring');
+    root.remove();window._webEntryOverride=null;window._webOverrideLabel=null;
+    if(typeof renderWeb==='function')renderWeb();
   };
-  canvas.onpointermove=ev=>{
-    if(!drag)return;
-    const rect=canvas.getBoundingClientRect();
-    drag.node.x=Math.max(48,Math.min(W-48,ev.clientX-rect.left-drag.ox));
-    drag.node.y=Math.max(24,Math.min(H-24,ev.clientY-rect.top-drag.oy));
-    draw();
-  };
-  canvas.onpointerup=()=>{drag=null;};
+  setTimeout(()=>renderWeb(),60);
 }
 function _svOpenEntry(bookId,entryId){
   closeSheet('series-view-overlay');
@@ -4086,6 +4056,9 @@ function openLibLists(){
 }
 function renderLibLists(){
   const body=document.getElementById('lib-lists-body');if(!body)return;
+  // #659 — force-scrub at render time every time Manage Lists opens
+  if(library.customRelTypes)library.customRelTypes=library.customRelTypes.filter(t=>t&&!_isBuiltinRel(t));
+  if(library.customRelPairs)library.customRelPairs=library.customRelPairs.filter(p=>p&&!_isBuiltinRel(p.typeA)&&!_isBuiltinRel(p.typeB));
   if(!library.customEventTypes)library.customEventTypes=[];
   if(!library.deletedEventTypes)library.deletedEventTypes=[];
   // xlsx #342 (Batch 30) — Per user: merge customs + built-ins into ONE alpha-sorted list
@@ -8301,7 +8274,12 @@ function ecHTML(e,compact,fromTab){
     let _displayType=e.relType||'';
     try{
       if(e.relType&&typeof RELTYPE_TRUNK!=='undefined'&&typeof _labelForGender==='function'){
-        const _aEntry=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===e.relA);
+        // #696-5: look up relA gender in current book AND series sibling books
+        let _aEntry=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===e.relA);
+        if(!_aEntry&&book()?.seriesName){
+          const _sibs=Object.values(library||{}).filter(b=>b&&b.seriesName===book().seriesName&&b.id!==currentId);
+          for(const _sb of _sibs){_aEntry=(_sb.entries||[]).find(x=>CT.includes(x.type)&&(x.cn||x.content)===e.relA);if(_aEntry)break;}
+        }
         const _aGender=_aEntry?.gender||'Unknown';
         const _trunk=RELTYPE_TRUNK[e.relType]||e.relType;
         const _mapped=_labelForGender(_trunk,_aGender);
@@ -8440,7 +8418,7 @@ function ecHTML(e,compact,fromTab){
     }
   }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}</div>${body}${qtrans}${photosStrip}${invB}
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}${e._copiedFromBookTitle?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:9px;font-weight:600;" title="Pulled from series">📚 ${esc(e._copiedFromBookTitle)}</span>`:''}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${e.type==='Group / Organization'&&(e.orgType||e.orgWebsite)?`<div style="font-size:11px;color:var(--t2);margin-top:3px;">${e.orgType?`<span class="pbadge">🏛 ${e.orgType}</span>`:''}${e.orgWebsite?` <a href="${e.orgWebsite}" onclick="event.preventDefault();event.stopPropagation();openLink('${esc(e.orgWebsite)}')" style="color:var(--accent);">🔗 Website</a>`:''}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
@@ -8843,13 +8821,13 @@ function renderCharDetail(name){
     html+=sortByPage(rels).map(r=>{
       const other=r.relA===name?r.relB:r.relA;
       const isA=r.relA===name;
-      // Show from this char's perspective with gender-aware labels (#214).
-      // Step 1: relLabel = what "other" IS to the viewed character.
-      //   isA: viewed=A, other=B → what B is to A = getReciprocal(relType)
-      //   !isA: viewed=B, other=A → what A is to B = relType
       let relLabel=isA?getReciprocal(r.relType):r.relType;
-      // Step 2: gender-map using OTHER character's gender (since relLabel describes OTHER)
-      const otherEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===other);
+      // #696-5: look up gender from current book AND series siblings
+      let otherEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===other);
+      if(!otherEntry&&book()?.seriesName){
+        const _sibs2=Object.values(library||{}).filter(b=>b&&b.seriesName===book().seriesName&&b.id!==currentId);
+        for(const _sb of _sibs2){otherEntry=(_sb.entries||[]).find(x=>CT.includes(x.type)&&(x.cn||x.content)===other);if(otherEntry)break;}
+      }
       const otherGender=otherEntry?.gender||'Unknown';
       const myEntry=all.find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);
       const myGender=myEntry?.gender||'Unknown';
@@ -9088,11 +9066,13 @@ function renderWeb(){
   const svg=document.getElementById('web-svg');const empty=document.getElementById('web-empty');
   svg.innerHTML='';
   document.getElementById('web-no-filter')?.remove();
-  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||'',role:e.charRole||'',profession:e.charProfession||'',nameLines:(e.cn||e.content||'').split(' ').length>1?2:1}));
+  // #744 — allow series web to inject a merged entry set
+  const _ent=window._webEntryOverride||entries();
+  const allChars=_ent.filter(e=>CT.includes(e.type)).map(e=>({name:e.cn||e.content,col:getCC(e.cn||e.content),photo:e.photo||'',status:e.charStatus||'',role:e.charRole||'',profession:e.charProfession||'',nameLines:(e.cn||e.content||'').split(' ').length>1?2:1}));
   if(!allChars.length){svg.style.display='none';empty.style.display='';return;}
   svg.style.display='';empty.style.display='none';
 
-  let allRels=entries().filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
+  let allRels=_ent.filter(e=>e.type==='Relationship'&&e.relA&&e.relB);
   const REL_CATS={
     family:[...PARENT_TYPES,...CHILD_TYPES,'Sibling','Half-sibling','Step-sibling','Cousin','Second cousin','Aunt','Uncle','Nephew','Niece','In-law','Spouse','Guardian','Ward','Uncle or Aunt','Niece or Nephew','Brother','Sister'],
     romantic:['Partner','Spouse','Ex-partner','Love interest','Admirer','Estranged spouse','Betrothed'],
