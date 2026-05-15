@@ -1351,20 +1351,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 const GENRES={
-  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Foreshadowing','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  nonfiction:{tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Evidence','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
-  memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
-  mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
-  scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
-  history:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Date/Period','Evidence','Event','Figure','Group / Organization','Image / Diagram','Location','Place','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
-  selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Exercise','Image / Diagram','Key idea','Location','Objection','Principle','Question','Quote','Reference','Relationship','Timeline','Translation','Word / Vocabulary']},
+  fiction:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Contradiction','Dialogue','Event','Foreshadowing','Group / Organization','Historical Context','Image / Diagram','Location','Lore','Narrative Structure','Outfit','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  nonfiction:{tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Author note','Chapter','Characteristic','Concept','Contradiction','Evidence','Group / Organization','Historical Context','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
+  memoir:   {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Characteristic','Dialogue','Event','Group / Organization','Historical Context','Image / Diagram','Location','Outfit','Person','Question','Quote','Reference','Reflection','Relationship','Setting','Theme','Timeline','Translation','Word / Vocabulary']},
+  mystery:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Clue','Contradiction','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Plot twist','Question','Quote','Red herring','Reference','Relationship','Setting','Suspect','Theme','Timeline','Translation','Word / Vocabulary']},
+  scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Historical Context','Image / Diagram','Location','Lore','Narrative Structure','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
+  history:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Contradiction','Date/Period','Evidence','Event','Figure','Group / Organization','Historical Context','Image / Diagram','Location','Place','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
+  selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Contradiction','Exercise','Image / Diagram','Key idea','Location','Objection','Principle','Question','Quote','Reference','Reflection','Relationship','Timeline','Translation','Word / Vocabulary']},
   poetry:   {tabs:['log','quotes','chaps','words','questions','refs','todo','stats'],types:['Emotion','Image','Image / Diagram','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
-  essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Evidence','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
+  essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Contradiction','Evidence','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
   anthology:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
-  graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Narrative Structure','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
   shortfiction:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Character','Characteristic','Event','Group / Organization','Image / Diagram','Location','Quote','Reference','Relationship','Setting','Symbol','Theme','Translation','Word / Vocabulary']},
-  play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
-  other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Event','Group / Organization','Image / Diagram','Location','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Narrative Structure','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
+  other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Contradiction','Event','Group / Organization','Historical Context','Image / Diagram','Location','Lore','Narrative Structure','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
 };
 const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',other:'Other'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
@@ -1804,61 +1804,66 @@ function getRelPhrase(relType,isA){
 const EVENT_TYPES=['Accident','Arrival','Battle','Betrayal','Birth','Breakup','Coming of age','Confrontation','Crime','Death','Departure','Discovery','Divorce','Estrangement','Escape','Falling out','Fight','Illness','Injury','Life-changing moment','Loss','Marriage','Meeting','Move / Relocation','Other','Pregnancy','Reconciliation','Rescue','Revelation','Reunion','SA','Sexual encounter','Sexual harassment','Threat','Transformation'];
 const GEN_ORDER={'Great-great-grandparent':0,'Great-great-grandmother':0,'Great-great-grandfather':0,'Distant ancestor':0,'Great-grandmother':1,'Great-grandfather':1,'Grandmother':2,'Grandfather':2,'Mother':3,'Father':3,'Adoptive parent':3,'Step-parent':3,'Guardian':3,'Aunt':3,'Uncle':3,'Sibling':4,'Half-sibling':4,'Step-sibling':4,'Cousin':4,'Second cousin':4,'Partner':4,'Spouse':4,'Ex-partner':4,'Love interest':4,'Estranged spouse':4,'Betrothed':4,'Friend':4,'Close friend':4,'Best friend':4,'Rival':4,'Enemy':4,'Ally':4,'Mentor':4,'Confidant':4,'Employer':4,'Teacher':4,'Master':4,'Commander':4,'Colleague':4,'Acquaintance':4,'Neighbour':4,'Admirer':4,'Stranger':4,'Protégé':5,'Business partner':4,'Employee':5,'Student':5,'Servant':5,'Subordinate':5,'Child':5,'Ward':5,'Adopted child':6,'Grandchild':6,'Great-grandchild':7,'Great-great-grandchild':8,'Distant descendant':9,'In-law':4,'Unknown':4,'Complicated':4,'Distant relative (unknown degree)':4,'Nephew':5,'Niece':5};
 const TYPE_HINTS={
-  'Quote':{icon:'💬',desc:'A direct passage from the text — something a character said OR something the narrator/author wrote.',tips:['Select the speaker (or "Narrator/Author" for authorial voice).','Add an emotion/tone to track how it feels.','Tag the page and chapter so you can find it again.','Ask: what does this reveal — character, theme, or plot?']},
-  'Character':{icon:'👤',desc:'A person (or being) in the story.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Minor/Unnamed = a professor, a stranger, a one-time character. Still log them if they said something worth keeping.','Set introduced Ch. and p. so they appear on the timeline correctly.']},
-  'Characteristic':{icon:'🔍',desc:'A personality OR physical trait.',tips:['Specify Personality vs Physical — they display separately on the profile.','Attach a supporting quote (the proof of the trait) with its page number.','The main Ch./p. fields = where in the book you noticed this trait.','Ask: is this shown through action, dialogue, or description?']},
-  'Relationship':{icon:'🔗',desc:'A connection between two characters.',tips:['Character A = the one being described. Character B = the other person.','The reciprocal relationship auto-shows on Character B\'s profile.','Use "Stranger" for unnamed one-time connections.','Add a description to capture the dynamic, not just the type.']},
-  'Setting':{icon:'🌍',desc:'The literary/narrative context — time period, atmosphere, social world.',tips:['Setting ≠ Location. Setting = "Victorian London, fog-laden and class-obsessed." Location = "the Bennet drawing room, Ch.3."','Ask: how does this setting shape the characters?','How does it create mood or tension?','Does it change over the course of the story?']},
-  'Theme':{icon:'💡',desc:'A central idea the author explores throughout the work.',tips:['How is it developed across different chapters?','Which characters embody or resist this theme?','What events reinforce it?','Does the author resolve it or leave it open-ended?']},
-  'Symbol':{icon:'🔮',desc:'An object, place, or event carrying deeper meaning.',tips:['What does it mean on the literal level vs the symbolic level?','How does its meaning evolve or deepen?','Is it tied to a specific character\'s arc?']},
-  'Event':{icon:'⭐',desc:'A significant story moment — big or small.',tips:['Choose the significance level: Minor → Significant → Major → Life-changing.','Tag all characters affected — the event appears on each of their profiles.','Check "Also add to Timeline" to place it in the chronological view.','Use the "When" field for narrative time — feeds the Timeline.']},
-  'Timeline':{icon:'📅',desc:'A chronological marker or story-time beat.',tips:['Examples: "Year 1815 — war begins." · "Six months after the wedding." · "Chapters 3–4 occur the same week."','Use the ± offset to calculate time relative to a prior event.','This is NOT the same as an Event — Events have emotion; Timeline marks time.','For books with chapter POV/year headers, log each here.']},
-  'Chapter':{icon:'📖',desc:'A chapter note or summary.',tips:['Include the page range — this auto-updates the chapter setup.','Note what changed narratively.','Which characters appeared? (Tag with "involved.")','What question does this chapter leave open?']},
-  'Question':{icon:'❓',desc:'Something you\'re uncertain about — unanswered mysteries, confusions, predictions.',tips:['Mark it answered when you find out — it moves to the Answered section.','Tag involved characters.','Ask: is this plot-related, character-related, or thematic?']},
-  'Word / Vocabulary':{icon:'📖',desc:'An unfamiliar or interesting word.',tips:['Tap 🔍 Look up in Merriam-Webster to search instantly.','Add the context from the book — how it was used.','Add a translation if it\'s a foreign word.','Mark as defined when complete in the Vocabulary tab.']},
-  'Reference':{icon:'🔖',desc:'Something to read, watch, or research — inspired by or mentioned in this book.',tips:['Books → consider adding to StoryGraph.','Add a link for quick access later.','Check it off when done — it moves to the completed section.','Appears in the To-Do tab if unfinished.']},
-  'Foreshadowing':{icon:'🔮',desc:'A hint, clue, or passage that hints at future events. Capture it while you spot it — you can revisit and annotate what it foreshadowed once you know.',tips:['Paste the quote or describe the moment in the content field.','Use "Note" to describe what it foreshadows (even speculatively — you can edit later).','Tag involved characters who are affected.','Link to the Timeline Event it foreshadows using "Attached to Event/Timeline" on the Quote.','Great to compare foreshadowing across a series once you finish.']},
-  'Image / Diagram':{icon:'🖼',desc:'A photo, illustration, chart, or diagram from the book — or an image reference you found elsewhere.',tips:['Use "Upload photo" to attach the image directly.','Add a note explaining what it shows and why it matters.','Tag relevant characters or concepts in Characters Involved.','Great for diagrams, family trees, maps, evolution charts, etc.']},
-  'Outfit':{icon:'👗',desc:'A specific outfit or look worn by a character in a scene. Captures wardrobe, costume, and visual presentation.',tips:['Tag the character(s) wearing it in Characters Involved.','Note the chapter and page where it appears.','Upload a reference photo if you have one.','Consider what the outfit says about the character or scene — power, vulnerability, disguise, mood?','Outfits also appear under each character\'s Physical & Outfits section on their profile.']},
-  'Location':{icon:'📍',desc:'A specific place in the story where a scene occurs.',tips:['Real places get pinned on the map view.','Fictional places can have notes on their lore or significance.','Log the era/time period — helps with historical context.','Different from Setting — this is a specific scene-place, not the atmospheric context.']},
-  'Dialogue':{icon:'💬',desc:'A multi-line conversation between characters.',tips:['Add each line with the speaker tagged.','Useful for capturing complex exchanges that one Quote entry can\'t hold.','Tag all characters in the "Characters involved" field.']},
-  'Clue':{icon:'🔎',desc:'A piece of evidence or hint in a mystery.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','What does it point toward?']},
-  'Characteristic (physical)':{icon:'👁',desc:'A physical description or appearance note.',tips:['Separate from personality — helps keep character profiles clean.','Useful for tracking changes (injury, aging, disguise).']},
-  'Translation':{icon:'🌐',desc:'A translation of a passage or term into another language.',tips:['Add the original text and the translation.','Useful for bilingual editions or books in translation.','Tag the language pair.']},
-  'Key idea':{icon:'💡',desc:'A core takeaway or principle.',tips:['How might you apply it?','Does it challenge your existing thinking?']},
-  // ── Sci-Fi / Fantasy ──────────────────────────────────────────────────────
-  'Faction':{icon:'⚔️',desc:'A group, organization, or political body in a sci-fi or fantasy world — alliance, empire, guild, house, etc.',tips:['What does this faction want? What are they against?','Who are their key members? (Tag with Characters Involved.)','What gives them power — military, magic, money, ideology?','How does this faction shift your protagonist\'s options or loyalties?']},
-  'Group / Organization':{icon:'🏛',desc:'A real-world or fictional group, institution, company, club, or movement that characters belong to or interact with.',tips:['Tag characters who are members using Characters Involved.','Add a website or external link for real organizations.','Note the group\'s purpose, ideology, or role in the story.','How does membership in this group shape a character\'s identity or choices?']},
-  'World element':{icon:'🪐',desc:'A piece of the world\'s rules, lore, or infrastructure — magic systems, technology, laws of physics, religion, currency, history.',tips:['Is this something you need to understand to follow the plot?','How does it constrain or enable what characters can do?','Log "how it works" in the content, and your questions in the Notes field.','Cross-reference with characters or factions it affects.']},
-  // ── Nonfiction (shared) ───────────────────────────────────────────────────
-  'Argument':{icon:'⚖️',desc:'A claim the author is making — a position they\'re defending or a point they\'re building toward.',tips:['State the argument in one sentence: "The author claims that..."','What evidence or reasoning supports it?','Do you agree? Push back in the notes.','Is this the thesis, a sub-argument, or a counter-argument being introduced?']},
-  'Author note':{icon:'✍️',desc:'Something the author says directly to the reader — a preface note, personal aside, methodological comment, or meta-observation.',tips:['Why did the author include this here?','Does it reveal their bias, intent, or background?','Does it change how you read what comes before or after?']},
-  'Concept':{icon:'🧠',desc:'A key idea, theory, term, or framework the author introduces or relies on.',tips:['Define it in your own words — if you can\'t, you haven\'t understood it yet.','What field does it come from? (Psychology, economics, philosophy?)','How is the author applying it in this specific context?','Does the author agree with the concept or critique it?']},
-  'Evidence':{icon:'📊',desc:'A fact, study, statistic, example, or anecdote the author uses to support a point.',tips:['What argument is this evidence supporting?','Is it primary (direct data) or secondary (citing someone else)?','Do you trust the source? Any reason to be skeptical?','Log page and chapter so you can trace it back.']},
-  'Characteristic':{icon:'🔍',desc:'For nonfiction: a notable trait, behavior, belief, or quality of a real person referenced in the book.',tips:['Is this trait documented or inferred by the author?','What evidence supports it?','How does it shape the person\'s role in the story being told?']},
-  'Person':{icon:'👤',desc:'A real person referenced in this book — expert, historical figure, subject, or author.',tips:['What is their role in the book? (Expert quoted, subject studied, historical figure, etc.)','Add their profession/occupation — it shows on their profile.','Use the Relationship type to connect them to others in the book.','Log any quotes from them in the Quotes tab with their name as speaker.']},
-  'Reflection':{icon:'🪞',desc:'Your own response to what you\'ve read — a thought, emotion, connection to your own life, or a moment of pause.',tips:['This is about YOU, not just the text.','What did this stir up? A memory? A disagreement? A realization?','No need to be analytical — this is your private annotation.','Great for memoir, self-help, and essays where the personal resonance matters.']},
-  // ── History ───────────────────────────────────────────────────────────────
-  'Date/Period':{icon:'📅',desc:'A specific date, year, or historical time period.',tips:['Log the event name AND the date so the timeline is meaningful.','For broad periods ("The Victorian Era"), add a start year and end year in the notes.','Use ± offset for relative dating — "30 years after the French Revolution."','Cross-reference with Evidence entries that document it.']},
-  'Figure':{icon:'🏛',desc:'A historical person of significance — ruler, general, thinker, revolutionary, etc.',tips:['Distinguish from Character (fictional) — Figure is reserved for historical/real people.','What were they known for before the events in this book?','How does the author portray them — sympathetically or critically?','Tag them in relevant Evidence and Date/Period entries.']},
-  'Place':{icon:'📍',desc:'A historically significant location — battlefield, city, territory, institution.',tips:['Different from Location (a scene-specific place) — Place is historically significant.','Note how it changed over the time period covered.','Was it renamed? Destroyed? Still exists?','Pin real places on the map view for geographic context.']},
-  // ── Self-Help ─────────────────────────────────────────────────────────────
-  'Actionable':{icon:'✅',desc:'A specific action, habit, or practice the author recommends you do.',tips:['Make it concrete: what would you actually do, when, and how?','Add it to your To-Do by saving it as a Reference too.','Did you try it? Log the result in the Notes field later.','Rate your confidence in doing it — helps prioritize.']},
-  'Exercise':{icon:'🏋️',desc:'A structured prompt, worksheet, or practice the author gives you to work through.',tips:['Log the exercise instructions in the content.','Work through it in the Notes field.','Tag the chapter so you can find it when you revisit.','Note whether you completed it and what you discovered.']},
-  'Principle':{icon:'📐',desc:'A guiding rule or belief system the author espouses — a "law" for how to live, work, or think.',tips:['State it as the author would: "Principle: ..."','Do you agree with it? Why or why not?','How does it compare to principles from other books you\'ve read?','Does the author give examples of it working in practice?']},
-  'Objection':{icon:'🙋',desc:'A counter-argument the author anticipates and responds to.',tips:['What is the objection being addressed?','How does the author answer it?','Is the answer satisfying? Do you have your own objection?','Useful for steelmanning — understanding the strongest case against the author\'s view.']},
-  // ── Poetry ────────────────────────────────────────────────────────────────
-  'Poem':{icon:'📜',desc:'An entire poem within an anthology or collection.',tips:['Use the content field for the title + first line.','Log your reading of it in Quotes (Line/stanza entries).','Note the form: sonnet, free verse, haiku, ode, etc.','What\'s the emotional register — mournful, celebratory, ironic?']},
-  'Line/stanza':{icon:'✒️',desc:'A specific line or stanza from a poem that struck you.',tips:['Paste the exact lines.','Add the poem title in the Note field.','What makes this language work — sound, image, surprise?','Does it echo anything elsewhere in the collection?']},
-  'Technique':{icon:'🔬',desc:'A poetic or literary device used in the text — metaphor, enjambment, anaphora, assonance, etc.',tips:['Name the technique and find at least one clear example in the text.','Why does it work here? What does it add?','Is this technique repeated throughout the poem or collection?','Tag the poem it appears in.']},
-  'Emotion':{icon:'❤️',desc:'The dominant feeling or emotional register of a poem or passage.',tips:['Be specific: not just "sad" but "grief that hasn\'t found its form yet."','What in the text creates this feeling — image, rhythm, word choice?','Does the emotion shift across the poem? Log that arc.']},
+  // ── Writing & Story ───────────────────────────────────────────────────────
+  'Quote':{icon:'💬',color:'#7F77DD',desc:'A direct passage from the text — something a character said OR something the narrator/author wrote. Use <strong>"</strong> as your margin symbol.',tips:['Select the speaker (or "Narrator/Author" for authorial voice).','Add an emotion/tone to track how it feels.','Tag the page and chapter so you can find it again.','Ask: what does this reveal — character, theme, or plot?','Margin symbol: <strong>"  "</strong>']},
+  'Narrator quote':{icon:'📖',color:'#7F77DD',desc:'A passage written by the narrator or author — not spoken by a character. Authorial voice, observation, or prose worth keeping.',tips:['Use for authorial asides, framing statements, or stylistically notable prose.','Margin symbol: <strong>"  "</strong>']},
+  'Dialogue':{icon:'💬',color:'#7F77DD',desc:'A multi-line conversation between characters. Use <strong>//</strong> as your margin symbol.',tips:['Add each line with the speaker tagged.','Useful for capturing complex exchanges that one Quote entry can\'t hold.','Tag all characters in the "Characters involved" field.','Margin symbol: <strong>//</strong>']},
+  'Timeline':{icon:'📅',color:'#1D9E75',desc:'A chronological marker or story-time beat. Use <strong>TML</strong> as your margin symbol.',tips:['Examples: "Year 1815 — war begins." · "Six months after the wedding."','Use the ± offset to calculate time relative to a prior event.','This is NOT the same as an Event — Events have emotion; Timeline marks time.','Margin symbol: <strong>TML</strong>']},
+  'Chapter':{icon:'📖',color:'#888780',desc:'A chapter note or summary. Use <strong>Ch</strong> as your margin symbol.',tips:['Include the page range — this auto-updates the chapter setup.','Note what changed narratively.','Which characters appeared? (Tag with "involved.")','Margin symbol: <strong>Ch</strong>']},
+  'Plot twist':{icon:'⚡',color:'#E24B4A',desc:'A sudden reversal or revelation. Use <strong>Tw</strong> as your margin symbol.',tips:['What did you think was true before?','What is true now?','Were there planted clues? Go back and find them.','Margin symbol: <strong>Tw</strong>']},
+  'Narrative Structure':{icon:'📐',color:'#888780',desc:'A note about HOW the story is told — POV shifts, structure, framing devices, narrative arc. Use <strong>NS</strong> as your margin symbol.',tips:['Is this first-person, third-person omniscient, unreliable narrator?','Note any structural choices: in medias res, non-linear, frame narrative.','Margin symbol: <strong>NS</strong>']},
+  'Event':{icon:'⭐',color:'#EF9F27',desc:'A significant story moment — big or small. Use <strong>Ev</strong> as your margin symbol.',tips:['Choose the significance level: Minor → Significant → Major → Life-changing.','Tag all characters affected — the event appears on each of their profiles.','Check "Also add to Timeline" to place it in the chronological view.','Margin symbol: <strong>Ev</strong>']},
+  // ── Characters & People ───────────────────────────────────────────────────
+  'Character':{icon:'👤',color:'#378ADD',desc:'A person (or being) in the story. Use <strong>C</strong> as your margin symbol.',tips:['Add a photo to use as their avatar in the web view.','Use Quick Relationships to immediately connect them to others.','Margin symbol: <strong>C</strong>']},
+  'Person':{icon:'👤',color:'#378ADD',desc:'A real person referenced in the text (nonfiction). Use <strong>C</strong> as your margin symbol.',tips:['Note their role: expert, subject, historical figure.','Margin symbol: <strong>C</strong>']},
+  'Figure':{icon:'👤',color:'#378ADD',desc:'A historical figure in the text.',tips:['Note their time period and significance.','How do they relate to the book\'s argument or story?']},
+  'Characteristic':{icon:'🔍',color:'#9B59B6',desc:'A personality or physical trait (+/-). Use <strong>Tr</strong> as your margin symbol.',tips:['Use + for positive traits, − for negative or problematic ones.','Attach a supporting quote as proof of the trait.','Margin symbol: <strong>Tr (+/-)</strong>']},
+  'Relationship':{icon:'🔗',color:'#D4537E',desc:'A connection between two characters. Use <strong>⌀</strong> as your margin symbol.',tips:['Character A = the one being described. Character B = the other person.','The reciprocal relationship auto-shows on Character B\'s profile.','Margin symbol: <strong>⌀</strong>']},
+  'Group / Organization':{icon:'🏛',color:'#639922',desc:'A group, faction, or organization. Use <strong>Gr</strong> as your margin symbol.',tips:['Tag characters who are members using Characters Involved.','Note the group\'s purpose, ideology, or role in the story.','Margin symbol: <strong>Gr</strong>']},
+  'Faction':{icon:'⚔️',color:'#639922',desc:'A group, alliance, or political body in the story. Use <strong>Gr</strong> as your margin symbol.',tips:['What does this faction want? What are they against?','Who are their key members?','Margin symbol: <strong>Gr</strong>']},
+  'Suspect':{icon:'🕵️',color:'#888780',desc:'A character who may be guilty of something — a mystery suspect.',tips:['What motive do they have?','What evidence points to them?']},
+  'Outfit':{icon:'👗',color:'#D4537E',desc:'A specific outfit or look worn by a character in a scene.',tips:['Tag the character(s) wearing it in Characters Involved.','Consider what the outfit says about the character — power, vulnerability, disguise?']},
+  // ── Ideas & Analysis ──────────────────────────────────────────────────────
+  'Theme':{icon:'💡',color:'#EF9F27',desc:'A central idea the author explores throughout the work. Use <strong>T</strong> as your margin symbol.',tips:['How is it developed across different chapters?','Which characters embody or resist this theme?','Margin symbol: <strong>T</strong>']},
+  'Concept':{icon:'🧠',color:'#7F77DD',desc:'A key idea, theory, term, or framework. Use <strong>CnC</strong> as your margin symbol.',tips:['Define it in your own words.','How is the author applying it in this specific context?','Margin symbol: <strong>CnC</strong>']},
+  'Argument':{icon:'⚖️',color:'#E24B4A',desc:'A claim the author is making. Use <strong>Arg</strong> as your margin symbol.',tips:['State the argument in one sentence: "The author claims that..."','What evidence or reasoning supports it?','Margin symbol: <strong>Arg</strong>']},
+  'Evidence':{icon:'📊',color:'#1D9E75',desc:'A fact, study, statistic, or example used to support a point. Use <strong>E</strong> as your margin symbol.',tips:['What argument is this evidence supporting?','Is it primary (direct data) or secondary (citing someone else)?','Margin symbol: <strong>E</strong>']},
+  'Symbol':{icon:'🔮',color:'#9B59B6',desc:'An object, place, or event carrying deeper meaning. Use <strong>Sy</strong> as your margin symbol.',tips:['What does it mean on the literal level vs the symbolic level?','How does its meaning evolve?','Margin symbol: <strong>Sy</strong>']},
+  'Foreshadowing':{icon:'🔮',color:'#9B59B6',desc:'A hint or clue that points toward future events. Use <strong>△</strong> as your margin symbol.',tips:['Paste the quote or describe the moment in the content field.','Use "Note" to describe what it foreshadows (even speculatively).','Margin symbol: <strong>△</strong>']},
+  'Key idea':{icon:'💡',color:'#EF9F27',desc:'A core takeaway or principle.',tips:['How might you apply it?','Does it challenge your existing thinking?']},
+  'Principle':{icon:'📐',color:'#EF9F27',desc:'A guiding rule or belief system the author espouses.',tips:['State it as the author would: "Principle: ..."','Do you agree with it?']},
+  'Actionable':{icon:'✅',color:'#1D9E75',desc:'A specific action, habit, or practice the author recommends.',tips:['Make it concrete: what would you actually do, when, and how?','Add it to your To-Do by saving it as a Reference too.']},
+  'Exercise':{icon:'🏋️',color:'#1D9E75',desc:'A structured prompt or practice the author gives you to work through.',tips:['Log the exercise instructions in the content.','Work through it in the Notes field.']},
+  'Objection':{icon:'🙋',color:'#E24B4A',desc:'A counter-argument the author anticipates and responds to.',tips:['What is the objection being addressed?','How does the author answer it?']},
+  'Author note':{icon:'✍️',color:'#888780',desc:'Something the author says directly to the reader — a preface note, personal aside, or meta-observation.',tips:['Why did the author include this here?','Does it reveal their bias, intent, or background?']},
+  // ── Questions & Conflict ──────────────────────────────────────────────────
+  'Question':{icon:'❓',color:'#E24B4A',desc:'Something you\'re uncertain about — unanswered mysteries, confusions, predictions. Use <strong>?</strong> as your margin symbol.',tips:['Mark it answered when you find out — it moves to the Answered section.','Margin symbol: <strong>?</strong>']},
+  'Contradiction':{icon:'✗',color:'#E24B4A',desc:'Two things in the text that contradict each other — internal inconsistency. Use <strong>×</strong> as your margin symbol.',tips:['Is this intentional (unreliable narrator) or an error?','Margin symbol: <strong>×</strong>']},
+  'Red herring':{icon:'🐟',color:'#E24B4A',desc:'A misleading clue or detail designed to throw you off. Use <strong>RH</strong> as your margin symbol.',tips:['Why did it seem significant at first?','When did you realize it was a misdirect?','Margin symbol: <strong>RH</strong>']},
+  'Clue':{icon:'🔎',color:'#EF9F27',desc:'A piece of evidence or hint in a mystery. Use <strong>Cl</strong> as your margin symbol.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','Margin symbol: <strong>Cl</strong>']},
+  // ── World Building & Setting ───────────────────────────────────────────────
+  'Location':{icon:'📍',color:'#1D9E75',desc:'A specific place in the story where a scene occurs. Use <strong>L</strong> as your margin symbol.',tips:['Real places get pinned on the map view.','Fictional places can have notes on their lore or significance.','Margin symbol: <strong>L</strong>']},
+  'Lore':{icon:'📚',color:'#7F77DD',desc:'Background world knowledge — history, myths, rules, culture, magic systems. Use <strong>S</strong> as your margin symbol.',tips:['Is this something you need to understand to follow the plot?','How does it constrain or enable what characters can do?','Margin symbol: <strong>S</strong>']},
+  'Setting':{icon:'🌍',color:'#639922',desc:'The literary context — time period, atmosphere, social world. Use <strong>+</strong> as your margin symbol.',tips:['Setting ≠ Location. Setting = "Victorian London, fog-laden." Location = "the Bennet drawing room."','How does this setting shape the characters?','Margin symbol: <strong>+</strong>']},
+  'World element':{icon:'🪐',color:'#7F77DD',desc:'A piece of the world\'s rules, lore, or infrastructure — magic systems, technology, religion. Use <strong>W</strong> as your margin symbol.',tips:['Is this something you need to understand to follow the plot?','Log "how it works" in the content, and your questions in the Notes field.','Margin symbol: <strong>W</strong>']},
+  'Historical Context':{icon:'🏛',color:'#888780',desc:'Historical background that helps you understand the text — events, culture, politics of the era. Use <strong>HC</strong> as your margin symbol.',tips:['What does the reader need to know about this period?','How does it shape the characters\' options and beliefs?','Margin symbol: <strong>HC</strong>']},
+  'Place':{icon:'📍',color:'#1D9E75',desc:'A historically significant location — battlefield, city, territory, institution.',tips:['Note how it changed over the time period covered.','Pin real places on the map view for geographic context.']},
+  'Image / Diagram':{icon:'🖼',color:'#888780',desc:'A photo, illustration, chart, or diagram.',tips:['Use "Upload photo" to attach the image directly.','Add a note explaining what it shows and why it matters.']},
+  // ── Reference & Utility ───────────────────────────────────────────────────
+  'Word / Vocabulary':{icon:'○',color:'#378ADD',desc:'An unfamiliar or interesting word. Use <strong>○</strong> as your margin symbol.',tips:['Tap 🔍 Look up in Merriam-Webster to search instantly.','Add the context from the book — how it was used.','Margin symbol: <strong>○</strong>']},
+  'Translation':{icon:'≈',color:'#1D9E75',desc:'A translation of a passage or term into another language. Use <strong>≈</strong> as your margin symbol.',tips:['Add the original text and the translation.','Useful for bilingual editions or books in translation.','Margin symbol: <strong>≈</strong>']},
+  'Reference':{icon:'★',color:'#EF9F27',desc:'Something to read, watch, or research — inspired by or mentioned in this book. Use <strong>★</strong> as your margin symbol.',tips:['Books → consider adding to StoryGraph.','Add a link for quick access later.','Margin symbol: <strong>★</strong> (Favorite Page / must revisit)']},
+  // ── Poetry ─────────────────────────────────────────────────────────────────
+  'Poem':{icon:'📜',color:'#9B59B6',desc:'An entire poem within an anthology or collection.',tips:['Use the content field for the title + first line.','Note the form: sonnet, free verse, haiku, ode, etc.']},
+  'Line/stanza':{icon:'✒️',color:'#9B59B6',desc:'A specific line or stanza from a poem that struck you.',tips:['Paste the exact lines.','What makes this language work — sound, image, surprise?']},
+  'Technique':{icon:'🔬',color:'#888780',desc:'A poetic or literary device — metaphor, enjambment, anaphora, assonance, etc.',tips:['Name the technique and find at least one clear example in the text.','Why does it work here?']},
+  'Emotion':{icon:'❤️',color:'#D4537E',desc:'The dominant feeling or emotional register of a poem or passage.',tips:['Be specific: not just "sad" but "grief that hasn\'t found its form yet."','What in the text creates this feeling?']},
   // ── Play / Drama ──────────────────────────────────────────────────────────
-  'Act/Scene':{icon:'🎭',desc:'A structural unit of the play — act, scene, or beat.',tips:['Note the page range and who appears.','What is the scene\'s function: exposition, confrontation, revelation, resolution?','How does the tone shift from the scene before?','What does each character want in this scene?']},
-  // ── General / Shared ──────────────────────────────────────────────────────
-  'Suspect':{icon:'🕵️',desc:'A character who may be guilty of something — a mystery suspect.',tips:['What motive do they have?','What evidence points to them?','What evidence clears them?','Rate your suspicion level in the Notes field.']},
-  'Red herring':{icon:'🐟',desc:'A misleading clue or detail designed to throw you off track.',tips:['Why did it seem significant at first?','When did you realize it was a misdirect?','Does the author play fair or is this cheap misdirection?']},
-  'Plot twist':{icon:'⚡',desc:'A sudden revelation or reversal that reframes what came before.',tips:['What did you think was true before?','What is true now?','Were there planted clues? Go back and find them.','How does this change your understanding of specific characters or scenes?']},
-  'Clue':{icon:'🔎',desc:'A piece of evidence or hint that may point toward an answer.',tips:['Note whether you think it\'s a red herring.','Which character does it implicate?','What does it point toward?','Rate your confidence in its relevance.']},
+  'Act/Scene':{icon:'🎭',color:'#888780',desc:'A structural unit of the play — act, scene, or beat.',tips:['Note the page range and who appears.','What is the scene\'s function: exposition, confrontation, revelation, resolution?']},
+  // ── Mystery ───────────────────────────────────────────────────────────────
+  'Suspect':{icon:'🕵️',color:'#888780',desc:'A character who may be guilty of something — a mystery suspect.',tips:['What motive do they have?','What evidence points to them?']},
+  // ── Self-Help ─────────────────────────────────────────────────────────────
+  'Reflection':{icon:'🪞',color:'#9B59B6',desc:'A personal reflection prompted by something in the text.',tips:['How does this connect to your own life or thinking?','Has your view changed by the end of the book?']},
 };
 const CP=[
   {bg:'#FAECE7',text:'#712B13',stroke:'#D85A30'},{bg:'#E6F1FB',text:'#0C447C',stroke:'#378ADD'},
@@ -3716,36 +3721,31 @@ function openSeriesWebFull(){
   });
   const merged=[...Object.values(charMap),...Object.values(relMap)];
   if(!merged.length){_showToast('No characters or relationships in this series yet.','#E24B4A');return;}
-  const seriesLabel=_svSeries;
-  window._webEntryOverride=merged;
-  window._webIsSeriesMode=true;
+  const seriesLabel=_svSeries; // capture BEFORE closeSheet clears state
   const firstBook=books[0];
   closeSheet('series-view-overlay');
   setTimeout(()=>{
-    // Open the book — this resets activeTab='log' and calls renderAll (which calls renderWeb)
-    // We temporarily suppress the entry override during openBook's renderAll to avoid
-    // rendering into a hidden/zero-size panel. We'll renderWeb again after switching tabs.
-    const _savedOverride=window._webEntryOverride;
-    window._webEntryOverride=null; // suppress during openBook
+    // Suppress override during openBook so renderAll doesn't render into hidden panel
+    window._webEntryOverride=null;
     openBook(firstBook.id);
-    window._webEntryOverride=_savedOverride; // restore
-    // Now switch to web tab and render
+    // Restore after openBook synchronously completes, then switch to web tab
+    window._webEntryOverride=merged;
+    window._webIsSeriesMode=true;
     setTimeout(()=>{
-      switchTab('web');
-      // Render web with the series override AFTER the tab is visible
+      // forceTab doesn't need a button element (switchTab does)
+      forceTab('web');
       setTimeout(()=>{
-        renderWeb();
-        // Add banner
+        // Add banner after tab is visible and renderWeb has already fired in forceTab
         document.getElementById('_seriesWebBanner')?.remove();
-        const _banner=document.createElement('div');
-        _banner.id='_seriesWebBanner';
-        _banner.style.cssText='background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;display:flex;align-items:center;gap:8px;margin:-8px -10px 10px;';
-        _banner.innerHTML=`<span style="flex:1;">📚 ${esc(seriesLabel)} — Series Web (all books)</span><button onclick="_closeSeriesWeb()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Exit</button>`;
+        const banner=document.createElement('div');
+        banner.id='_seriesWebBanner';
+        banner.style.cssText='background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;display:flex;align-items:center;gap:8px;margin:-8px -10px 10px;';
+        banner.innerHTML=`<span style="flex:1;">📚 ${esc(seriesLabel)} — Series Web (all books)</span><button onclick="_closeSeriesWeb()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">✕ Exit</button>`;
         const webPanel=document.getElementById('web-panel');
-        if(webPanel)webPanel.insertBefore(_banner,webPanel.firstChild);
-      },80);
-    },80);
-  },120);
+        if(webPanel)webPanel.insertBefore(banner,webPanel.firstChild);
+      },30);
+    },60);
+  },80);
 }
 function _closeSeriesWeb(){
   window._webEntryOverride=null;window._webIsSeriesMode=false;
@@ -5100,13 +5100,14 @@ function buildTypeSelect(){
   (library.customEntryTypes||[]).forEach(t=>{if(t&&!types.includes(t))types.push(t);});
   // #544 — Group into categories
   const GROUPS=[
-    {label:'📝 Writing & Story',items:['Quote','Dialogue','Line/stanza','Narrator quote','Poem']},
-    {label:'👤 Characters & People',items:['Character','Person','Figure','Suspect','Characteristic','Outfit','Group / Organization']},
+    {label:'📝 Writing & Story',items:['Quote','Dialogue','Narrator quote','Line/stanza','Poem','Chapter','Timeline','Event','Plot twist','Narrative Structure']},
+    {label:'👤 Characters & People',items:['Character','Person','Figure','Suspect','Characteristic','Outfit','Group / Organization','Faction','Real Historical Figure']},
     {label:'🔗 Relationships',items:['Relationship']},
-    {label:'📅 Time & Events',items:['Timeline','Event','Date/Period','Chapter','Act/Scene']},
-    {label:'🌍 World & Place',items:['Location','Place','Setting','Image / Diagram','Map location']},
-    {label:'💡 Ideas & Analysis',items:['Theme','Symbol','Concept','Argument','Evidence','Key idea','Principle','Actionable','Exercise','Objection','Reflection','Clue','Red herring','Plot twist','Foreshadowing','World element','Faction','Emotion','Technique']},
-    {label:'📖 Reference & Notes',items:['Reference','Question','Word / Vocabulary','Translation','Author note','Key idea']},
+    {label:'📅 Time & Events',items:['Date/Period','Act/Scene']},
+    {label:'🌍 World & Place',items:['Location','Lore','Setting','World element','Historical Context','Place','Image / Diagram','Map location']},
+    {label:'💡 Ideas & Analysis',items:['Theme','Symbol','Concept','Argument','Evidence','Key idea','Foreshadowing','Symbolism','Principle','Actionable','Exercise','Objection','Reflection','Clue','Red herring','Contradiction','Emotion','Technique']},
+    {label:'❓ Questions & Uncertainty',items:['Question','Suspect','Red herring','Clue']},
+    {label:'📖 Reference & Utility',items:['Reference','Word / Vocabulary','Translation','Author note']},
   ];
   const placed=new Set();
   let html='';
@@ -5151,8 +5152,9 @@ function showTypeHint(){
   hintEl.style.display='';
   if(hint){
     const descToShow=customDesc||hint.desc;
+    const colorDot=hint.color?`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${hint.color};margin-right:5px;flex-shrink:0;vertical-align:middle;"></span>`:'';
     hintEl.innerHTML=`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
-      <div style="flex:1;"><strong>${hint.icon} ${type}</strong>${descToShow}<ul>${hint.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>
+      <div style="flex:1;"><strong>${colorDot}${hint.icon} ${type}</strong> — <span>${descToShow}</span><ul style="margin:6px 0 0;padding-left:18px;">${hint.tips.map(t=>`<li style="margin-bottom:2px;">${t}</li>`).join('')}</ul></div>
       <button onclick="document.getElementById('ae-type-hint').style.display='none'" style="background:transparent;border:none;color:var(--accent);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;cursor:pointer;touch-action:manipulation;">×</button>
     </div>`;
   } else {
@@ -12098,7 +12100,51 @@ function renderStats(){
       </div>
     </div>`;
   }).join(''):
-  `<div class="empty"><div class="empty-text">No sessions logged yet</div><div class="empty-sub">Tap ⏱ in the top bar to log a reading session</div></div>`}`;
+  `<div class="empty"><div class="empty-text">No sessions logged yet</div><div class="empty-sub">Tap ⏱ in the top bar to log a reading session</div></div>`}
+  <div style="margin-top:18px;">
+    <div class="slabel" style="margin-bottom:8px;">📖 Your Annotation Key</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:10px;">Reference guide for your margin symbols and entry types.</div>
+    <div style="background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;">Inline margin marks (any color)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11px;">
+        <div><strong style="font-size:13px;">!</strong> Important</div>
+        <div><strong>→</strong> Cause &amp; effect / Forward ref</div>
+        <div><strong>✓</strong> Understood / Confirmed</div>
+        <div><strong>←</strong> Callback to earlier moment</div>
+        <div><strong>×</strong> False / Disagree / Contradiction</div>
+        <div><strong>Cl</strong> Clue</div>
+        <div><strong>NB</strong> Note for later / important</div>
+        <div><strong>//</strong> Dialogue</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">📝 Writing & Story</div>
+        ${[['💬','<strong>"</strong>','Quotes'],['TML','📅','Timeline'],['Ch','📖','Chapters'],['//','💬','Dialogue'],['Tw','⚡','Twists'],['NS','📐','Narrative Structure'],['Ev','⭐','Event']].map(([sym,ico,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">👤 Characters & People</div>
+        ${[['C','Characters'],['Tr','Traits (+/-)'],['⌀','Relationships'],['Gr','Groups/Factions'],['HF','Real Historical Figures']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">💡 Ideas & Analysis</div>
+        ${[['T','Themes'],['CnC','Concepts'],['Arg','Arguments'],['E','Evidence'],['Sy','Symbolism'],['△','Foreshadowing']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">❓ Questions & Conflict</div>
+        ${[['?','Questions'],['×','Contradictions'],['×','Disagreement'],['Sus','Suspicion'],['RH','Red Herrings']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">🌍 World & Setting</div>
+        ${[['L','Locations'],['S','Lore'],['+','Setting'],['W','Sci-Fi/Fantasy'],['HC','Historical Context']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">📖 Reference & Utility</div>
+        ${[['○','Vocabulary'],['≈','Translation'],['★','Favorite Page'],['()','Secondary notes'],['[]','Revisit'],['¶','Imp. page ref']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      </div>
+    </div>
+  </div>
+  `;
 }
 
 // ═══════════════════════════════════════════════════════════════
