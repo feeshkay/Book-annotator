@@ -571,10 +571,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="sheet-title" id="ae-sheet-title" style="margin-bottom:8px;padding-right:48px;padding-left:32px;">Add annotation</div>
       <div class="fg" style="margin-bottom:8px;"><label>What is this?</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <select id="ae-type" onchange="onTypeChangeGuarded(this)" style="flex:1;"></select>
+          <!-- #759 — searchable type picker replaces plain <select> -->
+          <div style="position:relative;flex:1;" id="ae-type-combo-wrap">
+            <input type="text" id="ae-type-search" autocomplete="off" placeholder="Search type…"
+              style="width:100%;font-size:14px;padding:8px 30px 8px 10px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);color:var(--text);"
+              oninput="_aetypeFilter()" onfocus="_aetypeOpen()" readonly/>
+            <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:12px;pointer-events:none;">▾</span>
+            <div id="ae-type-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--am);border-radius:var(--r);z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.2);margin-top:2px;"></div>
+          </div>
+          <!-- Hidden select drives all existing logic -->
+          <select id="ae-type" onchange="onTypeChangeGuarded(this)" style="display:none;"></select>
           <button type="button" onclick="showTypeHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Show entry description">?</button>
           <button type="button" onclick="openTemplateMenu()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="Templates — save / load reusable entry presets">📋</button>
-          <!-- #394 follow-up — re-summon the templates hint on demand. -->
           <button type="button" onclick="reshowTemplateHint()" style="background:var(--bg3);border:0.5px solid var(--cb);border-radius:var(--r);padding:6px 9px;font-size:13px;color:var(--accent);flex-shrink:0;touch-action:manipulation;" title="What is the 📋 templates button for?">?</button>
         </div>
       </div>
@@ -1329,7 +1337,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
     </div>
     <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
-      <button class="btn" onclick="openSymbolCheatSheet()">📝 Reading symbols guide</button>
+      <button class="btn" onclick="openSymbolCheatSheet()">📖 Annotation key</button>
       <button class="btn" onclick="copySessionOpener()">📋 Copy session opener</button>
       <button class="btn" onclick="freeStorage()" style="color:var(--red);border-color:var(--red);">🧹 Free up storage</button>
     </div>
@@ -3439,6 +3447,11 @@ function convertRefToBook(bookId,refId){
   _showToast(`✅ "${ref.content}" added to Want to Read`);
 }
 function openBook(id){
+  // #762 — clear series web override when navigating to a new book
+  if(window._webEntryOverride&&window._webIsSeriesMode){
+    window._webEntryOverride=null;window._webIsSeriesMode=false;
+    document.getElementById('_seriesWebBanner')?.remove();
+  }
   currentId=id;activeFilter='all';activeTab='log';activeRefFilter='all';activeWebFilter='all';initCC();
   if(_osmMap){_osmMap.remove();_osmMap=null;}_osmActive=false;const _ow=document.getElementById('osm-map-wrap');if(_ow)_ow.style.display='none';const _ob=document.getElementById('osm-toggle-btn');if(_ob)_ob.textContent='🗺️ Map';
   // xlsx #431 follow-up (Batch 36) — global maintenance pass on book open. Scrubs
@@ -3616,11 +3629,15 @@ function renderSeriesView(){
       </div>`;
     }).join('');
   } else if(_svTab==='events'){
-    // Aggregate Event, Timeline, Date/Period entries across books, sorted by evdate
-    const evs=[];
+    // #763 — Aggregate events, deduplicated by content+date key (first appearance wins)
+    const seen=new Set();const evs=[];
     books.forEach(b=>{
       (b.entries||[]).forEach(e=>{
         if(['Event','Timeline','Date/Period'].includes(e.type)&&!e.isDraft){
+          // Dedupe key: normalize content + date so pulled duplicates don't show twice
+          const key=((e.content||'').toLowerCase().trim()+'|'+(e.evdate||'')).replace(/\s+/g,' ');
+          if(seen.has(key))return;
+          seen.add(key);
           evs.push({bookId:b.id,bookLabel:bookLabel(b),seriesNum:+b.seriesNum||0,entry:e});
         }
       });
@@ -3912,16 +3929,12 @@ function _pullFullCast(bookId){
     if(!already){book().entries.unshift({...loc,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedLocs++;}
   });
 
-  // 3. Events + Timeline
-  srcEntries.filter(e=>['Event','Timeline','Date/Period'].includes(e.type)).forEach(ev=>{
-    const key=(ev.content||'').toLowerCase();if(!key)return;
-    const already=cur().some(x=>['Event','Timeline','Date/Period'].includes(x.type)&&(x.content||'').toLowerCase()===key);
-    if(!already){book().entries.unshift({...ev,id:now+idx++,_copiedFromBook:src.id,_copiedFromBookTitle:src.title});addedEvents++;}
-  });
+  // 3. Events + Timeline — #763: NOT pulled automatically (causes timeline duplication).
+  // Users link events across books via the cross-book event attachment on the entry form.
 
   save();
   try{document.getElementById('_castPickerOverlay')?.remove();}catch(e){}
-  _showToast(`✅ From ${src.title}: ${addedChars} chars · ${addedTraits} traits · ${addedRels} rels · ${addedLocs} locations · ${addedEvents} events`);
+  _showToast(`✅ From ${src.title}: ${addedChars} chars · ${addedTraits} traits · ${addedRels} rels · ${addedLocs} locations`);
   if(typeof renderAll==='function')renderAll();
 }
 function _showSeriesCastPicker(){
@@ -5121,7 +5134,62 @@ function buildTypeSelect(){
   if(custom.length)html+=`<optgroup label="✨ Other">${custom.map(t=>`<option>${t}</option>`).join('')}</optgroup>`;
   document.getElementById('ae-type').innerHTML=html;
   buildCharRoleSelect();
+  // #759 — sync search combo display to match the select's current value
+  _aetypeSyncDisplay();
 }
+// #759 — searchable type combo JS
+function _aetypeOpen(){
+  const inp=document.getElementById('ae-type-search');if(!inp)return;
+  inp.readOnly=false;inp.value='';_aetypeFilter();
+}
+function _aetypeFilter(){
+  const list=document.getElementById('ae-type-list');const sel=document.getElementById('ae-type');
+  if(!list||!sel)return;
+  const q=(document.getElementById('ae-type-search')?.value||'').toLowerCase().trim();
+  // Collect all options with their groups
+  const rows=[];
+  Array.from(sel.querySelectorAll('optgroup')).forEach(og=>{
+    Array.from(og.querySelectorAll('option')).forEach(o=>{
+      if(!q||o.value.toLowerCase().includes(q))rows.push({group:og.label,value:o.value||o.textContent,text:o.textContent});
+    });
+  });
+  Array.from(sel.querySelectorAll(':scope > option')).forEach(o=>{
+    if(!q||o.value.toLowerCase().includes(q))rows.push({group:'',value:o.value||o.textContent,text:o.textContent});
+  });
+  if(!rows.length){list.innerHTML=`<div style="padding:10px 12px;font-size:12px;color:var(--t3);">No matches</div>`;list.style.display='';return;}
+  let html='';let lastGroup='';
+  rows.forEach(r=>{
+    if(r.group&&r.group!==lastGroup){html+=`<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--t3);background:var(--bg2);">${r.group}</div>`;lastGroup=r.group;}
+    const cur=sel.value===r.value;
+    html+=`<div onclick="_aetypePick('${r.value.replace(/'/g,"\\'")}')" style="padding:8px 12px;font-size:13px;cursor:pointer;${cur?'background:var(--al);color:var(--accent);font-weight:600;':''}background-color:${cur?'var(--al)':'transparent'};">${r.text}</div>`;
+  });
+  list.innerHTML=html;list.style.display='';
+}
+function _aetypePick(val){
+  const sel=document.getElementById('ae-type');const inp=document.getElementById('ae-type-search');const list=document.getElementById('ae-type-list');
+  if(!sel)return;
+  sel.value=val;
+  if(inp){inp.value=val;inp.readOnly=true;}
+  if(list)list.style.display='none';
+  // Trigger the same handler as the select's onchange
+  onTypeChangeGuarded(sel);
+}
+function _aetypeSyncDisplay(){
+  const sel=document.getElementById('ae-type');const inp=document.getElementById('ae-type-search');
+  if(!sel||!inp)return;
+  const selected=sel.options[sel.selectedIndex];
+  inp.value=selected?selected.text:'';inp.readOnly=true;
+}
+// Close combo on outside tap
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('ae-type-combo-wrap');
+  const list=document.getElementById('ae-type-list');
+  if(!list||list.style.display==='none')return;
+  if(wrap&&wrap.contains(e.target))return;
+  list.style.display='none';
+  const sel=document.getElementById('ae-type');const inp=document.getElementById('ae-type-search');
+  if(sel&&inp){const selected=sel.options[sel.selectedIndex];inp.value=selected?selected.text:'';inp.readOnly=true;}
+},true);
 function showTraitTypeHint(){
   alert(`Trait types — what each one means:
 
@@ -5507,7 +5575,7 @@ function openAddTypeForChar(type){
   buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
   const titles={'Characteristic':'Add trait for ','Quote':'Add quote for ','Relationship':'Add relationship for ','Event':'Add event for ','Theme':'Add theme for ','Question':'Add question for '};
   document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add for ')+name;
-  document.getElementById('ae-type').value=type;onTypeChange();
+  document.getElementById('ae-type').value=type;onTypeChange();if(typeof _aetypeSyncDisplay==='function')_aetypeSyncDisplay();
   setTimeout(()=>{
     _cddEnsureRegistered();
     if(type==='Relationship'){cddSet('ae-rela',name);}
@@ -5522,7 +5590,7 @@ function openAddTypeForLoc(type){
   buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
   const titles={'Characteristic':'Add trait at ','Quote':'Add quote at ','Event':'Add event at ','Theme':'Add theme at ','Question':'Add question at ','Character':'Add character at '};
   document.getElementById('ae-sheet-title').textContent=(titles[type]||'Add at ')+name;
-  document.getElementById('ae-type').value=type;onTypeChange();
+  document.getElementById('ae-type').value=type;onTypeChange();if(typeof _aetypeSyncDisplay==='function')_aetypeSyncDisplay();
   // #241 loc — pre-fill location searchable dropdown
   setTimeout(()=>{ prefillLocDropdown(name); },150);
   openSheet('ae-overlay');maybeShowTemplateHint();
@@ -9334,15 +9402,26 @@ function renderWeb(){
     path.setAttribute('data-edge-b',B.name);
     svg.appendChild(path);
 
-    // #216 — Show both perspectives: "A's-label | B's-label"
+    // Show both perspectives: "A's-label | B's-label" with gender-aware lookup
     if(r.relType){
-      // Position label at the curve midpoint (same as Bezier midpoint).
       const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
-      // Strip any leading emoji/whitespace from relType (some older entries stored emoji prefix)
       const cleanType=((r.relType||'').replace(/^[^\w]+/,'').trim())||r.relType;
-      const recip=getReciprocal(cleanType);
-      const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
-      const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
+      // Gender-aware bilateral: look up char genders from the merged entry set
+      const _ent2=window._webEntryOverride||entries();
+      function _charGenderForWeb(nm){
+        const ce=_ent2.find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==nm);
+        return _normaliseGender(ce?.gender||'Unknown');
+      }
+      function _genderLabel(baseType,targetCharName){
+        const g=_charGenderForWeb(targetCharName);
+        const trunk=RELTYPE_TRUNK?.[baseType]||baseType;
+        return(GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][trunk])||baseType;
+      }
+      const labelA=_genderLabel(cleanType,A.name); // what A is (relType from A's perspective)
+      const recip=RECIPROCAL[cleanType]||cleanType;
+      const labelB=_genderLabel(recip,B.name);     // what B is (reciprocal from B's perspective)
+      const fullLabel=(labelB&&labelB!==labelA)?`${labelA} | ${labelB}`:labelA;
+      const label=fullLabel.length>24?fullLabel.slice(0,23)+'…':fullLabel;
       const tw=label.length*5+14;
       const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
       bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);
@@ -9540,9 +9619,12 @@ function setupWebDrag(){
       if(r.relType){
         const mx=(x1+2*cx+x2)/4, my=(y1+2*cy+y2)/4;
         const cleanType=((r.relType||'').replace(/^[^\w]+/,'').trim())||r.relType;
-        const recip=RECIPROCAL[cleanType];
-        const fullLabel=(recip&&recip!==cleanType)?`${cleanType} | ${recip}`:cleanType;
-        const label=fullLabel.length>22?fullLabel.slice(0,21)+'…':fullLabel;
+        const _ent3=window._webEntryOverride||entries();
+        function _cGW(nm){const ce=_ent3.find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==nm);return _normaliseGender(ce?.gender||'Unknown');}
+        function _gLW(base,nm){const g=_cGW(nm);const tr=RELTYPE_TRUNK?.[base]||base;return(GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][tr])||base;}
+        const lA=_gLW(cleanType,A.name);const lB=_gLW(RECIPROCAL[cleanType]||cleanType,B.name);
+        const fullLabel=(lB&&lB!==lA)?`${lA} | ${lB}`:lA;
+        const label=fullLabel.length>24?fullLabel.slice(0,23)+'…':fullLabel;
         const tw=label.length*5+14;
         const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
         bg.setAttribute('x',mx-tw/2);bg.setAttribute('y',my-7);bg.setAttribute('width',tw);bg.setAttribute('height',14);
@@ -9552,7 +9634,6 @@ function setupWebDrag(){
         lt.setAttribute('dominant-baseline','middle');lt.setAttribute('font-size','7');
         lt.setAttribute('fill',A.col.text);lt.setAttribute('font-weight','600');
         lt.setAttribute('font-family','-apple-system,sans-serif');lt.textContent=label;
-        // Insert rect and text above lines but below nodes — find first .web-node and insertBefore
         const firstNode=svg.querySelector('.web-node');
         if(firstNode){svg.insertBefore(bg,firstNode);svg.insertBefore(lt,firstNode);}
         else{svg.appendChild(bg);svg.appendChild(lt);}
@@ -11494,7 +11575,7 @@ function _chapEditInfo(num){
 function _chapAddEntry(type,chapNum){
   buildTypeSelect();clearAEForm();
   document.getElementById('ae-edit-id').value='';
-  document.getElementById('ae-type').value=type;onTypeChange();
+  document.getElementById('ae-type').value=type;onTypeChange();if(typeof _aetypeSyncDisplay==='function')_aetypeSyncDisplay();
   const chEl=document.getElementById('ae-ch');if(chEl)chEl.value=String(chapNum);
   document.getElementById('ae-sheet-title').textContent='Add '+type+' (Ch.'+chapNum+')';
   openSheet('ae-overlay');
@@ -12118,29 +12199,41 @@ function renderStats(){
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">📝 Writing & Story</div>
-        ${[['💬','<strong>"</strong>','Quotes'],['TML','📅','Timeline'],['Ch','📖','Chapters'],['//','💬','Dialogue'],['Tw','⚡','Twists'],['NS','📐','Narrative Structure'],['Ev','⭐','Event']].map(([sym,ico,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #EF9F2760;">
+        <div style="background:#EF9F27;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">📝 Writing & Story</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['"  "','Quotes'],['TML','Timeline'],['Ch','Chapters'],['Tw','Twists'],['NS','Narrative Structure'],['Ev','Event']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;color:#EF9F27;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">👤 Characters & People</div>
-        ${[['C','Characters'],['Tr','Traits (+/-)'],['⌀','Relationships'],['Gr','Groups/Factions'],['HF','Real Historical Figures']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #378ADD60;">
+        <div style="background:#378ADD;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">👤 Characters & People</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['C','Characters'],['Tr','Traits (+/-)'],['∞','Relationships'],['Gr','Groups/Factions'],['HF','Historical Figures']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:20px;font-weight:700;color:#378ADD;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">💡 Ideas & Analysis</div>
-        ${[['T','Themes'],['CnC','Concepts'],['Arg','Arguments'],['E','Evidence'],['Sy','Symbolism'],['△','Foreshadowing']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #1D9E7560;">
+        <div style="background:#1D9E75;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">💡 Ideas & Analysis</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['T','Themes'],['CnC','Concepts'],['Arg','Arguments'],['E','Evidence'],['Sy','Symbolism'],['△','Foreshadowing']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;color:#1D9E75;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">❓ Questions & Conflict</div>
-        ${[['?','Questions'],['×','Contradictions'],['×','Disagreement'],['Sus','Suspicion'],['RH','Red Herrings']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #E24B4A60;">
+        <div style="background:#E24B4A;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">❓ Questions & Conflict</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['?','Questions'],['×','Contradictions'],['×','Disagreement'],['Sus','Suspicion'],['RH','Red Herrings']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;color:#E24B4A;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">🌍 World & Setting</div>
-        ${[['L','Locations'],['S','Lore'],['+','Setting'],['W','Sci-Fi/Fantasy'],['HC','Historical Context']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #9B59B660;">
+        <div style="background:#9B59B6;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">🌍 World & Setting</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['L','Locations'],['S','Lore'],['+','Setting'],['W','Sci-Fi/Fantasy'],['HC','Historical Context']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;color:#9B59B6;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;">
-        <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">📖 Reference & Utility</div>
-        ${[['○','Vocabulary'],['≈','Translation'],['★','Favorite Page'],['()','Secondary notes'],['[]','Revisit'],['¶','Imp. page ref']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+      <div style="border-radius:var(--r);overflow:hidden;border:0.5px solid #88878060;">
+        <div style="background:#888780;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;">📖 Reference & Utility</div>
+        <div style="padding:6px 8px;background:var(--bg2);">
+          ${[['○','Vocabulary'],['≈','Translation'],['★','Fav. Page / Ref'],['()','Secondary notes'],['[]','Revisit'],['¶','Imp. page ref']].map(([sym,lbl])=>`<div style="font-size:10px;display:flex;gap:4px;align-items:center;margin-bottom:2px;"><span style="min-width:22px;font-weight:700;color:#888780;">${sym}</span> <span style="color:var(--t2);">${lbl}</span></div>`).join('')}
+        </div>
       </div>
     </div>
   </div>
@@ -12572,78 +12665,89 @@ async function syncPull(){
   }catch(e){setSyncStatus('✗ '+e.message,'#E24B4A');}
 }
 
-// #254 — comprehensive reading symbols guide
+// #757 — annotation key replaces the old reading symbols guide
 function openSymbolCheatSheet(){
-  const sections=[
-    {head:'Universal',items:[
-      ['★','Star / asterisk','Quote — memorable passage worth saving'],
-      ['?','Question mark','Question — something to look up or answer'],
-      ['!','Exclamation','Key idea, surprise, significant moment'],
-      ['\u2713','Checkmark','Understood / confirmed'],
-      ['\u2715','X mark','Disagree, false, or question validity'],
-      ['NB','Nota bene','Important — note this for later'],
-      ['\u25b3','Triangle','Foreshadowing or future callback'],
-      ['~','Tilde','Approximate date or uncertain detail'],
+  const cats=[
+    {head:'📝 Writing & Story',bg:'#EF9F27',items:[
+      ['"  "','Quotes','Direct passage from the text'],
+      ['TML','Timeline','Chronological story beat'],
+      ['Ch','Chapters','Chapter note or summary'],
+      ['Tw','Twists','Sudden reversal or revelation'],
+      ['NS','Narrative Structure','How the story is told — POV, framing, arc'],
+      ['Ev','Event','Significant story moment'],
     ]},
-    {head:'Entry types — Fiction',items:[
-      ['\u25cb','Circle a word','Word / Vocabulary — define later'],
-      ['C','Character initial','Character — new person or trait observed'],
-      ['R','Relationship','Relationship between characters'],
-      ['T','Theme marker','Theme — recurring idea or motif'],
-      ['S','Setting / Symbol','Setting description or symbolic object'],
-      ['P','Plot','Event or Timeline entry'],
-      ['//','Double slash','Dialogue worth logging'],
-      ['Ch','Characteristic','Trait — personality or physical detail'],
-      ['\u2192','Arrow','Cause and effect, or forward reference'],
-      ['\u2190','Back arrow','Callback to earlier moment'],
+    {head:'👤 Characters & People',bg:'#378ADD',items:[
+      ['C','Characters','A person or being in the story'],
+      ['Tr (+/-)','Traits','Personality or physical trait — + positive, − negative'],
+      ['∞','Relationships','Connection between two characters'],
+      ['Gr','Groups / Factions','Groups, organizations, alliances'],
+      ['HF','Real Historical Figures','Real people referenced in the text'],
     ]},
-    {head:'Entry types — Nonfiction / History',items:[
-      ['A','Argument','Argument or thesis being made'],
-      ['E','Evidence','Supporting evidence or data point'],
-      ['Cn','Concept','Key concept or term introduced'],
-      ['F','Figure / Person','Real person referenced or quoted'],
-      ['[  ]','Bracket','Reference — something to research further'],
-      ['Ev','Evidence challenge','Contradiction or counterevidence'],
+    {head:'💡 Ideas & Analysis',bg:'#1D9E75',items:[
+      ['T','Themes','Central idea explored throughout'],
+      ['CnC','Concepts','Key term or theoretical framework'],
+      ['Arg','Arguments','Claim the author makes'],
+      ['E','Evidence','Facts, data, or examples supporting a point'],
+      ['Sy','Symbolism','Object or event carrying deeper meaning'],
+      ['△','Foreshadowing','Hint pointing toward future events'],
     ]},
-    {head:'Entry types — Mystery',items:[
-      ['Cl','Clue','Clue — potential plot-relevant detail'],
-      ['RH','Red herring','Red herring — misleading detail'],
-      ['Tw','Twist','Plot twist'],
-      ['Su','Suspect','New suspect introduced'],
+    {head:'❓ Questions, Conflict, Uncertainty',bg:'#E24B4A',items:[
+      ['?','Questions','Something to look up or resolve'],
+      ['×','Contradictions','Two things that conflict'],
+      ['×','Disagreement','Something you disagree with'],
+      ['Sus','Suspicion','Something suspicious or misleading'],
+      ['RH','Red Herrings','Misleading clue or detail'],
     ]},
-    {head:'Entry types — Poetry / Drama',items:[
-      ['Im','Image','Image — strong visual or metaphor'],
-      ['Tc','Technique','Literary technique (alliteration, metaphor…)'],
-      ['Em','Emotion','Emotional tone or feeling evoked'],
-      ['Sc','Scene','Act / Scene boundary'],
+    {head:'🌍 World Building & Setting',bg:'#9B59B6',items:[
+      ['L','Locations','Specific place a scene occurs'],
+      ['S','Lore','Background world knowledge — history, myths, rules'],
+      ['+','Setting','Time period, atmosphere, social world'],
+      ['W','Sci-Fi / Fantasy elements','World-building rules, magic, technology'],
+      ['HC','Historical Context','Historical background for the text'],
     ]},
-    {head:'Entry types — Sci-Fi / Fantasy',items:[
-      ['W','World element','World-building element or lore detail'],
-      ['Fc','Faction','Faction or group introduced'],
-    ]},
-    {head:'Practical tips',items:[
-      ['\ud83d\udccc','Sticky flag','Mark page for later entry — number flags by type'],
-      ['p.N','Page note','Write the page number next to every symbol'],
-      ['Initials','Character shorthand','Use character initials instead of full name'],
-      ['( )','Parentheses','Secondary note or uncertain reading'],
+    {head:'📖 Reference & Utility',bg:'#888780',items:[
+      ['○','Vocabulary','Unfamiliar word to define'],
+      ['≈','Translation','Foreign word or translated passage'],
+      ['★','Favorite Page / Reference','Something to return to or research'],
+      ['()','Secondary notes','Uncertain or supplementary observation'],
+      ['[]','Revisit','Flag for later review'],
+      ['¶','Important page reference','Key page to cite later'],
     ]},
   ];
-  const html=sections.map(s=>`
-    <div style="margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">${s.head}</div>
-      <div style="display:grid;gap:5px;">
-        ${s.items.map(([sym,name,type])=>`<div style="display:grid;grid-template-columns:38px 1fr;gap:6px;align-items:start;padding:4px 8px;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);">
-          <span style="font-size:15px;text-align:center;font-weight:700;color:var(--accent);">${sym}</span>
-          <div><div style="font-size:12px;font-weight:600;">${name}</div><div style="font-size:10px;color:var(--t3);">${type}</div></div>
-        </div>`).join('')}
-      </div>
-    </div>`).join('');
+  const inline=[
+    ['!','Important — key idea or surprise'],
+    ['→','Cause & effect / forward reference'],
+    ['✓','Understood / confirmed'],
+    ['←','Callback to earlier moment'],
+    ['×','False / disagree'],
+    ['Cl','Clue'],
+    ['NB','Note for later / important'],
+  ];
   const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto;padding:16px;display:flex;align-items:flex-start;justify-content:center;';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;overflow-y:auto;padding:16px;display:flex;align-items:flex-start;justify-content:center;';
   ov.onclick=e=>{if(e.target===ov)ov.remove();};
   const box=document.createElement('div');
-  box.style.cssText='background:var(--card);border-radius:var(--rl2);padding:16px;max-width:420px;width:100%;position:relative;';
-  box.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><span style="font-size:18px;">\ud83d\udcdd</span><span style="font-size:15px;font-weight:700;flex:1;">Reading Symbols Guide</span><button onclick="this.closest('[style*=fixed]').remove()" style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--t3);padding:0 4px;">\xd7</button></div>${html}`;
+  box.style.cssText='background:var(--card);border-radius:16px;padding:16px;max-width:440px;width:100%;';
+  const inlineHtml=`<div style="margin-bottom:14px;background:var(--bg2);border-radius:var(--r);padding:10px 12px;">
+    <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;">Inline margin marks (any color)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:11px;">
+      ${inline.map(([s,d])=>`<div><strong>${s}</strong> — <span style="color:var(--t3);">${d}</span></div>`).join('')}
+    </div>
+  </div>`;
+  const catsHtml=cats.map(c=>`<div style="margin-bottom:10px;border-radius:var(--r);overflow:hidden;border:0.5px solid ${c.bg}40;">
+    <div style="background:${c.bg};color:#fff;font-size:11px;font-weight:700;padding:5px 10px;">${c.head}</div>
+    <div style="padding:6px 8px;background:var(--bg2);">
+      ${c.items.map(([s,n,d])=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:3px 0;border-bottom:0.5px solid var(--cb);">
+        <span style="min-width:28px;font-weight:700;font-size:12px;color:${c.bg};flex-shrink:0;">${s}</span>
+        <div><div style="font-size:11px;font-weight:600;">${n}</div><div style="font-size:10px;color:var(--t3);">${d}</div></div>
+      </div>`).join('')}
+    </div>
+  </div>`).join('');
+  box.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <span style="font-size:18px;">📖</span>
+    <span style="font-size:15px;font-weight:700;flex:1;">Annotation Key</span>
+    <button onclick="this.closest('[style*=fixed]').remove()" style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--t3);padding:0 4px;">×</button>
+  </div>${inlineHtml}${catsHtml}`;
   ov.appendChild(box);document.body.appendChild(ov);
 }
 // #256 — copy session opener to clipboard
