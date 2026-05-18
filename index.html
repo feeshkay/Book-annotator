@@ -551,6 +551,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="divider"></div>
     <div class="slabel">Chapter setup <span style="font-weight:400;color:var(--t3);">(auto-assigns chapter from page)</span></div>
     <div style="font-size:11px;color:var(--t2);margin-bottom:8px;">You can also add chapters as "Chapter" entries in the log — if you add a chapter entry with a page range, it auto-updates this setup.</div>
+    <!-- Quick bulk-generate chapters -->
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;background:var(--bg2);border-radius:var(--r);padding:8px 10px;border:0.5px solid var(--cb);">
+      <span style="font-size:12px;color:var(--t2);flex-shrink:0;">Generate</span>
+      <input type="number" id="nb-bulk-chaps" inputmode="numeric" min="1" max="500" placeholder="e.g. 43" style="width:70px;font-size:14px;text-align:center;"/>
+      <span style="font-size:12px;color:var(--t2);flex-shrink:0;">chapters</span>
+      <button class="btn btn-sm btn-primary" onclick="bulkGenerateChapters()" style="flex-shrink:0;">Create</button>
+      <span style="font-size:10px;color:var(--t3);">(adds to existing)</span>
+    </div>
     <div id="chap-setup-list"></div>
     <button class="btn btn-sm" onclick="addChapSetupRow()" style="margin-bottom:10px;">+ Add chapter</button>
     <div class="fa">
@@ -2631,9 +2639,9 @@ function addChapSetupRow(num,start,end,title,sectionLabel){
     <input type="number" inputmode="numeric" min="0" value="${chNum}" oninput="_onChapNumChange(this)" style="width:46px;flex-shrink:0;font-size:16px;text-align:center;" title="Chapter number (0 = front-matter / pre-pages)"/>
     ${slSel}
     <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:16px;"/>
-    <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" oninput="_onChapStartChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
     <span style="font-size:11px;color:var(--t2);">–</span>
-    <input type="number" inputmode="numeric" placeholder="p.end" min="0" value="${end||''}" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.end" min="0" value="${end||''}" oninput="_onChapEndChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
     <button onclick="this.parentElement.remove();" style="background:transparent;color:var(--t3);font-size:16px;padding:0 4px;">×</button>`;
   list.appendChild(row);
 }
@@ -2660,6 +2668,41 @@ function _onChapNumChange(inputEl){
 // row deletion so delete-sync can match correctly. (Function kept as a no-op
 // for any callers that may still reference it.)
 function renumChaps(){}
+// Bulk chapter generator
+function bulkGenerateChapters(){
+  const n=+document.getElementById('nb-bulk-chaps').value;
+  if(!n||n<1||n>500){_showToast('Enter a number between 1 and 500','#E24B4A');return;}
+  // Find current max chapter number
+  let maxCh=0;
+  document.querySelectorAll('#chap-setup-list .chap-row').forEach(r=>{
+    const ins=r.querySelectorAll('input');
+    const v=+ins[0].value;
+    if(!isNaN(v)&&v>maxCh)maxCh=v;
+  });
+  for(let i=1;i<=n;i++)addChapSetupRow(maxCh+i,null,null,'');
+  document.getElementById('nb-bulk-chaps').value='';
+  _showToast(`✅ Created ${n} chapters`);
+}
+// Auto-cascade: when p.end of a row is filled, set p.start of next row
+function _onChapEndChange(endInput){
+  const row=endInput.closest('.chap-row');if(!row)return;
+  const endVal=+endInput.value;if(!endVal||endVal<1)return;
+  const nextRow=row.nextElementSibling;
+  if(!nextRow||!nextRow.classList.contains('chap-row'))return;
+  const nextInputs=nextRow.querySelectorAll('input');
+  const nextStart=nextInputs[2]; // p.start input
+  if(nextStart&&!nextStart.value)nextStart.value=String(endVal+1);
+}
+// Auto-cascade: when p.start is filled, propagate if next row's start is empty
+function _onChapStartChange(startInput){
+  const row=startInput.closest('.chap-row');if(!row)return;
+  const prevRow=row.previousElementSibling;if(!prevRow||!prevRow.classList.contains('chap-row'))return;
+  const prevInputs=prevRow.querySelectorAll('input');
+  const prevEnd=+prevInputs[3].value;
+  if(!prevEnd)return; // prev chapter's end not filled — no cascade
+  const startVal=+startInput.value;
+  if(!startVal)startInput.value=String(prevEnd+1);
+}
 function getChapSetup(){
   // xlsx #473 (Batch 40, refined Batch 41) — input layout: [chapnum, title, start, end].
   // Read ch from the live input value first (most authoritative since user can edit
@@ -3749,7 +3792,14 @@ function openSeriesWebFull(){
     window._webEntryOverride=merged;
     window._webIsSeriesMode=true;
     setTimeout(()=>{
-      // forceTab doesn't need a button element (switchTab does)
+      // Ensure 'web' is in the current book's tab list (some genres omit it)
+      const webBtn=document.querySelector('#tab-bar button');
+      const tabBar=document.getElementById('tab-bar');
+      if(tabBar&&![...tabBar.querySelectorAll('button')].some(b=>b.textContent==='Rel. Web')){
+        const wb=document.createElement('button');
+        wb.className='tab';wb.textContent='Rel. Web';wb.onclick=()=>forceTab('web');
+        tabBar.appendChild(wb);
+      }
       forceTab('web');
       setTimeout(()=>{
         // Add banner after tab is visible and renderWeb has already fired in forceTab
@@ -4386,6 +4436,7 @@ function libListsRestoreRel(name){
   save();renderLibLists();
 }
 function openNewBookSheet(){
+  window._nbSetupStart=Date.now(); // setup timer
   document.getElementById('nb-edit-id').value='';
   document.getElementById('nb-sheet-title').textContent='New book';
   document.getElementById('nb-cover-data').value='';
@@ -4400,6 +4451,7 @@ function openNewBookSheet(){
   openSheet('nb-overlay');
 }
 function openEditBook(id){
+  window._nbSetupStart=Date.now(); // setup timer
   if(id)currentId=id;
   const b=book();
   document.getElementById('nb-edit-id').value=b.id;
@@ -4438,6 +4490,9 @@ function deleteBook(){
   save();goLib();
 }
 function saveBook(applyWiki){
+  // Setup timer
+  const _setupMs=window._nbSetupStart?Date.now()-window._nbSetupStart:0;
+  window._nbSetupStart=null;
   const titleEl=document.getElementById('nb-title');
   if(!titleEl){console.error('nb-title not found');return;}
   const title=titleEl.value.trim();
@@ -4534,6 +4589,7 @@ function saveBook(applyWiki){
   ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('chap-setup-list').innerHTML='';
   closeSheet('nb-overlay');save();renderLibrary();
+  if(_setupMs>3000){const mins=Math.floor(_setupMs/60000);const secs=Math.round((_setupMs%60000)/1000);_showToast(`✅ Book saved · Setup took ${mins>0?mins+'m ':''} ${secs}s`);}
   if(editId&&currentId===editId)document.getElementById('bs-title').textContent=library[id].title;
   if(applyWiki)_applyWikiPending(id);
 }
@@ -6353,7 +6409,8 @@ function _qcRender(kind){
     list.innerHTML=items.slice(0,30).map(it=>{
       const v=it.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       const l=it.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      return `<div class="cdd-option" onclick="_qcPick('${kind}','${v}','${l}')">
+      const bk=(it.bookId||'').replace(/'/g,"\\'");
+      return `<div class="cdd-option" onclick="_qcPick('${kind}','${v}','${l}','${bk}')">
         <div style="font-weight:500;">${esc(it.label)}</div>
         ${it.sub?`<div style="font-size:11px;color:var(--t3);margin-top:1px;">${esc(it.sub)}</div>`:''}
       </div>`;
@@ -6363,26 +6420,32 @@ function _qcRender(kind){
 }
 function _qcClose(kind){const l=document.getElementById(`ae-quote-${kind}-list`);if(l)l.classList.remove('open');}
 function _qcCloseAll(){['theme','event','rel','trait'].forEach(_qcClose);}
-function _qcPick(kind,id,label){
+function _qcPick(kind,id,label,bookId){
   _qcClose(kind);
   const input=document.getElementById(`ae-quote-${kind}-search`);
+  const isCrossBook=bookId&&bookId!==currentId;
   if(kind==='theme'){
     if(!_attachedThemeNames.includes(id))_attachedThemeNames.push(id);
     if(input)input.value='';
     renderQuoteThemesList();
   } else if(kind==='event'){
     const eid=Number(id);
-    if(eid&&!_attachedEventIds.includes(eid)){_attachedEventIds.push(eid);}
+    if(eid){
+      // #768 — store cross-book events as {id, bookId} in _attachedEventIds
+      const ref=isCrossBook?{id:eid,bookId}:eid;
+      const already=_attachedEventIds.some(x=>typeof x==='object'?x.id===eid&&x.bookId===bookId:x===eid);
+      if(!already)_attachedEventIds.push(ref);
+    }
     if(input)input.value='';
     if(typeof renderQuoteEventsList==='function')renderQuoteEventsList();
   } else {
-    // single-pick: rel or trait
+    // single-pick: rel or trait — store cross-book ref in hidden input as "bookId:id"
     const sel=document.getElementById(`ae-quote-${kind}`);
+    const storedVal=isCrossBook?`${bookId}:${id}`:id;
     if(sel){
-      if(!sel.querySelector(`option[value="${id}"]`)){const o=document.createElement('option');o.value=id;o.textContent=label;sel.appendChild(o);}
-      sel.value=id;
+      if(!sel.querySelector(`option[value="${storedVal}"]`)){const o=document.createElement('option');o.value=storedVal;o.textContent=label;sel.appendChild(o);}
+      sel.value=storedVal;
     }
-    // Show as removable chip below input
     const chip=document.getElementById(`ae-quote-${kind}-chip`);
     if(chip){chip.innerHTML=`<span class="cdd-chip" style="background:var(--al);color:var(--accent);border-color:var(--am);">${esc(label)}<button type="button" class="cdd-chip-x" onclick="_qcClear('${kind}')">×</button></span>`;}
     if(input)input.value='';
@@ -6464,17 +6527,21 @@ function addQuoteEvent(){
   sel.value='';
   renderQuoteEventsList();
 }
-function detachQuoteEvent(id){
-  id=Number(id);
-  _attachedEventIds=_attachedEventIds.filter(x=>x!==id);
+function detachQuoteEvent(id,bookId){
+  const eid=Number(id);
+  _attachedEventIds=_attachedEventIds.filter(x=>{
+    if(typeof x==='object')return!(x.id===eid&&(!bookId||x.bookId===bookId));
+    return x!==eid;
+  });
   renderQuoteEventsList();
   const editId=Number(document.getElementById('ae-edit-id')?.value||0);
   const type=document.getElementById('ae-type')?.value;
   if(editId&&['Quote','Narrator quote','Line/stanza'].includes(type)){
     const q=entries().find(x=>x.id===editId);
     if(q){
-      if(Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(x=>x!==id);
-      const ev=entries().find(x=>x.id===id);
+      if(Array.isArray(q.attachedEventIds))q.attachedEventIds=q.attachedEventIds.filter(x=>typeof x==='object'?!(x.id===eid):x!==eid);
+      const srcEntries=bookId&&library[bookId]?(library[bookId].entries||[]):entries();
+      const ev=srcEntries.find(x=>x.id===eid);
       if(ev&&Array.isArray(ev.attachedQuoteIds)){
         ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==q.id);
       }
@@ -6485,17 +6552,28 @@ function detachQuoteEvent(id){
 function renderQuoteEventsList(){
   const list=document.getElementById('ae-quote-events-list');if(!list)return;
   if(!_attachedEventIds.length){list.innerHTML='';return;}
-  list.innerHTML=_attachedEventIds.map(id=>{
-    const ev=entries().find(x=>x.id===id);
+  list.innerHTML=_attachedEventIds.map(ref=>{
+    const eid=typeof ref==='object'?ref.id:ref;
+    const bkId=typeof ref==='object'?ref.bookId:currentId;
+    const srcBook=library[bkId];
+    const ev=(srcBook?.entries||entries()).find(x=>x.id===eid);
     if(!ev)return '';
     const icon=ev.type==='Event'?'⭐':'📅';
     const label=(ev.content||'(untitled)').slice(0,30);
-    return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">${icon} ${esc(label)}<button type="button" onclick="detachQuoteEvent(${id})" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;
+    const crossLabel=bkId!==currentId&&srcBook?` <span style="font-size:9px;opacity:0.8;">[${srcBook.title}]</span>`:'';
+    const refStr=typeof ref==='object'?JSON.stringify(ref).replace(/"/g,'&quot;'):eid;
+    return `<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;">${icon} ${esc(label)}${crossLabel}<button type="button" onclick="detachQuoteEvent(${eid},'${bkId}')" style="background:transparent;border:0;color:var(--accent);font-size:14px;line-height:1;padding:0 2px;cursor:pointer;" title="Remove">×</button></span>`;
   }).filter(Boolean).join('');
 }
 function getAttachedEventIds(){return[..._attachedEventIds];}
 function clearAttachedEvents(){_attachedEventIds=[];renderQuoteEventsList();}
-function loadAttachedEvents(ids){_attachedEventIds=(ids||[]).map(Number).filter(Boolean);renderQuoteEventsList();}
+function loadAttachedEvents(ids){
+  _attachedEventIds=(ids||[]).map(x=>{
+    if(typeof x==='object'&&x.id)return x;
+    const n=Number(x);return isNaN(n)?null:n;
+  }).filter(Boolean);
+  renderQuoteEventsList();
+}
 // Populate the event/timeline dropdown when the Quote form opens.
 function refreshAttachEventOptions(){
   const sel=document.getElementById('ae-quote-event');if(!sel)return;
