@@ -804,6 +804,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <select id="ae-quote-trait" style="display:none;"></select>
         <div style="font-size:10px;color:var(--t3);margin-top:3px;">Links this quote to a trait — it'll appear under that trait on the character's profile.</div>
       </div>
+      <!-- Question combo picker (#771) -->
+      <div class="fg">
+        <label>Attached to question(s)? <span style="font-weight:400;">(optional)</span></label>
+        <div style="position:relative;">
+          <input type="text" id="ae-quote-question-search" class="cdd-input" placeholder="🔍 Type to search questions…" autocomplete="off"
+            oninput="_qcRender('question')" onfocus="_qcRender('question')" style="width:100%;"/>
+          <div id="ae-quote-question-list" class="cdd-list"></div>
+        </div>
+        <select id="ae-quote-question" style="display:none;"></select>
+        <div id="ae-quote-questions-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;"></div>
+      </div>
     </div>
 
     <!-- CHARACTERISTIC EXTRAS -->
@@ -2639,9 +2650,9 @@ function addChapSetupRow(num,start,end,title,sectionLabel){
     <input type="number" inputmode="numeric" min="0" value="${chNum}" oninput="_onChapNumChange(this)" style="width:46px;flex-shrink:0;font-size:16px;text-align:center;" title="Chapter number (0 = front-matter / pre-pages)"/>
     ${slSel}
     <input type="text" placeholder="Title (opt.)" value="${title||''}" style="flex:2;min-width:0;font-size:16px;"/>
-    <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" oninput="_onChapStartChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.start" min="0" value="${start||''}" onblur="_onChapStartChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
     <span style="font-size:11px;color:var(--t2);">–</span>
-    <input type="number" inputmode="numeric" placeholder="p.end" min="0" value="${end||''}" oninput="_onChapEndChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
+    <input type="number" inputmode="numeric" placeholder="p.end" min="0" value="${end||''}" onblur="_onChapEndChange(this)" style="flex:1;min-width:0;font-size:16px;"/>
     <button onclick="this.parentElement.remove();" style="background:transparent;color:var(--t3);font-size:16px;padding:0 4px;">×</button>`;
   list.appendChild(row);
 }
@@ -3530,7 +3541,8 @@ function _scrubThemeQuoteCrossLinks(){
         e.attachedTheme=Array.isArray(e.attachedThemes)&&e.attachedThemes.length?e.attachedThemes[0]:'';
         changed=true;
       }
-      if(Array.isArray(e.attachedEventIds)){const b=e.attachedEventIds.length;e.attachedEventIds=e.attachedEventIds.filter(id=>liveEventIds.has(Number(id)));if(e.attachedEventIds.length!==b)changed=true;}
+      if(Array.isArray(e.attachedEventIds)){const b=e.attachedEventIds.length;e.attachedEventIds=e.attachedEventIds.filter(ref=>{if(typeof ref==='object'&&ref.id)return true;// cross-book ref — keep
+return liveEventIds.has(Number(ref));});if(e.attachedEventIds.length!==b)changed=true;}
     }
     if(e.type==='Theme'&&Array.isArray(e.attachedQuoteIds)){
       const before=e.attachedQuoteIds.length;
@@ -3613,10 +3625,11 @@ function _galTap(bookId,entryId){
 // #696 — Series view: aggregate chars/events/rels across all books in a series.
 let _svTab='chars';
 let _svSeries='';
+let _svSearch='';
 function openSeriesView(seriesName){
   if(!seriesName)return;
-  _svSeries=seriesName;
-  _svTab='chars';
+  _svSeries=seriesName;_svTab='chars';_svSearch='';
+  const sb=document.getElementById('sv-search-bar');if(sb)sb.value='';
   const books=Object.values(library||{}).filter(b=>b&&b.seriesName===seriesName).sort((a,b)=>(+a.seriesNum||0)-(+b.seriesNum||0));
   document.getElementById('series-view-title').textContent=`📚 ${seriesName}`;
   const meta=document.getElementById('series-view-meta');
@@ -3627,7 +3640,8 @@ function openSeriesView(seriesName){
   openSheet('series-view-overlay');
 }
 function switchSeriesTab(tab,btn){
-  _svTab=tab;
+  _svTab=tab;_svSearch='';
+  const sb=document.getElementById('sv-search-bar');if(sb)sb.value='';
   document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   renderSeriesView();
@@ -3639,30 +3653,31 @@ function renderSeriesView(){
   if(!books.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No books in this series.</div>';return;}
   const bookLabel=(b)=>`${b.title}${b.seriesNum?' #'+b.seriesNum:''}`;
   if(_svTab==='chars'){
-    // Aggregate by character name; track which books each appears in
-    const byName={};
+    const charMap2={};
     books.forEach(b=>{
       (b.entries||[]).forEach(e=>{
         if(CT.includes(e.type)){
           const nm=(e.cn||e.content||'').trim();
           if(!nm)return;
-          if(!byName[nm])byName[nm]={name:nm,books:[],photos:[],roles:new Set(),descs:[]};
-          byName[nm].books.push({bookId:b.id,bookLabel:bookLabel(b),entryId:e.id,seriesNum:+b.seriesNum||0});
-          if(e.photo&&!byName[nm].photos.includes(e.photo))byName[nm].photos.push(e.photo);
-          if(e.charRole)byName[nm].roles.add(e.charRole);
-          if(e.charDesc)byName[nm].descs.push(e.charDesc);
+          if(!charMap2[nm])charMap2[nm]={name:nm,books:[],photos:[],roles:new Set(),descs:[]};
+          charMap2[nm].books.push({bookId:b.id,bookLabel:bookLabel(b),entryId:e.id,seriesNum:+b.seriesNum||0});
+          if(e.photo&&!charMap2[nm].photos.includes(e.photo))charMap2[nm].photos.push(e.photo);
+          if(e.charRole)charMap2[nm].roles.add(e.charRole);
+          if(e.charDesc)charMap2[nm].descs.push(e.charDesc);
         }
       });
     });
-    const list=Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name));
-    if(!list.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No characters yet in this series.</div>';return;}
-    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Characters appearing in series books. Tap to open in their first book.</div>`+list.map(c=>{
+    let list=Object.values(charMap2).sort((a,b)=>a.name.localeCompare(b.name));
+    // #773 — filter by search
+    if(_svSearch){const q=_svSearch.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q));}
+    if(!list.length){body.innerHTML=`<div style="text-align:center;padding:30px;color:var(--t3);">${_svSearch?'No characters match "'+esc(_svSearch)+'"':'No characters yet in this series.'}</div>`;return;}
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">${list.length} character${list.length!==1?'s':''} across series books.</div>`+list.map(c=>{
       const cc=getCC(c.name);
       const photo=c.photos[0]?`<img src="${c.photos[0]}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>`:`<div style="width:42px;height:42px;border-radius:50%;background:${cc.bg};color:${cc.text};display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:14px;">${c.name.slice(0,2).toUpperCase()}</div>`;
       const bookChips=c.books.sort((a,b)=>a.seriesNum-b.seriesNum).map(bk=>`<span class="chip" onclick="event.stopPropagation();_svOpenEntry('${bk.bookId}',${bk.entryId})" style="background:var(--bg2);font-size:10px;cursor:pointer;">${esc(bk.bookLabel)}</span>`).join('');
       const first=c.books[0];
       const roleStr=[...c.roles].filter(Boolean).join(' · ');
-      return `<div onclick="_svOpenEntry('${first.bookId}',${first.entryId})" style="display:flex;gap:10px;padding:10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;align-items:center;">
+      return `<div data-char-name="${esc(c.name)}" onclick="_svOpenEntry('${first.bookId}',${first.entryId})" style="display:flex;gap:10px;padding:10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;align-items:center;">
         ${photo}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:14px;">${esc(c.name)}</div>
@@ -3691,8 +3706,10 @@ function renderSeriesView(){
       if(a.seriesNum!==b.seriesNum)return a.seriesNum-b.seriesNum;
       return (a.entry.content||'').localeCompare(b.entry.content||'');
     });
-    if(!evs.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No events/timeline entries yet in this series.</div>';return;}
-    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Chronological timeline across all series books.</div>`+evs.map(o=>{
+    let filteredEvs=evs;
+    if(_svSearch){const q2=_svSearch.toLowerCase();filteredEvs=evs.filter(o=>(o.entry.content||'').toLowerCase().includes(q2)||(o.bookLabel).toLowerCase().includes(q2));}
+    if(!filteredEvs.length){body.innerHTML=`<div style="text-align:center;padding:30px;color:var(--t3);">${_svSearch?'No events match.':'No events/timeline entries yet.'}</div>`;return;}
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Chronological timeline${_svSearch?` · filtered: "${esc(_svSearch)}"`:' across all series books'}.</div>`+filteredEvs.map(o=>{
       const e=o.entry;
       const icon=e.type==='Event'?'⭐':'📅';
       const dateStr=e.evdate?`<span style="font-weight:600;color:var(--accent);">${esc(e.evdate)}</span>`:'<span style="color:var(--t3);">(no date)</span>';
@@ -3721,8 +3738,9 @@ function renderSeriesView(){
         pairMap[pairKey].history.push({relType:t,relA:a,relB:c,bookId:b.id,bookLabel:bookLabel(b),entryId:e.id,seriesNum:+b.seriesNum||0,note:e.note||''});
       });
     });
-    const pairs=Object.values(pairMap).sort((a,b)=>(a.charA+a.charB).localeCompare(b.charA+b.charB));
-    if(!pairs.length){body.innerHTML='<div style="text-align:center;padding:30px;color:var(--t3);">No relationship entries yet in this series.</div>';return;}
+    let pairs=Object.values(pairMap).sort((a,b)=>(a.charA+a.charB).localeCompare(b.charA+b.charB));
+    if(_svSearch){const q3=_svSearch.toLowerCase();pairs=pairs.filter(p=>p.charA.toLowerCase().includes(q3)||p.charB.toLowerCase().includes(q3)||p.history.some(h=>(h.relType||'').toLowerCase().includes(q3)));}
+    if(!pairs.length){body.innerHTML=`<div style="text-align:center;padding:30px;color:var(--t3);">${_svSearch?'No relationships match.':'No relationship entries yet.'}</div>`;return;}
     body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Relationship history across the series — grouped by character pair.</div>`+pairs.map(pair=>{
       const ca=getCC(pair.charA),cb=getCC(pair.charB);
       // Sort history by book number
@@ -3822,6 +3840,31 @@ function _closeSeriesWeb(){
 function _svOpenEntry(bookId,entryId){
   closeSheet('series-view-overlay');
   setTimeout(()=>{openBook(bookId);if(entryId)setTimeout(()=>editEntry(+entryId),250);},120);
+}
+// #773 — open series view characters tab filtered/highlighted to a specific character
+function openSeriesCharProfile(name){
+  const cur=book();if(!cur?.seriesName)return;
+  const prevSvSeries=_svSeries;
+  _svSeries=cur.seriesName;
+  _svTab='chars';
+  const books=_seriesBooks();
+  document.getElementById('series-view-title').textContent=`📚 ${esc(cur.seriesName)}`;
+  const meta=document.getElementById('series-view-meta');
+  const bookLabel=b=>`<span style="color:var(--accent);font-weight:600;">${esc(b.title)}${b.seriesNum?' #'+b.seriesNum:''}</span>`;
+  if(meta)meta.innerHTML=`${books.length} book${books.length!==1?'s':''} · ${books.map(bookLabel).join(' · ')}`;
+  document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
+  const ct=document.getElementById('sv-tab-chars');if(ct)ct.classList.add('active');
+  // Add a search pre-filled with the character name + searchbox
+  const searchBar=document.getElementById('sv-search-bar');
+  if(searchBar){searchBar.value=name;_svSearch=name;}
+  renderSeriesView();
+  // Scroll to the character
+  openSheet('series-view-overlay');
+  setTimeout(()=>{
+    const cards=[...document.querySelectorAll('#series-view-body [data-char-name]')];
+    const match=cards.find(c=>c.dataset.charName===name);
+    if(match){match.scrollIntoView({behavior:'smooth',block:'start'});match.style.outline='2px solid var(--accent)';setTimeout(()=>match.style.outline='',1500);}
+  },200);
 }
 // #730 — toast helper (shared)
 function _showToast(msg,color){
@@ -5306,6 +5349,13 @@ function onTypeChangeGuarded(sel){
 function onTypeChange(){
   if(!currentId)return;
   const type=document.getElementById('ae-type').value;
+  // #772 — update sheet title to reflect current type (only when not editing)
+  const editId=document.getElementById('ae-edit-id')?.value;
+  if(!editId&&type){
+    const titleEl=document.getElementById('ae-sheet-title');
+    if(titleEl&&(titleEl.textContent==='Add annotation'||!titleEl.textContent.startsWith('Edit')))
+      titleEl.textContent=type?`Add ${type}`:'Add annotation';
+  }
   const isChar=CT.includes(type);const isRel=type==='Relationship';
   const isQ=['Quote','Line/stanza','Narrator quote'].includes(type);
   const isQuestion=type==='Question';const isTrait=type==='Characteristic';
@@ -5350,8 +5400,9 @@ function onTypeChange(){
 
   if(isQ&&chars.length){cddFilter('ae-speaker');}
   if(isQ){
-    ['ae-quote-theme-search','ae-quote-event-search','ae-quote-rel-search','ae-quote-trait-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['ae-quote-theme-search','ae-quote-event-search','ae-quote-rel-search','ae-quote-trait-search','ae-quote-question-search'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     ['rel','trait'].forEach(k=>{const c=document.getElementById(`ae-quote-${k}-chip`);if(c)c.innerHTML='';});
+    window._attachedQuestionIds=[];_renderQuestionChips();
     _qcCloseAll();
     // #696-3 — reset series mode, show toggle only if book is in a series
     _qcSeriesMode=false;
@@ -6383,6 +6434,11 @@ function _qcItems(kind){
     if(inv.length)items=items.filter(t=>inv.some(c=>(t.involved||[]).includes(c)||(t.cn||t.content||'').includes(c)));
     return items.map(t=>({id:String(t.id),label:t.content||'(untitled)',sub:(t.involved||[]).join(', ')||t.cn||''+bookLabel(t),bookId:t._bookId}));
   }
+  if(kind==='question'){
+    let items=all.filter(e=>e.type==='Question');
+    if(inv.length)items=items.filter(q=>(q.involved||[]).some(c=>inv.includes(c))||(q.speaker&&inv.includes(q.speaker)));
+    return items.map(q=>({id:String(q.id),label:(q.content||'(untitled)').slice(0,70),sub:[(q.involved||[]).join(', '),q.speaker].filter(Boolean).join(' · ')+bookLabel(q),bookId:q._bookId}));
+  }
   return[];
 }
 function _qcToggleSeries(){
@@ -6419,7 +6475,26 @@ function _qcRender(kind){
   list.classList.add('open');
 }
 function _qcClose(kind){const l=document.getElementById(`ae-quote-${kind}-list`);if(l)l.classList.remove('open');}
-function _qcCloseAll(){['theme','event','rel','trait'].forEach(_qcClose);}
+function _qcCloseAll(){['theme','event','rel','trait','question'].forEach(_qcClose);}
+function _renderQuestionChips(){
+  if(!window._attachedQuestionIds)window._attachedQuestionIds=[];
+  const list=document.getElementById('ae-quote-questions-list');if(!list)return;
+  list.innerHTML=window._attachedQuestionIds.map(ref=>{
+    const qid=typeof ref==='object'?ref.id:ref;
+    const bkId=typeof ref==='object'?ref.bookId:currentId;
+    const srcBook=library[bkId];
+    const q=(srcBook?.entries||entries()).find(x=>x.id===qid);
+    if(!q)return '';
+    const lbl=(q.content||'(untitled)').slice(0,30);
+    const crossLabel=bkId!==currentId&&srcBook?` [${srcBook.title}]`:'';
+    return `<span class="cdd-chip" style="background:var(--al);color:var(--accent);border-color:var(--am);">❓ ${esc(lbl)}${crossLabel}<button type="button" class="cdd-chip-x" onclick="_removeQuestionRef(${qid},'${bkId}')">×</button></span>`;
+  }).filter(Boolean).join('');
+}
+function _removeQuestionRef(qid,bkId){
+  if(!window._attachedQuestionIds)return;
+  window._attachedQuestionIds=window._attachedQuestionIds.filter(x=>typeof x==='object'?!(x.id===qid&&x.bookId===bkId):x!==qid);
+  _renderQuestionChips();
+}
 function _qcPick(kind,id,label,bookId){
   _qcClose(kind);
   const input=document.getElementById(`ae-quote-${kind}-search`);
@@ -6428,8 +6503,15 @@ function _qcPick(kind,id,label,bookId){
     if(!_attachedThemeNames.includes(id))_attachedThemeNames.push(id);
     if(input)input.value='';
     renderQuoteThemesList();
-  } else if(kind==='event'){
-    const eid=Number(id);
+  } else if(kind==='question'){
+    // multi-attach questions
+    if(!window._attachedQuestionIds)window._attachedQuestionIds=[];
+    const qid=Number(id);
+    const already=window._attachedQuestionIds.some(x=>typeof x==='object'?x.id===qid:x===qid);
+    if(!already){const ref=isCrossBook?{id:qid,bookId}:qid;window._attachedQuestionIds.push(ref);}
+    if(input)input.value='';
+    _renderQuestionChips();
+  } else if(kind==='event'){    const eid=Number(id);
     if(eid){
       // #768 — store cross-book events as {id, bookId} in _attachedEventIds
       const ref=isCrossBook?{id:eid,bookId}:eid;
@@ -6459,7 +6541,7 @@ function _qcClear(kind){
 }
 // Close combos on outside tap
 document.addEventListener('click',e=>{
-  ['theme','event','rel','trait'].forEach(k=>{
+  ['theme','event','rel','trait','question'].forEach(k=>{
     const input=document.getElementById(`ae-quote-${k}-search`);
     const list=document.getElementById(`ae-quote-${k}-list`);
     if(!list||!list.classList.contains('open'))return;
@@ -6812,6 +6894,7 @@ function submitEntry(){
     entry.attachedTheme=_multi[0]||'';
     // xlsx #425 (Batch 41) — also persist attached event/timeline ids.
     entry.attachedEventIds=getAttachedEventIds();
+    entry.attachedQuestionIds=[...(window._attachedQuestionIds||[])];
     const qtRel=document.getElementById('ae-quote-rel')?.value;entry.linkedRelId=qtRel?Number(qtRel):null;
     const qtTrait=document.getElementById('ae-quote-trait')?.value;entry.traitLinkId=qtTrait?Number(qtTrait):null;
     // If linked to a trait, add this quote to the trait's traitQuotes
@@ -7276,7 +7359,33 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   }
   else book().entries.unshift(entry);
 
-  // Save quick relationships
+  // #771/auto-Q — For Foreshadowing and Clue entries, offer to auto-create a
+  // linked Question so the reader can answer it later once they know the outcome.
+  if(!editId&&['Foreshadowing','Clue'].includes(type)){
+    const snippet=(entry.content||'').slice(0,60)+(entry.content&&entry.content.length>60?'…':'');
+    const isFore=type==='Foreshadowing';
+    const qText=isFore
+      ?`Was this right? — "${snippet}"`
+      :`What did this clue mean? — "${snippet}"`;
+    const autoQ={
+      id:Date.now()+1,
+      type:'Question',
+      content:qText,
+      note:isFore?'Auto-created from a Foreshadowing entry. Answer once the outcome is known.':'Auto-created from a Clue entry. Answer once the mystery is resolved.',
+      pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',
+      date:entry.date||localDate(),
+      location:'',
+      involved:[...(entry.involved||[])],
+      answered:false,qanswer:'',qhyp:'',
+      linkedForeshadowId:entry.id // back-link
+    };
+    // Check if an auto-Q for this entry already exists (don't duplicate on re-save)
+    const alreadyQ=entries().find(x=>x.type==='Question'&&x.linkedForeshadowId===entry.id);
+    if(!alreadyQ){
+      book().entries.unshift(autoQ);
+      _showToast(`❓ Auto-question created — answer it in the Questions tab`);
+    }
+  }
   // #340 follow-up (Batch 30) — fall back to typed search-input values when user
   // typed but didn't tap a dropdown option, so rows don't silently drop. Also drop
   // !editId so quick-rels also save on edits (mirrors the rel-form behaviour).
@@ -8140,6 +8249,9 @@ function editEntry(id){
         if(e.attachedEventIds.length!==before)save();
       }
       loadAttachedEvents(_eFiltered);
+      // #771 — load attached questions
+      window._attachedQuestionIds=[...(e.attachedQuestionIds||[])];
+      _renderQuestionChips();
     },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
@@ -8555,21 +8667,48 @@ function ecHTML(e,compact,fromTab){
   }
   let eventPill='';
   if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
-    const _evIds=new Set();
-    if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)_evIds.add(Number(id));});
-    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id)).forEach(ev=>_evIds.add(Number(ev.id)));
-    const _evObjs=[..._evIds].map(id=>entries().find(x=>x.id===id)).filter(Boolean);
+    // #768 — attachedEventIds may contain plain numbers OR {id,bookId} objects (cross-book)
+    const _evObjs=[];
+    if(Array.isArray(e.attachedEventIds)){
+      e.attachedEventIds.forEach(ref=>{
+        if(!ref)return;
+        if(typeof ref==='object'&&ref.id){
+          // Cross-book event
+          const srcEntries=library[ref.bookId]?.entries||[];
+          const ev=srcEntries.find(x=>x.id===Number(ref.id));
+          if(ev)_evObjs.push({...ev,_crossBook:ref.bookId});
+        } else {
+          const ev=entries().find(x=>x.id===Number(ref));
+          if(ev)_evObjs.push(ev);
+        }
+      });
+    }
+    // Also reverse-scan: events in current book that list this quote
+    entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id)).forEach(ev=>{if(!_evObjs.find(x=>x.id===ev.id))_evObjs.push(ev);});
     if(_evObjs.length){
       const _f=_evObjs[0];const _fi=_f.type==='Event'?'⭐':'📅';
       const _fl=(_f.content||'(untitled)').slice(0,16)+(_f.content&&_f.content.length>16?'…':'');
       const _label=_evObjs.length===1?`${_fi} ${_fl}`:`${_fi} ${_fl} +${_evObjs.length-1}`;
-      const _full=_evObjs.map(ev=>(ev.type==='Event'?'⭐':'📅')+' '+(ev.content||'(untitled)')).join(', ');
-      if(_evObjs.length===1){eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();editEntry(${_f.id});" title="${esc(_full)}">${_label}</span>`;}
-      else{const _ids=_evObjs.map(ev=>ev.id).join(',');eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids}]);" title="${esc(_full)}">${_label}</span>`;}
+      const _full=_evObjs.map(ev=>(ev.type==='Event'?'⭐':'📅')+' '+(ev.content||'(untitled)')+(_crossBook?' 📚':'')).join(', ');
+      if(_evObjs.length===1){eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();${_f._crossBook?`_svOpenEntry('${_f._crossBook}',${_f.id})`:`editEntry(${_f.id})`};" title="${esc(_full)}">${_label}</span>`;}
+      else{const _ids=_evObjs.filter(x=>!x._crossBook).map(ev=>ev.id).join(',');eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids||0}]);" title="${esc(_full)}">${_label}</span>`;}
+    }
+  }
+  // #771 — question pills on quote cards
+  let questionPill='';
+  if(['Quote','Line/stanza','Narrator quote'].includes(e.type)&&Array.isArray(e.attachedQuestionIds)&&e.attachedQuestionIds.length){
+    const _qs=e.attachedQuestionIds.map(ref=>{
+      const qid=typeof ref==='object'?ref.id:ref;
+      const bkId=typeof ref==='object'?ref.bookId:currentId;
+      return (library[bkId]?.entries||entries()).find(x=>x.id===qid);
+    }).filter(Boolean);
+    if(_qs.length){
+      const _fl=(_qs[0].content||'?').slice(0,18)+(_qs[0].content&&_qs[0].content.length>18?'…':'');
+      questionPill=`<span class="pbadge" style="background:var(--al);color:var(--red,#E24B4A);font-weight:600;" title="${esc(_qs.map(q=>q.content||'?').join(', '))}">❓ ${esc(_fl)}${_qs.length>1?` +${_qs.length-1}`:''}</span>`;
     }
   }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
-    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}${e._copiedFromBookTitle?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:9px;font-weight:600;" title="Pulled from series">📚 ${esc(e._copiedFromBookTitle)}</span>`:''}</div>${body}${qtrans}${photosStrip}${invB}
+    <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}${questionPill}${e._copiedFromBookTitle?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:9px;font-weight:600;" title="Pulled from series">📚 ${esc(e._copiedFromBookTitle)}</span>`:''}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${e.type==='Group / Organization'&&(e.orgType||e.orgWebsite)?`<div style="font-size:11px;color:var(--t2);margin-top:3px;">${e.orgType?`<span class="pbadge">🏛 ${e.orgType}</span>`:''}${e.orgWebsite?` <a href="${e.orgWebsite}" onclick="event.preventDefault();event.stopPropagation();openLink('${esc(e.orgWebsite)}')" style="color:var(--accent);">🔗 Website</a>`:''}</div>`:''}
     ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
@@ -8857,6 +8996,21 @@ function openCharDetail(name,fromWeb){
     if(fromWeb)forceTab('web');
   };
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
+  // #773 — show "View series profile" button if book is part of a series
+  let seriesBtn=document.getElementById('char-series-btn');
+  if(!seriesBtn){
+    seriesBtn=document.createElement('button');seriesBtn.id='char-series-btn';
+    seriesBtn.className='btn btn-sm';seriesBtn.style.cssText='position:absolute;right:44px;top:10px;font-size:10px;z-index:21;';
+    document.getElementById('char-screen')?.querySelector('.sheet-topbar')?.appendChild(seriesBtn);
+  }
+  const cur=book();
+  if(cur?.seriesName&&Object.values(library||{}).some(b=>b&&b.seriesName===cur.seriesName&&b.id!==currentId)){
+    seriesBtn.style.display='';
+    seriesBtn.textContent='📚 Series profile';
+    seriesBtn.onclick=()=>openSeriesCharProfile(name);
+  } else {
+    seriesBtn.style.display='none';
+  }
   const fab=document.getElementById('char-fab');if(fab)fab.style.display='';
   try{
     renderCharDetail(name);
@@ -14411,11 +14565,14 @@ function _swipeInit(){/* removed */}
     </div>
     <div class="sheet-inner" style="padding-bottom:24px;">
       <div id="series-view-meta" style="font-size:11px;color:var(--t2);margin-bottom:10px;"></div>
-      <div style="display:flex;gap:0;border-bottom:0.5px solid var(--cb);margin-bottom:10px;">
+      <div style="display:flex;gap:0;border-bottom:0.5px solid var(--cb);margin-bottom:6px;">
         <button class="tab active" id="sv-tab-chars" onclick="switchSeriesTab('chars',this)" style="flex:1;">👥 Characters</button>
         <button class="tab" id="sv-tab-events" onclick="switchSeriesTab('events',this)" style="flex:1;">📅 Timeline</button>
         <button class="tab" id="sv-tab-rels" onclick="switchSeriesTab('rels',this)" style="flex:1;">🔗 Relationships</button>
         <button class="tab" id="sv-tab-web" onclick="switchSeriesTab('web',this)" style="flex:1;">🕸 Web</button>
+      </div>
+      <div style="margin-bottom:8px;">
+        <input type="text" id="sv-search-bar" placeholder="🔍 Search…" oninput="_svSearch=this.value;renderSeriesView();" style="width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
       </div>
       <div id="series-view-body"></div>
     </div>
