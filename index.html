@@ -3674,10 +3674,10 @@ function renderSeriesView(){
     body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">${list.length} character${list.length!==1?'s':''} across series books.</div>`+list.map(c=>{
       const cc=getCC(c.name);
       const photo=c.photos[0]?`<img src="${c.photos[0]}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;"/>`:`<div style="width:42px;height:42px;border-radius:50%;background:${cc.bg};color:${cc.text};display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:14px;">${c.name.slice(0,2).toUpperCase()}</div>`;
-      const bookChips=c.books.sort((a,b)=>a.seriesNum-b.seriesNum).map(bk=>`<span class="chip" onclick="event.stopPropagation();_svOpenEntry('${bk.bookId}',${bk.entryId})" style="background:var(--bg2);font-size:10px;cursor:pointer;">${esc(bk.bookLabel)}</span>`).join('');
+      const bookChips=c.books.sort((a,b)=>a.seriesNum-b.seriesNum).map(bk=>`<span class="chip" onclick="event.stopPropagation();_svOpenCharProfile('${bk.bookId}','${esc(c.name)}')" style="background:var(--bg2);font-size:10px;cursor:pointer;">${esc(bk.bookLabel)}</span>`).join('');
       const first=c.books[0];
       const roleStr=[...c.roles].filter(Boolean).join(' · ');
-      return `<div data-char-name="${esc(c.name)}" onclick="_svOpenEntry('${first.bookId}',${first.entryId})" style="display:flex;gap:10px;padding:10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;align-items:center;">
+      return `<div data-char-name="${esc(c.name)}" onclick="openSeriesCharProfile('${esc(c.name)}')" style="display:flex;gap:10px;padding:10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;align-items:center;">
         ${photo}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:14px;">${esc(c.name)}</div>
@@ -3707,7 +3707,7 @@ function renderSeriesView(){
       return (a.entry.content||'').localeCompare(b.entry.content||'');
     });
     let filteredEvs=evs;
-    if(_svSearch){const q2=_svSearch.toLowerCase();filteredEvs=evs.filter(o=>(o.entry.content||'').toLowerCase().includes(q2)||(o.bookLabel).toLowerCase().includes(q2));}
+    if(_svSearch){const q2=_svSearch.toLowerCase();filteredEvs=evs.filter(o=>(o.entry.content||'').toLowerCase().includes(q2)||(o.bookLabel).toLowerCase().includes(q2)||(o.entry.involved||[]).some(c=>c.toLowerCase().includes(q2)));}
     if(!filteredEvs.length){body.innerHTML=`<div style="text-align:center;padding:30px;color:var(--t3);">${_svSearch?'No events match.':'No events/timeline entries yet.'}</div>`;return;}
     body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Chronological timeline${_svSearch?` · filtered: "${esc(_svSearch)}"`:' across all series books'}.</div>`+filteredEvs.map(o=>{
       const e=o.entry;
@@ -3741,38 +3741,26 @@ function renderSeriesView(){
     let pairs=Object.values(pairMap).sort((a,b)=>(a.charA+a.charB).localeCompare(b.charA+b.charB));
     if(_svSearch){const q3=_svSearch.toLowerCase();pairs=pairs.filter(p=>p.charA.toLowerCase().includes(q3)||p.charB.toLowerCase().includes(q3)||p.history.some(h=>(h.relType||'').toLowerCase().includes(q3)));}
     if(!pairs.length){body.innerHTML=`<div style="text-align:center;padding:30px;color:var(--t3);">${_svSearch?'No relationships match.':'No relationship entries yet.'}</div>`;return;}
-    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">Relationship history across the series — grouped by character pair.</div>`+pairs.map(pair=>{
+    body.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">${pairs.length} relationship pair${pairs.length!==1?'s':''}${_svSearch?` · filtered: "${esc(_svSearch)}"`:' across series'}.</div>`+pairs.map((pair,pi)=>{
       const ca=getCC(pair.charA),cb=getCC(pair.charB);
-      // Sort history by book number
       const hist=pair.history.sort((a,b)=>a.seriesNum-b.seriesNum||a.bookLabel.localeCompare(b.bookLabel));
-      const histHtml=hist.map(h=>{
-        // #730: show both sides. Look up the character genders from the series to get
-        // gender-aware reciprocal (Husband → Wife, Father → Mother, etc.)
-        const allSeriesEntries=_seriesBooks().flatMap(b=>b.entries||[]);
-        function charGender(name){const e=allSeriesEntries.find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name);return e?.gender||'';}
-        const gA=charGender(h.relA);const gB=charGender(h.relB);
-        // Gender-aware reciprocal using existing GENDER_RECIP maps
-        function genderRecip(type,gender){
-          const gm=gender==='Male'?GENDER_REL_MAP?.Male:gender==='Female'?GENDER_REL_MAP?.Female:gender==='Nonbinary'?GENDER_REL_MAP?.Nonbinary:null;
-          if(gm&&gm[type])return gm[type];
-          return RECIPROCAL[type]||type;
-        }
-        // relA has relType; relB has the reciprocal
-        const recipForB=genderRecip(h.relType,gB);
-        const recipForA=genderRecip(h.relType,gA)||h.relType;
-        const sameType=recipForB===h.relType;
-        const typeLabel=sameType
-          ?esc(h.relType||'(no type)')
-          :`${esc(h.relA)}: ${esc(h.relType)} / ${esc(h.relB)}: ${esc(recipForB)}`;
-        return `<div onclick="event.stopPropagation();_svOpenEntry('${h.bookId}',${h.entryId})" style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;border-bottom:0.5px solid var(--cb);">
-          <span class="chip" style="background:var(--bg2);font-size:10px;flex-shrink:0;">${esc(h.bookLabel)}</span>
-          <span style="font-size:12px;flex:1;">${typeLabel}</span>
-          ${h.note?`<span style="font-size:10px;color:var(--t3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(h.note)}">${esc(h.note)}</span>`:''}
-        </div>`;
-      }).join('');
-      return `<div style="padding:9px 10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:7px;background:var(--card);">
-        <div style="font-size:13px;margin-bottom:6px;"><span class="cbadge" style="background:${ca.bg};color:${ca.text};">${esc(pair.charA)}</span> <span style="color:var(--t2);">↔</span> <span class="cbadge" style="background:${cb.bg};color:${cb.text};">${esc(pair.charB)}</span></div>
-        ${histHtml}
+      // Latest type
+      const latest=hist[hist.length-1];
+      const latestType=latest?.relType||'';
+      const latestA=latestType?_genderRelLabel(latestType,pair.charA):'';
+      const latestB=latestType?_genderRelLabel(RECIPROCAL[latestType]||latestType,pair.charB):'';
+      const typeDisplay=latestB&&latestB!==latestA?`${latestA} / ${latestB}`:latestA||'';
+      const hasHistory=hist.length>1;
+      return `<div style="padding:7px 9px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span class="cbadge" style="background:${ca.bg};color:${ca.text};font-size:11px;">${esc(pair.charA)}</span>
+          <span style="color:var(--t2);font-size:12px;">↔</span>
+          <span class="cbadge" style="background:${cb.bg};color:${cb.text};font-size:11px;">${esc(pair.charB)}</span>
+          ${typeDisplay?`<span style="font-size:11px;color:var(--t2);">${esc(typeDisplay)}</span>`:''}
+          ${hasHistory?`<button class="btn btn-sm" style="font-size:10px;margin-left:auto;flex-shrink:0;" onclick="this.closest('div[style*=card]').querySelector('.sv-rel-hist').style.display=this.closest('div[style*=card]').querySelector('.sv-rel-hist').style.display==='none'?'':'none';this.textContent=this.textContent.includes('+')?' − History':' + History (${hist.length})'"> + History (${hist.length})</button>`:''}
+          <span class="chip" onclick="_svOpenEntry('${latest?.bookId||''}',${latest?.entryId||0})" style="background:var(--bg2);font-size:10px;cursor:pointer;margin-left:${hasHistory?'0':'auto'};">${esc(latest?.bookLabel||'')}</span>
+        </div>
+        ${hasHistory?`<div class="sv-rel-hist" style="display:none;margin-top:6px;border-top:0.5px solid var(--cb);padding-top:5px;">${hist.map(h=>{const hA=h.relType?_genderRelLabel(h.relType,pair.charA):'';const hB=h.relType?_genderRelLabel(RECIPROCAL[h.relType]||h.relType,pair.charB):'';const hLabel=hB&&hB!==hA?`${hA} / ${hB}`:hA||h.relType||'';return `<div onclick="_svOpenEntry('${h.bookId}',${h.entryId})" style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:11px;"><span class="chip" style="background:var(--bg2);font-size:10px;flex-shrink:0;">${esc(h.bookLabel)}</span><span style="color:var(--t2);">${esc(hLabel)}</span></div>`;}).join('')}</div>`:``}
       </div>`;
     }).join('');
   } else if(_svTab==='web'){
@@ -3840,6 +3828,17 @@ function _closeSeriesWeb(){
 function _svOpenEntry(bookId,entryId){
   closeSheet('series-view-overlay');
   setTimeout(()=>{openBook(bookId);if(entryId)setTimeout(()=>editEntry(+entryId),250);},120);
+}
+function _svOpenCharProfile(bookId,name){
+  closeSheet('series-view-overlay');
+  setTimeout(()=>{openBook(bookId);setTimeout(()=>openCharDetail(name,false),250);},120);
+}
+function _genderRelLabel(type,charName){
+  const allEntries=_seriesBooks().flatMap(b=>b.entries||[]).concat(entries());
+  const ce=allEntries.find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==charName);
+  const g=_normaliseGender(ce?.gender||'Unknown');
+  const trunk=RELTYPE_TRUNK?.[type]||type;
+  return(GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][trunk])||type;
 }
 // #773 — open series view characters tab filtered/highlighted to a specific character
 function openSeriesCharProfile(name){
@@ -5866,6 +5865,7 @@ function openAddSheet(preType){
   buildTypeSelect();populateEventTypePicks();
   document.getElementById('ae-edit-id').value='';
   document.getElementById('ae-sheet-title').textContent='Add annotation';
+  // #772 — will be updated by onTypeChange once type is set
   document.getElementById('ae-date').value=localDate();
   // #399 — clear prior-speakers stash on every new-entry open
   window._priorThemeSpeakers=null;
@@ -6398,8 +6398,6 @@ function _repopulateQuoteLinks(){
 let _qcSeriesMode=false; // toggle: include series books
 function _qcInv(){try{return cddGet('ae-inv')||[];}catch(e){return[];}}
 function _qcAllEntries(){
-  // When series mode is on AND current book is part of a series, union all series entries.
-  // Each entry tagged with its source book so we can show it.
   const cur=book();
   if(_qcSeriesMode&&cur&&cur.seriesName){
     const sibs=Object.values(library||{}).filter(b=>b&&b.title&&b.seriesName===cur.seriesName&&b.id!==cur.id);
@@ -6407,7 +6405,8 @@ function _qcAllEntries(){
     const remote=sibs.flatMap(b=>(b.entries||[]).map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0})));
     return[...local,...remote];
   }
-  return entries().map(e=>({...e,_bookId:currentId,_bookTitle:book()?.title||'',_bookNum:0}));
+  // Always tag with _bookId so _qcPick can detect cross-book refs correctly
+  return entries().map(e=>({...e,_bookId:currentId}));
 }
 function _qcItems(kind){
   const inv=_qcInv();
@@ -7365,13 +7364,13 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     const snippet=(entry.content||'').slice(0,60)+(entry.content&&entry.content.length>60?'…':'');
     const isFore=type==='Foreshadowing';
     const qText=isFore
-      ?`Was this right? — "${snippet}"`
-      :`What did this clue mean? — "${snippet}"`;
+      ?`Does this show up in a future conflict? — "${snippet}"`
+      :`Where does this lead? — "${snippet}"`;
     const autoQ={
       id:Date.now()+1,
       type:'Question',
       content:qText,
-      note:isFore?'Auto-created from a Foreshadowing entry. Answer once the outcome is known.':'Auto-created from a Clue entry. Answer once the mystery is resolved.',
+      note:isFore?'Auto-created from a Foreshadowing entry. Answer this once you know the outcome — did it come true?':'Auto-created from a Clue entry. Answer this once the mystery resolves — what did it point to?',
       pageNum:entry.pageNum||'',chapNum:entry.chapNum||'',
       date:entry.date||localDate(),
       location:'',
@@ -8236,18 +8235,18 @@ function editEntry(id){
       // xlsx #425 (Batch 41) — load attached event/timeline ids. Union of
       // entry.attachedEventIds[] and reverse-scan of any Event/Timeline entries
       // whose attachedQuoteIds[] include this quote. Filter against live entries.
+      // #768 — load attached event ids, preserving cross-book {id,bookId} object refs
       refreshAttachEventOptions();
-      const _eIds=new Set();
-      if(Array.isArray(e.attachedEventIds))e.attachedEventIds.forEach(id=>{if(id)_eIds.add(Number(id));});
-      entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
-        .forEach(ev=>_eIds.add(Number(ev.id)));
       const _liveEv=new Set(entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)).map(ev=>Number(ev.id)));
-      const _eFiltered=[..._eIds].filter(id=>_liveEv.has(id));
-      if(Array.isArray(e.attachedEventIds)){
-        const before=e.attachedEventIds.length;
-        e.attachedEventIds=e.attachedEventIds.filter(id=>_liveEv.has(Number(id)));
-        if(e.attachedEventIds.length!==before)save();
-      }
+      // Build combined list: entry's saved refs + reverse-scan (local only)
+      const _eRefs=[...(Array.isArray(e.attachedEventIds)?e.attachedEventIds:[])];
+      entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(e.id))
+        .forEach(ev=>{if(!_eRefs.some(x=>typeof x==='object'?x.id===ev.id:Number(x)===ev.id))_eRefs.push(ev.id);});
+      // Filter: keep cross-book refs as-is, filter local refs against live events
+      const _eFiltered=_eRefs.filter(ref=>{
+        if(typeof ref==='object'&&ref.id){return true;} // cross-book — always keep
+        return _liveEv.has(Number(ref));
+      });
       loadAttachedEvents(_eFiltered);
       // #771 — load attached questions
       window._attachedQuestionIds=[...(e.attachedQuestionIds||[])];
@@ -8689,7 +8688,7 @@ function ecHTML(e,compact,fromTab){
       const _f=_evObjs[0];const _fi=_f.type==='Event'?'⭐':'📅';
       const _fl=(_f.content||'(untitled)').slice(0,16)+(_f.content&&_f.content.length>16?'…':'');
       const _label=_evObjs.length===1?`${_fi} ${_fl}`:`${_fi} ${_fl} +${_evObjs.length-1}`;
-      const _full=_evObjs.map(ev=>(ev.type==='Event'?'⭐':'📅')+' '+(ev.content||'(untitled)')+(_crossBook?' 📚':'')).join(', ');
+      const _full=_evObjs.map(ev=>(ev.type==='Event'?'⭐':'📅')+' '+(ev.content||'(untitled)')+(ev._crossBook?' 📚':'')).join(', ');
       if(_evObjs.length===1){eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();${_f._crossBook?`_svOpenEntry('${_f._crossBook}',${_f.id})`:`editEntry(${_f.id})`};" title="${esc(_full)}">${_label}</span>`;}
       else{const _ids=_evObjs.filter(x=>!x._crossBook).map(ev=>ev.id).join(',');eventPill=`<span class="pbadge" style="background:var(--al);color:var(--accent);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_showEventListPopover(this,[${_ids||0}]);" title="${esc(_full)}">${_label}</span>`;}
     }
@@ -9000,8 +8999,9 @@ function openCharDetail(name,fromWeb){
   let seriesBtn=document.getElementById('char-series-btn');
   if(!seriesBtn){
     seriesBtn=document.createElement('button');seriesBtn.id='char-series-btn';
-    seriesBtn.className='btn btn-sm';seriesBtn.style.cssText='position:absolute;right:44px;top:10px;font-size:10px;z-index:21;';
-    document.getElementById('char-screen')?.querySelector('.sheet-topbar')?.appendChild(seriesBtn);
+    seriesBtn.className='btn btn-sm';seriesBtn.style.cssText='position:absolute;right:44px;top:8px;font-size:10px;z-index:21;padding:3px 8px;';
+    const charTopbar=document.getElementById('char-screen')?.querySelector('.topbar')||document.getElementById('char-screen')?.querySelector('[class*="topbar"]');
+    if(charTopbar)charTopbar.appendChild(seriesBtn);
   }
   const cur=book();
   if(cur?.seriesName&&Object.values(library||{}).some(b=>b&&b.seriesName===cur.seriesName&&b.id!==currentId)){
