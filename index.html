@@ -279,6 +279,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-back" onclick="goLib()"></button>
     <div class="topbar-title" id="bs-title"></div>
     <button id="timer-pill" onclick="openReadingTimer()" style="display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;flex-shrink:0;"></button>
+    <button id="book-series-btn" onclick="_openCurrentSeriesView()" style="display:none;background:var(--al);color:var(--accent);border:0.5px solid var(--am);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;">📚 Series</button>
     <button class="btn-icon" onclick="forceTab('stats')" title="Stats">📊</button>
     <button class="btn-icon" onclick="openChapsList()" title="Chapter profiles" style="font-size:12px;">📑</button>
     <button class="btn-icon" onclick="openReadingTimer()" title="Reading timer">⏱</button>
@@ -423,6 +424,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="topbar">
     <button class="btn-back" id="char-back-btn"></button>
     <div class="topbar-title" id="char-screen-title"></div>
+    <button id="char-series-btn" class="btn btn-sm" style="display:none;font-size:10px;padding:3px 8px;flex-shrink:0;">📚 Series</button>
     <button class="btn-icon" id="char-edit-btn" style="font-size:12px;">Edit</button>
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
   </div>
@@ -715,6 +717,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="fg"><label>Answer <span style="font-weight:400;color:var(--t3);">(fill in when resolved — moves question to Answered section)</span></label>
         <textarea id="ae-qanswer" placeholder="Answer or resolution from the book…" style="min-height:50px;" oninput="onQAnswerInput()"></textarea>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Answer page #</label><input type="text" id="ae-qans-pg" inputmode="numeric" placeholder="e.g. 214" oninput="onQAnsPgInput()"/></div>
+        <div class="fg"><label>Answer chapter</label><input type="text" id="ae-qans-ch" inputmode="numeric" placeholder="e.g. 18"/></div>
       </div>
     </div>
 
@@ -3514,6 +3520,9 @@ function openBook(id){
   // entries' attachedQuoteIds[]. Done once per book-open; persistent.
   _scrubThemeQuoteCrossLinks();
   document.getElementById('bs-title').textContent=book().title;
+  // #773 — show series button in topbar if book is part of a series
+  const _sbtn=document.getElementById('book-series-btn');
+  if(_sbtn){const _cur=book();if(_cur?.seriesName&&Object.values(library||{}).some(b=>b&&b.seriesName===_cur.seriesName&&b.id!==currentId)){_sbtn.style.display='';_sbtn.textContent='📚 Series';}else{_sbtn.style.display='none';}}
   backfillTimelineSortNums();
   // #524-9 migration — one-time re-cascade all offset entries to fix stale evdates
   // caused by the pre-B63 bug where cascadeDependentDates toDays was missing
@@ -3758,7 +3767,6 @@ function renderSeriesView(){
           <span class="cbadge" style="background:${cb.bg};color:${cb.text};font-size:11px;">${esc(pair.charB)}</span>
           ${typeDisplay?`<span style="font-size:11px;color:var(--t2);">${esc(typeDisplay)}</span>`:''}
           ${hasHistory?`<button class="btn btn-sm" style="font-size:10px;margin-left:auto;flex-shrink:0;" onclick="this.closest('div[style*=card]').querySelector('.sv-rel-hist').style.display=this.closest('div[style*=card]').querySelector('.sv-rel-hist').style.display==='none'?'':'none';this.textContent=this.textContent.includes('+')?' − History':' + History (${hist.length})'"> + History (${hist.length})</button>`:''}
-          <span class="chip" onclick="_svOpenEntry('${latest?.bookId||''}',${latest?.entryId||0})" style="background:var(--bg2);font-size:10px;cursor:pointer;margin-left:${hasHistory?'0':'auto'};">${esc(latest?.bookLabel||'')}</span>
         </div>
         ${hasHistory?`<div class="sv-rel-hist" style="display:none;margin-top:6px;border-top:0.5px solid var(--cb);padding-top:5px;">${hist.map(h=>{const hA=h.relType?_genderRelLabel(h.relType,pair.charA):'';const hB=h.relType?_genderRelLabel(RECIPROCAL[h.relType]||h.relType,pair.charB):'';const hLabel=hB&&hB!==hA?`${hA} / ${hB}`:hA||h.relType||'';return `<div onclick="_svOpenEntry('${h.bookId}',${h.entryId})" style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:11px;"><span class="chip" style="background:var(--bg2);font-size:10px;flex-shrink:0;">${esc(h.bookLabel)}</span><span style="color:var(--t2);">${esc(hLabel)}</span></div>`;}).join('')}</div>`:``}
       </div>`;
@@ -3840,30 +3848,59 @@ function _genderRelLabel(type,charName){
   const trunk=RELTYPE_TRUNK?.[type]||type;
   return(GENDER_REL_MAP[g]&&GENDER_REL_MAP[g][trunk])||type;
 }
-// #773 — open series view characters tab filtered/highlighted to a specific character
+// #773-2 — Comprehensive series character profile (all entries across all books)
 function openSeriesCharProfile(name){
-  const cur=book();if(!cur?.seriesName)return;
-  const prevSvSeries=_svSeries;
-  _svSeries=cur.seriesName;
-  _svTab='chars';
+  // Make sure _svSeries is set (in case called from char profile btn in book view)
+  if(!_svSeries){const cur=book();if(cur?.seriesName)_svSeries=cur.seriesName;else return;}
   const books=_seriesBooks();
-  document.getElementById('series-view-title').textContent=`📚 ${esc(cur.seriesName)}`;
-  const meta=document.getElementById('series-view-meta');
-  const bookLabel=b=>`<span style="color:var(--accent);font-weight:600;">${esc(b.title)}${b.seriesNum?' #'+b.seriesNum:''}</span>`;
-  if(meta)meta.innerHTML=`${books.length} book${books.length!==1?'s':''} · ${books.map(bookLabel).join(' · ')}`;
-  document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
-  const ct=document.getElementById('sv-tab-chars');if(ct)ct.classList.add('active');
-  // Add a search pre-filled with the character name + searchbox
-  const searchBar=document.getElementById('sv-search-bar');
-  if(searchBar){searchBar.value=name;_svSearch=name;}
-  renderSeriesView();
-  // Scroll to the character
-  openSheet('series-view-overlay');
-  setTimeout(()=>{
-    const cards=[...document.querySelectorAll('#series-view-body [data-char-name]')];
-    const match=cards.find(c=>c.dataset.charName===name);
-    if(match){match.scrollIntoView({behavior:'smooth',block:'start'});match.style.outline='2px solid var(--accent)';setTimeout(()=>match.style.outline='',1500);}
-  },200);
+  const cc=getCC(name);
+  // Gather character entry from each book
+  const charEntries=books.map(b=>{const e=(b.entries||[]).find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name);return{book:b,entry:e};}).filter(x=>x.entry);
+  const firstEntry=charEntries[0]?.entry;
+  const photo=charEntries.find(x=>x.entry?.photo)?.entry?.photo||charEntries.find(x=>x.entry?.photos?.length)?.entry?.photos?.[0]||null;
+  const photoHTML=photo?`<img src="${photo}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid var(--cb);flex-shrink:0;"/>`:`<div style="width:70px;height:70px;border-radius:50%;background:${cc.bg};color:${cc.text};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;flex-shrink:0;">${name.slice(0,2).toUpperCase()}</div>`;
+  const allRoles=[...new Set(charEntries.map(x=>x.entry?.charRole).filter(Boolean))].join(' · ');
+  const allDescs=charEntries.filter(x=>x.entry?.charDesc).map(x=>`<div style="font-size:12px;color:var(--t2);padding:6px 8px;background:var(--bg2);border-radius:var(--r);border-left:3px solid var(--cb);margin-bottom:5px;"><span style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:2px;">${esc(x.book.title)}</span>${esc(x.entry.charDesc)}</div>`).join('');
+  const bookChips=charEntries.map(x=>`<span class="chip" onclick="closeSheet('sv-char-profile-overlay');setTimeout(()=>{openBook('${x.book.id}');setTimeout(()=>openCharDetail('${esc(name)}',false),250);},120);" style="font-size:10px;cursor:pointer;background:var(--al);color:var(--accent);border-color:var(--am);">📖 ${esc(x.book.title)}${x.book.seriesNum?' #'+x.book.seriesNum:''}</span>`).join('');
+  // Aggregate non-char, non-rel entries by type across all books
+  const ENTRY_SECTIONS=[{label:'💬 Quotes',types:['Quote','Line/stanza','Narrator quote']},{label:'📅 Events',types:['Event','Timeline','Date/Period']},{label:'✨ Traits',types:['Characteristic']},{label:'🌊 Themes',types:['Theme']},{label:'❓ Questions',types:['Question']},{label:'📑 Chapters',types:['Chapter']}];
+  let sectionsHTML='';
+  ENTRY_SECTIONS.forEach(sec=>{
+    const items=[];
+    books.forEach(b=>{
+      (b.entries||[]).filter(e=>sec.types.includes(e.type)&&!e.isDraft&&(e.involved||[]).includes(name)).forEach(e=>{
+        items.push({e,book:b});
+      });
+    });
+    if(!items.length)return;
+    sectionsHTML+=`<div style="margin-top:14px;"><div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">${sec.label} (${items.length})</div>`;
+    items.forEach(({e,book:b})=>{
+      const bkTag=`<span style="font-size:9px;font-weight:700;color:var(--accent);background:var(--al);border-radius:4px;padding:1px 5px;margin-right:4px;">${esc(b.title)}${b.seriesNum?' #'+b.seriesNum:''}</span>`;
+      const pg=(e.pageNum||e.chapNum)?`<span style="font-size:10px;color:var(--t3);">${e.chapNum?'Ch.'+e.chapNum:''} ${e.pageNum?'p.'+e.pageNum:''}</span>`:'';
+      const txt=e.type==='Characteristic'?(e.content||''):(e.content||'').slice(0,100)+((e.content||'').length>100?'…':'');
+      const qt=['Quote','Line/stanza','Narrator quote'].includes(e.type);
+      sectionsHTML+=`<div onclick="closeSheet('sv-char-profile-overlay');setTimeout(()=>{openBook('${b.id}');setTimeout(()=>editEntry(${e.id}),250);},120);" style="padding:7px 9px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);cursor:pointer;">${bkTag}${pg?pg+' ':''}${qt?`<span style="font-size:14px;color:var(--am);font-family:Georgia,serif;">"</span>`:''}${esc(txt)}${qt?`<span style="font-size:14px;color:var(--am);font-family:Georgia,serif;">"</span>`:''}</div>`;
+    });
+    sectionsHTML+='</div>';
+  });
+  // Relationships (allow duplicates per book, distinguish book)
+  const rels=[];
+  books.forEach(b=>{
+    (b.entries||[]).filter(e=>e.type==='Relationship'&&(e.relA===name||e.relB===name)).forEach(e=>{rels.push({e,book:b});});
+  });
+  if(rels.length){
+    sectionsHTML+=`<div style="margin-top:14px;"><div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">🔗 Relationships (${rels.length})</div>`;
+    rels.forEach(({e,book:b})=>{
+      const other=e.relA===name?e.relB:e.relA;
+      const bkTag=`<span style="font-size:9px;font-weight:700;color:var(--accent);background:var(--al);border-radius:4px;padding:1px 5px;margin-right:4px;">${esc(b.title)}${b.seriesNum?' #'+b.seriesNum:''}</span>`;
+      sectionsHTML+=`<div onclick="closeSheet('sv-char-profile-overlay');setTimeout(()=>{openBook('${b.id}');setTimeout(()=>editEntry(${e.id}),250);},120);" style="padding:7px 9px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);cursor:pointer;">${bkTag}<strong>${esc(other||'?')}</strong>${e.relType?` · <span style="color:var(--t2);font-size:12px;">${esc(e.relType)}</span>`:''}${e.content&&e.content!=='Relationship'?`<div style="font-size:11px;color:var(--t2);margin-top:2px;">${esc(e.content)}</div>`:''}</div>`;
+    });
+    sectionsHTML+='</div>';
+  }
+  const bodyHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">${photoHTML}<div style="flex:1;"><div style="font-size:20px;font-weight:700;">${esc(name)}</div>${allRoles?`<div style="font-size:12px;color:var(--t3);">${esc(allRoles)}</div>`:''}</div></div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${bookChips}</div>${allDescs?`<div style="margin-bottom:4px;">${allDescs}</div>`:''}${sectionsHTML}`;
+  document.getElementById('sv-cp-title').textContent=name;
+  document.getElementById('sv-cp-body').innerHTML=bodyHTML;
+  openSheet('sv-char-profile-overlay');
 }
 // #730 — toast helper (shared)
 function _showToast(msg,color){
@@ -5887,7 +5924,7 @@ function openAddSheet(preType){
   if(preType){
     const sel=document.getElementById('ae-type');
     const opts=[...sel.options].map(o=>o.value);
-    if(opts.includes(preType))sel.value=preType;
+    if(opts.includes(preType)){sel.value=preType;_aetypeSyncDisplay();}
   }
   openSheet('ae-overlay');onTypeChange();
   const _si=document.querySelector('#ae-overlay .sheet');if(_si)_si.scrollTop=0;
@@ -5978,6 +6015,8 @@ function clearAEForm(){
   const qa=document.getElementById('ae-qanswer');if(qa)qa.value='';
   const qh=document.getElementById('ae-qhyp');if(qh)qh.value='';
   const qg=document.getElementById('ae-qguess');if(qg)qg.value='';
+  const _qap=document.getElementById('ae-qans-pg');if(_qap)_qap.value='';
+  const _qac=document.getElementById('ae-qans-ch');if(_qac)_qac.value='';
   if(document.getElementById('event-type-picks'))populateEventTypePicks();
   // #402 — clear event-type filter on form reset
   const _ets=document.getElementById('event-type-search');if(_ets)_ets.value='';
@@ -6922,7 +6961,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     entry.wordTransTranslator=document.getElementById('ae-word-trans-translator').value.trim();
     entry.wordTransWhy=document.getElementById('ae-word-trans-why').value.trim();
   }
-  if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.qhyp=(document.getElementById('ae-qhyp')?.value||'').trim();entry.qguess=(document.getElementById('ae-qguess')?.value||'').trim();entry.answered=!!(entry.qanswer);}
+  if(type==='Question'){const qa=document.getElementById('ae-qanswer');entry.qanswer=qa?qa.value.trim():'';entry.qhyp=(document.getElementById('ae-qhyp')?.value||'').trim();entry.qguess=(document.getElementById('ae-qguess')?.value||'').trim();entry.qansPg=(document.getElementById('ae-qans-pg')?.value||'').trim();entry.qansCh=(document.getElementById('ae-qans-ch')?.value||'').trim();entry.answered=!!(entry.qanswer);}
   if(type==='Timeline'||type==='Event'){
     // #309 — warn on duplicate timeline name (only on NEW entries, not edits).
     // Soft warning (confirm) so the user can override — same name across batches
@@ -7265,20 +7304,24 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     // xlsx #425 (Batch 41) — same bidirectional maintenance for Event/Timeline
     // entries: (a) detach the quote from any event REMOVED, (b) push the quote
     // id into any event ADDED.
-    const prevEventIds=Array.isArray(prevQ?.attachedEventIds)?prevQ.attachedEventIds.map(Number):[];
-    const newEventIds=new Set((entry.attachedEventIds||[]).map(Number));
-    // Preserve event-side links that aren't picked in this Quote save.
+    // #777/768-3 — attachedEventIds may contain plain numbers OR {id,bookId} cross-book refs.
+    // Preserve cross-book refs through save; only convert local refs to Number.
+    const _refId=r=>typeof r==='object'&&r.id?Number(r.id):Number(r);
+    const _isCross=r=>typeof r==='object'&&r.id&&r.bookId;
+    const prevEventIds=Array.isArray(prevQ?.attachedEventIds)?prevQ.attachedEventIds.map(_refId):[];
+    // Build merged set keeping cross-book refs as objects, local refs as numbers.
+    const _newRefs=[...(entry.attachedEventIds||[])];
+    // Add reverse-scan local events not yet in refs.
     entries().filter(ev=>['Event','Timeline','Date/Period'].includes(ev.type)&&Array.isArray(ev.attachedQuoteIds)&&ev.attachedQuoteIds.includes(entry.id))
-      .forEach(ev=>newEventIds.add(Number(ev.id)));
-    entry.attachedEventIds=[...newEventIds];
+      .forEach(ev=>{if(!_newRefs.some(r=>_refId(r)===ev.id&&!_isCross(r)))_newRefs.push(ev.id);});
+    entry.attachedEventIds=_newRefs;
+    const newLocalIds=new Set(_newRefs.filter(r=>!_isCross(r)).map(Number));
     prevEventIds.forEach(id=>{
-      if(entry.attachedEventIds.includes(id))return;
+      if(newLocalIds.has(id))return;
       const ev=entries().find(x=>x.id===id);
-      if(ev?.attachedQuoteIds){
-        ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==entry.id);
-      }
+      if(ev?.attachedQuoteIds)ev.attachedQuoteIds=ev.attachedQuoteIds.filter(qid=>qid!==entry.id);
     });
-    entry.attachedEventIds.forEach(id=>{
+    _newRefs.filter(r=>!_isCross(r)).forEach(id=>{
       const ev=entries().find(x=>x.id===Number(id));
       if(!ev)return;
       if(!Array.isArray(ev.attachedQuoteIds))ev.attachedQuoteIds=[];
@@ -7572,7 +7615,17 @@ function _pulseEntryById(id){
   };
   tick();
 }
-function getRecycleBin(){if(!book().recycleBin)book().recycleBin=[];return book().recycleBin;}
+function _openCurrentSeriesView(){const cur=book();if(cur?.seriesName)openSeriesView(cur.seriesName);}
+function _goToQuestion(qid){
+  forceTab('questions');
+  window._pendingPulseId=qid;
+  setTimeout(()=>{
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const id=window._pendingPulseId;if(id){_pulseEntryById(id);window._pendingPulseId=null;}
+    }));
+  },650);
+}
+
 // xlsx #427 — Universal Delete button on entry forms (edit mode). Reads editId,
 // confirms, runs deleteEntry, then closes the sheet. Wires to the #ae-delete-btn button.
 function deleteEntryFromForm(){
@@ -8189,7 +8242,7 @@ function editEntry(id){
   document.getElementById('ae-sheet-title').textContent='Edit annotation';
   // xlsx #427 — surface universal Delete button on the form's save bar
   const _delb=document.getElementById('ae-delete-btn');if(_delb)_delb.style.display='';
-  document.getElementById('ae-type').value=e.type;onTypeChange();
+  document.getElementById('ae-type').value=e.type;onTypeChange();_aetypeSyncDisplay();
   setTimeout(()=>{
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';buildCharRoleSelect(e.charRole||'');document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';const profEl=document.getElementById('ae-cprofession');if(profEl)profEl.value=e.charProfession||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');cddSet('ae-rela','');cddSet('ae-relb','');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}// #323 — clear first to prevent stale values from prior form state
@@ -8269,6 +8322,8 @@ function editEntry(id){
     const qa=document.getElementById('ae-qanswer');if(qa)qa.value=e.qanswer||'';
     const _qh=document.getElementById('ae-qhyp');if(_qh)_qh.value=e.qhyp||'';
     const _qg=document.getElementById('ae-qguess');if(_qg)_qg.value=e.qguess||'';
+    const _qap=document.getElementById('ae-qans-pg');if(_qap)_qap.value=e.qansPg||'';
+    const _qac=document.getElementById('ae-qans-ch');if(_qac)_qac.value=e.qansCh||'';
     // Show guess-correct row only when both a hypothesis AND an answer exist
     onQAnswerInput();
     if(e.evdate){document.getElementById('ae-evdate').value=e.evdate;if(e.type==='Event'){const medate=document.getElementById('ae-medate');if(medate)medate.value=e.evdate;}
@@ -8703,7 +8758,7 @@ function ecHTML(e,compact,fromTab){
     }).filter(Boolean);
     if(_qs.length){
       const _fl=(_qs[0].content||'?').slice(0,18)+(_qs[0].content&&_qs[0].content.length>18?'…':'');
-      questionPill=`<span class="pbadge" style="background:var(--al);color:var(--red,#E24B4A);font-weight:600;" title="${esc(_qs.map(q=>q.content||'?').join(', '))}">❓ ${esc(_fl)}${_qs.length>1?` +${_qs.length-1}`:''}</span>`;
+      questionPill=`<span class="pbadge" style="background:var(--al);color:var(--red,#E24B4A);font-weight:600;cursor:pointer;" onclick="event.stopPropagation();_goToQuestion(${_qs[0].id})" title="${esc(_qs.map(q=>q.content||'?').join(', '))}">❓ ${esc(_fl)}${_qs.length>1?` +${_qs.length-1}`:''}</span>`;
     }
   }
   return `<div class="ec ${k}" data-entry-id="${e.id}" ${clickAttr}>
@@ -8996,20 +9051,16 @@ function openCharDetail(name,fromWeb){
   };
   document.getElementById('char-edit-btn').onclick=()=>{const e=entries().find(x=>CT.includes(x.type)&&(x.cn||x.content)===name);if(e){show('book-screen','char-screen');editEntry(e.id);}};
   // #773 — show "View series profile" button if book is part of a series
-  let seriesBtn=document.getElementById('char-series-btn');
-  if(!seriesBtn){
-    seriesBtn=document.createElement('button');seriesBtn.id='char-series-btn';
-    seriesBtn.className='btn btn-sm';seriesBtn.style.cssText='position:absolute;right:44px;top:8px;font-size:10px;z-index:21;padding:3px 8px;';
-    const charTopbar=document.getElementById('char-screen')?.querySelector('.topbar')||document.getElementById('char-screen')?.querySelector('[class*="topbar"]');
-    if(charTopbar)charTopbar.appendChild(seriesBtn);
-  }
+  const seriesBtn=document.getElementById('char-series-btn');
   const cur=book();
-  if(cur?.seriesName&&Object.values(library||{}).some(b=>b&&b.seriesName===cur.seriesName&&b.id!==currentId)){
-    seriesBtn.style.display='';
-    seriesBtn.textContent='📚 Series profile';
-    seriesBtn.onclick=()=>openSeriesCharProfile(name);
-  } else {
-    seriesBtn.style.display='none';
+  if(seriesBtn){
+    if(cur?.seriesName&&Object.values(library||{}).some(b=>b&&b.seriesName===cur.seriesName&&b.id!==currentId)){
+      seriesBtn.style.display='';
+      seriesBtn.textContent='📚 Series';
+      seriesBtn.onclick=()=>openSeriesCharProfile(name);
+    } else {
+      seriesBtn.style.display='none';
+    }
   }
   const fab=document.getElementById('char-fab');if(fab)fab.style.display='';
   try{
@@ -10161,7 +10212,10 @@ function renderTimeline(){
 
   // #314 — apply location filter
   const activeLoc=tlLocFilter?.dataset.active||'all';
-  const filtered=activeLoc==='all'?all:all.filter(e=>e.location===activeLoc);
+  let filtered=activeLoc==='all'?all:all.filter(e=>e.location===activeLoc);
+  // #773 — apply text search (content, note, involved character names)
+  const _tlQ=(document.getElementById('tl-search')?.value||'').toLowerCase().trim();
+  if(_tlQ){filtered=filtered.filter(e=>(e.content||'').toLowerCase().includes(_tlQ)||(e.note||'').toLowerCase().includes(_tlQ)||(e.evdate||'').toLowerCase().includes(_tlQ)||(e.involved||[]).some(c=>(c||'').toLowerCase().includes(_tlQ)));}
 
   // #303 — parse evdate to a sortable value; use computedSortNum for offset entries
   function evdateSort(e){
@@ -11949,6 +12003,9 @@ function qHTML(q){
   const gm=q.qguess?guessMap[q.qguess]:null;
   const guessBadge=gm?`<span class="pbadge" style="background:${gm.bg};color:${gm.color};font-weight:700;margin-left:6px;">${gm.label}</span>`:'';
   const hypBlock=q.qhyp?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid var(--am);"><strong style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Your hypothesis${guessBadge}</strong>${q.qhyp}</div>`:'';
+  // #771 — show quotes attached to this question
+  const _attachedQts=entries().filter(e=>['Quote','Line/stanza','Narrator quote'].includes(e.type)&&Array.isArray(e.attachedQuestionIds)&&e.attachedQuestionIds.some(r=>(typeof r==='object'?r.id:r)===q.id));
+  const attachedQtBlock=_attachedQts.length?`<div style="margin-top:6px;">${_attachedQts.map(qt=>{const preview=(qt.content||'').slice(0,120)+(qt.content&&qt.content.length>120?'…':'');const sp=qt.speaker?` — ${esc(qt.speaker)}`:'';const pg=qt.pageNum?` · p.${qt.pageNum}`:'';return`<div onclick="event.stopPropagation();editEntry(${qt.id})" style="font-size:12px;padding:6px 9px;background:var(--bg2);border-radius:var(--r);border-left:3px solid var(--am);margin-bottom:4px;cursor:pointer;"><span style="font-size:18px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-3px;margin-right:2px;">"</span>${esc(preview)}<span style="font-size:18px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-5px;margin-left:1px;">"</span>${sp||pg?`<span style="font-size:10px;color:var(--t3);margin-left:4px;">${sp}${pg}</span>`:''}</div>`;}).join('')}</div>`:'';
   // #236 — opacity on the wrapper made the red swipe-delete backplate visible through the card.
   // Move opacity to the inner content only so the card background stays opaque.
   // #236 follow-up — explicit opaque bg so swipe-delete plate doesn't show through.
@@ -11960,7 +12017,8 @@ function qHTML(q){
       <div style="flex:1;">
         <div class="econtent" style="${checked?'text-decoration:line-through;color:var(--t2);':''}">${q.content}</div>
         ${hypBlock}
-        ${q.qanswer?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid #1D9E75;"><strong style="font-size:9px;color:#0F6E56;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Answer</strong>${q.qanswer}</div>`:''}
+        ${q.qanswer?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid #1D9E75;"><strong style="font-size:9px;color:#0F6E56;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;">Answer${q.qansCh||q.qansPg?` <span style="font-weight:400;font-size:9px;color:var(--t3);">${q.qansCh?'Ch.'+q.qansCh:''}${q.qansCh&&q.qansPg?' · ':''}${q.qansPg?'p.'+q.qansPg:''}</span>`:''}</strong>${q.qanswer}</div>`:''}
+        ${attachedQtBlock}
         ${invB?`<div class="inv-row" style="margin-top:4px;">${invB}</div>`:''}
         ${q.chapNum||q.pageNum?`<div style="margin-top:3px;">${q.chapNum?`<span class="pbadge">Ch.${q.chapNum}</span>`:''} ${q.pageNum?`<span class="pbadge">p.${q.pageNum}</span>`:''}</div>`:''}
         ${q.note?`<div class="enote">${q.note}</div>`:''}
@@ -11980,6 +12038,14 @@ function onQAnswerInput(){
   const hyp=(document.getElementById('ae-qhyp')?.value||'').trim();
   const row=document.getElementById('ae-qguess-row');
   if(row)row.style.display=hyp?'':'none';
+}
+// #771 — auto-fill answer chapter from answer page number
+function onQAnsPgInput(){
+  const pgEl=document.getElementById('ae-qans-pg');const chEl=document.getElementById('ae-qans-ch');
+  if(!pgEl||!chEl)return;
+  const v=pgEl.value.trim();if(!v)return;
+  const chs=pageToChapters(v)||[];
+  if(chs.length===1&&!chEl.value)chEl.value=String(chs[0]);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -14557,6 +14623,16 @@ function _swipeInit(){/* removed */}
 </div>
 
 <!-- #696 — Series view: characters/timeline/relationships across all books in a series -->
+<div class="sheet-overlay" id="sv-char-profile-overlay" onclick="mc('sv-char-profile-overlay',event)">
+  <div class="sheet" style="max-height:92vh;">
+    <div class="sheet-topbar">
+      <button class="sheet-x" onclick="closeSheet('sv-char-profile-overlay');openSheet('series-view-overlay');" style="font-size:18px;padding:0 8px;">‹</button>
+      <div class="sheet-topbar-title" id="sv-cp-title">Character</div>
+      <button class="sheet-x" onclick="closeSheet('sv-char-profile-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:30px;" id="sv-cp-body"></div>
+  </div>
+</div>
 <div class="sheet-overlay" id="series-view-overlay" onclick="mc('series-view-overlay',event)">
   <div class="sheet" style="max-height:92vh;">
     <div class="sheet-topbar">
