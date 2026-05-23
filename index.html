@@ -11494,7 +11494,6 @@ function renderMap(){
     </div>`;
   
   };
-  let listHTML='';
   // Separate: locations WITH country data (real/known) vs fictional/unplaced (group by parent)
   const withCountry=filteredLocNames.filter(n=>_locCountry(n));
   const withoutCountry=filteredLocNames.filter(n=>!_locCountry(n));
