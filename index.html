@@ -329,6 +329,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button class="btn btn-sm" onclick="webZoom(-1)" title="Zoom out" style="padding:4px 10px;font-size:14px;">−</button>
           <button class="btn btn-sm" onclick="webZoom(0)" title="Reset view" style="padding:4px 10px;font-size:11px;">Reset</button>
           <button class="btn btn-sm" onclick="webZoom(1)" title="Zoom in" style="padding:4px 10px;font-size:14px;">+</button>
+          <button class="btn btn-sm" onclick="saveWebLayout()" title="Save node positions" style="padding:4px 10px;font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);">💾 Save layout</button>
+          <button class="btn btn-sm" onclick="clearWebLayout()" title="Clear saved positions" style="padding:4px 10px;font-size:11px;">🔄 Reset layout</button>
         </div>
       </div>
       <div class="web-wrap" id="web-wrap" style="position:relative;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;max-height:65vh;"><svg id="web-svg" style="display:block;touch-action:pan-x pan-y;" height="500" viewBox="0 0 360 500"></svg><div id="web-spotlight-overlay" style="display:none;position:absolute;inset:0;pointer-events:auto;background:radial-gradient(circle var(--spot-r,90px) at var(--spot-x,50%) var(--spot-y,50%),rgba(0,0,0,0) 55%,rgba(0,0,0,0.85) 75%);z-index:10;cursor:pointer;" onclick="webSpotlightClear()"></div><div id="web-spotlight-ring" style="display:none;position:absolute;border:3px solid #FFD23F;border-radius:50%;box-shadow:0 0 16px 4px rgba(255,210,63,0.85);pointer-events:none;z-index:11;"></div></div>
@@ -398,6 +400,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div style="margin-bottom:10px;">
         <button class="btn btn-sm" onclick="scanMissingFields()" style="width:100%;padding:9px;font-size:12px;touch-action:manipulation;">🔍 Scan entries for missing fields</button>
         <div id="scan-results" style="display:none;margin-top:8px;background:var(--bg2);border-radius:var(--r);padding:10px 12px;font-size:12px;"></div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <button class="btn btn-sm" onclick="scanDuplicates()" style="width:100%;padding:9px;font-size:12px;touch-action:manipulation;background:var(--al);color:var(--accent);border-color:var(--am);">🔎 Scan for duplicate entries</button>
+        <div id="dup-results" style="display:none;margin-top:8px;"></div>
       </div>
       <div id="todo-list"></div>
       <div style="margin-top:16px;">
@@ -3821,6 +3827,73 @@ function renderSeriesView(){
       html+=answered.map(qCard).join('');
     }
     if(!filtered.length)html=`<div class="empty"><div class="empty-text">No questions across this series yet.</div></div>`;
+    body.innerHTML=html;
+  } else if(_svTab==='locs'){
+    // #805 — Series locations tab: all unique locations across all books
+    const books=_seriesBooks();
+    const q=(_svSearch||'').toLowerCase();
+    // Merge locations from all books, deduplicate by name (merge data, prefer most-detailed)
+    const locMap={};
+    const entryMap={}; // locName → [{entry, book}]
+    books.forEach(b=>{
+      (b.locations||[]).forEach(l=>{
+        const nm=(l.name||l._name||'').trim();if(!nm)return;
+        if(!locMap[nm]||((l.notes||'').length>(locMap[nm].notes||'').length)){locMap[nm]={...l,_name:nm,_sourceBookId:b.id,_sourceBookTitle:b.title};}
+        else{locMap[nm]._allBooks=(locMap[nm]._allBooks||[]);locMap[nm]._allBooks.push(b.id);}
+        (locMap[nm]._allBooks=locMap[nm]._allBooks||[]);if(!locMap[nm]._allBooks.includes(b.id))locMap[nm]._allBooks.push(b.id);
+      });
+      // Also collect entries mentioning each location
+      (b.entries||[]).filter(e=>e.location).forEach(e=>{
+        const nm=(e.location||'').trim();if(!nm)return;
+        if(!entryMap[nm])entryMap[nm]=[];
+        entryMap[nm].push({e,b});
+      });
+    });
+    let locNames=Object.keys(locMap).sort((a,b)=>a.localeCompare(b));
+    if(q)locNames=locNames.filter(n=>n.toLowerCase().includes(q)||(locMap[n].city||'').toLowerCase().includes(q)||(locMap[n].country||'').toLowerCase().includes(q));
+    if(!locNames.length){body.innerHTML=`<div class="empty"><div class="empty-text">${q?'No locations match "'+esc(q)+'"':'No locations yet across this series.'}</div></div>`;return;}
+    // Group by fictional vs real (same logic as renderMap)
+    const _isFict=n=>{const t=((locMap[n].type||'').toLowerCase());return t==='fictional'||t==='imaginary';};
+    const _locCountry=n=>locMap[n].country||'';
+    const withCountry=locNames.filter(n=>_locCountry(n)&&!_isFict(n));
+    const withoutCountry=locNames.filter(n=>!_locCountry(n)||_isFict(n));
+    const _card=(nm)=>{
+      const l=locMap[nm];
+      const entries=entryMap[nm]||[];
+      const chars=[...new Set(entries.flatMap(({e})=>e.involved||[]))].filter(Boolean);
+      const bookCount=(l._allBooks||[l._sourceBookId]).length;
+      const typeIcon=(()=>{const t=(l.type||'').toLowerCase();return t==='fictional'||t==='imaginary'?'✨':t==='real'?'🌍':'📍';})();
+      return`<div onclick="_svOpenSeriesLoc('${esc(nm)}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:5px;background:var(--card);cursor:pointer;">
+        ${l.photo?`<div style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;"><img src="${l.photo}" style="width:100%;height:100%;object-fit:cover;"/></div>`:`<div style="width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--al),var(--bg2));border:0.5px solid var(--am);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">${typeIcon}</div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${esc(nm)}</div>
+          ${l.city||l.country?`<div style="font-size:11px;color:var(--t3);">${[l.city,l.country].filter(Boolean).join(', ')}</div>`:l.parent?`<div style="font-size:11px;color:var(--t3);">↳ ${esc(l.parent)}</div>`:''}
+          <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+            ${bookCount>0?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:9px;">📚 ${bookCount} book${bookCount!==1?'s':''}</span>`:''}
+            ${entries.length?`<span class="pbadge" style="font-size:9px;">${entries.length} entr${entries.length===1?'y':'ies'}</span>`:''}
+            ${chars.length?`<span class="pbadge" style="font-size:9px;">👤 ${chars.length}</span>`:''}
+          </div>
+        </div>
+        <span style="color:var(--t3);">›</span>
+      </div>`;
+    };
+    let html='';
+    if(withCountry.length){
+      const byCountry={};
+      withCountry.forEach(n=>{const co=_locCountry(n);(byCountry[co]=byCountry[co]||[]).push(n);});
+      Object.keys(byCountry).sort().forEach(co=>{
+        const cid='svlch-'+co.replace(/[^a-z0-9]/gi,'_');
+        html+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${cid}')" style="display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">🌍 ${co}</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${byCountry[co].length}</span><span id="${cid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${cid}">${byCountry[co].map(_card).join('')}</div></div>`;
+      });
+    }
+    if(withoutCountry.length){
+      const fid='svlch-fict';
+      if(withCountry.length){
+        html+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${fid}')" style="display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">✨ Fictional / Other</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${withoutCountry.length}</span><span id="${fid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${fid}">${withoutCountry.map(_card).join('')}</div></div>`;
+      } else {
+        html+=withoutCountry.map(_card).join('');
+      }
+    }
     body.innerHTML=html;
   } else if(_svTab==='web'){
     // #744 — Series relationship web reuses the existing renderWeb() engine.
@@ -7665,7 +7738,57 @@ function _pulseEntryById(id){
   };
   tick();
 }
-function _openCurrentSeriesView(){const cur=book();if(cur?.seriesName)openSeriesView(cur.seriesName);}
+function _svOpenSeriesLoc(name){
+  // Close series overlay and open the location profile with merged cross-book data
+  const books=_seriesBooks();
+  // Collect all entries from all books that mention this location
+  const allEntries=books.flatMap(b=>(b.entries||[]).filter(e=>e.location===name||e.location===(name||'').trim()).map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0,_isSeries:true})));
+  // Find best location data (from whichever book has the most detail)
+  const allLocData=books.flatMap(b=>(b.locations||[]).map(l=>({...l,_name:l.name||l._name,_bookId:b.id,_bookTitle:b.title})));
+  const locData=allLocData.find(l=>l._name===name)||{_name:name};
+  // Use the current book as host but inject merged entries
+  const hostBook=books.find(b=>b.id===currentId)||books[0];
+  if(!hostBook)return;
+  const origEntries=hostBook.entries;
+  const origId=currentId;
+  hostBook.entries=allEntries;
+  if(currentId!==hostBook.id)currentId=hostBook.id;
+  closeSheet('series-view-overlay');
+  openLocDetail(name);
+  hostBook.entries=origEntries;
+  // Override back btn to restore and reopen series overlay
+  const backBtn=document.getElementById('loc-back-btn');
+  if(backBtn)backBtn.onclick=()=>{
+    if(origId!==currentId){currentId=origId;}
+    show('book-screen','loc-screen');
+    // Reopen series view at locs tab
+    _svTab='locs';
+    document.querySelectorAll('#series-view-overlay .tab').forEach(t=>t.classList.remove('active'));
+    const lt=document.getElementById('sv-tab-locs');if(lt)lt.classList.add('active');
+    renderSeriesView();
+    openSheet('series-view-overlay');
+  };
+}
+
+// #122 — Save/restore relationship web layout (node positions) to book data
+function saveWebLayout(){
+  const svg=document.getElementById('web-svg');
+  const st=svg?._webState;if(!st){_showToast('Drag nodes first to arrange them.');return;}
+  let saved={};try{saved=JSON.parse(localStorage.getItem(st.posKey)||'{}');}catch(e){}
+  if(!book().webLayouts)book().webLayouts={};
+  book().webLayouts[activeWebFilter]=saved;
+  save();
+  _showToast('Layout saved! Positions will persist across sessions.');
+}
+function clearWebLayout(){
+  if(!confirm('Clear saved layout and let nodes float freely?'))return;
+  const svg=document.getElementById('web-svg');
+  const st=svg?._webState;
+  if(st)localStorage.removeItem(st.posKey);
+  if(book().webLayouts)delete book().webLayouts[activeWebFilter];
+  save();renderWeb();_showToast('Layout reset.');
+}
+
 function _goToQuestion(qid){
   forceTab('questions');
   window._pendingPulseId=qid;
@@ -9615,7 +9738,16 @@ function renderWeb(){
 
   // #298 — Restore saved drag positions per book+filter. Pinned nodes skip the sim.
   const posKey='webPos:'+currentId+':'+activeWebFilter;
-  let savedPos={};try{savedPos=JSON.parse(localStorage.getItem(posKey)||'{}');}catch(e){savedPos={};}
+  // #122 — load from book data first (persists across browser sessions), fall back to localStorage
+  let savedPos={};
+  try{
+    const bookLayouts=book().webLayouts||{};
+    if(bookLayouts[activeWebFilter]&&Object.keys(bookLayouts[activeWebFilter]).length){
+      savedPos=bookLayouts[activeWebFilter];
+    } else {
+      savedPos=JSON.parse(localStorage.getItem(posKey)||'{}');
+    }
+  }catch(e){savedPos={};}
   chars.forEach(c=>{if(savedPos[c.name]){c.x=savedPos[c.name].x;c.y=savedPos[c.name].y;c.pinned=true;}});
 
   // 6. Force simulation — horizontal only within each row to spread nodes
@@ -12381,6 +12513,85 @@ function restoreIgnoredTodo(i){
 function removeIgnoredTodo(i){
   const arr=getIgnoredTodos();arr.splice(i,1);saveIgnoredTodos(arr);renderIgnoredTodos();
 }
+// #145 — Duplicate scanner
+function scanDuplicates(){
+  const all=entries();
+  const container=document.getElementById('dup-results');
+  if(!container)return;
+  // Group by type, then find near-duplicate content (same normalized text)
+  const normalize=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+  const groups={};
+  all.filter(e=>!e.isDraft).forEach(e=>{
+    const key=e.type+'::'+normalize(e.content||e.cn||'');
+    if(key.endsWith('::'))return;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(e);
+  });
+  const dupes=Object.values(groups).filter(g=>g.length>1);
+  if(!dupes.length){
+    container.style.display='block';
+    container.innerHTML=`<div style="text-align:center;padding:12px;font-size:13px;color:#1D9E75;font-weight:600;">✅ No duplicates found!</div>`;
+    return;
+  }
+  container.style.display='block';
+  container.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Found ${dupes.length} duplicate group${dupes.length!==1?'s':''}</div>`+
+  dupes.map((group,gi)=>{
+    // Rank entries: keep the one with most content (combined field length)
+    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((sum,v)=>sum+v.length,0);
+    const sorted=[...group].sort((a,b)=>score(b)-score(a));
+    const keeper=sorted[0];
+    const losers=sorted.slice(1);
+    return`<div style="background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:8px;overflow:hidden;">
+      <div style="padding:8px 10px;border-bottom:0.5px solid var(--cb);font-size:11px;font-weight:700;color:var(--accent);">🔍 ${esc(keeper.type)} — ${group.length} duplicates</div>
+      ${sorted.map((e,i)=>{
+        const pg=e.pageNum?` · p.${e.pageNum}`:'';const ch=e.chapNum?` Ch.${e.chapNum}`:'';
+        const preview=(e.content||e.cn||'').slice(0,80);
+        return`<div style="padding:7px 10px;${i>0?'border-top:0.5px solid var(--cb);':''} display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10px;font-weight:700;${i===0?'color:#1D9E75;':'color:var(--t3);'}">${i===0?'KEEP':'MERGE'}</span>
+          <div style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(preview)}${pg}${ch}</div>
+          <button class="btn btn-sm" onclick="editEntry(${e.id})" style="flex-shrink:0;font-size:10px;">View</button>
+        </div>`;
+      }).join('')}
+      <div style="padding:8px 10px;border-top:0.5px solid var(--cb);display:flex;gap:6px;">
+        <button class="btn btn-sm" onclick="mergeDuplicate(${gi},[${group.map(e=>e.id).join(',')}])" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);flex:1;">Merge (keep largest)</button>
+        <button class="btn btn-sm" onclick="skipDuplicate(${gi})" style="font-size:11px;flex:1;">Skip</button>
+      </div>
+    </div>`;
+  }).join('');
+  // Store dupe data for merge action
+  window._dupGroups=dupes;
+}
+function mergeDuplicate(groupIdx,ids){
+  const all=entries();
+  const group=ids.map(id=>all.find(e=>e.id===id)).filter(Boolean);
+  if(group.length<2)return;
+  const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((sum,v)=>sum+v.length,0);
+  const sorted=[...group].sort((a,b)=>score(b)-score(a));
+  const keeper=sorted[0];
+  const losers=sorted.slice(1);
+  // Merge: copy any missing fields from losers into keeper
+  const textFields=['note','charDesc','charRole','definition','note','qanswer','speaker','charIntroCh','charIntro','background'];
+  losers.forEach(loser=>{
+    textFields.forEach(f=>{if(!keeper[f]&&loser[f])keeper[f]=loser[f];});
+    // Merge involved arrays
+    if(Array.isArray(loser.involved))keeper.involved=[...new Set([...(keeper.involved||[]),...loser.involved])];
+    // Add merged-from note
+    const mergeNote=`[Merged from entry #${loser.id}: "${(loser.content||loser.cn||'').slice(0,40)}"]`;
+    keeper.mergedFrom=(keeper.mergedFrom||[]);keeper.mergedFrom.push(mergeNote);
+    keeper.note=(keeper.note?keeper.note+'\n':'')+mergeNote;
+  });
+  // Delete loser entries
+  const b=book();
+  b.entries=b.entries.filter(e=>!losers.some(l=>l.id===e.id));
+  save();
+  _showToast(`Merged ${losers.length} duplicate${losers.length!==1?'s':''} into entry #${keeper.id}.`);
+  scanDuplicates(); // refresh
+}
+function skipDuplicate(groupIdx){
+  const el=document.querySelectorAll('#dup-results > div')[groupIdx];
+  if(el)el.style.display='none';
+}
+
 function scanMissingFields(){
   const all=entries();
   const issues=[];
@@ -14762,6 +14973,7 @@ function _swipeInit(){/* removed */}
         <button class="tab" id="sv-tab-rels" onclick="switchSeriesTab('rels',this)" style="flex:0 0 auto;white-space:nowrap;font-size:12px;">🔗 Relationships</button>
         <button class="tab" id="sv-tab-web" onclick="switchSeriesTab('web',this)" style="flex:0 0 auto;white-space:nowrap;font-size:12px;">🕸 Web</button>
         <button class="tab" id="sv-tab-questions" onclick="switchSeriesTab('questions',this)" style="flex:0 0 auto;white-space:nowrap;font-size:12px;">❓ Questions</button>
+        <button class="tab" id="sv-tab-locs" onclick="switchSeriesTab('locs',this)" style="flex:0 0 auto;white-space:nowrap;font-size:12px;">📍 Locations</button>
       </div>
       <div style="margin-bottom:8px;">
         <input type="text" id="sv-search-bar" placeholder="🔍 Search…" oninput="_svSearch=this.value;renderSeriesView();" style="width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
