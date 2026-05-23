@@ -3779,6 +3779,42 @@ function renderSeriesView(){
         ${hasHistory?`<div class="sv-rel-hist" style="display:none;margin-top:6px;border-top:0.5px solid var(--cb);padding-top:5px;">${hist.map(h=>{const hA=h.relType?_genderRelLabel(h.relType,pair.charA):'';const hB=h.relType?_genderRelLabel(RECIPROCAL[h.relType]||h.relType,pair.charB):'';const hLabel=hB&&hB!==hA?`${hA} / ${hB}`:hA||h.relType||'';return `<div onclick="_svOpenEntry('${h.bookId}',${h.entryId})" style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:11px;"><span class="chip" style="background:var(--bg2);font-size:10px;flex-shrink:0;">${esc(h.bookLabel)}</span><span style="color:var(--t2);">${esc(hLabel)}</span></div>`;}).join('')}</div>`:``}
       </div>`;
     }).join('');
+  } else if(_svTab==='questions'){
+    const books=_seriesBooks();
+    const q=(_svSearch||'').toLowerCase();
+    // Collect all questions across all books, tag with source book
+    const allQ=books.flatMap(b=>(b.entries||[]).filter(e=>e.type==='Question').map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0})));
+    // Apply search filter
+    const filtered=q?allQ.filter(e=>(e.content||'').toLowerCase().includes(q)||(e.qanswer||'').toLowerCase().includes(q)||(e.involved||[]).some(c=>(c||'').toLowerCase().includes(q))):allQ;
+    // Separate: answered within their own book vs answered in a LATER book vs unanswered
+    // "Answered in later book" = question from bookA, answer found in an entry of bookB where bookB.seriesNum > bookA.seriesNum
+    // We detect cross-book resolution by checking if an answered question belongs to an earlier book
+    const unanswered=filtered.filter(e=>!e.answered&&!e.qanswer);
+    const answered=filtered.filter(e=>e.answered||e.qanswer);
+    // Split answered into same-book vs cross-book (question in earlier book, answer pg from later book)
+    const crossResolved=answered.filter(e=>e.qansPg&&e._bookNum>0&&answered.some(a=>a._bookNum>e._bookNum));
+    const sameBook=answered.filter(e=>!crossResolved.includes(e));
+    const qCard=(e)=>{
+      const bkTag=`<span style="font-size:9px;font-weight:700;color:var(--accent);background:var(--al);border-radius:4px;padding:1px 5px;margin-right:4px;">📖 ${esc(e._bookTitle)}${e._bookNum?' #'+e._bookNum:''}</span>`;
+      const qPg=(e.qPg||e.pageNum)?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:10px;">p.${e.qPg||e.pageNum}</span>`:'';
+      const ansPg=e.qansPg?`<span class="pbadge" style="background:#dcfce7;color:#15803d;font-size:10px;">answered p.${e.qansPg}</span>`:'';
+      return`<div onclick="_svOpenEntry('${e._bookId}',${e.id})" style="padding:9px 11px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;background:var(--card);cursor:pointer;">
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">${bkTag}${qPg}${ansPg}</div>
+        <div style="font-size:13px;font-weight:500;${e.answered?'text-decoration:line-through;color:var(--t2);':''}">${esc(e.content||'')}</div>
+        ${e.qanswer?`<div style="font-size:12px;color:var(--t2);margin-top:4px;padding:5px 7px;background:var(--bg2);border-radius:var(--r);border-left:2px solid #1D9E75;"><strong style="font-size:9px;color:#0F6E56;display:block;margin-bottom:1px;">Answer</strong>${esc(e.qanswer)}</div>`:''}
+      </div>`;
+    };
+    let html='';
+    if(unanswered.length){
+      html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:6px;">❓ Unanswered (${unanswered.length})</div>`;
+      html+=unanswered.map(qCard).join('');
+    }
+    if(answered.length){
+      html+=`<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:${unanswered.length?'12px':0} 0 6px;">✅ Answered (${answered.length})</div>`;
+      html+=answered.map(qCard).join('');
+    }
+    if(!filtered.length)html=`<div class="empty"><div class="empty-text">No questions across this series yet.</div></div>`;
+    body.innerHTML=html;
   } else if(_svTab==='web'){
     // #744 — Series relationship web reuses the existing renderWeb() engine.
     // We build a merged entry set from all series books (chars deduped by name,
@@ -3858,45 +3894,33 @@ function _genderRelLabel(type,charName){
 }
 // #773-2 — Comprehensive series character profile (all entries across all books)
 function openSeriesCharProfile(name){
-  // Make sure _svSeries is set
   if(!_svSeries){const cur=book();if(cur?.seriesName)_svSeries=cur.seriesName;else return;}
-  const books=_seriesBooks();
-  if(!books.length)return;
-  // Build merged entries array: tag each with _bookId/_bookTitle/_bookNum/_isSeries
-  const mergedEntries=books.flatMap(b=>(b.entries||[]).map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0,_isSeries:true})));
-  // Temporarily swap entries in the currentId book, render, then restore
-  const origEntries=book().entries;
-  book().entries=mergedEntries;
-  // Remember we are in series profile mode so back btn returns to series view
-  window._svCharProfileActive=true;
-  window._svCharProfileName=name;
-  // Build back btn that returns to series view overlay
+  const allSeriesBooks=Object.values(library||{}).filter(b=>b&&b.seriesName===_svSeries).sort((a,b)=>(+a.seriesNum||0)-(+b.seriesNum||0));
+  if(!allSeriesBooks.length)return;
+  const mergedEntries=allSeriesBooks.flatMap(b=>(b.entries||[]).map(e=>({...e,_bookId:b.id,_bookTitle:b.title,_bookNum:+b.seriesNum||0,_isSeries:true})));
+  const hostBook=allSeriesBooks.find(b=>b.id===currentId)||allSeriesBooks[0];
+  if(!hostBook)return;
+  const origBookId=currentId;
+  const origEntries=hostBook.entries;
+  hostBook.entries=mergedEntries;
+  if(currentId!==hostBook.id){currentId=hostBook.id;}
   openCharDetail(name,false);
-  // Override back button to return to series view overlay instead
+  hostBook.entries=origEntries;
   const backBtn=document.getElementById('char-back-btn');
-  if(backBtn){backBtn.onclick=()=>{
-    // Restore original entries
-    book().entries=origEntries;
-    window._svCharProfileActive=false;
+  if(backBtn)backBtn.onclick=()=>{
+    if(origBookId!==currentId){currentId=origBookId;renderAll();}
     show('book-screen','char-screen');
     openSheet('series-view-overlay');
-  };}
-  // Override edit btn to go to the correct book for that char entry
+  };
   const editBtn=document.getElementById('char-edit-btn');
-  if(editBtn){editBtn.onclick=()=>{
-    book().entries=origEntries;window._svCharProfileActive=false;
-    // Find which book has this character
-    const bk=books.find(b=>(b.entries||[]).some(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name));
+  if(editBtn)editBtn.onclick=()=>{
+    const bk=allSeriesBooks.find(b=>(b.entries||[]).some(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name));
     const e=bk&&(bk.entries||[]).find(x=>CT.includes(x.type)&&(x.cn||x.content||'')==name);
     if(e&&bk){closeSheet('series-view-overlay');setTimeout(()=>{openBook(bk.id);setTimeout(()=>editEntry(e.id),250);},120);}
-  };}
-  // Restore entries after render (renderCharDetail already ran synchronously)
-  book().entries=origEntries;
-  // Suppress series btn in series profile mode
+  };
   const seriesBtn=document.getElementById('char-series-btn');
   if(seriesBtn)seriesBtn.style.display='none';
-  // Annotate title
-  document.getElementById('char-screen-title').textContent=`${name} · Series`;
+  document.getElementById('char-screen-title').textContent=name+' · Series';
 }
 // #730 — toast helper (shared)
 function _showToast(msg,color){
@@ -11424,8 +11448,8 @@ function renderMap(){
     const mentionedIn=entries().filter(e=>e.location===loc||e.content===loc);
     const charsMentioned=[...new Set(mentionedIn.flatMap(e=>e.involved||[]))];
     const isReal=locData.type==='real';
-    const isFict=locData.type==='fictional';
-    const typeIcon=isReal?'🌍':isFict?'🌀':'📍';
+    const isFict=locData.type==='fictional'||locData.type==='imaginary';
+    const typeIcon=isReal?'🌍':isFict?'✨':'📍';
     // #328 — indent child locations
     const isChild=!!locData.parent;
     const indentStyle=isChild?'margin-left:16px;border-left:2px solid var(--cb);padding-left:8px;':'';
@@ -11471,10 +11495,15 @@ function renderMap(){
   
   };
   let listHTML='';
-  if(anyCountry){
+  // Separate: locations WITH country data (real/known) vs fictional/unplaced (group by parent)
+  const withCountry=filteredLocNames.filter(n=>_locCountry(n));
+  const withoutCountry=filteredLocNames.filter(n=>!_locCountry(n));
+  let listHTML='';
+  // Group with-country by country → city
+  if(withCountry.length){
     const byCountry={};
-    filteredLocNames.forEach(n=>{const co=_locCountry(n)||'_none';(byCountry[co]=byCountry[co]||[]).push(n);});
-    const sortedCountries=Object.keys(byCountry).sort((a,b)=>(a==='_none'?1:b==='_none'?-1:a.localeCompare(b)));
+    withCountry.forEach(n=>{const co=_locCountry(n);(byCountry[co]=byCountry[co]||[]).push(n);});
+    const sortedCountries=Object.keys(byCountry).sort((a,b)=>a.localeCompare(b));
     sortedCountries.forEach(country=>{
       const locs=byCountry[country];
       const byCity={};
@@ -11487,11 +11516,31 @@ function renderMap(){
         const ccid=cid+'-'+city.replace(/[^a-z0-9]/gi,'_');
         return `<div style="margin-bottom:4px;"><div onclick="toggleSec('${ccid}')" style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><span style="font-size:11px;font-weight:600;color:var(--t2);">🏙 ${city}</span><span style="flex:1;height:0.5px;background:var(--cb);"></span><span id="${ccid}-tog" style="font-size:10px;color:var(--t3);">▾</span></div><div id="${ccid}" style="padding-left:8px;">${cardsHTML}</div></div>`;
       }).join('');
-      const label=country==='_none'?'📍 Other':'🌍 '+country;
-      listHTML+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${cid}')" style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">${label}</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${locs.length}</span><span id="${cid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${cid}" style="padding:4px 0 0;">${cityParts}</div></div>`;
+      listHTML+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${cid}')" style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">🌍 ${country}</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${locs.length}</span><span id="${cid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${cid}" style="padding:4px 0 0;">${cityParts}</div></div>`;
     });
-  } else {
-    listHTML=filteredLocNames.map(l=>_renderCard(l)).join('');
+  }
+  // Group without-country: top-level fictional places first, then their children indented
+  if(withoutCountry.length){
+    // Find top-level (no parent, or parent not in this set)
+    const wSet=new Set(withoutCountry);
+    const _pOf=n=>{const d=allLocData.find(x=>x._name===n)||{};return d.parent||d._eParent||'';};
+    const topFict=withoutCountry.filter(n=>{const p=_pOf(n);return !p||!wSet.has(p);}).sort((a,b)=>a.localeCompare(b));
+    const childMap={};
+    withoutCountry.forEach(n=>{const p=_pOf(n);if(p&&wSet.has(p)){(childMap[p]=childMap[p]||[]).push(n);}});
+    Object.keys(childMap).forEach(k=>childMap[k].sort((a,b)=>a.localeCompare(b)));
+    const _visitFict=(name,depth=0)=>{
+      let html=_renderCard(name);
+      (childMap[name]||[]).forEach(child=>{html+=`<div style="margin-left:${14*(depth+1)}px;">`+_visitFict(child,depth+1)+'</div>';});
+      return html;
+    };
+    const fictCards=topFict.map(n=>_visitFict(n)).join('');
+    // Only show section header if there are also country-grouped items
+    if(withCountry.length){
+      const fid='lch-fictional';
+      listHTML+=`<div style="margin-bottom:8px;"><div onclick="toggleSec('${fid}')" style="display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);"><span style="font-size:12px;font-weight:700;">✨ Fictional / Other</span><span style="flex:1;"></span><span style="font-size:10px;color:var(--t3);">${withoutCountry.length}</span><span id="${fid}-tog" style="font-size:11px;margin-left:4px;">▾</span></div><div id="${fid}" style="padding:4px 0 0;">${fictCards}</div></div>`;
+    } else {
+      listHTML+=fictCards;
+    }
   }
   list.innerHTML=locDraftHTML+headerHTML+chipsHTML+listHTML;
 }
@@ -11561,9 +11610,9 @@ function renderLocDetail(name){
   const typeCount={};locEntries.forEach(e=>{typeCount[e.type]=(typeCount[e.type]||0)+1;});
 
   const isReal=locData.type==='real';
-  const isImaginary=locData.type==='imaginary';
+  const isImaginary=locData.type==='imaginary'||locData.type==='fictional';
   const typeIcon=isReal?'🗺️':isImaginary?'✨':'📍';
-  const typeLabel=isReal?'Real place':isImaginary?'Imaginary / fictional':'Unknown';
+  const typeLabel=isReal?'Real place':isImaginary?'Fictional / imaginary':'Unknown';
   const mapsUrl=`https://www.google.com/maps/search/${encodeURIComponent(name+(locData.city?', '+locData.city:'')+(locData.country?', '+locData.country:''))}`;
 
   // Summary card
@@ -11571,38 +11620,35 @@ function renderLocDetail(name){
   const _breadcrumb=_ancestors.length?`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:6px;font-size:11px;color:var(--t3);">${_ancestors.map(a=>`<span onclick="openLocDetail('${esc(a.name)}','${esc(name)}')" style="cursor:pointer;color:var(--accent);">${esc(a.name)}</span><span style="margin:0 2px;">›</span>`).join('')}<span style="color:var(--text);font-weight:600;">${esc(name)}</span></div>`:'';
   let html=`<div style="background:var(--bg2);border-radius:var(--rl);padding:13px 14px;margin-bottom:14px;border:0.5px solid var(--cb);">
     ${_breadcrumb}
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">
       ${locData.photo
-        ?`<div style="width:52px;height:52px;border-radius:var(--r);overflow:hidden;flex-shrink:0;"><img src="${locData.photo}" style="width:100%;height:100%;object-fit:cover;"/></div>`
-        :`<div style="font-size:30px;flex-shrink:0;">${typeIcon}</div>`}
-      <div style="flex:1;">
-        <div style="font-size:17px;font-weight:700;">${name}</div>
-        ${locData.parent?`<div style="font-size:11px;color:var(--t2);cursor:pointer;" onclick="openLocDetail('${esc(locData.parent)}')">↳ ${locData.parent}</div>`:''}
-        <div style="font-size:11px;color:var(--t2);">${typeLabel}</div>
-        ${locData.building?`<div style="font-size:12px;color:var(--t2);margin-top:2px;">🏛 ${locData.building}</div>`:''}
-        ${locData.city||locData.country?`<div style="font-size:12px;color:var(--t2);">${[locData.city,locData.country].filter(Boolean).join(', ')}</div>`:''}
-        ${locData.era?`<div style="font-size:12px;color:var(--t2);">⏳ ${locData.era}</div>`:''}
+        ?`<div style="width:64px;height:64px;border-radius:var(--rl2);overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15);"><img src="${locData.photo}" style="width:100%;height:100%;object-fit:cover;"/></div>`
+        :`<div style="width:64px;height:64px;border-radius:var(--rl2);background:linear-gradient(135deg,var(--al),var(--bg2));border:0.5px solid var(--am);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;">${typeIcon}</div>`}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:20px;font-weight:800;letter-spacing:-0.3px;line-height:1.15;">${esc(name)}</div>
+        ${locData.parent?`<div style="font-size:12px;color:var(--accent);cursor:pointer;margin-top:1px;" onclick="openLocDetail('${esc(locData.parent)}','${esc(name)}')">↳ ${esc(locData.parent)}</div>`:''}
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);">${typeLabel}</span>
+          ${locData.building?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">🏛 ${esc(locData.building)}</span>`:''}
+          ${locData.city||locData.country?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">📍 ${[locData.city,locData.country].filter(Boolean).join(', ')}</span>`:''}
+          ${locData.era?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">⏳ ${esc(locData.era)}</span>`:''}
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-      ${chapsMentioned.length?`<span class="pbadge">📖 Ch. ${chapsMentioned.join(', ')}</span>`:''}
-      ${locEntries.length?`<span class="pbadge">${locEntries.length} entr${locEntries.length===1?'y':'ies'}</span>`:''}
-      ${charsHere.length?`<span class="pbadge">👤 ${charsHere.length} character${charsHere.length===1?'':'s'}</span>`:''}
+    <div style="display:flex;gap:0;border-radius:var(--r);overflow:hidden;border:0.5px solid var(--cb);margin-bottom:10px;">
+      ${[{label:'Chapters',val:chapsMentioned.length||'—'},{label:'Entries',val:locEntries.length||'—'},{label:'Characters',val:charsHere.length||'—'}].map((s,i)=>`<div style="flex:1;text-align:center;padding:8px 4px;${i>0?'border-left:0.5px solid var(--cb);':''} background:var(--card);"><div style="font-size:18px;font-weight:800;color:var(--accent);">${s.val}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:600;">${s.label}</div></div>`).join('')}
     </div>
     ${charsHere.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">${charsHere.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('')}</div>`:''}
-    ${isReal?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-      <button class="btn btn-sm" onclick="openLink('${mapsUrl}')">🗺️ Google Maps</button>
+    ${isReal?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;">
+      <button class="btn btn-sm" onclick="openLink('${mapsUrl}')">🗺️ Maps</button>
       <button class="btn btn-sm" onclick="openLink('https://en.wikipedia.org/wiki/'+encodeURIComponent('${esc(name)}'))">📖 Wikipedia</button>
-      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)}${locData.city?' '+esc(locData.city):''}${locData.country?' '+esc(locData.country):''}'))">🖼 Find photo</button>
-      ${locData.era?`<button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} history ${esc(locData.era||'')}'))">🔍 History (${esc(locData.era)})</button>
-      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} border changes history what country today'))">🌍 Modern borders</button>`:''}
-    </div>
-    ${locData.era?`<div style="font-size:11px;color:var(--t3);margin-top:2px;">💡 Tap "History" to research what was happening in this region during <em>${esc(locData.era)}</em>. Tap "Modern borders" to find what country it belongs to today.</div>`:''}
-    `:''}
-    ${isImaginary?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} map fictional ${esc(book()?.title||'')}'))">🗺️ Search for map</button>
-      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')} wiki'))">📖 Fan wiki</button>
-      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')}'))">🖼 Find photo</button>
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)}${locData.city?' '+esc(locData.city):''}${locData.country?' '+esc(locData.country):''}'))">🖼 Photos</button>
+      ${locData.era?`<button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} history ${esc(locData.era||'')}')" >🔍 History</button>`:''}
+    </div>${locData.era?`<div style="font-size:11px;color:var(--t3);margin-top:2px;">💡 Tap History to research <em>${esc(locData.era)}</em>.</div>`:''}`:''}
+    ${isImaginary?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;">
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} map fictional ${esc(book()?.title||'')}')" >🗺️ Fan map</button>
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')} wiki')" >📖 Fan wiki</button>
+      <button class="btn btn-sm" onclick="openLink('https://www.google.com/search?tbm=isch&q='+encodeURIComponent('${esc(name)} ${esc(book()?.title||'')}')" >🖼 Artwork</button>
     </div>`:''}
     ${locData.notes?`<div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:8px;border-left:2px solid var(--am);padding-left:7px;">${locData.notes}</div>`:''}
   </div>`;
@@ -12081,7 +12127,7 @@ function onQPgInput(){
   if(!pgEl||!chEl)return;
   const v=pgEl.value.trim();if(!v)return;
   const chs=pageToChapters(v)||[];
-  if(chs.length===1&&!chEl.value)chEl.value=String(chs[0]);
+  if(chs.length){chEl.value=chs.length>1?chs.join(', '):String(chs[0]);}
 }
 
 function onQAnsPgInput(){
@@ -12089,7 +12135,7 @@ function onQAnsPgInput(){
   if(!pgEl||!chEl)return;
   const v=pgEl.value.trim();if(!v)return;
   const chs=pageToChapters(v)||[];
-  if(chs.length===1&&!chEl.value)chEl.value=String(chs[0]);
+  if(chs.length){chEl.value=chs.length>1?chs.join(', '):String(chs[0]);}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -14690,6 +14736,7 @@ function _swipeInit(){/* removed */}
         <button class="tab" id="sv-tab-events" onclick="switchSeriesTab('events',this)" style="flex:1;">📅 Timeline</button>
         <button class="tab" id="sv-tab-rels" onclick="switchSeriesTab('rels',this)" style="flex:1;">🔗 Relationships</button>
         <button class="tab" id="sv-tab-web" onclick="switchSeriesTab('web',this)" style="flex:1;">🕸 Web</button>
+        <button class="tab" id="sv-tab-questions" onclick="switchSeriesTab('questions',this)" style="flex:1;">❓ Questions</button>
       </div>
       <div style="margin-bottom:8px;">
         <input type="text" id="sv-search-bar" placeholder="🔍 Search…" oninput="_svSearch=this.value;renderSeriesView();" style="width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--cb);border-radius:var(--r);background:var(--bg2);"/>
