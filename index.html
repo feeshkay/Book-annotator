@@ -1173,11 +1173,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="quick-add-char">
           <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">Quick-add new character for B:</div>
           <div class="r2">
-            <div class="fg"><label>Name *</label><input type="text" id="qa-name" placeholder="Character name" oninput="autoTitleCase(this)"/></div>
-            <div class="fg"><label>Role</label><select id="qa-role"><option value="">Unknown</option><option value="main">Main</option><option value="side">Side</option><option value="minor">Minor</option><option value="stranger">Stranger / One-liner</option><option value="antagonist">Antagonist</option></select></div>
+            <div class="fg"><label>First name *</label><input type="text" id="qa-name" placeholder="First name" oninput="autoTitleCase(this)"/></div>
+            <div class="fg"><label>Last name</label><input type="text" id="qa-lastname" placeholder="Last name (optional)" oninput="autoTitleCase(this)"/></div>
           </div>
           <div class="r2">
+            <div class="fg"><label>Role</label><select id="qa-role"><option value="">Unknown</option><option value="main">Main</option><option value="side">Side</option><option value="minor">Minor</option><option value="antagonist">Antagonist</option></select></div>
             <div class="fg"><label>Intro Ch.</label><input type="number" id="qa-ch" inputmode="numeric" placeholder="Ch."/></div>
+          </div>
+          <div class="r2">
             <div class="fg"><label>Intro p.</label><input type="number" id="qa-pg" inputmode="numeric" placeholder="p."/></div>
           </div>
           <button class="btn btn-sm btn-primary" onclick="saveQuickAddChar()" style="margin-top:4px;">Save character</button>
@@ -5215,7 +5218,9 @@ function addRelEntry(a,rt,b,note,autoInvolved){
 // QUICK ADD CHAR IN REL FORM
 // ═══════════════════════════════════════════════════════════════
 function saveQuickAddChar(){
-  const name=document.getElementById('qa-name').value.trim();if(!name)return;
+  const firstName=document.getElementById('qa-name').value.trim();if(!firstName)return;
+  const lastName=(document.getElementById('qa-lastname')?.value||'').trim();
+  const name=lastName?`${firstName} ${lastName}`:firstName;
   if(!currentId)return;
   const ch=document.getElementById('qa-ch').value;
   const pg=document.getElementById('qa-pg').value;
@@ -5226,6 +5231,7 @@ function saveQuickAddChar(){
   cddSet('ae-relb',name);
   document.getElementById('ae-quick-add-b').style.display='none';
   document.getElementById('qa-name').value='';
+  const _qal=document.getElementById('qa-lastname');if(_qal)_qal.value='';
   if(window._cddRelChangeHook)window._cddRelChangeHook();
 }
 
@@ -9732,17 +9738,28 @@ function renderWeb(){
   chars.forEach(c=>genMap[c.name]-=minGen);
   const maxGen=Math.max(...chars.map(c=>genMap[c.name]));
 
+  // 2b. Place unconnected main characters at the center generation
+  // (chars with charRole==='main' and gen still at default 4-minGen)
+  const defaultGen=4-minGen;
+  const centerGen=Math.round(maxGen/2);
+  const hasHierarchy=chars.some(c=>genMap[c.name]!==defaultGen);
+  chars.forEach(c=>{
+    if(genMap[c.name]===defaultGen&&c.role==='main'){
+      genMap[c.name]=centerGen;
+    }
+  });
+
   // 3. Group into rows
   const rows={};
   chars.forEach(c=>{const g=genMap[c.name];if(!rows[g])rows[g]=[];rows[g].push(c);});
   const rowKeys=Object.keys(rows).map(Number).sort((a,b)=>a-b);
 
-  // 4. Canvas size
+  // 4. Canvas size — use more generous spacing
   const maxPerRow=Math.max(...rowKeys.map(g=>rows[g].length),1);
-  const minSpacing=NR*2+56;
-  const viewW=Math.max(320,maxPerRow*minSpacing+PAD*2);
-  const rowH=Math.max(110,Math.floor(420/Math.max(rowKeys.length,1)));
-  const viewH=Math.max(280,rowKeys.length*rowH+PAD*2);
+  const minSpacing=NR*2+80;
+  const viewW=Math.max(420,maxPerRow*minSpacing+PAD*2);
+  const rowH=Math.max(140,Math.floor(500/Math.max(rowKeys.length,1)));
+  const viewH=Math.max(340,rowKeys.length*rowH+PAD*2);
 
   // 5. Set initial positions — evenly spaced within each row
   rowKeys.forEach((g,gi)=>{
@@ -9770,19 +9787,18 @@ function renderWeb(){
   if(hasSavedLayout){
     chars.forEach(c=>{
       if(savedPos[c.name])return; // already positioned
-      // Find all chars this node is connected to via rels
+      // Find all chars this node is connected to via rels (dedupedRels uses relA/relB)
       const neighbours=dedupedRels
-        .filter(r=>r.a===c.name||r.b===c.name)
-        .map(r=>r.a===c.name?r.b:r.a)
-        .map(name=>chars.find(ch=>ch.name===name))
+        .filter(r=>r.relA===c.name||r.relB===c.name)
+        .map(r=>r.relA===c.name?r.relB:r.relA)
+        .map(nm=>chars.find(ch=>ch.name===nm))
         .filter(Boolean);
       const pinnedNeighbours=neighbours.filter(n=>savedPos[n.name]);
       if(pinnedNeighbours.length){
-        // Place near centroid of pinned neighbours with small random offset
         const cx=pinnedNeighbours.reduce((s,n)=>s+n.x,0)/pinnedNeighbours.length;
         const cy=pinnedNeighbours.reduce((s,n)=>s+n.y,0)/pinnedNeighbours.length;
         const angle=Math.random()*Math.PI*2;
-        const r=50+Math.random()*60;
+        const r=60+Math.random()*60;
         c.x=cx+Math.cos(angle)*r;
         c.y=cy+Math.sin(angle)*r;
       }
@@ -12561,8 +12577,27 @@ function scanDuplicates(){
   const normalize=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
   const groups={};
   all.filter(e=>!e.isDraft).forEach(e=>{
-    const key=e.type+'::'+normalize(e.content||e.cn||'');
-    if(key.endsWith('::'))return;
+    let key;
+    if(e.type==='Relationship'){
+      // For relationships: key on the PAIR of characters (sorted) + relType — not on content
+      // This means "Alice-Bob-Mother" and "Bob-Alice-Mother" = same key (one direction)
+      const a=normalize(e.relA||'');const b=normalize(e.relB||'');const rt=normalize(e.relType||'');
+      if(!a||!b)return; // skip incomplete rels
+      const pair=[a,b].sort().join('::');
+      key='Relationship::'+pair+'::'+rt;
+    } else if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
+      // For quotes: must match content AND (speaker OR pageNum) to count as true duplicate
+      // A quote on p.10 and p.80 are different even if text is similar
+      const txt=normalize(e.content||'');if(!txt||txt.length<10)return;
+      const spk=normalize(e.speaker||'');
+      const pg=String(e.pageNum||'');
+      // Only group if content matches AND at least one of: same speaker, same page
+      key='Quote::'+txt+'::'+spk+'::'+pg;
+    } else {
+      const txt=normalize(e.content||e.cn||'');
+      if(!txt)return;
+      key=e.type+'::'+txt;
+    }
     if(!groups[key])groups[key]=[];
     groups[key].push(e);
   });
