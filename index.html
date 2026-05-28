@@ -5225,13 +5225,25 @@ function saveQuickAddChar(){
   const ch=document.getElementById('qa-ch').value;
   const pg=document.getElementById('qa-pg').value;
   const role=document.getElementById('qa-role').value;
-  const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:role,charStatus:'unknown',charIntroCh:ch,charIntroPg:pg,charIntro:[ch?'Ch.'+ch:'',pg?'p.'+pg:''].filter(Boolean).join(', '),nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:ch,location:'',involved:[]};
-  book().entries.unshift(entry);
-  getCC(name);save();
-  cddSet('ae-relb',name);
+  // Ensure name doesn't already exist (case-insensitive)
+  const exists=entries().find(e=>CT.includes(e.type)&&(e.cn||e.content||'').toLowerCase()===name.toLowerCase());
+  if(!exists){
+    const entry={id:Date.now(),type:'Character',content:name,cn:name,charRole:role,charStatus:'unknown',charIntroCh:ch,charIntroPg:pg,charIntro:[ch?'Ch.'+ch:'',pg?'p.'+pg:''].filter(Boolean).join(', '),nickname:'',charDesc:'',charPhys:'',photo:'',note:'',date:localDate(),pageNum:'',chapNum:ch,location:'',involved:[]};
+    book().entries.unshift(entry);
+    getCC(name);
+  }
+  save();
+  // Set relB to the FULL combined name — both the hidden input and the display search
+  const relBEl=document.getElementById('ae-relb');
+  if(relBEl)relBEl.value=name;
+  const relBSearch=document.getElementById('ae-relb-search');
+  if(relBSearch)relBSearch.value=name;
   document.getElementById('ae-quick-add-b').style.display='none';
   document.getElementById('qa-name').value='';
   const _qal=document.getElementById('qa-lastname');if(_qal)_qal.value='';
+  // Reset other fields
+  ['qa-ch','qa-pg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const qaRole=document.getElementById('qa-role');if(qaRole)qaRole.value='';
   if(window._cddRelChangeHook)window._cddRelChangeHook();
 }
 
@@ -12574,53 +12586,61 @@ function scanDuplicates(){
   const all=entries();
   const container=document.getElementById('dup-results');
   if(!container)return;
+  // Load persisted skipped keys
+  if(!book().dupSkipped)book().dupSkipped={};
+  const skipped=book().dupSkipped;
   const normalize=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
   const groups={};
   all.filter(e=>!e.isDraft).forEach(e=>{
     let key;
     if(e.type==='Relationship'){
-      // For relationships: key on the PAIR of characters (sorted) + relType — not on content
-      // This means "Alice-Bob-Mother" and "Bob-Alice-Mother" = same key (one direction)
       const a=normalize(e.relA||'');const b=normalize(e.relB||'');const rt=normalize(e.relType||'');
-      if(!a||!b)return; // skip incomplete rels
+      if(!a||!b)return;
+      // Only flag as duplicate if SAME pair AND SAME relType (empty type = separate key per entry to avoid false positives)
+      if(!rt)return; // skip rels with no type — can't reliably detect duplicates
       const pair=[a,b].sort().join('::');
       key='Relationship::'+pair+'::'+rt;
     } else if(['Quote','Line/stanza','Narrator quote'].includes(e.type)){
-      // For quotes: must match content AND (speaker OR pageNum) to count as true duplicate
-      // A quote on p.10 and p.80 are different even if text is similar
       const txt=normalize(e.content||'');if(!txt||txt.length<10)return;
       const spk=normalize(e.speaker||'');
       const pg=String(e.pageNum||'');
-      // Only group if content matches AND at least one of: same speaker, same page
+      if(!spk&&!pg)return; // need at least one anchor to call it a true duplicate
       key='Quote::'+txt+'::'+spk+'::'+pg;
     } else {
       const txt=normalize(e.content||e.cn||'');
-      if(!txt)return;
+      if(!txt||txt.length<3)return;
       key=e.type+'::'+txt;
     }
     if(!groups[key])groups[key]=[];
     groups[key].push(e);
   });
   const dupes=Object.values(groups).filter(g=>g.length>1);
-  if(!dupes.length){
-    container.style.display='block';
-    container.innerHTML=`<div style="text-align:center;padding:12px;font-size:13px;color:#1D9E75;font-weight:600;">✅ No duplicates found in ${all.length} entries!</div>
-    <div style="font-size:11px;color:var(--t3);text-align:center;padding:0 8px 8px;">To test: add two Quote (or any type) entries with identical text, then scan again.</div>`;
-    return;
-  }
-  container.style.display='block';
-  container.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Found ${dupes.length} duplicate group${dupes.length!==1?'s':''}</div>`+
-  dupes.map((group,gi)=>{
-    // Rank entries: keep the one with most content (combined field length)
-    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((sum,v)=>sum+v.length,0);
+  const active=dupes.filter(g=>{
+    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((s,v)=>s+v.length,0);
+    const sorted=[...g].sort((a,b)=>score(b)-score(a));
+    const key=sorted.map(e=>e.id).join(',');
+    return !skipped[key];
+  });
+  const skippedGroups=dupes.filter(g=>{
+    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((s,v)=>s+v.length,0);
+    const sorted=[...g].sort((a,b)=>score(b)-score(a));
+    const key=sorted.map(e=>e.id).join(',');
+    return !!skipped[key];
+  });
+  const _groupKey=g=>{
+    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((s,v)=>s+v.length,0);
+    return [...g].sort((a,b)=>score(b)-score(a)).map(e=>e.id).join(',');
+  };
+  const _renderCard=(group,isSkipped)=>{
+    const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((s,v)=>s+v.length,0);
     const sorted=[...group].sort((a,b)=>score(b)-score(a));
     const keeper=sorted[0];
-    const losers=sorted.slice(1);
-    return`<div style="background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:8px;overflow:hidden;">
-      <div style="padding:8px 10px;border-bottom:0.5px solid var(--cb);font-size:11px;font-weight:700;color:var(--accent);">🔍 ${esc(keeper.type)} — ${group.length} duplicates</div>
+    const gkey=_groupKey(group);
+    return`<div data-dup-key="${gkey}" style="background:var(--bg2);border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:8px;overflow:hidden;${isSkipped?'opacity:0.55;':''}">
+      <div style="padding:8px 10px;border-bottom:0.5px solid var(--cb);font-size:11px;font-weight:700;color:var(--accent);">🔍 ${esc(keeper.type)}${isSkipped?' <span style="color:var(--t3);font-weight:400;">(skipped)</span>':''}</div>
       ${sorted.map((e,i)=>{
         const pg=e.pageNum?` · p.${e.pageNum}`:'';const ch=e.chapNum?` Ch.${e.chapNum}`:'';
-        const preview=(e.content||e.cn||'').slice(0,80);
+        const preview=(e.relA&&e.relB?`${e.relA} ↔ ${e.relB}${e.relType?' ('+e.relType+')':''}`:e.content||e.cn||'').slice(0,80);
         return`<div style="padding:7px 10px;${i>0?'border-top:0.5px solid var(--cb);':''} display:flex;align-items:center;gap:8px;">
           <span style="font-size:10px;font-weight:700;${i===0?'color:#1D9E75;':'color:var(--t3);'}">${i===0?'KEEP':'MERGE'}</span>
           <div style="flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(preview)}${pg}${ch}</div>
@@ -12628,43 +12648,56 @@ function scanDuplicates(){
         </div>`;
       }).join('')}
       <div style="padding:8px 10px;border-top:0.5px solid var(--cb);display:flex;gap:6px;">
-        <button class="btn btn-sm" onclick="mergeDuplicate(${gi},[${group.map(e=>e.id).join(',')}])" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);flex:1;">Merge (keep largest)</button>
-        <button class="btn btn-sm" onclick="skipDuplicate(${gi})" style="font-size:11px;flex:1;">Skip</button>
+        ${!isSkipped?`<button class="btn btn-sm" onclick="mergeDuplicate('${gkey}',[${group.map(e=>e.id).join(',')}])" style="font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent);flex:1;">Merge (keep largest)</button>`:''}
+        <button class="btn btn-sm" onclick="${isSkipped?`unskipDuplicate('${gkey}')`:`skipDuplicate('${gkey}')`}" style="font-size:11px;flex:1;">${isSkipped?'↩ Unskip':'Skip'}</button>
       </div>
     </div>`;
-  }).join('');
-  // Store dupe data for merge action
-  window._dupGroups=dupes;
+  };
+  if(!dupes.length){
+    container.style.display='block';
+    container.innerHTML=`<div style="text-align:center;padding:12px;font-size:13px;color:#1D9E75;font-weight:600;">✅ No duplicates found in ${all.length} entries!</div>
+    <div style="font-size:11px;color:var(--t3);text-align:center;padding:0 8px 8px;">To test: add two Quote (or any type) entries with identical text+speaker+page, then scan again.</div>`;
+    return;
+  }
+  container.style.display='block';
+  let html=``;
+  if(active.length)html+=`<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">Found ${active.length} group${active.length!==1?'s':''} to review</div>`+active.map(g=>_renderCard(g,false)).join('');
+  if(skippedGroups.length)html+=`<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;margin:12px 0 8px;">Skipped (${skippedGroups.length})</div>`+skippedGroups.map(g=>_renderCard(g,true)).join('');
+  if(!active.length&&!skippedGroups.length)html=`<div style="text-align:center;padding:12px;font-size:13px;color:#1D9E75;font-weight:600;">✅ No duplicates found!</div>`;
+  container.innerHTML=html;
 }
-function mergeDuplicate(groupIdx,ids){
+function mergeDuplicate(gkey,ids){
   const all=entries();
   const group=ids.map(id=>all.find(e=>e.id===id)).filter(Boolean);
   if(group.length<2)return;
   const score=e=>Object.values(e).filter(v=>typeof v==='string').reduce((sum,v)=>sum+v.length,0);
   const sorted=[...group].sort((a,b)=>score(b)-score(a));
-  const keeper=sorted[0];
-  const losers=sorted.slice(1);
-  // Merge: copy any missing fields from losers into keeper
-  const textFields=['note','charDesc','charRole','definition','note','qanswer','speaker','charIntroCh','charIntro','background'];
+  const keeper=sorted[0];const losers=sorted.slice(1);
+  const textFields=['note','charDesc','charRole','definition','qanswer','speaker','charIntroCh','charIntro','background'];
   losers.forEach(loser=>{
     textFields.forEach(f=>{if(!keeper[f]&&loser[f])keeper[f]=loser[f];});
-    // Merge involved arrays
     if(Array.isArray(loser.involved))keeper.involved=[...new Set([...(keeper.involved||[]),...loser.involved])];
-    // Add merged-from note
     const mergeNote=`[Merged from entry #${loser.id}: "${(loser.content||loser.cn||'').slice(0,40)}"]`;
     keeper.mergedFrom=(keeper.mergedFrom||[]);keeper.mergedFrom.push(mergeNote);
     keeper.note=(keeper.note?keeper.note+'\n':'')+mergeNote;
   });
-  // Delete loser entries
-  const b=book();
-  b.entries=b.entries.filter(e=>!losers.some(l=>l.id===e.id));
+  const b=book();b.entries=b.entries.filter(e=>!losers.some(l=>l.id===e.id));
+  // Remove from skipped if it was there
+  if(b.dupSkipped)delete b.dupSkipped[gkey];
   save();
   _showToast(`Merged ${losers.length} duplicate${losers.length!==1?'s':''} into entry #${keeper.id}.`);
-  scanDuplicates(); // refresh
+  scanDuplicates();
 }
-function skipDuplicate(groupIdx){
-  const el=document.querySelectorAll('#dup-results > div')[groupIdx];
-  if(el)el.style.display='none';
+function skipDuplicate(gkey){
+  if(!book().dupSkipped)book().dupSkipped={};
+  book().dupSkipped[gkey]=true;
+  save();
+  scanDuplicates(); // re-render: moves to skipped section
+}
+function unskipDuplicate(gkey){
+  if(book().dupSkipped)delete book().dupSkipped[gkey];
+  save();
+  scanDuplicates();
 }
 
 function scanMissingFields(){
