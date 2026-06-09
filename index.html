@@ -350,18 +350,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <button id="tl-sort-reading" onclick="setTlSortMode('reading')" style="flex:1;background:transparent;border:0;padding:5px 10px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">Reading order</button>
         </div>
       </div>
-      <!-- #290 group-by mode -->
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;">
-        <span style="color:var(--t3);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Group:</span>
-        <div style="display:flex;background:var(--bg2);border-radius:14px;padding:2px;border:0.5px solid var(--cb);flex:1;">
-          <button id="tl-grp-year" onclick="setTlGroupMode('year')" style="flex:1;background:transparent;border:0;padding:5px 8px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">Year</button>
-          <button id="tl-grp-season" onclick="setTlGroupMode('season')" style="flex:1;background:transparent;border:0;padding:5px 8px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">Season</button>
-          <button id="tl-grp-none" onclick="setTlGroupMode('none')" style="flex:1;background:transparent;border:0;padding:5px 8px;border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;font-weight:600;">None</button>
-        </div>
-      </div>
       <!-- xlsx #419 sub (Batch 39) — Compare two timeline entries to show the gap. -->
-      <button onclick="openTlCompare()" style="width:100%;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:6px;cursor:pointer;">📏 Compare two entries…</button>
-      <button onclick="openEventOutline()" style="width:100%;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:8px;cursor:pointer;">📋 Event outline / structure…</button>
+      <button onclick="openTlCompare()" style="width:100%;background:var(--al);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r);padding:7px 10px;font-size:12px;font-weight:600;margin-bottom:8px;cursor:pointer;">📏 Compare two entries…</button>
       <div style="position:relative;margin-bottom:8px;"><input type="text" id="tl-search" placeholder="🔍 Search timeline…" oninput="renderTimeline()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('tl-search').value='';renderTimeline();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
       <div id="timeline-list"></div>
       <div id="tl-empty" class="empty" style="display:none"><div class="empty-icon">📅</div><div class="empty-text">No timeline entries yet</div></div>
@@ -857,17 +847,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- CHARACTERISTIC EXTRAS -->
     <div id="ae-char-ex" style="display:none">
       <div class="fg"><label>Trait type <span onclick="showTraitTypeHint()" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:11px;color:var(--accent);cursor:pointer;border-radius:50%;border:0.5px solid var(--cb);background:var(--bg3);margin-left:3px;">?</span></label>
-        <select id="ae-trait-type"><option value="personality">Personality</option><option value="physical">Physical</option><option value="behavioral">Behavioral</option><option value="emotional">Emotional</option><option value="intellectual">Intellectual</option><option value="writing_style">Writing style</option><option value="key_claim">Key claim / argument</option><option value="methodology">Methodology</option><option value="bias">Bias / lens</option><option value="influence">Influence / background</option></select>
+        <select id="ae-trait-type"><option value="personality">Personality</option><option value="physical">Physical</option><option value="behavioral">Behavioral</option><option value="emotional">Emotional</option><option value="intellectual">Intellectual</option></select>
       </div>
       <div class="fg"><label style="margin-bottom:4px;">Supporting quotes <span style="font-weight:400;color:var(--t3);">(evidence from the text)</span></label>
         <div id="ae-sq-list"></div>
         <button type="button" class="btn" onclick="addTraitQuoteRow()" style="width:100%;background:var(--al);color:var(--accent);border-color:var(--am);font-size:13px;padding:7px;touch-action:manipulation;">+ Add supporting quote</button>
-      </div>
-      <!-- #93 link existing quote entries as evidence -->
-      <div class="fg" id="ae-trait-linked-quotes-section" style="margin-top:4px;">
-        <label style="margin-bottom:4px;">Linked quote entries <span style="font-weight:400;color:var(--t3);">(evidence)</span></label>
-        <div id="ae-trait-linked-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
-        <button type="button" class="btn btn-sm" onclick="_traitLinkQuotePicker()" style="font-size:12px;">+ Link existing quote</button>
       </div>
     </div>
 
@@ -1104,6 +1088,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- GROUP / ORGANIZATION -->
     <div id="ae-org-ex" style="display:none">
+      <div class="fg"><label>Website / link <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-org-website" placeholder="https://…"/></div>
       <div class="fg"><label>Type of group <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
         <select id="ae-org-type">
           <option value="">— select —</option>
@@ -1118,18 +1103,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <option>Activist / Movement</option>
           <option>Other</option>
         </select>
-      </div>
-      <div class="fg"><label>Purpose / ideology <span style="font-weight:400;color:var(--t3);">(optional)</span></label><textarea id="ae-org-purpose" rows="2" placeholder="What does this group stand for or do?"></textarea></div>
-      <div class="r2">
-        <div class="fg"><label>Founded <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-org-founded" placeholder="e.g. 1847 or Ch. 3"/></div>
-        <div class="fg"><label>Disbanded <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-org-disbanded" placeholder="e.g. 1920 or end of book"/></div>
-      </div>
-      <div class="fg"><label>Website / link <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-org-website" placeholder="https://…"/></div>
-      <!-- #423 members section — shown after entry is saved -->
-      <div id="ae-org-members-section" style="display:none;margin-top:6px;">
-        <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Members</div>
-        <div id="ae-org-members-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;"></div>
-        <button class="btn btn-sm" onclick="orgAddMemberPrompt()" type="button">+ Add member</button>
       </div>
     </div>
 
@@ -1262,11 +1235,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="r2" id="ae-chappage">
         <div class="fg"><label>pg(s)</label><input type="text" id="ae-pg" placeholder="e.g. 47 or 47–52" oninput="autoChapFromPageLive(this.value)"/></div>
         <div class="fg"><label>Chapter #</label><input type="text" id="ae-ch" inputmode="numeric" placeholder="e.g. 3 or 3,4" onblur="autoChapFromPage()" oninput="_chNumInputHandler()"/></div>
-      </div>
-      <!-- #390 scene/sub-chapter field -->
-      <div class="fg" id="ae-scene-row" style="margin-top:-4px;">
-        <label>Scene / Sub-chapter <span style="font-weight:400;color:var(--t3);">(optional)</span></label>
-        <input type="text" id="ae-scene" placeholder="e.g. Scene 3, Act II, Part 2…"/>
       </div>
       <div id="ae-section-label-row" style="display:none;margin-top:-4px;">
         <div class="fg"><label>Section type <span style="font-weight:400;color:var(--t3);">(Ch. 0 — what kind of section?)</span></label>
@@ -1447,7 +1415,7 @@ const GENRES={
   scifi:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Faction','Group / Organization','Historical Context','Image / Diagram','Location','Lore','Narrative Structure','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary','World element']},
   history:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Argument','Chapter','Contradiction','Date/Period','Evidence','Event','Figure','Group / Organization','Historical Context','Image / Diagram','Location','Place','Question','Quote','Reference','Relationship','Theme','Timeline','Translation','Word / Vocabulary']},
   selfhelp: {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Actionable','Chapter','Concept','Contradiction','Exercise','Image / Diagram','Key idea','Location','Objection','Principle','Question','Quote','Reference','Reflection','Relationship','Timeline','Translation','Word / Vocabulary']},
-  poetry:   {tabs:['log','quotes','chaps','web','words','questions','refs','todo','stats'],types:['Emotion','Image','Image / Diagram','Line/stanza','Location','Poem','Question','Reference','Relationship','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
+  poetry:   {tabs:['log','quotes','chaps','words','questions','refs','todo','stats'],types:['Emotion','Image','Image / Diagram','Line/stanza','Location','Poem','Question','Reference','Symbol','Technique','Theme','Translation','Word / Vocabulary']},
   essays:   {tabs:['log','quotes','chaps','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Concept','Contradiction','Evidence','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
   anthology:{tabs:['log','quotes','chaps','chars','timeline','words','questions','refs','todo','stats'],types:['Argument','Chapter','Character','Concept','Image / Diagram','Location','Question','Quote','Reference','Relationship','Theme','Translation','Word / Vocabulary']},
   graphic:  {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Narrative Structure','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
@@ -3455,14 +3423,12 @@ async function lookupMW(){
     let example='';
     for(const m of(entry.meanings||[])){for(const df of(m.definitions||[])){if(df.example){example=df.example;break;}}if(example)break;}
     const etym=entry.origin||(d.find&&d.find(e=>e.origin)?.origin)||'';
-    // #227 — try to extract etymology from phonetics/sourceUrls if not in origin
-    const phonetics=(entry.phonetics||[]).map(p=>p.text||'').filter(Boolean).join(' / ');
-    res.innerHTML=`<strong>${entry.word}</strong>${phonetics?` <span style="font-size:11px;color:var(--t3);">${esc(phonetics)}</span>`:''}${allDefs.length>1?` <span style="font-size:10px;color:var(--t3);">(${allDefs.length} defs)</span>`:''}<br>${allDefs[0]||''}${example?`<br><em style="color:var(--t2);">"${example}"</em>`:''}${etym?`<br><span style="font-size:11px;color:var(--accent);font-weight:600;">📜 Etymology: ${etym}</span>`:'<br><span style="font-size:10px;color:var(--t3);">No etymology in free API — <a onclick="openLink(\'https://www.merriam-webster.com/dictionary/'+encodeURIComponent(word)+'\')" style="color:var(--accent);cursor:pointer;text-decoration:underline;">Look up etymology on M-W</a></span>'}`;
+    res.innerHTML=`<strong>${entry.word}</strong>${allDefs.length>1?` <span style="font-size:10px;color:var(--t3);">(${allDefs.length} definitions)</span>`:''}<br>${allDefs[0]||''}${example?`<br><em style="color:var(--t2);">"${example}"</em>`:''}${etym?`<br><span style="font-size:10px;color:var(--t3);">Origin: ${etym}</span>`:''}`;
     document.getElementById('ae-def').value=fullDef;
     const exEl=document.getElementById('ae-word-mw-ex');if(exEl&&!exEl.value&&example)exEl.value=example;
     const etEl=document.getElementById('ae-word-etym');if(etEl&&!etEl.value&&etym)etEl.value=etym;
     document.getElementById('ae-wsrc').value='Free Dictionary API';
-  }catch(e){res.innerHTML='Not found. <a onclick="openLink(\'https://www.merriam-webster.com/dictionary/'+encodeURIComponent((document.getElementById('ae-content')?.value||'').trim())+'\')" style="color:var(--accent);cursor:pointer;text-decoration:underline;">Open Merriam-Webster ↗</a>';}
+  }catch(e){res.textContent='Not found. ';const a=document.createElement('span');a.style.cssText='color:var(--accent);cursor:pointer;text-decoration:underline;';a.textContent='Open Merriam-Webster';a.onclick=()=>openLink('https://www.merriam-webster.com/dictionary/'+encodeURIComponent(word));res.appendChild(a);}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4276,7 +4242,7 @@ function openLibStats(){
   const roleCounts={};
   allEntries.filter(e=>CT.includes(e.type)).forEach(e=>{const r=e.charRole||'(unset)';roleCounts[r]=(roleCounts[r]||0)+1;});
   // Trait-type counts
-  const TRAIT_TYPES=['personality','physical','behavioral','emotional','intellectual','writing_style','key_claim','methodology','bias','influence'];
+  const TRAIT_TYPES=['personality','physical','behavioral','emotional','intellectual'];
   const traitCounts={};
   allEntries.filter(e=>e.type==='Characteristic').forEach(e=>{const t=e.traitType||'(unset)';traitCounts[t]=(traitCounts[t]||0)+1;});
   // Helper to render a "Used N · Never used M" block with collapsible chip lists
@@ -5267,10 +5233,11 @@ function saveQuickAddChar(){
     getCC(name);
   }
   save();
-  // #809 — use cddSet (not raw DOM) so the cdd system tracks the value.
-  // Also rebuild the cdd char list first so the new entry is included.
-  _cddEnsureRegistered();
-  cddSet('ae-relb',name);
+  // Set relB to the FULL combined name — both the hidden input and the display search
+  const relBEl=document.getElementById('ae-relb');
+  if(relBEl)relBEl.value=name;
+  const relBSearch=document.getElementById('ae-relb-search');
+  if(relBSearch)relBSearch.value=name;
   document.getElementById('ae-quick-add-b').style.display='none';
   document.getElementById('qa-name').value='';
   const _qal=document.getElementById('qa-lastname');if(_qal)_qal.value='';
@@ -5826,51 +5793,10 @@ function clearTraitQuotes(){
 }
 function loadTraitQuotes(entry){
   clearTraitQuotes();
+  // New format: entry.traitQuotes array
   if(entry.traitQuotes?.length){entry.traitQuotes.forEach(q=>addTraitQuoteRow(q));return;}
+  // Backward compat: old single sq/sqp/sqc/traitSpeaker fields
   if(entry.sq){addTraitQuoteRow({text:entry.sq,pg:entry.sqp||'',ch:entry.sqc||'',speaker:entry.traitSpeaker||''});}
-}
-// #93 — trait linked-quote (entry) functions
-function _renderTraitLinkedList(){
-  const el=document.getElementById('ae-trait-linked-list');if(!el)return;
-  const ids=window._traitLinkedIds||[];
-  if(!ids.length){el.innerHTML='<span style="font-size:11px;color:var(--t3);">None linked</span>';return;}
-  el.innerHTML=ids.map(id=>{
-    const q=entries().find(e=>e.id===id);if(!q)return'';
-    const snippet=(q.content||'').slice(0,40)+(q.content&&q.content.length>40?'…':'');
-    return`<span style="background:var(--al);color:var(--accent);border-radius:20px;padding:3px 8px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer;" onclick="editEntry(${q.id})">` +
-      `"${esc(snippet)}"${q.pageNum?` p.${q.pageNum}`:''}` +
-      `<span onclick="event.stopPropagation();_traitUnlinkQuote(${id})" style="opacity:0.7;font-size:14px;line-height:1;">×</span></span>`;
-  }).join('');
-}
-function _traitLinkQuotePicker(){
-  const quotes=entries().filter(e=>['Quote','Line/stanza','Narrator quote'].includes(e.type));
-  const linked=new Set(window._traitLinkedIds||[]);
-  const avail=quotes.filter(q=>!linked.has(q.id));
-  if(!avail.length){_showToast('No unlinked quotes found.');return;}
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:72vh;overflow-y:auto;';
-  panel.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Link quote as evidence</div>'+
-    '<div style="font-size:11px;color:var(--t2);margin-bottom:10px;">Tap a quote to link it as evidence for this trait.</div>'+
-    avail.slice(0,50).map(q=>{
-      const snippet=(q.content||'').slice(0,70)+(q.content&&q.content.length>70?'…':'');
-      return`<div style="padding:9px 11px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:7px;cursor:pointer;background:var(--card);" onclick="_traitAddLinkedId(${q.id});this.closest('[style*=fixed]').remove();">` +
-        `<div style="font-size:12px;font-style:italic;">"${esc(snippet)}"</div>` +
-        `<div style="font-size:10px;color:var(--t3);margin-top:2px;">${q.pageNum?'p.'+q.pageNum+' ':''}{${q.speaker||''}}</div></div>`;}).join('')+
-    '<button class="btn" style="width:100%;margin-top:4px;" onclick="this.closest(\'[style*=fixed]\').remove()">Cancel</button>';
-  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
-  document.body.appendChild(ov);
-}
-function _traitAddLinkedId(id){
-  if(!window._traitLinkedIds)window._traitLinkedIds=[];
-  if(!window._traitLinkedIds.includes(id))window._traitLinkedIds.push(id);
-  _renderTraitLinkedList();
-}
-function _traitUnlinkQuote(id){
-  window._traitLinkedIds=(window._traitLinkedIds||[]).filter(x=>x!==id);
-  _renderTraitLinkedList();
-}
 }
 function addQuickTraitRow(traitType,text){
   const list=document.getElementById('ae-quick-traits-list');if(!list)return;
@@ -6168,7 +6094,7 @@ function _closeAEIfSafe(){
   _clearDirty();closeSheet('ae-overlay');
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-scene','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why','ae-cprofession','ae-org-website','ae-org-purpose','ae-org-founded','ae-org-disbanded'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why','ae-cprofession','ae-org-website'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -6186,7 +6112,6 @@ function clearAEForm(){
   const _rqr=document.getElementById('ae-rel-quick-rels-list');if(_rqr)_rqr.innerHTML='';
   if(typeof _refreshRelQRAnchor==='function')_refreshRelQRAnchor();  const qtl=document.getElementById('ae-quick-traits-list');if(qtl)qtl.innerHTML='';
   clearTraitQuotes();
-  window._traitLinkedIds=[];const _tll=document.getElementById('ae-trait-linked-list');if(_tll)_tll.innerHTML='';
   clearAttachedQuotes();
   if(typeof clearAttachedThemes==='function')clearAttachedThemes();
   if(typeof clearTlAttachedQuotes==='function')clearTlAttachedQuotes();
@@ -7116,7 +7041,7 @@ function submitEntry(){
 
   const locSel=isChar||isRel?'':document.getElementById('ae-loc-sel').value;
 
-  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,scene:(document.getElementById('ae-scene')?.value||'').trim(),date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?(getCharPhotos()[0]||document.getElementById('ae-char-photo-data').value||''):(getEntryPhotos()[0]||''),photos:isChar?getCharPhotos():getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
+  const entry={id:editId?Number(editId):Date.now(),type,content,cn:cn||undefined,note:document.getElementById('ae-note').value.trim(),pageNum:pgVal,chapNum,date:document.getElementById('ae-date').value||localDate(),location:locSel,involved:isChar?[]:isRel?[]:getPicked(),photo:isChar?(getCharPhotos()[0]||document.getElementById('ae-char-photo-data').value||''):(getEntryPhotos()[0]||''),photos:isChar?getCharPhotos():getEntryPhotos(),isDraft:document.getElementById('ae-is-draft')?.value==='true'};
   if(type==='Chapter'&&String(chapNum)==='0'){const _sl=document.getElementById('ae-section-label');if(_sl&&_sl.value)entry.sectionLabel=_sl.value;}
 
   if(isChar){
@@ -7172,12 +7097,7 @@ function submitEntry(){
         if(!alreadyLinked)traitEntry.traitQuotes.push({text:entry.content,pg:entry.pageNum||'',speaker:entry.speaker||entry.cn||'',srcId:entry.id});
       }
     }const qtOrig=document.getElementById('ae-qt-orig').value.trim();if(qtOrig){entry.qtFrom=document.getElementById('ae-qt-from').value.trim();entry.qtTo=document.getElementById('ae-qt-to').value.trim();entry.qtOrig=qtOrig;entry.qtRendered=document.getElementById('ae-qt-rendered').value.trim();entry.qtTranslator=document.getElementById('ae-qt-translator').value.trim();}else{delete entry.qtFrom;delete entry.qtTo;delete entry.qtOrig;delete entry.qtRendered;delete entry.qtTranslator;}}
-  if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.traitQuotes=getTraitQuotes();
-    // #93 — linked quote entry IDs
-    entry.linkedQuoteIds=[...(window._traitLinkedIds||[])];
-    // Also stamp traitLinkId on each linked quote entry (bidirectional)
-    entry.linkedQuoteIds.forEach(qid=>{const qe=entries().find(x=>x.id===qid);if(qe&&!qe.traitLinkId)qe.traitLinkId=entry.id;});
-    // backward-compat legacy fields cleared
+  if(type==='Characteristic'){entry.traitType=document.getElementById('ae-trait-type').value;entry.traitQuotes=getTraitQuotes();// backward-compat legacy fields cleared
 entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
   if(type==='Word / Vocabulary'){
     entry.definition=document.getElementById('ae-def').value.trim();
@@ -7353,7 +7273,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     }
   }
   if(isRef){entry.refType=document.getElementById('ae-ref-type').value;entry.refAuthor=document.getElementById('ae-ref-author').value.trim();entry.refUrl=document.getElementById('ae-ref-url').value.trim();entry.refLength=document.getElementById('ae-ref-length').value;entry.refActualMin=getRefActualMinutes();entry.refDateRead=document.getElementById('ae-ref-date-read')?.value||'';entry.refDone=false;}
-  if(isOrg){entry.orgWebsite=document.getElementById('ae-org-website')?.value.trim()||'';entry.orgType=document.getElementById('ae-org-type')?.value||'';entry.orgPurpose=(document.getElementById('ae-org-purpose')?.value||'').trim();entry.orgFounded=(document.getElementById('ae-org-founded')?.value||'').trim();entry.orgDisbanded=(document.getElementById('ae-org-disbanded')?.value||'').trim();}
+  if(isOrg){entry.orgWebsite=document.getElementById('ae-org-website')?.value.trim()||'';entry.orgType=document.getElementById('ae-org-type')?.value||'';}
   if(isRel){
     entry.relType=document.getElementById('ae-reltype').value;
     entry.relA=document.getElementById('ae-rela').value;
@@ -7632,28 +7552,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
       book().entries[idx]=merged;
     }
   }
-  else {
-    // #325 — if a non-edit entry shares the exact same page+chapter as another entry
-    // of the same type, confirm order with the user.
-    if(!editId&&entry.pageNum&&entry.chapNum){
-      const sameSlot=entries().filter(e=>e.type===type&&String(e.pageNum)===String(entry.pageNum)&&String(e.chapNum)===String(entry.chapNum));
-      if(sameSlot.length){
-        const names=sameSlot.map(e=>(e.cn||e.content||'entry').slice(0,40)).slice(0,3).join(', ');
-        const go=confirm(`There ${sameSlot.length===1?'is already an entry':'are already entries'} at Ch.${entry.chapNum} p.${entry.pageNum}:\n"${names}${sameSlot.length>3?'…':''}"\n\nAdd this new entry BEFORE those (OK) or AFTER (Cancel)?`);
-        if(go){book().entries.unshift(entry);}
-        else{
-          // insert after the last matching entry
-          const lastIdx=book().entries.reduce((acc,e,i)=>(e.type===type&&String(e.pageNum)===String(entry.pageNum)&&String(e.chapNum)===String(entry.chapNum)?i:acc),-1);
-          if(lastIdx>=0)book().entries.splice(lastIdx+1,0,entry);
-          else book().entries.unshift(entry);
-        }
-      } else {
-        book().entries.unshift(entry);
-      }
-    } else {
-      book().entries.unshift(entry);
-    }
-  }
+  else book().entries.unshift(entry);
 
   // #771/auto-Q — For Foreshadowing and Clue entries, offer to auto-create a
   // linked Question so the reader can answer it later once they know the outcome.
@@ -8555,7 +8454,7 @@ function editEntry(id){
     if(CT.includes(e.type)){document.getElementById('ae-cn').value=e.cn||e.content;document.getElementById('ae-nick').value=e.nickname||'';buildCharRoleSelect(e.charRole||'');document.getElementById('ae-cstatus').value=e.charStatus||'unknown';document.getElementById('ae-gender').value=e.gender||'';document.getElementById('ae-pronouns').value=e.pronouns||'';document.getElementById('ae-clang').value=e.lang||'';document.getElementById('ae-cintro-ch').value=e.charIntroCh||'';document.getElementById('ae-cintro-pg').value=e.charIntroPg||'';document.getElementById('ae-cdesc').value=e.charDesc||'';document.getElementById('ae-cphys').value=e.charPhys||'';const bgEl=document.getElementById('ae-cbg');if(bgEl)bgEl.value=e.charBg||'';const profEl=document.getElementById('ae-cprofession');if(profEl)profEl.value=e.charProfession||'';setCharPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));}
     else if(e.type==='Relationship'){document.getElementById('ae-reldesc').value=e.content||'';rtpSet(e.relType||'');cddSet('ae-rela','');cddSet('ae-relb','');if(e.relA)cddSet('ae-rela',e.relA);if(e.relB)cddSet('ae-relb',e.relB);}// #323 — clear first to prevent stale values from prior form state
     else{document.getElementById('ae-content').value=e.content||'';}
-    document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';const _scnEl=document.getElementById('ae-scene');if(_scnEl)_scnEl.value=e.scene||'';document.getElementById('ae-date').value=e.date||localDate();
+    document.getElementById('ae-note').value=e.note||'';document.getElementById('ae-ch').value=e.chapNum||'';document.getElementById('ae-pg').value=e.pageNum||'';document.getElementById('ae-date').value=e.date||localDate();
     document.getElementById('ae-loc-sel').value=e.location||'';
     const locSearchEl=document.getElementById('ae-loc-search');if(locSearchEl)locSearchEl.value=e.location||'';
     setEntryPhotos(e.photos?.length?e.photos:(e.photo?[e.photo]:[]));
@@ -8615,9 +8514,6 @@ function editEntry(id){
     },40);}
     if(e.traitType)document.getElementById('ae-trait-type').value=e.traitType;
     loadTraitQuotes(e);
-    // #93 restore linked quote IDs
-    window._traitLinkedIds=[...(e.linkedQuoteIds||[])];
-    setTimeout(()=>_renderTraitLinkedList(),50);
     if(e.definition)document.getElementById('ae-def').value=e.definition;if(e.wordContext)document.getElementById('ae-word-context').value=e.wordContext;const _wEtEl=document.getElementById('ae-word-etym');if(_wEtEl)_wEtEl.value=e.wordEtym||'';const _wExEl=document.getElementById('ae-word-mw-ex');if(_wExEl)_wExEl.value=e.wordMwEx||'';// wordTrans field removed — data preserved in entry.wordTrans for backward compatif(e.wsrc)document.getElementById('ae-wsrc').value=e.wsrc;
     if(e.wordSpeaker)cddSet('ae-word-speaker',e.wordSpeaker);
     if(e.wordTransFrom||e.wordTransOriginal){
@@ -8693,9 +8589,7 @@ function editEntry(id){
     if(e.eventTypes?.length){setTimeout(()=>e.eventTypes.forEach(t=>{const chip=document.querySelector(`#event-type-picks .cpick[data-val="${t}"]`);if(chip)chip.classList.add('sel');}),60);}
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
     if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;const _rAm=document.getElementById('ae-ref-actual-min');if(_rAm)_rAm.value=e.refActualMin||'';const _rDr=document.getElementById('ae-ref-date-read');if(_rDr)_rDr.value=e.refDateRead||'';
-    const _ow=document.getElementById('ae-org-website');if(_ow)_ow.value=e.orgWebsite||'';const _ot=document.getElementById('ae-org-type');if(_ot)_ot.value=e.orgType||'';const _op=document.getElementById('ae-org-purpose');if(_op)_op.value=e.orgPurpose||'';const _of=document.getElementById('ae-org-founded');if(_of)_of.value=e.orgFounded||'';const _od=document.getElementById('ae-org-disbanded');if(_od)_od.value=e.orgDisbanded||'';
-    // #423 show members section when editing
-    const _oms=document.getElementById('ae-org-members-section');if(_oms){_oms.style.display='';_renderOrgMembers(e.id);};
+    const _ow=document.getElementById('ae-org-website');if(_ow)_ow.value=e.orgWebsite||'';const _ot=document.getElementById('ae-org-type');if(_ot)_ot.value=e.orgType||'';
     if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;{const _ls=document.getElementById('ae-loc-state');if(_ls)_ls.value=e.locState||'';}if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     // #328 — restore parent. Pull from registry if entry didn't store one.
     const _psel=document.getElementById('ae-loc-parent');
@@ -8872,7 +8766,7 @@ function ecHTML(e,compact,fromTab){
   const k=tk(e.type);const isChar=CT.includes(e.type);const isRel=e.type==='Relationship';
   const col=isChar?getCC(e.cn||e.content):null;
   const leftStyle=isChar?`border-left-color:${col.stroke};`:'';
-  const clickAttr=isChar?`onclick="openCharDetail('${esc(e.cn||e.content)}',false)" style="${leftStyle}cursor:pointer;"`:isOrg?`onclick="openOrgDetail(${e.id})" style="${leftStyle}cursor:pointer;"`:` style="${leftStyle}"`;
+  const clickAttr=isChar?`onclick="openCharDetail('${esc(e.cn||e.content)}',false)" style="${leftStyle}cursor:pointer;"`:` style="${leftStyle}"`;
   const tag=`<span class="tag tag-${k}">${e.type}</span>`;
   const pg=[];
   const chapNums=e.chapNum?e.chapNum.split(',').map(c=>c.trim()):[];
@@ -8882,7 +8776,6 @@ function ecHTML(e,compact,fromTab){
     else{pg.push(`<span class="pbadge" onclick="setFilter('ch:${c}')" style="cursor:pointer;">Ch.${c}</span>`);}
   });
   if(e.pageNum)pg.push(`<span class="pbadge">p.${e.pageNum}</span>`);
-  if(e.scene)pg.push(`<span class="pbadge">🎬 ${esc(e.scene)}</span>`);
   if(e.evdate)pg.push(`<span class="pbadge">📅 ${e.evdate}</span>`);
   if(e.date)pg.push(`<span class="pbadge">${fmt(e.date)}</span>`);
   const emo=e.emotion?`<span class="ebadge ${toneClass(e.emotion)}">${e.emotion}</span>`:'';
@@ -8935,9 +8828,8 @@ function ecHTML(e,compact,fromTab){
     const spkrChip=e.wordSpeaker?(()=>{const cc=getCC(e.wordSpeaker);return `<div style="margin-top:4px;"><span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;font-size:10px;" onclick="event.stopPropagation();openCharDetail('${esc(e.wordSpeaker)}',false)">🗣 ${e.wordSpeaker}</span></div>`;})():'';
     body=`<div class="econtent"><strong>${e.content}</strong>${e.definition?`<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic;">${e.definition}</div>`:''}${ctxBlock}${spkrChip}</div>`;
   } else if(e.type==='Characteristic'){
-    const tLabel={personality:'Personality',physical:'Physical',behavioral:'Behavioral',emotional:'Emotional',intellectual:'Intellectual',writing_style:'Writing style',key_claim:'Key claim',methodology:'Methodology',bias:'Bias / lens',influence:'Influence'}[e.traitType]||'';
-    const linkedQEntries=(e.linkedQuoteIds||[]).map(id=>entries().find(x=>x.id===id)).filter(Boolean);
-    body=`<div class="econtent">${tLabel?`<span class="tag" style="background:var(--bg2);color:var(--t2);margin-right:4px;">${tLabel}</span>`:''}${e.content}${(()=>{const qs=e.traitQuotes?.length?e.traitQuotes:(e.sq?[{text:e.sq,pg:e.sqp||'',speaker:''}]:[]);return qs.map(q=>`<div style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${q.text}"${q.pg?` — p.${q.pg}`:''}</div>`).join('');})()}${linkedQEntries.length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">${linkedQEntries.map(q=>`<span class="pbadge" style="background:var(--al);color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();editEntry(${q.id})">📎 "${esc((q.content||'').slice(0,25))}…"</span>`).join('')}</div>`:''}</div>`;
+    const tLabel={personality:'Personality',physical:'Physical',behavioral:'Behavioral',emotional:'Emotional',intellectual:'Intellectual'}[e.traitType]||'';
+    body=`<div class="econtent">${tLabel?`<span class="tag" style="background:var(--bg2);color:var(--t2);margin-right:4px;">${tLabel}</span>`:''}${e.content}${(()=>{const qs=e.traitQuotes?.length?e.traitQuotes:(e.sq?[{text:e.sq,pg:e.sqp||'',speaker:''}]:[]);return qs.map(q=>`<div style="border-left:2px solid var(--am);padding-left:6px;margin-top:4px;font-size:11px;color:var(--t2);">"${q.text}"${q.pg?` — p.${q.pg}`:''}</div>`).join('');})()}</div>`;
   } else if(e.type==='Event'){
     const meIcons={Accident:'💥',Death:'🪦',Birth:'👶',Marriage:'💍',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔',Reunion:'🤝',Crime:'⚠️',Rescue:'🛟',Confrontation:'⚡',Departure:'🚪',Arrival:'🚪',Other:'📌','Life-changing moment':'⭐','Move / Relocation':'📦'};
     const icons=(e.eventTypes||[]).map(t=>meIcons[t]||'📌').join('')||'📌';
@@ -9084,8 +8976,7 @@ function ecHTML(e,compact,fromTab){
     <div class="emeta">${tag}${pg.join('')}${locBadge}${emo}${spk}${themePill}${eventPill}${questionPill}${e._copiedFromBookTitle?`<span class="pbadge" style="background:var(--al);color:var(--accent);font-size:9px;font-weight:600;" title="Pulled from series">📚 ${esc(e._copiedFromBookTitle)}</span>`:''}</div>${body}${qtrans}${photosStrip}${invB}
     ${e.note?`<div class="enote">${e.note}</div>`:''}
     ${e.type==='Group / Organization'&&(e.orgType||e.orgWebsite)?`<div style="font-size:11px;color:var(--t2);margin-top:3px;">${e.orgType?`<span class="pbadge">🏛 ${e.orgType}</span>`:''}${e.orgWebsite?` <a href="${e.orgWebsite}" onclick="event.preventDefault();event.stopPropagation();openLink('${esc(e.orgWebsite)}')" style="color:var(--accent);">🔗 Website</a>`:''}</div>`:''}
-    ${compact?'':`<div class="eactions">${e.mergeHistory&&e.mergeHistory.length?`<button class="btn-edit" onclick="event.stopPropagation();viewMergeHistory(${e.id})" style="color:var(--t3);">⎇ History</button>`:''}` +
-`<button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
+    ${compact?'':`<div class="eactions"><button class="btn-edit" onclick="event.stopPropagation();editEntry(${e.id})">Edit</button><button class="btn-del" onclick="event.stopPropagation();deleteEntry(${e.id})">Delete</button></div>`}
   </div>`;
 }
 function esc(s){return(s||'').replace(/'/g,"\\'");}
@@ -10626,7 +10517,6 @@ function renderTimeline(){
   // stream is reserved for entries with an actual date or sortKey.
   // xlsx #342 — sort mode: 'story' (default, by evdate) vs 'reading' (strict chap/page).
   const tlSortMode=window._tlSortMode||'story';
-  const tlGroupMode=window._tlGroupMode||'year';
   // Update segment-toggle button styles to reflect active mode.
   const _tlsStory=document.getElementById('tl-sort-story');
   const _tlsReading=document.getElementById('tl-sort-reading');
@@ -10636,8 +10526,6 @@ function renderTimeline(){
     _tlsStory.style.cssText=(tlSortMode==='story'?onCss:offCss)+'border:0;padding:5px 10px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;flex:1;';
     _tlsReading.style.cssText=(tlSortMode==='reading'?onCss:offCss)+'border:0;padding:5px 10px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;flex:1;';
   }
-  // #290 update group buttons
-  ['year','season','none'].forEach(m=>{const b=document.getElementById('tl-grp-'+m);if(b){const on=m===tlGroupMode;b.style.cssText=(on?'background:var(--accent);color:#fff;':'background:transparent;color:var(--text);')+'border:0;padding:5px 8px;border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;flex:1;';}});
   let dated, undated;
   if(tlSortMode==='reading'){
     // Reading order: ALL items with chap/page sort by chap/page in one stream.
@@ -10758,9 +10646,9 @@ function renderTimeline(){
       ${i<items.length-1?`<div class="tline" style="background:${col}44;"></div>`:''}
       <div class="tdot" style="background:${col};"></div>
       <div style="flex:1;">
-        <div style="font-size:10px;font-weight:600;color:var(--t2);display:inline-flex;align-items:center;gap:4px;"><span style="cursor:pointer;" onclick="editEntry(${item.id})">${(item.timeOffset&&item.timeOffsetFrom&&(item.evdate||item.dateVal))?'~':''}${item.evdate||item.dateVal||''}${(item.timeOffset&&item.timeOffsetFrom)?`<span class="offset-tip" style="display:inline-block;margin-left:6px;cursor:pointer;color:var(--accent);font-size:10px;" onclick="event.stopPropagation();this.querySelector('.offset-detail').classList.toggle('shown');" title="Click for offset detail">🔗<span class="offset-detail" style="display:none;font-weight:400;font-style:italic;color:var(--t3);margin-left:4px;">${(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m){const raw=String(item.timeOffset).trim();const sign=raw.startsWith('-')?'before':raw.startsWith('+')?'after':'near';const body=raw.replace(/^[+-]/,'');return `${body} ${sign} "${item.timeOffsetFrom.slice(0,30)}"`;}const dir=m[1]==='+'?'after':'before';return `${m[2]} ${m[3]} ${dir} "${item.timeOffsetFrom.slice(0,30)}"`;})()}</span></span>`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</span> <span onclick="event.stopPropagation();_tlInlineEdit(${item.id},'evdate',this)" title="Edit date" style="cursor:pointer;color:var(--accent);font-size:11px;">✎</span></div>
+        <div style="font-size:10px;font-weight:600;color:var(--t2);cursor:pointer;" onclick="editEntry(${item.id})">${(item.timeOffset&&item.timeOffsetFrom&&(item.evdate||item.dateVal))?'~':''}${item.evdate||item.dateVal||''}${(item.timeOffset&&item.timeOffsetFrom)?`<span class="offset-tip" style="display:inline-block;margin-left:6px;cursor:pointer;color:var(--accent);font-size:10px;" onclick="event.stopPropagation();this.querySelector('.offset-detail').classList.toggle('shown');" title="Click for offset detail">🔗<span class="offset-detail" style="display:none;font-weight:400;font-style:italic;color:var(--t3);margin-left:4px;">${(()=>{const m=item.timeOffset.match(/^([+-])(\d+)\s+(\w+)/);if(!m){const raw=String(item.timeOffset).trim();const sign=raw.startsWith('-')?'before':raw.startsWith('+')?'after':'near';const body=raw.replace(/^[+-]/,'');return `${body} ${sign} "${item.timeOffsetFrom.slice(0,30)}"`;}const dir=m[1]==='+'?'after':'before';return `${m[2]} ${m[3]} ${dir} "${item.timeOffsetFrom.slice(0,30)}"`;})()}</span></span>`:''} ${item.chapNum?'· Ch.'+item.chapNum:''} ${item.pageNum?'· p.'+item.pageNum:''}</div>
         <div style="font-size:12px;line-height:1.45;cursor:pointer;" onclick="editEntry(${item.id})">${icons?icons+' ':''}<strong>${isEvent&&item.eventSig?`[${item.eventSig}] `:''}${item.content}</strong></div>
-        ${item.location?`<div style="font-size:10px;color:var(--t3);display:inline-flex;align-items:center;gap:3px;">📍 <span style="cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">${item.location}</span> <span onclick="event.stopPropagation();_tlInlineEdit(${item.id},'location',this)" title="Edit location" style="cursor:pointer;color:var(--accent);font-size:11px;">✎</span></div>`:''}
+        ${item.location?`<div style="font-size:10px;color:var(--t3);cursor:pointer;" onclick="openLocDetail('${esc(item.location)}')">📍 ${item.location}</div>`:''}
         ${invB?`<div class="inv-row" style="margin-top:3px;">${invB}</div>`:''}
         ${item.tlSq?(()=>{const _spk=item.tlSpeaker?'— '+item.tlSpeaker:'';const _pg=item.tlSqPg?'p.'+item.tlSqPg:'';return '<div style="margin-top:7px;padding:7px 10px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #1D9E75;">'+'<div style="font-size:12px;line-height:1.5;color:var(--t2);">'+'<span style="font-size:22px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-4px;margin-right:2px;">“</span>'+item.tlSq+'<span style="font-size:22px;color:var(--am);font-family:Georgia,serif;line-height:0;vertical-align:-7px;margin-left:1px;">”</span></div>'+((_spk||_pg)?'<div style="font-size:10px;color:var(--t3);margin-top:3px;">'+[_spk,_pg].filter(Boolean).join(' · ')+'</div>':'')+'</div>';})():''}
         ${(()=>{
@@ -10834,48 +10722,9 @@ function renderTimeline(){
       </div>`;
     }
   }
-  // #303/#335 — date hierarchy: group by year → month (or season with #290)
+  // #270 — render dated items, then undated bucket at bottom
   let html=`<div style="padding-left:5px;">`;
-  if(dated.length){
-    const MONTHS=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const getSeason=mo=>{if(!mo)return null;const m=+mo;if(m>=3&&m<=5)return'🌸 Spring';if(m>=6&&m<=8)return'☀️ Summer';if(m>=9&&m<=11)return'🍂 Autumn';return'❄️ Winter';};
-    let lastYear=null,lastMonth=null,lastSeason=null;
-    dated.forEach((item,i)=>{
-      const yr=_yearOf(item);
-      const mo=item.evdateMonth?+item.evdateMonth:(item.evdate&&item.evdate.includes('-')&&!item.evdate.startsWith('-')&&item.evdate.split('-')[1]?+item.evdate.split('-')[1]:null);
-      const season=getSeason(mo);
-      if(tlGroupMode==='none'){
-        // no headers — just render
-      } else if(tlGroupMode==='season'){
-        // Season grouping: season → year within
-        if(season&&(season!==lastSeason||yr!==lastYear)){
-          const hdr=season+(yr!=null?` ${yr<0?Math.abs(yr)+' BCE':yr}`:'');
-          html+=`<div style="display:flex;align-items:center;gap:8px;margin:${lastSeason==null?'0':'8px'} 0 6px;padding-left:3px;">` +
-            `<span style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:0.06em;">${hdr}</span>` +
-            `<span style="flex:1;height:0.5px;background:var(--am);opacity:0.35;display:inline-block;"></span></div>`;
-          lastSeason=season;lastYear=yr;lastMonth=null;
-        } else if(yr!=null&&yr!==lastYear){
-          html+=`<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px;padding-left:3px;">` +
-            `<span style="font-size:11px;font-weight:600;color:var(--t2);">${yr<0?Math.abs(yr)+' BCE':yr}</span>` +
-            `<span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span></div>`;
-          lastYear=yr;
-        }
-      } else {
-        // Year grouping (default)
-        if(yr!=null&&yr!==lastYear){
-          html+=`<div style="display:flex;align-items:center;gap:8px;margin:${lastYear==null?'0':'8px'} 0 6px;padding-left:3px;">` +
-            `<span style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:0.06em;">${yr<0?'~'+Math.abs(yr)+' BCE':yr}</span>` +
-            `<span style="flex:1;height:0.5px;background:var(--am);opacity:0.35;display:inline-block;"></span></div>`;
-          lastYear=yr;lastMonth=null;lastSeason=null;
-        }
-        if(mo&&mo!==lastMonth&&yr===lastYear){
-          html+=`<div style="font-size:10px;color:var(--t2);font-weight:600;letter-spacing:0.05em;text-transform:uppercase;padding-left:6px;margin-bottom:4px;margin-top:4px;">${MONTHS[mo]||''}</div>`;
-          lastMonth=mo;
-        }
-      }
-      html+=renderItem(item,i,dated);
-    });
-  }
+  html+=dated.map((item,i)=>renderItem(item,i,dated)).join('');
   if(undated.length){
     html+=`<div style="margin:14px 0 6px;font-size:11px;font-weight:700;color:var(--t3);letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-left:5px;">
       <span style="flex:1;height:0.5px;background:var(--cb);display:inline-block;"></span>
@@ -10999,106 +10848,7 @@ function setTlSortMode(mode){
   window._tlSortMode=(mode==='reading')?'reading':'story';
   renderTimeline();
 }
-// #290 group-by mode
-function setTlGroupMode(mode){
-  window._tlGroupMode=mode||'year';
-  renderTimeline();
-}
-// #302 — inline field edit on timeline cards
-function _tlInlineEdit(entryId, field, triggerEl){
-  const e=entries().find(x=>x.id===entryId);if(!e)return;
-  const fieldLabels={evdate:'Date / year',location:'Location',note:'Note'};
-  const current=field==='evdate'?(e.evdate||''):(e[field]||'');
-  // Build a small popover
-  const existing=document.querySelector('[data-tl-inline-pop]');if(existing)existing.remove();
-  const pop=document.createElement('div');
-  pop.setAttribute('data-tl-inline-pop','1');
-  pop.style.cssText='position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--accent);border-radius:var(--r);padding:10px 12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);min-width:220px;max-width:90vw;';
-  pop.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px;">${fieldLabels[field]||field}</div>` +
-    `<input type="text" value="${esc(current)}" style="width:100%;font-size:13px;padding:6px 8px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);box-sizing:border-box;" placeholder="${fieldLabels[field]||field}…" data-tl-ie-input="1"/>` +
-    `<div style="display:flex;gap:6px;margin-top:8px;"><button class="btn btn-primary btn-sm" style="flex:1;" data-tl-ie-save="1">Save</button><button class="btn btn-sm" style="flex:1;" data-tl-ie-cancel="1">Cancel</button></div>`;
-  // Position near trigger
-  const rect=triggerEl.getBoundingClientRect();
-  const top=Math.min(rect.bottom+6, window.innerHeight-120);
-  const left=Math.max(8,Math.min(rect.left, window.innerWidth-240));
-  pop.style.top=top+'px';pop.style.left=left+'px';
-  document.body.appendChild(pop);
-  const inp=pop.querySelector('[data-tl-ie-input]');inp.focus();inp.select();
-  function doSave(){
-    const val=inp.value.trim();
-    if(field==='evdate'){e.evdate=val;e.evdateYear=val.match(/^-?(\d{1,6})/)?val.match(/^-?(\d{1,6})/)[0]:'';}
-    else{e[field]=val;}
-    save();pop.remove();renderTimeline();
-  }
-  inp.onkeydown=(ev)=>{if(ev.key==='Enter'){ev.preventDefault();doSave();}if(ev.key==='Escape'){pop.remove();}};
-  pop.querySelector('[data-tl-ie-save]').onclick=doSave;
-  pop.querySelector('[data-tl-ie-cancel]').onclick=()=>pop.remove();
-  setTimeout(()=>document.addEventListener('click',(ev)=>{if(!pop.contains(ev.target))pop.remove();},{once:true}),100);
-}
-function openEventOutline(){
-  const all=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)&&!e.isDraft);
-  if(!all.length){_showToast('No timeline entries to outline.');return;}
-  // Sort by evdate / sortKey
-  const sorted=[...all].sort((a,b)=>{
-    const sa=a.sortKey!=null?+a.sortKey:9999,sb=b.sortKey!=null?+b.sortKey:9999;
-    if(sa!==sb)return sa-sb;
-    const da=a.computedSortNum!=null?a.computedSortNum:_evToNum(a);
-    const db=b.computedSortNum!=null?b.computedSortNum:_evToNum(b);
-    if(da!=null&&db!=null)return da-db;
-    return(+a.chapNum||0)-(+b.chapNum||0)||(+a.pageNum||0)-(+b.pageNum||0);
-  });
-  function _evToNum(e){const d=e.evdate||'';const m=d.match(/^-?(\d{1,6})/);if(!m)return null;const y=parseInt(m[0]);const mo=+(e.evdateMonth||0);const dy=+(e.evdateDay||0);return y*10000+mo*100+dy;}
-  // Group by year
-  const MONTHS=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const bySig={major:[],significant:[],minor:[],other:[]};
-  sorted.forEach(e=>{const s=e.eventSig||e.importance;bySig[s==='lifechanging'||s==='major'?'major':s==='significant'?'significant':s==='minor'?'minor':'other'].push(e);});
-  // Build outline HTML grouped by year
-  const groups={};
-  sorted.forEach(e=>{
-    const yr=_yearOf(e);
-    const key=yr!=null?(yr<0?Math.abs(yr)+' BCE':String(yr)):'Undated';
-    if(!groups[key])groups[key]=[];
-    groups[key].push(e);
-  });
-  const sigIcon={major:'⭐',significant:'📌',minor:'·',other:'📅'};
-  const sigLabel={major:'Major',significant:'Significant',minor:'Minor',other:''};
-  let outlineHtml='';
-  Object.entries(groups).forEach(([yr,items])=>{
-    outlineHtml+=`<div style="margin-bottom:14px;">` +
-      `<div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.06em;border-bottom:1px solid var(--am);padding-bottom:4px;margin-bottom:7px;">${esc(yr)}</div>`;
-    items.forEach(e=>{
-      const mo=e.evdateMonth?MONTHS[+e.evdateMonth]||'':'';
-      const day=e.evdateDay?` ${e.evdateDay}`:'';
-      const datePart=mo?(mo+day+' — '):'';
-      const sig=e.eventSig||e.importance;
-      const icon=sigIcon[sig==='lifechanging'?'major':sig==='significant'?'significant':sig==='minor'?'minor':'other']||'📅';
-      const lbl=sigLabel[sig==='lifechanging'?'major':sig==='significant'?'significant':sig==='minor'?'minor':'other'];
-      const inv=(e.involved||[]).filter(Boolean);
-      outlineHtml+=`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--bg2);cursor:pointer;" onclick="editEntry(${e.id})">` +
-        `<span style="width:18px;text-align:center;flex-shrink:0;font-size:13px;">${icon}</span>` +
-        `<div style="flex:1;min-width:0;">` +
-          `<div style="font-size:13px;line-height:1.3;">${datePart?`<span style="font-size:10px;color:var(--t3);">${esc(datePart)}</span>`:''}${esc(e.content||'(untitled)')}</div>` +
-          (lbl?`<span style="font-size:9px;background:var(--rl);color:var(--red);border-radius:4px;padding:1px 4px;margin-right:3px;">${lbl}</span>`:'') +
-          (inv.length?`<span style="font-size:10px;color:var(--t3);">${inv.slice(0,3).map(c=>esc(c)).join(', ')}${inv.length>3?` +${inv.length-3}`:''}</span>`:'') +
-        `</div>` +
-        (e.note?`<span style="font-size:10px;color:var(--t3);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;">📝</span>`:'') +
-      `</div>`;
-    });
-    outlineHtml+='</div>';
-  });
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:90vh;overflow-y:auto;';
-  panel.innerHTML=
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">` +
-    `<div style="font-size:15px;font-weight:700;">Event Outline</div>` +
-    `<button class="btn-icon" onclick="this.closest('[style*=fixed]').remove()">✕</button></div>` +
-    `<div style="font-size:11px;color:var(--t2);margin-bottom:12px;">${sorted.length} entries · Tap any to edit</div>` +
-    outlineHtml;
-  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
-  document.body.appendChild(ov);
-}
+// xlsx #419 sub (Batch 39) — Pick two timeline/event entries and show the time
 // difference between them in human-readable units (days/months/years). Uses the
 // same _toJulian / _formatDelta math as the inline delta labels in renderTimeline,
 // but exposed as a one-shot dialog for arbitrary pairs.
@@ -11532,11 +11282,9 @@ function insertTimelineBetween(prevName,nextName,prevDate,nextDate){
   modal.onclick=(e)=>{if(e.target===modal)close();};
   const pick=(useAfter)=>{
     close();
-    // #218-C fix: set type BEFORE clearAEForm so onTypeChange renders correct fields immediately
-    buildTypeSelect();document.getElementById('ae-type').value='Timeline';
-    clearAEForm();document.getElementById('ae-edit-id').value='';
+    buildTypeSelect();clearAEForm();document.getElementById('ae-edit-id').value='';
     document.getElementById('ae-sheet-title').textContent='Insert timeline entry';
-    onTypeChange();
+    document.getElementById('ae-type').value='Timeline';onTypeChange();
     // Compute sortKey that slots new entry between anchors using proper sort
     const anchorItems=entries().filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).sort((a,b)=>{
       const sa=a.sortKey!=null?+a.sortKey:9999, sb=b.sortKey!=null?+b.sortKey:9999;
@@ -12230,26 +11978,14 @@ function renderChapDetail(num){
   const pageRange=chapSetup&&chapSetup.start?'pp.'+chapSetup.start+(chapSetup.end&&chapSetup.end!==chapSetup.start?'–'+chapSetup.end:''):'';
 
   // Summary hero
-  // #825 — collect all characters mentioned in any entry in this chapter (via involved, speaker, relA/relB, etc.)
-  const _chapChars=new Set();
-  chapEntries.forEach(e=>{
-    (e.involved||[]).filter(Boolean).forEach(c=>_chapChars.add(c));
-    if(e.speaker&&e.speaker!=='Narrator / Author'&&e.speaker!=='Narrator')_chapChars.add(e.speaker);
-    if(e.relA)_chapChars.add(e.relA);if(e.relB)_chapChars.add(e.relB);
-    if(e.wordSpeaker&&e.wordSpeaker!=='Narrator / Author')_chapChars.add(e.wordSpeaker);
-  });
-  const chapCharArr=[..._chapChars].filter(c=>c&&c!=='undefined'&&c!=='null').sort();
-  const chapCharBadges=chapCharArr.map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${esc(c)}</span>`;}).join('');
-
   let html=`<div style="background:var(--card);border-radius:var(--rl2);padding:14px 16px;margin-bottom:14px;border:0.5px solid var(--cb);">
-    <div style="font-size:18px;font-weight:700;margin-bottom:2px;">Chapter ${num}${title?` <span style="font-weight:400;color:var(--t2);font-size:15px;">— ${title}</span>`:''}</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:2px;">Chapter ${num}${title?' <span style=\"font-weight:400;color:var(--t2);font-size:15px;\">— '+title+'</span>':''}</div>
     ${pageRange?`<div style="font-size:11px;color:var(--t3);">${pageRange}</div>`:''}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
       <div style="text-align:center;"><div style="font-size:20px;font-weight:700;">${chapEntries.length}</div><div style="font-size:10px;color:var(--t3);">Entries</div></div>
-      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;">${chapCharArr.length}</div><div style="font-size:10px;color:var(--t3);">Characters</div></div>
+      <div style="text-align:center;"><div style="font-size:20px;font-weight:700;">${[...new Set(chapEntries.flatMap(e=>e.involved||[]))].length}</div><div style="font-size:10px;color:var(--t3);">Characters</div></div>
       <div style="text-align:center;"><div style="font-size:20px;font-weight:700;">${chapEntries.filter(e=>['Quote','Line/stanza','Narrator quote'].includes(e.type)).length}</div><div style="font-size:10px;color:var(--t3);">Quotes</div></div>
     </div>
-    ${chapCharArr.length?`<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Characters in this chapter</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${chapCharBadges}</div></div>`:''}
   </div>`;
 
   // To-Dos section
@@ -12943,150 +12679,14 @@ function mergeDuplicate(gkey,ids){
     if(Array.isArray(loser.involved))keeper.involved=[...new Set([...(keeper.involved||[]),...loser.involved])];
     const mergeNote=`[Merged from entry #${loser.id}: "${(loser.content||loser.cn||'').slice(0,40)}"]`;
     keeper.mergedFrom=(keeper.mergedFrom||[]);keeper.mergedFrom.push(mergeNote);
-    // #145 — store structured merge history for undo
-    if(!keeper.mergeHistory)keeper.mergeHistory=[];
-    keeper.mergeHistory.push({at:new Date().toISOString(),loserSnapshot:JSON.parse(JSON.stringify(loser))});
     keeper.note=(keeper.note?keeper.note+'\n':'')+mergeNote;
   });
   const b=book();b.entries=b.entries.filter(e=>!losers.some(l=>l.id===e.id));
+  // Remove from skipped if it was there
   if(b.dupSkipped)delete b.dupSkipped[gkey];
   save();
   _showToast(`Merged ${losers.length} duplicate${losers.length!==1?'s':''} into entry #${keeper.id}.`);
   scanDuplicates();
-  // #145 navigate to kept entry
-  setTimeout(()=>postSaveNavigate(keeper,keeper.type),300);
-}
-// #145 merge history viewer + undo
-function viewMergeHistory(entryId){
-  const e=entries().find(x=>x.id===entryId);
-  if(!e||!e.mergeHistory||!e.mergeHistory.length){_showToast('No merge history.');return;}
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:80vh;overflow-y:auto;';
-  const hist=[...e.mergeHistory].reverse();
-  panel.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Merge History</div><div style="font-size:11px;color:var(--t2);margin-bottom:12px;">Entries merged into this one. Tap Undo to restore.</div>'+
-    hist.map((h,i)=>{
-      const snap=h.loserSnapshot;
-      const lbl=(snap.cn||snap.content||'(unnamed)').slice(0,60);
-      const when=h.at?new Date(h.at).toLocaleString():'unknown';
-      const realIdx=hist.length-1-i;
-      return '<div style="background:var(--card);border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;">'+
-        '<div style="font-size:13px;font-weight:600;">'+lbl+'</div>'+
-        '<div style="font-size:10px;color:var(--t3);">Type: '+snap.type+' · Merged: '+when+'</div>'+
-        '<div style="margin-top:7px;"><button class="btn btn-sm" onclick="undoMerge('+entryId+','+realIdx+');this.closest('[style*=fixed]').remove();" style="background:var(--red);color:#fff;border-color:var(--red);">\u21a9 Undo merge</button></div>'+
-        '</div>';
-    }).join('')+
-    '<button class="btn" style="width:100%;margin-top:4px;" onclick="this.closest('[style*=fixed]').remove()">Close</button>';
-  ov.appendChild(panel);
-  ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
-  document.body.appendChild(ov);
-}
-function undoMerge(keeperId,histIdx){
-  const keeper=entries().find(e=>e.id===keeperId);
-  if(!keeper||!keeper.mergeHistory)return;
-  const h=keeper.mergeHistory[histIdx];if(!h)return;
-  const restored=JSON.parse(JSON.stringify(h.loserSnapshot));
-  restored.id=Date.now();
-  book().entries.unshift(restored);
-  keeper.mergeHistory.splice(histIdx,1);
-  if(!keeper.mergeHistory.length)delete keeper.mergeHistory;
-  if(keeper.note)keeper.note=keeper.note.replace(/\[Merged from entry #\d+: "[^"]*"\]\n?/g,'').trim();
-  save();renderAll();
-  _showToast('Entry restored.');
-}
-
-// #423 — Group / Organization member management
-function _renderOrgMembers(orgId){
-  const el=document.getElementById('ae-org-members-list');if(!el)return;
-  const org=entries().find(e=>e.id===orgId);if(!org)return;
-  const members=org.orgMembers||[];
-  const chars=entries().filter(e=>CT.includes(e.type));
-  el.innerHTML=members.length?members.map(m=>{
-    const cc=getCC(m);
-    return`<span style="background:${cc.bg};color:${cc.text};border-radius:20px;padding:3px 8px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;">${esc(m)}<span onclick="orgRemoveMember(${orgId},'${esc(m)}')" style="cursor:pointer;opacity:0.7;font-size:14px;line-height:1;">×</span></span>`;
-  }).join(''):'<span style="font-size:11px;color:var(--t3);">No members yet</span>';
-}
-function orgAddMemberPrompt(){
-  const editIdEl=document.getElementById('ae-edit-id');
-  const orgId=editIdEl?Number(editIdEl.value):null;
-  if(!orgId){_showToast('Save this entry first, then add members.');return;}
-  const org=entries().find(e=>e.id===orgId);if(!org)return;
-  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content).filter(Boolean).sort();
-  const existing=new Set(org.orgMembers||[]);
-  const avail=allChars.filter(c=>!existing.has(c));
-  if(!avail.length){_showToast('All known characters are already members, or no characters exist yet.');return;}
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:70vh;overflow-y:auto;';
-  panel.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:10px;">Add member to group</div>'+
-    avail.map(c=>{const cc=getCC(c);return`<div style="padding:10px 12px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:7px;cursor:pointer;background:var(--card);display:flex;align-items:center;gap:10px;" onclick="orgAddMember(${orgId},'${esc(c)}');this.closest('[style*=fixed]').remove();">` +
-      `<span style="background:${cc.bg};color:${cc.text};border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">${esc(c.charAt(0))}</span>` +
-      `<span style="font-size:13px;">${esc(c)}</span></div>`;}).join('')+
-    '<button class="btn" style="width:100%;margin-top:4px;" onclick="this.closest(\'[style*=fixed]\').remove()">Cancel</button>';
-  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
-  document.body.appendChild(ov);
-}
-function orgAddMember(orgId,charName){
-  const org=entries().find(e=>e.id===orgId);if(!org)return;
-  if(!org.orgMembers)org.orgMembers=[];
-  if(!org.orgMembers.includes(charName))org.orgMembers.push(charName);
-  save();_renderOrgMembers(orgId);
-}
-function orgRemoveMember(orgId,charName){
-  const org=entries().find(e=>e.id===orgId);if(!org||!org.orgMembers)return;
-  org.orgMembers=org.orgMembers.filter(m=>m!==charName);
-  save();_renderOrgMembers(orgId);
-}
-// #423 — org profile overlay (tap card → full profile)
-function openOrgDetail(orgId){
-  const org=entries().find(e=>e.id===Number(orgId));if(!org)return;
-  const members=org.orgMembers||[];
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:88vh;overflow-y:auto;';
-  const orgEntries=entries().filter(e=>Array.isArray(e.involved)&&e.involved.some(m=>members.includes(m))&&!CT.includes(e.type)&&e.type!=='Group / Organization');
-  panel.innerHTML=
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">` +
-    `<div><div style="font-size:16px;font-weight:700;">${esc(org.content||'Group')}</div>` +
-    `${org.orgType?`<div style="font-size:12px;color:var(--t2);">🏛 ${esc(org.orgType)}</div>`:''}</div>` +
-    `<button class="btn-icon" onclick="this.closest('[style*=fixed]').remove()">✕</button></div>` +
-    (org.orgPurpose?`<div style="font-size:12px;color:var(--t2);margin-bottom:10px;">${esc(org.orgPurpose)}</div>`:'') +
-    ((org.orgFounded||org.orgDisbanded)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">${org.orgFounded?`<span class="pbadge">Founded: ${esc(org.orgFounded)}</span>`:''}${org.orgDisbanded?`<span class="pbadge">Disbanded: ${esc(org.orgDisbanded)}</span>`:''}</div>`:'') +
-    (org.orgWebsite?`<div style="margin-bottom:10px;"><a onclick="openLink('${esc(org.orgWebsite)}')" style="color:var(--accent);font-size:12px;cursor:pointer;">🔗 ${esc(org.orgWebsite)}</a></div>`:'') +
-    `<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Members (${members.length})</div>` +
-    (members.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">${members.map(m=>{const cc=getCC(m);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="this.closest('[style*=fixed]').remove();openCharDetail('${esc(m)}',false)">${esc(m)}</span>`;}).join('')}</div>`:`<div style="font-size:12px;color:var(--t3);margin-bottom:14px;">No members recorded.</div>`) +
-    (orgEntries.length?`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Related entries (${orgEntries.length})</div>`+orgEntries.slice(0,8).map(e=>`<div style="padding:8px 10px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:6px;cursor:pointer;background:var(--card);" onclick="editEntry(${e.id})"><span class="pbadge" style="margin-right:4px;">${esc(e.type)}</span><span style="font-size:12px;">${esc((e.content||e.cn||'').slice(0,60))}</span></div>`).join(''):'') +
-    `<div style="display:flex;gap:8px;margin-top:10px;">` +
-    `<button class="btn" style="flex:1;" onclick="editEntry(${org.id});this.closest('[style*=fixed]').remove()">Edit</button>` +
-    `<button class="btn btn-primary" style="flex:1;" onclick="orgAddMemberPromptFromProfile(${org.id},this)">+ Add member</button></div>`;
-  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
-  document.body.appendChild(ov);
-}
-function orgAddMemberPromptFromProfile(orgId,btn){
-  // close parent overlay, open add-member picker, then reopen profile
-  const parentOv=btn.closest('[style*="position:fixed"]');if(parentOv)parentOv.remove();
-  orgAddMemberPromptDirect(orgId);
-}
-function orgAddMemberPromptDirect(orgId){
-  const org=entries().find(e=>e.id===orgId);if(!org)return;
-  const allChars=entries().filter(e=>CT.includes(e.type)).map(e=>e.cn||e.content).filter(Boolean).sort();
-  const existing=new Set(org.orgMembers||[]);
-  const avail=allChars.filter(c=>!existing.has(c));
-  if(!avail.length){openOrgDetail(orgId);return;}
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9001;display:flex;align-items:flex-end;';
-  const panel=document.createElement('div');
-  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:70vh;overflow-y:auto;';
-  panel.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:10px;">Add member to group</div>'+
-    avail.map(c=>{const cc=getCC(c);return`<div style="padding:10px 12px;border-radius:var(--r);border:0.5px solid var(--cb);margin-bottom:7px;cursor:pointer;background:var(--card);display:flex;align-items:center;gap:10px;" onclick="orgAddMember(${orgId},'${esc(c)}');this.closest('[style*=fixed]').remove();setTimeout(()=>openOrgDetail(${orgId}),100);">` +
-      `<span style="background:${cc.bg};color:${cc.text};border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">${esc(c.charAt(0))}</span>` +
-      `<span style="font-size:13px;">${esc(c)}</span></div>`;}).join('')+
-    '<button class="btn" style="width:100%;margin-top:4px;" onclick="this.closest(\'[style*=fixed]\').remove();setTimeout(()=>openOrgDetail('+orgId+'),100)">Cancel</button>';
-  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov){ov.remove();setTimeout(()=>openOrgDetail(orgId),100);}};
-  document.body.appendChild(ov);
 }
 function skipDuplicate(gkey){
   if(!book().dupSkipped)book().dupSkipped={};
