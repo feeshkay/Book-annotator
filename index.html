@@ -242,7 +242,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* quick add char */
 .quick-add-char{background:var(--al);border-radius:var(--r);padding:9px 11px;margin-top:6px;border:0.5px solid var(--am);}
 .offset-detail.shown{display:inline!important;}
-</style></head>
+</style>
+<!-- #879 — ZXing, for barcode scanning (Scan barcode button). Pinned version — this is the
+     app's first external script dependency. Only loaded/used lazily when the scan button is
+     tapped; if it fails to load (offline, CDN down), the manual ISBN entry field still works. -->
+<script src="https://unpkg.com/@zxing/library@0.20.0" defer></script>
+</head>
 <body>
 
 <!-- ══ LIBRARY ══ -->
@@ -252,6 +257,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="btn-icon" style="font-size:13px;" onclick="openSync()">☁️</button>
     <button class="btn-icon" style="font-size:13px;" onclick="openSheet('lib-stats-overlay');renderLibStats()">📊</button>
     <button class="btn-icon" onclick="openNewBookSheet()">+ New</button>
+    <button class="btn-icon" style="font-size:14px;" onclick="openBarcodeScan()" title="Scan a book barcode to add it">📷</button>
     <button class="btn-icon" style="font-size:12px;" onclick="exportAllData()">⬇</button>
     <button class="btn-icon" onclick="openReportIssue()" title="Report issue" style="font-size:13px;">🐛</button>
     <button class="btn-icon" onclick="openSheet('lib-settings-overlay')" title="Settings" style="font-size:16px;">⚙</button>
@@ -265,6 +271,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
+    <div id="lib-genre-bar" style="display:none;padding:4px 12px 2px;"></div>
     <div id="lib-sort-bar" style="display:none;padding:4px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
     <div id="lib-empty" class="empty" style="display:none;padding:40px 14px;">
@@ -482,7 +489,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fg"><label>Title *</label><input type="text" id="nb-title" placeholder="e.g. East of Eden" oninput="autoTitleCase(this)" onblur="lookupBook(this.value);"/></div>
     <div id="nb-lookup-hint" style="display:none;font-size:11px;color:var(--accent);margin:-6px 0 8px;padding:5px 8px;background:var(--al);border-radius:var(--r);"></div>
 
-    <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck"/></div>
+    <div class="fg"><label>Author</label><input type="text" id="nb-author" placeholder="e.g. John Steinbeck" onblur="checkAuthorOverlap(this.value)"/></div>
+    <div id="nb-author-hint" style="display:none;font-size:11px;color:var(--t2);margin:-6px 0 8px;padding:5px 8px;background:var(--bg2);border-radius:var(--r);"></div>
     <div class="r2">
       <div class="fg"><label>Series <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="nb-series" placeholder="e.g. Harry Potter"/></div>
       <div class="fg" style="max-width:90px;"><label>Book #</label><input type="number" id="nb-series-num" placeholder="1" min="1"/></div>
@@ -3076,6 +3084,99 @@ function saveQuickLoc(){
 // ═══════════════════════════════════════════════════════════════
 // BOOK LOOKUP (Open Library API)
 // ═══════════════════════════════════════════════════════════════
+// ══ #879 — Scan barcode / lookup by ISBN ══
+// iOS Safari has no native barcode-detection API (confirmed — WebKit doesn't implement the
+// Barcode Detection API), so this uses ZXing (loaded from CDN, see <head>) for camera scanning.
+// Manual ISBN entry is always offered alongside it as a fallback if the camera doesn't work.
+let _zxingReader=null;
+function openBarcodeScan(){
+  if(typeof ZXing==='undefined'){
+    alert("The barcode scanner needs an internet connection the first time you use it and it hasn't loaded. You can still add a book by typing its ISBN below.");
+  }
+  const old=document.getElementById('barcode-scan-modal');if(old)old.remove();
+  const modal=document.createElement('div');
+  modal.id='barcode-scan-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML=`<div style="width:100%;max-width:420px;background:var(--bg);border-radius:var(--r);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--cb);">
+      <div style="font-weight:700;font-size:14px;color:var(--text);">📷 Scan a book barcode</div>
+      <button onclick="closeBarcodeScan()" style="background:none;border:none;font-size:20px;color:var(--t2);cursor:pointer;">×</button>
+    </div>
+    <video id="barcode-scan-video" style="width:100%;background:#000;display:block;max-height:50vh;" playsinline muted></video>
+    <div id="barcode-scan-status" style="padding:10px 14px;font-size:12px;color:var(--t2);">Point your camera at the barcode on the back of the book.</div>
+    <div style="padding:0 14px 14px;">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:6px;">Camera not working? Type the ISBN instead:</div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="barcode-manual-isbn" placeholder="ISBN, e.g. 9780143127550" inputmode="numeric" style="flex:1;"/>
+        <button class="btn btn-primary" onclick="const v=document.getElementById('barcode-manual-isbn').value;closeBarcodeScan();applyISBNLookup(v);">Look up</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.onclick=(e)=>{if(e.target===modal)closeBarcodeScan();};
+  if(typeof ZXing==='undefined')return;
+  try{
+    _zxingReader=new ZXing.BrowserMultiFormatReader();
+    _zxingReader.possibleFormats=[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E];
+    _zxingReader.decodeFromVideoDevice(null,'barcode-scan-video',(result)=>{
+      if(result){
+        const code=result.getText?result.getText():result.text;
+        closeBarcodeScan();
+        applyISBNLookup(code);
+      }
+      // decode errors fire continuously while no barcode is in frame — normal, ignore
+    }).catch(e=>{
+      console.error('Camera error:',e);
+      const s=document.getElementById('barcode-scan-status');
+      if(s)s.innerHTML='⚠️ Could not access the camera (permission denied, or no camera available). Type the ISBN below instead.';
+    });
+  }catch(e){
+    console.error('Scanner init error:',e);
+    const s=document.getElementById('barcode-scan-status');
+    if(s)s.innerHTML='⚠️ Scanner failed to start. Type the ISBN below instead.';
+  }
+}
+function closeBarcodeScan(){
+  try{if(_zxingReader){_zxingReader.reset();_zxingReader=null;}}catch(e){}
+  const modal=document.getElementById('barcode-scan-modal');if(modal)modal.remove();
+}
+async function applyISBNLookup(isbn){
+  isbn=(isbn||'').replace(/[^0-9Xx]/g,'');
+  if(isbn.length<9){alert("That doesn't look like a valid ISBN — try again or type the full number from the barcode.");return;}
+  openNewBookSheet();
+  document.getElementById('nb-isbn').value=isbn;
+  const hint=document.getElementById('nb-lookup-hint');
+  hint.style.display='';hint.innerHTML='🔎 Looking up ISBN '+isbn+'…';
+  try{
+    const r=await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+    const d=await r.json();
+    const b=d['ISBN:'+isbn];
+    if(!b){hint.innerHTML="No match found for that ISBN. You can still fill in the details manually.";return;}
+    if(b.title)document.getElementById('nb-title').value=b.title;
+    if(b.authors&&b.authors.length)document.getElementById('nb-author').value=b.authors.map(a=>a.name).join(', ');
+    if(b.publishers&&b.publishers.length)document.getElementById('nb-pub').value=b.publishers[0].name;
+    if(b.publish_date){const ym=b.publish_date.match(/\d{4}/);if(ym)document.getElementById('nb-year').value=ym[0];}
+    hint.style.display='none';
+    checkAuthorOverlap(document.getElementById('nb-author').value);
+    // #868 plumbing — opportunistically grab community rating/popularity for this book too
+    _olFetchRatings(document.getElementById('nb-title').value,document.getElementById('nb-author').value).then(res=>{if(res)window._pendingBookRatings=res;});
+    if(b.cover&&(b.cover.medium||b.cover.large)){
+      try{
+        const cr=await fetch(b.cover.medium||b.cover.large);const blob=await cr.blob();
+        const reader=new FileReader();
+        reader.onload=ev=>{compressImage(ev.target.result,300,420,0.8,compressed=>{
+          document.getElementById('nb-cover-data').value=compressed;
+          const box=document.getElementById('nb-cover-box');
+          if(box)box.innerHTML=`<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--r);"/>`;
+        });};
+        reader.readAsDataURL(blob);
+      }catch(e){/* cover fetch failed silently, same as existing lookupBook behavior */}
+    }
+  }catch(e){
+    console.error('ISBN lookup failed:',e);
+    hint.innerHTML='Could not reach Open Library right now. You can still fill in the details manually.';
+  }
+}
 async function lookupBook(title){
   if(!title||title.length<3)return;
   try{
@@ -3095,6 +3196,20 @@ async function lookupBook(title){
       </div>`;
     }).join('');
   }catch(e){console.error('Book lookup error:',e);}
+}
+// #876 — "more by this author" nudge, fires when the Author field loses focus in New/Edit Book
+function checkAuthorOverlap(author){
+  const hint=document.getElementById('nb-author-hint');
+  if(!hint)return;
+  author=(author||'').trim();
+  const editId=document.getElementById('nb-edit-id')?.value;
+  if(!author){hint.style.display='none';return;}
+  const statusLabel={want:'Want',reading:'Reading',finished:'Finished'};
+  const matches=Object.values(library).filter(b=>b&&b.title&&b.author&&b.id!==editId&&b.author.trim().toLowerCase()===author.toLowerCase());
+  if(!matches.length){hint.style.display='none';return;}
+  hint.style.display='';
+  const list=matches.slice(0,4).map(b=>`${b.title} (${statusLabel[b.status]||b.status})`).join(' · ');
+  hint.innerHTML=`📚 You already have ${matches.length} book${matches.length>1?'s':''} by this author: ${list}${matches.length>4?'…':''}`;
 }
 async function applyLookup(idx){
   const results=window._bookLookupResults;
@@ -3518,7 +3633,13 @@ function _importStoryGraphCSV(text){
     const datesRead=row['Dates Read']||row['DatesRead']||'';
     const lastDateRead=(datesRead.split(/[–-]/).pop()||'').trim();
     const tags=(row['Tags']||'').trim();
-    const existing=Object.values(library).find(b=>b&&b.title&&b.title.toLowerCase()===title.toLowerCase()&&(!author||!b.author||b.author.toLowerCase()===author.toLowerCase()));
+    // #878 — match on ISBN first (catches title-variant duplicates: "A Novel" suffixes,
+    // subtitle differences, edition text, etc.), fall back to title+author match.
+    const isbnDigits=(isbn||'').replace(/[^0-9Xx]/g,'');
+    const existing=Object.values(library).find(b=>b&&b.title&&(
+      (isbnDigits&&b.isbn&&b.isbn.replace(/[^0-9Xx]/g,'')===isbnDigits)
+      ||(b.title.toLowerCase()===title.toLowerCase()&&(!author||!b.author||b.author.toLowerCase()===author.toLowerCase()))
+    ));
     if(existing){
       existing.status=status;
       if(dnf)existing.dnf=true;
@@ -3545,6 +3666,14 @@ function _importStoryGraphCSV(text){
 function pimaLink(title,author){
   const q=[title,author].filter(Boolean).join(' ');
   return`https://pima.bibliocommons.com/v2/search?query=${encodeURIComponent(q)}&searchType=keyword`;
+}
+// #875 — manual available/checked-out tag (no live API, so this is self-reported after checking the link above)
+function setPimaStatus(bookId,status){
+  const b=library[bookId];if(!b)return;
+  b.pimaAvailable=(b.pimaAvailable===status)?null:status; // tap the same icon again to clear
+  b.pimaCheckedAt=Date.now();
+  b.updated=Date.now();
+  save();renderLibrary();
 }
 
 // ══ #868 — community rating/popularity via Open Library (already used elsewhere in this app for lookupBook) ══
@@ -3602,25 +3731,37 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   const seriesBar=document.getElementById('lib-series-bar');
+  const genreBar=document.getElementById('lib-genre-bar');
   let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab);
-  books=sortLibraryBooks(books,libTab==='want'?(window._libSortMode||'recent'):'recent');
-  // #868 — sort control + ratings refresh, Want tab only
+  const sm=window._libSortMode||'recent';
+  books=sortLibraryBooks(books,sm);
+  // #868/#873 — sort control + ratings refresh, all tabs
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
-    if(libTab==='want'){
-      sortBar.style.display='';
-      const sm=window._libSortMode||'recent';
-      sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;">
-        <select onchange="window._libSortMode=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
-          <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
-          <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
-          <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
-          <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
-        </select>
-        <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="flex-shrink:0;">🔄 Refresh ratings</button>
+    sortBar.style.display='';
+    sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;">
+      <select onchange="window._libSortMode=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+        <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
+        <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
+        <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
+        <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
+      </select>
+      <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="flex-shrink:0;">🔄 Refresh ratings</button>
+    </div>`;
+  }
+  // #873 — genre filter chips, all tabs
+  const allGenres=[...new Set(books.map(b=>b.genre).filter(Boolean))].sort((a,b)=>(GL[a]||a).localeCompare(GL[b]||b));
+  if(genreBar){
+    if(allGenres.length>1){
+      const ag=window._libGenreFilter||'';
+      genreBar.style.display='';
+      genreBar.innerHTML=`<div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;align-items:center;">
+        <button class="chip${!ag?' active':''}" onclick="window._libGenreFilter='';renderLibrary();">All genres</button>
+        ${allGenres.map(g=>`<button class="chip${ag===g?' active':''}" data-gf="${esc(g)}" onclick="window._libGenreFilter=this.dataset.gf;renderLibrary();">${GL[g]||g}</button>`).join('')}
       </div>`;
+      if(ag)books=books.filter(b=>b.genre===ag);
     } else {
-      sortBar.style.display='none';
+      genreBar.style.display='none';
     }
   }
   // #389 — series filter chips
@@ -3641,9 +3782,22 @@ function renderLibrary(){
   }
   if(!books.length){body.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  body.innerHTML=books.map((b,i)=>bookCardHTML(b,i)).join('');
+  body.innerHTML=books.map((b,i)=>bookCardHTML(b,i,sm)).join('');
 }
-function bookCardHTML(b,i){
+// #873 — format author as "Last, First" when browsing sorted by last name.
+// Only reformats a plain single-author "First Last" string; leaves anything with a
+// comma already in it alone (co-author lists, or already Last-First) to avoid garbling.
+function authorDisplayName(author,mode){
+  if(!author)return'—';
+  if(mode!=='author')return author;
+  if(author.includes(','))return author;
+  const parts=author.trim().split(/\s+/);
+  if(parts.length<2)return author;
+  const last=parts[parts.length-1];
+  const first=parts.slice(0,-1).join(' ');
+  return`${last}, ${first}`;
+}
+function bookCardHTML(b,i,sortMode){
   const col=SPINE[i%SPINE.length];
   const ini=b.title.split(' ').map(w=>w[0]).join('').slice(0,3).toUpperCase();
   const coverHTML=b.cover?`<img src="${b.cover}" style="width:100%;height:100%;object-fit:cover;"/>`:`<div style="background:${col};width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;text-align:center;padding:3px;">${ini}</div>`;
@@ -3655,18 +3809,22 @@ function bookCardHTML(b,i){
   const commRating=b.communityRating?`<span title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`:'';
   const commPopular=b.wantCount?`<span title="People with this on their to-read list">🔥 ${b.wantCount}</span>`:'';
   const commHTML=(commRating||commPopular)?`<div style="font-size:10px;color:var(--t2);display:flex;gap:8px;margin-bottom:2px;">${commRating}${commPopular}</div>`:'';
-  // #867 — Pima availability deep link (Want tab)
-  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Check at Pima</span>`:'';
+  // #867 — Pima availability deep link + #875 manual available/checked-out tag
+  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Check at Pima</span>
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','yes')" title="Mark available at Pima">✅</span>
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>`:'';
+  const pimaStatusHTML=b.pimaAvailable==='yes'?`<div style="font-size:10px;color:#1D9E75;font-weight:600;margin-bottom:2px;">🟢 Available at Pima</div>`:b.pimaAvailable==='no'?`<div style="font-size:10px;color:#E24B4A;font-weight:600;margin-bottom:2px;">🔴 Checked out at Pima</div>`:'';
   const dnfBadge=b.dnf?`<span style="font-size:10px;color:var(--t3);font-weight:600;">DNF</span>`:'';
   return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
       <div class="book-title">${b.title}</div>
       ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;cursor:pointer;" onclick="event.stopPropagation();openSeriesView('${esc(b.seriesName)}')" title="View series">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''} 📚</div>`:''}
-      <div class="book-author">${b.author||'—'}</div>
+      <div class="book-author">${authorDisplayName(b.author,sortMode)}</div>
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
       ${dnfBadge?`<div style="margin-bottom:2px;">${dnfBadge}</div>`:(stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:'')}
       ${commHTML}
+      ${pimaStatusHTML}
       ${progHTML}
       <div class="book-meta" style="margin-top:4px;">
         <span class="gbadge">${GL[b.genre]||b.genre}</span>
@@ -4822,6 +4980,7 @@ function openNewBookSheet(){
   setPhotoBox('nb-cover-box','','Tap to upload cover','22');
   document.getElementById('chap-setup-list').innerHTML='';
   document.getElementById('nb-lookup-hint').style.display='none';
+  document.getElementById('nb-author-hint').style.display='none';
   ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('nb-genre').value='fiction';
   document.getElementById('nb-status').value='reading';
@@ -4859,6 +5018,7 @@ function openEditBook(id){
   setPhotoBox('nb-cover-box',b.cover||'','Tap to upload cover','22');
   renderChapSetup(b.chapSetup);
   toggleRatingVis();
+  checkAuthorOverlap(b.author||'');
   closeSheet('settings-overlay');
   openSheet('nb-overlay');
 }
@@ -4979,6 +5139,22 @@ function saveBook(applyWiki){
   if(_setupMs>3000){const mins=Math.floor(_setupMs/60000);const secs=Math.round((_setupMs%60000)/1000);_showToast(`✅ Book saved · Setup took ${mins>0?mins+'m ':''} ${secs}s`);}
   if(editId&&currentId===editId)document.getElementById('bs-title').textContent=library[id].title;
   if(applyWiki)_applyWikiPending(id);
+  // #877 — auto-suggest next book in series when a series book is newly marked Finished
+  if(library[id].status==='finished'&&existing.status!=='finished'&&library[id].seriesName&&library[id].seriesNum){
+    const seriesName=library[id].seriesName;
+    const curNum=+library[id].seriesNum;
+    const nextNum=curNum+1;
+    const hasNext=Object.values(library).some(b=>b&&b.seriesName===seriesName&&(+b.seriesNum)===nextNum);
+    if(!hasNext){
+      const t=prompt(`📚 Nice — you finished "${library[id].title}" (${seriesName} #${curNum}).\n\nWhat's the title of ${seriesName} #${nextNum}? Leave blank to skip.`,'');
+      if(t&&t.trim()){
+        const nid='b'+Date.now()+Math.floor(Math.random()*1000);
+        library[nid]={id:nid,title:t.trim(),author:library[id].author||'',genre:library[id].genre||'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),seriesName,seriesNum:String(nextNum),why:`Next in series after finishing #${curNum}`,origLang:'',transLang:''};
+        save();renderLibrary();
+        _showToast(`✅ Added "${t.trim()}" to Want to Read`);
+      }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -14694,6 +14870,19 @@ function acceptFamSuggestion(i){
 // ═══════════════════════════════════════════════════════════════
 // LIBRARY STATS
 // ═══════════════════════════════════════════════════════════════
+// #874 — yearly reading goal (stored per-year in localStorage, tiny value, no need for IDB)
+function getReadingGoal(year){try{return+localStorage.getItem('reading-goal-'+year)||0;}catch(e){return 0;}}
+function setReadingGoalValue(year,n){try{localStorage.setItem('reading-goal-'+year,String(n));}catch(e){}}
+function promptReadingGoal(){
+  const year=new Date().getFullYear();
+  const cur=getReadingGoal(year)||'';
+  const n=prompt(`Reading goal for ${year} — how many books?`,cur);
+  if(n===null)return;
+  const v=parseInt(n,10);
+  if(isNaN(v)||v<0){alert('Enter a whole number, e.g. 24.');return;}
+  setReadingGoalValue(year,v);
+  renderLibStats();
+}
 function renderLibStats(){
   const books=Object.values(library);
   const finished=books.filter(b=>b.status==='finished');
@@ -14772,6 +14961,29 @@ function renderLibStats(){
   const combinedMin=totalMin+refMin;
   const fmtTime=m=>m>=60?Math.floor(m/60)+'h '+(m%60>0?m%60+'m':''):m+'m';
 
+  // #874 — yearly reading goal + pace
+  const _year=new Date().getFullYear();
+  const _goal=getReadingGoal(_year);
+  const _finishedThisYear=finished.filter(b=>b.de&&b.de.slice(0,4)===String(_year)).length;
+  const _dayOfYear=Math.ceil((Date.now()-new Date(_year,0,0))/86400000);
+  const _pace=_dayOfYear>0?(_finishedThisYear/_dayOfYear*365):0;
+  let goalHTML='';
+  if(_goal>0){
+    const pct=Math.min(100,Math.round((_finishedThisYear/_goal)*100));
+    const onTrack=_pace>=_goal;
+    goalHTML=`<div style="margin:10px 0;background:var(--bg2);border-radius:var(--r);padding:10px 12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;">${_year} reading goal</div>
+        <span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="promptReadingGoal()">Edit</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:4px;"><strong>${_finishedThisYear}</strong> of ${_goal} books · ${pct}%</div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:var(--accent);"></div></div>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;">${_finishedThisYear>0?`At your current pace, you're on track for ~${Math.round(_pace)} books this year ${onTrack?'— ahead of goal 🎉':'— a bit behind pace'}.`:`Finish a book to start tracking pace.`}</div>
+    </div>`;
+  } else {
+    goalHTML=`<div style="margin:10px 0;"><button class="btn" onclick="promptReadingGoal()" style="width:100%;">🎯 Set a ${_year} reading goal</button></div>`;
+  }
+
   document.getElementById('lib-stats-body').innerHTML=`
   <div class="sum-grid">
     <div class="sum-card"><div class="sum-val">${books.length}</div><div class="sum-lbl">Total books</div></div>
@@ -14784,6 +14996,7 @@ function renderLibStats(){
     ${refMin>0?`<div class="sum-card"><div class="sum-val">${fmtTime(refMin)}</div><div class="sum-lbl">References time</div></div><div class="sum-card"><div class="sum-val">${fmtTime(combinedMin)}</div><div class="sum-lbl">Total time (all)</div></div>`:''}
     <div class="sum-card"><div class="sum-val">${totalPages}</div><div class="sum-lbl">Pages logged</div></div>
   </div>
+  ${goalHTML}
   ${chartHTML}
   ${monthChartHTML}
   ${topGenres.length?`<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--t2);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;">Top genres</div>${topGenres.map(([g,n])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px;"><span style="flex:1;">'+g+'</span><div style="height:8px;background:var(--accent);border-radius:4px;opacity:0.7;width:'+Math.round((n/books.length)*120)+'px;"></div><span style="color:var(--t2);width:20px;text-align:right;">'+n+'</span></div>').join('')}</div>`:''}
