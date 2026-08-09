@@ -3734,20 +3734,30 @@ function renderLibrary(){
   const genreBar=document.getElementById('lib-genre-bar');
   let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab);
   const sm=window._libSortMode||'recent';
+  const rf=window._libRatingFilter||0;
+  // #880 — min-rating filter combines with sort/genre/series, e.g. "Highest rated" community-rating floor AND sorted by author last name
+  if(rf>0)books=books.filter(b=>(+b.communityRating||0)>=rf);
   books=sortLibraryBooks(books,sm);
-  // #868/#873 — sort control + ratings refresh, all tabs
+  // #868/#873/#880 — sort control + min-rating filter + ratings refresh, all tabs
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
     sortBar.style.display='';
-    sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;">
+    sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <select onchange="window._libSortMode=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
         <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
         <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
         <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
         <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
       </select>
-      <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="flex-shrink:0;">🔄 Refresh ratings</button>
-    </div>`;
+      <select onchange="window._libRatingFilter=+this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+        <option value="0"${rf===0?' selected':''}>Any rating</option>
+        <option value="3"${rf===3?' selected':''}>★ 3+</option>
+        <option value="3.5"${rf===3.5?' selected':''}>★ 3.5+</option>
+        <option value="4"${rf===4?' selected':''}>★ 4+</option>
+        <option value="4.5"${rf===4.5?' selected':''}>★ 4.5+</option>
+      </select>
+    </div>
+    <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="width:100%;">🔄 Refresh ratings</button>`;
   }
   // #873 — genre filter chips, all tabs
   const allGenres=[...new Set(books.map(b=>b.genre).filter(Boolean))].sort((a,b)=>(GL[a]||a).localeCompare(GL[b]||b));
@@ -3780,7 +3790,18 @@ function renderLibrary(){
       seriesBar.style.display='none';
     }
   }
-  if(!books.length){body.innerHTML='';empty.style.display='';return;}
+  const _hasActiveFilter=!!(window._libRatingFilter||window._libGenreFilter||window._libSeriesFilter);
+  const _tabHadBooksBeforeFilters=Object.values(library).some(b=>b&&b.title&&b.status===libTab);
+  if(!books.length){
+    body.innerHTML='';
+    empty.style.display='';
+    if(_hasActiveFilter&&_tabHadBooksBeforeFilters){
+      empty.innerHTML=`<div class="empty-icon">🔍</div><div class="empty-text">No books match these filters</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="window._libRatingFilter=0;window._libGenreFilter='';window._libSeriesFilter='';renderLibrary();">Clear filters</div>`;
+    } else {
+      empty.innerHTML=`<div class="empty-icon">📚</div><div class="empty-text">No books here yet</div><div class="empty-sub">Tap + New to add one</div>`;
+    }
+    return;
+  }
   empty.style.display='none';
   body.innerHTML=books.map((b,i)=>bookCardHTML(b,i,sm)).join('');
 }
