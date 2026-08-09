@@ -511,6 +511,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <option value="graphic">Graphic Novel / Comics</option>
           <option value="shortfiction">Short Story Collection</option>
           <option value="play">Play / Drama</option>
+          <option value="ya">Young Adult</option>
           <option value="other">Other</option>
         </select>
       </div>
@@ -552,10 +553,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>ISBN</label><input type="text" id="nb-isbn" placeholder="978-…"/></div>
       <div class="fg"><label>Edition / format</label><input type="text" id="nb-edition" placeholder="Paperback, 3rd ed."/></div>
     </div>
+    <button class="btn btn-sm" onclick="confirmBookInfo()" style="margin:-4px 0 10px;">🔎 Confirm book info (title, cover, ISBN)</button>
     <div class="fg"><label>About the author</label><textarea id="nb-about-author" placeholder="Brief bio or notes about the author…" style="min-height:50px;"></textarea></div>
     <div class="fg"><label>Book summary / blurb</label><textarea id="nb-summary" placeholder="The back-cover summary or your own overview…" style="min-height:60px;"></textarea></div>
     <div class="fg"><label>Original language</label><input type="text" id="nb-orig-lang" placeholder="e.g. Spanish, Russian, French"/></div>
     <div class="fg"><label>Translation / edition language</label><input type="text" id="nb-trans-lang" placeholder="e.g. English (Edith Grossman, 2003)"/></div>
+    <div class="fg"><label>My review / comments</label><textarea id="nb-review" placeholder="Your own notes or review (carries over from StoryGraph on import)…" style="min-height:60px;"></textarea></div>
+    <div class="divider"></div>
+    <div class="slabel">Access &amp; ownership</div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="nb-owned" style="width:auto;" onchange="document.getElementById('nb-loaned-wrap').style.display=this.checked?'':'none';"/> I own a copy</label></div>
+    <div class="fg" id="nb-loaned-wrap" style="display:none;"><label>Loaned out to</label><input type="text" id="nb-loaned" placeholder="Who has your copy right now?"/></div>
+    <div class="fg"><label>A friend has a copy</label><input type="text" id="nb-friend-has" placeholder="Who could you borrow this from?"/></div>
+    <div class="fg"><label>Audiobook edition</label>
+      <select id="nb-audiobook"><option value="">Unknown</option><option value="yes">Yes, available as audiobook</option><option value="no">No audiobook edition</option></select>
+    </div>
     <div class="divider"></div>
     <div class="slabel">Cover photo</div>
     <div class="fg">
@@ -1436,7 +1447,7 @@ const GENRES={
   play:     {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Act/Scene','Character','Characteristic','Dialogue','Event','Group / Organization','Image / Diagram','Location','Narrative Structure','Outfit','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
   other:    {tabs:['log','quotes','chaps','chars','web','timeline','map','words','questions','refs','todo','stats'],types:['Chapter','Character','Characteristic','Contradiction','Event','Group / Organization','Historical Context','Image / Diagram','Location','Lore','Narrative Structure','Outfit','Question','Quote','Reference','Relationship','Setting','Symbol','Theme','Timeline','Translation','Word / Vocabulary']},
 };
-const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',other:'Other'};
+const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery:'Mystery',scifi:'Sci-Fi/Fantasy',history:'History',selfhelp:'Self-Help',poetry:'Poetry',essays:'Essays',anthology:'Anthology',graphic:'Graphic Novel',shortfiction:'Short Stories',play:'Play/Drama',ya:'Young Adult',other:'Other'};
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
 const SPINE=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D11','#A32D2D'];
 const CT=['Character','Person','Figure','Suspect'];
@@ -3143,7 +3154,11 @@ function closeBarcodeScan(){
 async function applyISBNLookup(isbn){
   isbn=(isbn||'').replace(/[^0-9Xx]/g,'');
   if(isbn.length<9){alert("That doesn't look like a valid ISBN — try again or type the full number from the barcode.");return;}
-  openNewBookSheet();
+  // #888 — edit-aware: if we're already editing a book (e.g. via "🔎 Confirm book info"),
+  // fill fields in place instead of resetting the sheet into a fresh New Book (which would
+  // have silently dropped the edit and any unsaved fields, and lost which book we're on).
+  const alreadyEditing=document.getElementById('nb-overlay').classList.contains('open')&&document.getElementById('nb-edit-id').value;
+  if(!alreadyEditing)openNewBookSheet();
   document.getElementById('nb-isbn').value=isbn;
   const hint=document.getElementById('nb-lookup-hint');
   hint.style.display='';hint.innerHTML='🔎 Looking up ISBN '+isbn+'…';
@@ -3176,6 +3191,16 @@ async function applyISBNLookup(isbn){
     console.error('ISBN lookup failed:',e);
     hint.innerHTML='Could not reach Open Library right now. You can still fill in the details manually.';
   }
+}
+// #887/#888 — one-tap "confirm book info" for the edit form, instead of the old
+// edit-a-letter-to-retrigger-lookup workaround. Prefers ISBN (precise, single-match)
+// over a title text search when both are available.
+function confirmBookInfo(){
+  const isbn=(document.getElementById('nb-isbn').value||'').replace(/[^0-9Xx]/g,'');
+  const title=(document.getElementById('nb-title').value||'').trim();
+  if(isbn.length>=9){applyISBNLookup(isbn);return;}
+  if(title.length>=3){lookupBook(title);return;}
+  alert('Enter a title or ISBN first, then try again.');
 }
 async function lookupBook(title){
   if(!title||title.length<3)return;
@@ -3630,8 +3655,17 @@ function _importStoryGraphCSV(text){
     const starRaw=parseFloat(row['Star Rating']);
     const rating=isNaN(starRaw)?'':String(Math.round(starRaw));
     let isbn=(row['ISBN/UID']||row['ISBN']||'').replace(/^="|"$/g,'').replace(/^"|"$/g,'');
-    const datesRead=row['Dates Read']||row['DatesRead']||'';
-    const lastDateRead=(datesRead.split(/[–-]/).pop()||'').trim();
+    // #889 — parse BOTH ends of the most recent read period, not just the finish date.
+    // "Dates Read" can hold multiple comma-separated periods for rereads (YYYY/MM/DD-YYYY/MM/DD each) — use the last one.
+    const datesReadRaw=(row['Dates Read']||row['DatesRead']||'').trim();
+    const periods=datesReadRaw.split(',').map(p=>p.trim()).filter(Boolean);
+    const lastPeriod=periods.length?periods[periods.length-1]:'';
+    const periodDates=lastPeriod.split(/[–-]/).map(s=>s.trim()).filter(Boolean);
+    const startDateRaw=periodDates[0]||'';
+    const endDateRaw=(periodDates.length>1?periodDates[periodDates.length-1]:'')||(row['Last Date Read']||'').trim();
+    const dateStarted=startDateRaw?_sgDateToISO(startDateRaw):'';
+    const dateFinished=endDateRaw?_sgDateToISO(endDateRaw):'';
+    const review=(row['Review']||'').trim();
     const tags=(row['Tags']||'').trim();
     // #878 — match on ISBN first (catches title-variant duplicates: "A Novel" suffixes,
     // subtitle differences, edition text, etc.), fall back to title+author match.
@@ -3645,13 +3679,15 @@ function _importStoryGraphCSV(text){
       if(dnf)existing.dnf=true;
       if(rating)existing.rating=rating;
       if(isbn&&!existing.isbn)existing.isbn=isbn;
-      if(lastDateRead&&!existing.de)existing.de=_sgDateToISO(lastDateRead);
+      if(dateStarted&&!existing.ds)existing.ds=dateStarted;
+      if(dateFinished&&!existing.de)existing.de=dateFinished;
+      if(review&&!existing.review)existing.review=review;
       existing.sgImported=true;existing.updated=Date.now();
       touchedIds.push(existing.id);updated++;
     } else {
       const id='b'+Date.now()+Math.floor(Math.random()*1000);
       library[id]={id,title,author,genre:'fiction',status,dnf:dnf||undefined,entries:[],sessions:[],locations:[],created:Date.now(),
-        isbn,rating:rating||'',de:lastDateRead?_sgDateToISO(lastDateRead):'',
+        isbn,rating:rating||'',ds:dateStarted,de:dateFinished,review,
         why:tags?`StoryGraph tags: ${tags}`:'',sgImported:true,origLang:'',transLang:''};
       touchedIds.push(id);added++;
     }
@@ -3667,12 +3703,85 @@ function pimaLink(title,author){
   const q=[title,author].filter(Boolean).join(' ');
   return`https://pima.bibliocommons.com/v2/search?query=${encodeURIComponent(q)}&searchType=keyword`;
 }
+// #884 — PCC (Pima Community College) library catalog. Unlike Pima County's BiblioCommons
+// catalog, PCC's WebPAC-based system doesn't have a confirmed deep-link query format, so this
+// opens the catalog homepage rather than a pre-filled search — one tap closer, not fully automatic.
+function pccLink(){
+  return'https://library2.pima.edu/';
+}
+// #883 — Filters sheet
+function openLibFilters(){
+  const grid=document.getElementById('lf-genre-grid');
+  const active=window._libGenreFilters||[];
+  grid.innerHTML=Object.keys(GL).map(g=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;"><input type="checkbox" value="${g}" ${active.includes(g)?'checked':''} style="width:auto;"/> ${GL[g]}</label>`).join('');
+  document.getElementById('lf-rating').value=String(window._libRatingFilter||0);
+  document.getElementById('lf-owned').value=window._libOwnedFilter||'';
+  document.getElementById('lf-audiobook').value=window._libAudiobookFilter||'';
+  document.getElementById('lf-pima').value=window._libPimaFilter||'';
+  document.getElementById('lf-pcc').value=window._libPccFilter||'';
+  document.getElementById('lf-needsol').checked=!!window._libNeedsOLFilter;
+  openSheet('lib-filters-overlay');
+}
+function applyLibFilters(){
+  window._libGenreFilters=[...document.querySelectorAll('#lf-genre-grid input:checked')].map(x=>x.value);
+  window._libRatingFilter=+document.getElementById('lf-rating').value;
+  window._libOwnedFilter=document.getElementById('lf-owned').value;
+  window._libAudiobookFilter=document.getElementById('lf-audiobook').value;
+  window._libPimaFilter=document.getElementById('lf-pima').value;
+  window._libPccFilter=document.getElementById('lf-pcc').value;
+  window._libNeedsOLFilter=document.getElementById('lf-needsol').checked;
+  closeSheet('lib-filters-overlay');
+  renderLibrary();
+}
+function clearLibFilters(){
+  window._libGenreFilters=[];window._libRatingFilter=0;window._libOwnedFilter='';window._libAudiobookFilter='';window._libPimaFilter='';window._libPccFilter='';window._libNeedsOLFilter=false;
+  openLibFilters();
+  renderLibrary();
+}
+// #880/#883 — kept for back-compat with any old references; folds into the Filters sheet now.
 // #875 — manual available/checked-out tag (no live API, so this is self-reported after checking the link above)
 function setPimaStatus(bookId,status){
   const b=library[bookId];if(!b)return;
   b.pimaAvailable=(b.pimaAvailable===status)?null:status; // tap the same icon again to clear
   b.pimaCheckedAt=Date.now();
   b.updated=Date.now();
+  save();renderLibrary();
+}
+// #884 — same self-reported pattern, for PCC
+function setPccStatus(bookId,status){
+  const b=library[bookId];if(!b)return;
+  b.pccAvailable=(b.pccAvailable===status)?null:status;
+  b.pccCheckedAt=Date.now();
+  b.updated=Date.now();
+  save();renderLibrary();
+}
+// #881(reading-list) — quick status change from the card, no need to open full Edit Book
+const LIB_STATUS_LABEL={want:'Want to Read',reading:'Currently Reading',finished:'Finished'};
+function quickSetBookStatus(bookId,newStatus){
+  const b=library[bookId];if(!b)return;
+  const wasFinished=b.status==='finished';
+  b.status=newStatus;
+  if(newStatus!=='finished')b.dnf=false;
+  b.updated=Date.now();
+  save();renderLibrary();
+  // #877 — same next-in-series nudge as the full save flow, when a card-side quick-change newly finishes a series book
+  if(newStatus==='finished'&&!wasFinished&&b.seriesName&&b.seriesNum){
+    const seriesName=b.seriesName,curNum=+b.seriesNum,nextNum=curNum+1;
+    const hasNext=Object.values(library).some(x=>x&&x.seriesName===seriesName&&(+x.seriesNum)===nextNum);
+    if(!hasNext){
+      const t=prompt(`📚 Nice — you finished "${b.title}" (${seriesName} #${curNum}).\n\nWhat's the title of ${seriesName} #${nextNum}? Leave blank to skip.`,'');
+      if(t&&t.trim()){
+        const nid='b'+Date.now()+Math.floor(Math.random()*1000);
+        library[nid]={id:nid,title:t.trim(),author:b.author||'',genre:b.genre||'fiction',status:'want',entries:[],sessions:[],locations:[],created:Date.now(),seriesName,seriesNum:String(nextNum),why:`Next in series after finishing #${curNum}`,origLang:'',transLang:''};
+        save();renderLibrary();
+        _showToast(`✅ Added "${t.trim()}" to Want to Read`);
+      }
+    }
+  }
+}
+function quickSetBookDNF(bookId){
+  const b=library[bookId];if(!b)return;
+  b.status='finished';b.dnf=true;b.updated=Date.now();
   save();renderLibrary();
 }
 
@@ -3718,9 +3827,12 @@ function authorLastName(author){
 }
 function sortLibraryBooks(books,mode){
   const arr=[...books];
-  if(mode==='author')return arr.sort((a,b)=>authorLastName(a.author).localeCompare(authorLastName(b.author)));
-  if(mode==='rating')return arr.sort((a,b)=>(+b.communityRating||0)-(+a.communityRating||0));
-  if(mode==='popular')return arr.sort((a,b)=>(+b.wantCount||0)-(+a.wantCount||0));
+  const byAuthor=(a,b)=>authorLastName(a.author).localeCompare(authorLastName(b.author));
+  // #882 — rating/popular sorts now break ties by author last name ("highest rated THEN author")
+  if(mode==='author')return arr.sort(byAuthor);
+  if(mode==='rating')return arr.sort((a,b)=>((+b.communityRating||0)-(+a.communityRating||0))||byAuthor(a,b));
+  if(mode==='popular')return arr.sort((a,b)=>((+b.wantCount||0)-(+a.wantCount||0))||byAuthor(a,b));
+  if(mode==='finished')return arr.sort((a,b)=>(b.de||'').localeCompare(a.de||''));
   return arr.sort((a,b)=>{
     if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
     return b.created-a.created;
@@ -3731,49 +3843,43 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   const seriesBar=document.getElementById('lib-series-bar');
-  const genreBar=document.getElementById('lib-genre-bar');
   let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab);
-  const sm=window._libSortMode||'recent';
+  if(!window._libSortModeByTab)window._libSortModeByTab={want:'recent',reading:'recent',finished:'finished'};
+  const sm=window._libSortModeByTab[libTab]||'recent';
   const rf=window._libRatingFilter||0;
-  // #880 — min-rating filter combines with sort/genre/series, e.g. "Highest rated" community-rating floor AND sorted by author last name
+  const gf=window._libGenreFilters||[];
+  const of=window._libOwnedFilter||'';
+  const af=window._libAudiobookFilter||'';
+  const pf=window._libPimaFilter||'';
+  const cf=window._libPccFilter||'';
+  const nf=!!window._libNeedsOLFilter;
+  // #883 — every active filter is AND'd together (genre facet itself is OR-among-selected-genres)
   if(rf>0)books=books.filter(b=>(+b.communityRating||0)>=rf);
+  if(gf.length)books=books.filter(b=>gf.includes(b.genre));
+  if(of)books=books.filter(b=>(of==='yes')===!!b.owned);
+  if(af)books=books.filter(b=>(af==='yes')===(b.hasAudiobook==='yes'));
+  if(pf)books=books.filter(b=>b.pimaAvailable===pf);
+  if(cf)books=books.filter(b=>b.pccAvailable===cf);
+  if(nf)books=books.filter(b=>!b.olKey);
   books=sortLibraryBooks(books,sm);
-  // #868/#873/#880 — sort control + min-rating filter + ratings refresh, all tabs
+  // #868/#873/#880/#882/#883 — sort control + ratings refresh, all tabs
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
     sortBar.style.display='';
+    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,!!cf,nf].filter(Boolean).length;
     sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-      <select onchange="window._libSortMode=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+      <select onchange="window._libSortModeByTab['${libTab}']=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
         <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
         <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
         <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
         <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
+        ${libTab==='finished'?`<option value="finished"${sm==='finished'?' selected':''}>Recently finished</option>`:''}
       </select>
-      <select onchange="window._libRatingFilter=+this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
-        <option value="0"${rf===0?' selected':''}>Any rating</option>
-        <option value="3"${rf===3?' selected':''}>★ 3+</option>
-        <option value="3.5"${rf===3.5?' selected':''}>★ 3.5+</option>
-        <option value="4"${rf===4?' selected':''}>★ 4+</option>
-        <option value="4.5"${rf===4.5?' selected':''}>★ 4.5+</option>
-      </select>
+      <button class="btn btn-sm" onclick="openLibFilters()" style="flex-shrink:0;position:relative;">🔍 Filters${activeCount?` (${activeCount})`:''}</button>
     </div>
     <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="width:100%;">🔄 Refresh ratings</button>`;
   }
   // #873 — genre filter chips, all tabs
-  const allGenres=[...new Set(books.map(b=>b.genre).filter(Boolean))].sort((a,b)=>(GL[a]||a).localeCompare(GL[b]||b));
-  if(genreBar){
-    if(allGenres.length>1){
-      const ag=window._libGenreFilter||'';
-      genreBar.style.display='';
-      genreBar.innerHTML=`<div class="fscroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;align-items:center;">
-        <button class="chip${!ag?' active':''}" onclick="window._libGenreFilter='';renderLibrary();">All genres</button>
-        ${allGenres.map(g=>`<button class="chip${ag===g?' active':''}" data-gf="${esc(g)}" onclick="window._libGenreFilter=this.dataset.gf;renderLibrary();">${GL[g]||g}</button>`).join('')}
-      </div>`;
-      if(ag)books=books.filter(b=>b.genre===ag);
-    } else {
-      genreBar.style.display='none';
-    }
-  }
   // #389 — series filter chips
   const allSeries=[...new Set(books.map(b=>b.seriesName).filter(Boolean))].sort();
   if(seriesBar){
@@ -3826,16 +3932,37 @@ function bookCardHTML(b,i,sortMode){
   let progHTML='';
   if(b.progressPage&&b.totalPages){const pct=Math.min(100,Math.round((+b.progressPage/+b.totalPages)*100));progHTML=`<div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col};"></div></div><div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${b.progressPage}/${b.totalPages} · ${pct}%</div>`;}
   const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
-  // #868 — community rating/popularity badge (Want tab)
+  // #868 — community rating/popularity badge
   const commRating=b.communityRating?`<span title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`:'';
   const commPopular=b.wantCount?`<span title="People with this on their to-read list">🔥 ${b.wantCount}</span>`:'';
   const commHTML=(commRating||commPopular)?`<div style="font-size:10px;color:var(--t2);display:flex;gap:8px;margin-bottom:2px;">${commRating}${commPopular}</div>`:'';
-  // #867 — Pima availability deep link + #875 manual available/checked-out tag
-  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Check at Pima</span>
+  // #867/#884 — Pima + PCC availability deep links + self-reported tags (Want tab)
+  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Pima</span>
     <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','yes')" title="Mark available at Pima">✅</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>`:'';
-  const pimaStatusHTML=b.pimaAvailable==='yes'?`<div style="font-size:10px;color:#1D9E75;font-weight:600;margin-bottom:2px;">🟢 Available at Pima</div>`:b.pimaAvailable==='no'?`<div style="font-size:10px;color:#E24B4A;font-weight:600;margin-bottom:2px;">🔴 Checked out at Pima</div>`:'';
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>
+    <span style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:4px;" onclick="event.stopPropagation();window.open(pccLink(),'_blank')">🎓 PCC</span>
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pccAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPccStatus('${b.id}','yes')" title="Mark available at PCC">✅</span>
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pccAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPccStatus('${b.id}','no')" title="Mark checked out at PCC">🚫</span>`:'';
+  const availBadges=[
+    b.pimaAvailable==='yes'?'🟢 Pima':b.pimaAvailable==='no'?'🔴 Pima':'',
+    b.pccAvailable==='yes'?'🟢 PCC':b.pccAvailable==='no'?'🔴 PCC':'',
+  ].filter(Boolean).join(' · ');
+  const availHTML=availBadges?`<div style="font-size:10px;font-weight:600;margin-bottom:2px;">${availBadges}</div>`:'';
   const dnfBadge=b.dnf?`<span style="font-size:10px;color:var(--t3);font-weight:600;">DNF</span>`:'';
+  // #885 — owned / loaned / friend-has-it / audiobook badges
+  const ownBits=[];
+  if(b.owned){ownBits.push(b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Owned');}
+  if(b.friendHasIt)ownBits.push(`🤝 ${esc(b.friendHasIt)} has a copy`);
+  if(b.hasAudiobook==='yes')ownBits.push('🎧 Audiobook');
+  const ownHTML=ownBits.length?`<div style="font-size:10px;color:var(--t2);margin-bottom:2px;">${ownBits.join(' · ')}</div>`:'';
+  // #886 — quick status change, no need to open full Edit Book
+  const quickStatus=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookStatus('${b.id}',this.value)" style="font-size:10px;padding:2px 4px;border-radius:6px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+    <option value="want"${b.status==='want'?' selected':''}>Want to Read</option>
+    <option value="reading"${b.status==='reading'?' selected':''}>Currently Reading</option>
+    <option value="finished"${b.status==='finished'&&!b.dnf?' selected':''}>Finished</option>
+  </select>${b.status!=='finished'||!b.dnf?`<span style="font-size:9px;color:var(--t3);cursor:pointer;margin-left:4px;" onclick="event.stopPropagation();quickSetBookDNF('${b.id}')" title="Mark as Did Not Finish">mark DNF</span>`:''}`;
+  // #887 — quick "needs Open Library match" confirm shortcut
+  const needsOLHTML=!b.olKey?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}');confirmBookInfo();" title="Look up this book's info on Open Library">🔎 Confirm info</span>`:'';
   return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
@@ -3845,13 +3972,16 @@ function bookCardHTML(b,i,sortMode){
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
       ${dnfBadge?`<div style="margin-bottom:2px;">${dnfBadge}</div>`:(stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:'')}
       ${commHTML}
-      ${pimaStatusHTML}
+      ${availHTML}
+      ${ownHTML}
       ${progHTML}
+      <div style="margin-top:4px;">${quickStatus}</div>
       <div class="book-meta" style="margin-top:4px;">
         <span class="gbadge">${GL[b.genre]||b.genre}</span>
         <span class="sdot status-${b.status}"></span>
         <span style="font-size:10px;color:var(--t3);">${b.entries.length} entries</span>
         ${b.status==='finished'&&!b.rating&&!b.dnf?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}')">Rate this book →</span>`:''}
+        ${needsOLHTML}
         ${pimaHTML}
       </div>
     </div>
@@ -5002,7 +5132,10 @@ function openNewBookSheet(){
   document.getElementById('chap-setup-list').innerHTML='';
   document.getElementById('nb-lookup-hint').style.display='none';
   document.getElementById('nb-author-hint').style.display='none';
-  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total'].forEach(x=>document.getElementById(x).value='');
+  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total','nb-review','nb-loaned','nb-friend-has'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('nb-owned').checked=false;
+  document.getElementById('nb-loaned-wrap').style.display='none';
+  document.getElementById('nb-audiobook').value='';
   document.getElementById('nb-genre').value='fiction';
   document.getElementById('nb-status').value='reading';
   document.getElementById('nb-rating').value='';
@@ -5030,6 +5163,12 @@ function openEditBook(id){
   document.getElementById('nb-orig-lang').value=b.origLang||b.langs||'';
   document.getElementById('nb-trans-lang').value=b.transLang||'';
   document.getElementById('nb-why').value=b.why||'';
+  document.getElementById('nb-review').value=b.review||'';
+  document.getElementById('nb-owned').checked=!!b.owned;
+  document.getElementById('nb-loaned').value=b.loanedTo||'';
+  document.getElementById('nb-loaned-wrap').style.display=b.owned?'':'none';
+  document.getElementById('nb-friend-has').value=b.friendHasIt||'';
+  document.getElementById('nb-audiobook').value=b.hasAudiobook||'';
   document.getElementById('nb-prog').value=b.progressPage||'';
   document.getElementById('nb-total').value=b.totalPages||'';
   document.getElementById('nb-rating').value=b.rating||'';
@@ -5061,9 +5200,10 @@ function saveBook(applyWiki){
   const editId=document.getElementById('nb-edit-id').value;
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),review:document.getElementById('nb-review').value.trim(),owned:document.getElementById('nb-owned').checked,loanedTo:document.getElementById('nb-loaned').value.trim(),friendHasIt:document.getElementById('nb-friend-has').value.trim(),hasAudiobook:document.getElementById('nb-audiobook').value,cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
   // #868 — attach community rating/popularity captured from the lookup, if any, then clear it
-  if(!editId&&window._pendingBookRatings){Object.assign(library[id],window._pendingBookRatings);}
+  // #888 — apply pending community-rating data on both new AND edited books (confirmBookInfo can fire on an existing book too)
+  if(window._pendingBookRatings){Object.assign(library[id],window._pendingBookRatings);}
   window._pendingBookRatings=null;
   // xlsx #435 (Batch 41) — duplicate chapter # warning. If two or more chapSetup
   // rows share the same chapNum, list them and let the user choose: keep going
@@ -6230,7 +6370,7 @@ function discardDraft(){
   const editId=document.getElementById('ae-edit-id').value;
   if(!editId){closeSheet('ae-overlay');return;}
   if(!confirm('Discard this draft? It will be moved to the Recycle Bin.'))return;
-  deleteEntry(Number(editId));
+  deleteEntry(Number(editId),true); // #881 — already confirmed above, don't double-confirm
   closeSheet('ae-overlay');
 }
 // #240/#241 — FAB on character profile (silently pre-fills current character into Involved)
@@ -8292,10 +8432,15 @@ function deleteEntryFromForm(){
     if(!confirm(`Delete this ${e.type} entry?\n\n"${(label||'').slice(0,80)}"\n\nIt will move to the Recycle Bin where you can restore it later.`))return;
   }
   // Close the form first, then run delete (which itself may pop more confirms for chars).
+  // #881 — pass preConfirmed=true for non-character entries: we already confirmed above,
+  // so deleteEntry() shouldn't confirm a second time. That second confirm(), firing right
+  // after closeSheet()'s animation, was landing in the same "iOS won't reliably show a
+  // dialog fired right after a touch-driven UI transition" trap already known elsewhere in
+  // this app — so the delete silently did nothing. This was the "can't delete entries" bug.
   closeSheet('ae-overlay');
-  deleteEntry(id);
+  deleteEntry(id,!isChar);
 }
-function deleteEntry(id){
+function deleteEntry(id,preConfirmed){
   const e=entries().find(x=>x.id===id);if(!e)return;
   if(CT.includes(e.type)){
     const name=e.cn||e.content;
@@ -8345,7 +8490,7 @@ function deleteEntry(id){
     }
     return; // early return — character already in bin, don't fall through
   } else {
-    if(!confirm('Delete this entry?'))return;
+    if(!preConfirmed&&!confirm('Delete this entry?'))return;
   }
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
@@ -15800,14 +15945,42 @@ function _swipeInit(){/* removed */}
   </div>
 </div>
 
-<!-- xlsx #401 — Library stats overlay -->
-<div class="sheet-overlay" id="lib-stats-overlay" onclick="mc('lib-stats-overlay',event)">
+<!-- #883 — combined AND filters (genre multi-select, rating, owned, audiobook, Pima/PCC availability, needs-OL-match) -->
+<div class="sheet-overlay" id="lib-filters-overlay" onclick="mc('lib-filters-overlay',event)">
   <div class="sheet">
     <div class="sheet-topbar">
-      <div class="sheet-topbar-title">📊 Library stats</div>
-      <button class="sheet-x" onclick="closeSheet('lib-stats-overlay')">×</button>
+      <div class="sheet-topbar-title">🔍 Filters</div>
+      <button class="sheet-x" onclick="closeSheet('lib-filters-overlay')">×</button>
     </div>
-    <div class="sheet-inner" id="lib-stats-body" style="padding-bottom:24px;"></div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">All filters below combine together (a book has to match every one you set). Genres are OR'd against each other — check as many as you like.</div>
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Genre</label>
+        <div id="lf-genre-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="fg"><label>Minimum rating</label>
+        <select id="lf-rating"><option value="0">Any rating</option><option value="3">★ 3+</option><option value="3.5">★ 3.5+</option><option value="4">★ 4+</option><option value="4.5">★ 4.5+</option></select>
+      </div>
+      <div class="fg"><label>Owned</label>
+        <select id="lf-owned"><option value="">Any</option><option value="yes">I own it</option><option value="no">Don't own it</option></select>
+      </div>
+      <div class="fg"><label>Audiobook edition</label>
+        <select id="lf-audiobook"><option value="">Any</option><option value="yes">Available as audiobook</option><option value="no">No audiobook edition</option></select>
+      </div>
+      <div class="fg"><label>Pima County Library</label>
+        <select id="lf-pima"><option value="">Any</option><option value="yes">Marked available</option><option value="no">Marked checked out</option></select>
+      </div>
+      <div class="fg"><label>PCC Library</label>
+        <select id="lf-pcc"><option value="">Any</option><option value="yes">Marked available</option><option value="no">Marked checked out</option></select>
+      </div>
+      <div class="fg"><label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="lf-needsol" style="width:auto;"/> Needs Open Library match</label>
+        <div style="font-size:10px;color:var(--t3);margin-top:3px;">Shows books with no community rating/cover matched yet — for quickly working through and confirming them.</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn" onclick="clearLibFilters()" style="flex:1;">Clear all</button>
+        <button class="btn btn-primary" onclick="applyLibFilters()" style="flex:1;">Apply</button>
+      </div>
+    </div>
   </div>
 </div>
 
