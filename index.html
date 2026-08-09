@@ -265,6 +265,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
+    <div id="lib-sort-bar" style="display:none;padding:4px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
     <div id="lib-empty" class="empty" style="display:none;padding:40px 14px;">
       <div class="empty-icon">📚</div><div class="empty-text">No books here yet</div><div class="empty-sub">Tap + New to add one</div>
@@ -3078,7 +3079,7 @@ function saveQuickLoc(){
 async function lookupBook(title){
   if(!title||title.length<3)return;
   try{
-    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series`);
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=key,title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series,ratings_average,ratings_count,want_to_read_count`);
     const d=await r.json();
     const hint=document.getElementById('nb-lookup-hint');
     if(!d.docs||!d.docs.length){hint.style.display='';hint.innerHTML='No results found.';return;}
@@ -3099,6 +3100,8 @@ async function applyLookup(idx){
   const results=window._bookLookupResults;
   if(!results||!results[idx])return;
   const b=results[idx];
+  // #868 — stash community rating/popularity so saveBook() can attach it to the new book
+  window._pendingBookRatings={olKey:b.key||'',communityRating:b.ratings_average||0,communityRatingCount:b.ratings_count||0,wantCount:b.want_to_read_count||0};
   if(b.title)document.getElementById('nb-title').value=b.title;
   if(b.author_name?.[0])document.getElementById('nb-author').value=b.author_name[0];
   if(b.first_publish_year)document.getElementById('nb-year').value=b.first_publish_year;
@@ -3446,14 +3449,180 @@ function switchLibTab(tab,btn){
   btn.classList.add('active');
   renderLibrary();
 }
+// ══ #866 — StoryGraph CSV import ══
+// Minimal hand-rolled CSV parser (handles quoted fields, embedded commas/quotes/newlines).
+// No external library — keeps the app single-file with no added dependency.
+function _parseCSV(text){
+  const rows=[];let row=[];let field='';let inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQuotes){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQuotes=false; }
+      else field+=c;
+    } else {
+      if(c==='"')inQuotes=true;
+      else if(c===','){row.push(field);field='';}
+      else if(c==='\r'){/* skip, \n handles the break */}
+      else if(c==='\n'){row.push(field);rows.push(row);row=[];field='';}
+      else field+=c;
+    }
+  }
+  if(field.length||row.length){row.push(field);rows.push(row);}
+  if(!rows.length)return[];
+  const headers=rows[0].map(h=>h.trim());
+  return rows.slice(1).filter(r=>r.length>1||(r[0]&&r[0].trim())).map(r=>{
+    const obj={};headers.forEach((h,i)=>obj[h]=r[i]!==undefined?r[i].trim():'');return obj;
+  });
+}
+function openStoryGraphImport(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.csv,text/csv';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{_importStoryGraphCSV(ev.target.result);}
+      catch(err){console.error('StoryGraph import error:',err);alert("Couldn't read that file — make sure it's the CSV exported from StoryGraph (Profile → Export).");}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+function _sgStatus(raw){
+  const s=(raw||'').toLowerCase().trim();
+  if(s==='to-read')return{status:'want'};
+  if(s==='currently-reading')return{status:'reading'};
+  if(s==='read')return{status:'finished'};
+  if(s==='did-not-finish'||s==='dnf')return{status:'finished',dnf:true};
+  return{status:'want'};
+}
+function _sgDateToISO(d){
+  // StoryGraph dates export as YYYY/MM/DD
+  const m=(d||'').match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if(!m)return'';
+  return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+}
+function _importStoryGraphCSV(text){
+  const rows=_parseCSV(text);
+  if(!rows.length){alert('No rows found in that file.');return;}
+  let added=0,updated=0,skipped=0;
+  const touchedIds=[];
+  rows.forEach(row=>{
+    const title=(row['Title']||'').trim();
+    if(!title){skipped++;return;}
+    const author=(row['Authors']||row['Author']||'').trim();
+    const{status,dnf}=_sgStatus(row['Read Status']||row['ReadStatus']);
+    const starRaw=parseFloat(row['Star Rating']);
+    const rating=isNaN(starRaw)?'':String(Math.round(starRaw));
+    let isbn=(row['ISBN/UID']||row['ISBN']||'').replace(/^="|"$/g,'').replace(/^"|"$/g,'');
+    const datesRead=row['Dates Read']||row['DatesRead']||'';
+    const lastDateRead=(datesRead.split(/[–-]/).pop()||'').trim();
+    const tags=(row['Tags']||'').trim();
+    const existing=Object.values(library).find(b=>b&&b.title&&b.title.toLowerCase()===title.toLowerCase()&&(!author||!b.author||b.author.toLowerCase()===author.toLowerCase()));
+    if(existing){
+      existing.status=status;
+      if(dnf)existing.dnf=true;
+      if(rating)existing.rating=rating;
+      if(isbn&&!existing.isbn)existing.isbn=isbn;
+      if(lastDateRead&&!existing.de)existing.de=_sgDateToISO(lastDateRead);
+      existing.sgImported=true;existing.updated=Date.now();
+      touchedIds.push(existing.id);updated++;
+    } else {
+      const id='b'+Date.now()+Math.floor(Math.random()*1000);
+      library[id]={id,title,author,genre:'fiction',status,dnf:dnf||undefined,entries:[],sessions:[],locations:[],created:Date.now(),
+        isbn,rating:rating||'',de:lastDateRead?_sgDateToISO(lastDateRead):'',
+        why:tags?`StoryGraph tags: ${tags}`:'',sgImported:true,origLang:'',transLang:''};
+      touchedIds.push(id);added++;
+    }
+  });
+  save();renderLibrary();
+  alert(`StoryGraph import done!\n\n${added} new book(s) added\n${updated} existing book(s) updated${skipped?`\n${skipped} row(s) skipped (blank title)`:''}\n\nTip: use "🔄 Refresh ratings" on the Want tab to pull in community ratings/popularity for sorting.`);
+}
+
+// ══ #867 — Pima County Library deep link ══
+// Pima's catalog (BiblioCommons) has no public API for outside apps, so this opens
+// a pre-filled search in a new tab rather than showing live availability in-app.
+function pimaLink(title,author){
+  const q=[title,author].filter(Boolean).join(' ');
+  return`https://pima.bibliocommons.com/v2/search?query=${encodeURIComponent(q)}&searchType=keyword`;
+}
+
+// ══ #868 — community rating/popularity via Open Library (already used elsewhere in this app for lookupBook) ══
+async function _olFetchRatings(title,author){
+  try{
+    const q=encodeURIComponent(`${title} ${author||''}`.trim());
+    const r=await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=key,ratings_average,ratings_count,want_to_read_count`);
+    const d=await r.json();
+    const doc=d.docs&&d.docs[0];
+    if(!doc)return null;
+    return{olKey:doc.key||'',communityRating:doc.ratings_average||0,communityRatingCount:doc.ratings_count||0,wantCount:doc.want_to_read_count||0};
+  }catch(e){console.error('Open Library ratings lookup failed:',e);return null;}
+}
+async function enrichBookRatings(bookId){
+  const b=library[bookId];if(!b)return null;
+  const res=await _olFetchRatings(b.title,b.author);
+  if(res){Object.assign(b,res);b.updated=Date.now();save();}
+  return res;
+}
+async function bulkEnrichWantList(){
+  const targets=Object.values(library).filter(b=>b&&b.status==='want'&&!b.communityRating);
+  if(!targets.length){_showToast('All Want-to-Read books already have rating data');return;}
+  _showToast(`Fetching ratings for ${targets.length} book(s)…`);
+  for(const b of targets){
+    const res=await _olFetchRatings(b.title,b.author);
+    if(res)Object.assign(b,res);
+    await new Promise(r=>setTimeout(r,250)); // polite pacing against Open Library
+  }
+  save();renderLibrary();
+  _showToast('✅ Ratings updated');
+}
+// #868 — parse a plausible last name out of "First Last", "First Middle Last", or "Last, First"
+function authorLastName(author){
+  if(!author)return'';
+  const a=author.split(',')[0].trim(); // handles multi-author "A, B" by only reading up to the first name-boundary comma
+  if(author.includes(',')&&author.split(',')[0].split(' ').length===1){
+    // "Last, First" format
+    return author.split(',')[0].trim();
+  }
+  const parts=a.trim().split(/\s+/);
+  return parts[parts.length-1]||author;
+}
+function sortLibraryBooks(books,mode){
+  const arr=[...books];
+  if(mode==='author')return arr.sort((a,b)=>authorLastName(a.author).localeCompare(authorLastName(b.author)));
+  if(mode==='rating')return arr.sort((a,b)=>(+b.communityRating||0)-(+a.communityRating||0));
+  if(mode==='popular')return arr.sort((a,b)=>(+b.wantCount||0)-(+a.wantCount||0));
+  return arr.sort((a,b)=>{
+    if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
+    return b.created-a.created;
+  });
+}
+
 function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   const seriesBar=document.getElementById('lib-series-bar');
-  let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab).sort((a,b)=>{
-    if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
-    return b.created-a.created;
-  });
+  let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab);
+  books=sortLibraryBooks(books,libTab==='want'?(window._libSortMode||'recent'):'recent');
+  // #868 — sort control + ratings refresh, Want tab only
+  const sortBar=document.getElementById('lib-sort-bar');
+  if(sortBar){
+    if(libTab==='want'){
+      sortBar.style.display='';
+      const sm=window._libSortMode||'recent';
+      sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;">
+        <select onchange="window._libSortMode=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+          <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
+          <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
+          <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
+          <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
+        </select>
+        <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="flex-shrink:0;">🔄 Refresh ratings</button>
+      </div>`;
+    } else {
+      sortBar.style.display='none';
+    }
+  }
   // #389 — series filter chips
   const allSeries=[...new Set(books.map(b=>b.seriesName).filter(Boolean))].sort();
   if(seriesBar){
@@ -3482,6 +3651,13 @@ function bookCardHTML(b,i){
   let progHTML='';
   if(b.progressPage&&b.totalPages){const pct=Math.min(100,Math.round((+b.progressPage/+b.totalPages)*100));progHTML=`<div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col};"></div></div><div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${b.progressPage}/${b.totalPages} · ${pct}%</div>`;}
   const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
+  // #868 — community rating/popularity badge (Want tab)
+  const commRating=b.communityRating?`<span title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`:'';
+  const commPopular=b.wantCount?`<span title="People with this on their to-read list">🔥 ${b.wantCount}</span>`:'';
+  const commHTML=(commRating||commPopular)?`<div style="font-size:10px;color:var(--t2);display:flex;gap:8px;margin-bottom:2px;">${commRating}${commPopular}</div>`:'';
+  // #867 — Pima availability deep link (Want tab)
+  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Check at Pima</span>`:'';
+  const dnfBadge=b.dnf?`<span style="font-size:10px;color:var(--t3);font-weight:600;">DNF</span>`:'';
   return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
@@ -3489,13 +3665,15 @@ function bookCardHTML(b,i){
       ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;cursor:pointer;" onclick="event.stopPropagation();openSeriesView('${esc(b.seriesName)}')" title="View series">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''} 📚</div>`:''}
       <div class="book-author">${b.author||'—'}</div>
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
-      ${stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:''}
+      ${dnfBadge?`<div style="margin-bottom:2px;">${dnfBadge}</div>`:(stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:'')}
+      ${commHTML}
       ${progHTML}
       <div class="book-meta" style="margin-top:4px;">
         <span class="gbadge">${GL[b.genre]||b.genre}</span>
         <span class="sdot status-${b.status}"></span>
         <span style="font-size:10px;color:var(--t3);">${b.entries.length} entries</span>
-        ${b.status==='finished'&&!b.rating?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}')">Rate this book →</span>`:''}
+        ${b.status==='finished'&&!b.rating&&!b.dnf?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}')">Rate this book →</span>`:''}
+        ${pimaHTML}
       </div>
     </div>
   </div>`;
@@ -4703,6 +4881,9 @@ function saveBook(applyWiki){
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
   library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
+  // #868 — attach community rating/popularity captured from the lookup, if any, then clear it
+  if(!editId&&window._pendingBookRatings){Object.assign(library[id],window._pendingBookRatings);}
+  window._pendingBookRatings=null;
   // xlsx #435 (Batch 41) — duplicate chapter # warning. If two or more chapSetup
   // rows share the same chapNum, list them and let the user choose: keep going
   // (will create ambiguous Chapter log entries) or cancel and fix the numbers.
@@ -15358,6 +15539,12 @@ function _swipeInit(){/* removed */}
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibStats()" style="width:100%;margin-bottom:6px;">📊 Library usage stats</button>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');setTimeout(openLibGallery,120);" style="width:100%;margin-bottom:6px;">📷 Photo gallery</button>
         <button class="btn" onclick="closeSheet('lib-settings-overlay');openLibLists()" style="width:100%;">📋 Manage answer lists</button>
+      </div>
+      <div class="divider"></div>
+      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Reading list</label>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5;">Import your To-Read / Currently Reading / Completed shelves from StoryGraph. Export a CSV from StoryGraph (Profile → Export) first, then upload it here.</div>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');openStoryGraphImport()" style="width:100%;margin-bottom:6px;">📖 Import from StoryGraph (CSV)</button>
+        <button class="btn" onclick="closeSheet('lib-settings-overlay');bulkEnrichWantList()" style="width:100%;">🔄 Refresh community ratings</button>
       </div>
       <div class="divider"></div>
       <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Backup &amp; sync</label>
