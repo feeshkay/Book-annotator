@@ -269,6 +269,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="tab active" id="lib-tab-reading" onclick="switchLibTab('reading',this)" style="flex:1;">Reading</button>
       <button class="tab" id="lib-tab-want" onclick="switchLibTab('want',this)" style="flex:1;">Want</button>
       <button class="tab" id="lib-tab-finished" onclick="switchLibTab('finished',this)" style="flex:1;">Finished</button>
+      <button class="tab" id="lib-tab-kybrary" onclick="switchLibTab('kybrary',this)" style="flex:1;">Ky-Brary</button>
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
     <div id="lib-genre-bar" style="display:none;padding:4px 12px 2px;"></div>
@@ -560,9 +561,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fg"><label>Translation / edition language</label><input type="text" id="nb-trans-lang" placeholder="e.g. English (Edith Grossman, 2003)"/></div>
     <div class="fg"><label>My review / comments</label><textarea id="nb-review" placeholder="Your own notes or review (carries over from StoryGraph on import)…" style="min-height:60px;"></textarea></div>
     <div class="divider"></div>
-    <div class="slabel">Access &amp; ownership</div>
-    <div class="fg"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="nb-owned" style="width:auto;" onchange="document.getElementById('nb-loaned-wrap').style.display=this.checked?'':'none';"/> I own a copy</label></div>
+    <div class="slabel">Access &amp; Ky-Brary</div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="nb-owned" style="width:auto;" onchange="document.getElementById('nb-loaned-wrap').style.display=this.checked?'':'none';"/> I own a copy (adds to Ky-Brary)</label></div>
     <div class="fg" id="nb-loaned-wrap" style="display:none;"><label>Loaned out to</label><input type="text" id="nb-loaned" placeholder="Who has your copy right now?"/></div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="nb-multicopy" style="width:auto;"/> I have more than one copy of this book <span style="font-weight:400;color:var(--t3);">(don't flag as a duplicate)</span></label></div>
     <div class="fg"><label>A friend has a copy</label><input type="text" id="nb-friend-has" placeholder="Who could you borrow this from?"/></div>
     <div class="fg"><label>Audiobook edition</label>
       <select id="nb-audiobook"><option value="">Unknown</option><option value="yes">Yes, available as audiobook</option><option value="no">No audiobook edition</option></select>
@@ -3703,42 +3705,66 @@ function pimaLink(title,author){
   const q=[title,author].filter(Boolean).join(' ');
   return`https://pima.bibliocommons.com/v2/search?query=${encodeURIComponent(q)}&searchType=keyword`;
 }
-// #884 — PCC (Pima Community College) library catalog. Unlike Pima County's BiblioCommons
-// catalog, PCC's WebPAC-based system doesn't have a confirmed deep-link query format, so this
-// opens the catalog homepage rather than a pre-filled search — one tap closer, not fully automatic.
-function pccLink(){
-  return'https://library2.pima.edu/';
+// #891 — Filters sheet, redesigned as tap-to-toggle chips with immediate apply
+// (no separate Apply step) and a visual ✔️ on anything currently active.
+// #884's PCC facet has been removed per K — Pima public library only.
+function _libFilterChip(active,label,onclick){
+  return `<button type="button" class="chip${active?' active':''}" onclick="${onclick}">${active?'✔️ ':''}${label}</button>`;
 }
-// #883 — Filters sheet
+function renderLibFiltersBody(){
+  const el=document.getElementById('lib-filters-body');
+  if(!el)return;
+  const gf=window._libGenreFilters||[];
+  const rf=window._libRatingFilter||0;
+  const of=window._libOwnedFilter||'';
+  const af=window._libAudiobookFilter||'';
+  const pf=window._libPimaFilter||'';
+  const nf=!!window._libNeedsOLFilter;
+  el.innerHTML=`
+    <div class="fg">
+      <label>Genre <span style="font-weight:400;color:var(--t3);">(any of these)</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${Object.keys(GL).map(g=>_libFilterChip(gf.includes(g),GL[g],`setLibGenreFilter('${g}')`)).join('')}</div>
+    </div>
+    <div class="fg">
+      <label>Minimum rating</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${[1,2,3,4,5].map(n=>_libFilterChip(rf===n,'⭐'.repeat(n)+'+',`setLibRatingFilter(${n})`)).join('')}</div>
+    </div>
+    <div class="fg">
+      <label>Ky-Brary (owned)</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(of==='yes','Owned',`setLibOwnedFilter('yes')`)}${_libFilterChip(of==='no','Not owned',`setLibOwnedFilter('no')`)}</div>
+    </div>
+    <div class="fg">
+      <label>Audiobook edition</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(af==='yes','Available',`setLibAudiobookFilter('yes')`)}${_libFilterChip(af==='no','Not available',`setLibAudiobookFilter('no')`)}</div>
+    </div>
+    <div class="fg">
+      <label>Pima County Library</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(pf==='yes','Marked available',`setLibPimaFilter('yes')`)}${_libFilterChip(pf==='no','Marked checked out',`setLibPimaFilter('no')`)}</div>
+    </div>
+    <div class="fg">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(nf,'Needs Open Library match',`toggleLibNeedsOLFilter()`)}</div>
+    </div>
+  `;
+}
+function setLibGenreFilter(g){
+  const arr=window._libGenreFilters||(window._libGenreFilters=[]);
+  const i=arr.indexOf(g);if(i>=0)arr.splice(i,1);else arr.push(g);
+  renderLibFiltersBody();renderLibrary();
+}
+function setLibRatingFilter(v){window._libRatingFilter=(window._libRatingFilter===v)?0:v;renderLibFiltersBody();renderLibrary();}
+function setLibOwnedFilter(v){window._libOwnedFilter=(window._libOwnedFilter===v)?'':v;renderLibFiltersBody();renderLibrary();}
+function setLibAudiobookFilter(v){window._libAudiobookFilter=(window._libAudiobookFilter===v)?'':v;renderLibFiltersBody();renderLibrary();}
+function setLibPimaFilter(v){window._libPimaFilter=(window._libPimaFilter===v)?'':v;renderLibFiltersBody();renderLibrary();}
+function toggleLibNeedsOLFilter(){window._libNeedsOLFilter=!window._libNeedsOLFilter;renderLibFiltersBody();renderLibrary();}
 function openLibFilters(){
-  const grid=document.getElementById('lf-genre-grid');
-  const active=window._libGenreFilters||[];
-  grid.innerHTML=Object.keys(GL).map(g=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;"><input type="checkbox" value="${g}" ${active.includes(g)?'checked':''} style="width:auto;"/> ${GL[g]}</label>`).join('');
-  document.getElementById('lf-rating').value=String(window._libRatingFilter||0);
-  document.getElementById('lf-owned').value=window._libOwnedFilter||'';
-  document.getElementById('lf-audiobook').value=window._libAudiobookFilter||'';
-  document.getElementById('lf-pima').value=window._libPimaFilter||'';
-  document.getElementById('lf-pcc').value=window._libPccFilter||'';
-  document.getElementById('lf-needsol').checked=!!window._libNeedsOLFilter;
+  renderLibFiltersBody();
   openSheet('lib-filters-overlay');
 }
-function applyLibFilters(){
-  window._libGenreFilters=[...document.querySelectorAll('#lf-genre-grid input:checked')].map(x=>x.value);
-  window._libRatingFilter=+document.getElementById('lf-rating').value;
-  window._libOwnedFilter=document.getElementById('lf-owned').value;
-  window._libAudiobookFilter=document.getElementById('lf-audiobook').value;
-  window._libPimaFilter=document.getElementById('lf-pima').value;
-  window._libPccFilter=document.getElementById('lf-pcc').value;
-  window._libNeedsOLFilter=document.getElementById('lf-needsol').checked;
-  closeSheet('lib-filters-overlay');
-  renderLibrary();
-}
 function clearLibFilters(){
-  window._libGenreFilters=[];window._libRatingFilter=0;window._libOwnedFilter='';window._libAudiobookFilter='';window._libPimaFilter='';window._libPccFilter='';window._libNeedsOLFilter=false;
-  openLibFilters();
+  window._libGenreFilters=[];window._libRatingFilter=0;window._libOwnedFilter='';window._libAudiobookFilter='';window._libPimaFilter='';window._libNeedsOLFilter=false;
+  renderLibFiltersBody();
   renderLibrary();
 }
-// #880/#883 — kept for back-compat with any old references; folds into the Filters sheet now.
 // #875 — manual available/checked-out tag (no live API, so this is self-reported after checking the link above)
 function setPimaStatus(bookId,status){
   const b=library[bookId];if(!b)return;
@@ -3747,13 +3773,16 @@ function setPimaStatus(bookId,status){
   b.updated=Date.now();
   save();renderLibrary();
 }
-// #884 — same self-reported pattern, for PCC
-function setPccStatus(bookId,status){
-  const b=library[bookId];if(!b)return;
-  b.pccAvailable=(b.pccAvailable===status)?null:status;
-  b.pccCheckedAt=Date.now();
-  b.updated=Date.now();
-  save();renderLibrary();
+// #892 — shared duplicate-detection helper. Matches on exact (case-insensitive, trimmed)
+// title, and — if both records have an author — author too. Used by the New Book form,
+// the Ky-Brary quick-add, and can be reused anywhere else a book gets created.
+function findMatchingBook(title,author,excludeId){
+  const nt=(title||'').trim().toLowerCase();
+  if(!nt)return null;
+  const na=(author||'').trim().toLowerCase();
+  return Object.values(library).find(b=>b&&b.title&&!b._deleted&&b.id!==excludeId&&
+    b.title.trim().toLowerCase()===nt&&(!na||!b.author||b.author.trim().toLowerCase()===na)
+  )||null;
 }
 // #881(reading-list) — quick status change from the card, no need to open full Edit Book
 const LIB_STATUS_LABEL={want:'Want to Read',reading:'Currently Reading',finished:'Finished'};
@@ -3783,6 +3812,54 @@ function quickSetBookDNF(bookId){
   const b=library[bookId];if(!b)return;
   b.status='finished';b.dnf=true;b.updated=Date.now();
   save();renderLibrary();
+}
+// #894 — one-tap way to add an already-tracked book (Want/Reading/Finished) to the
+// Ky-Brary without opening the full Edit Book sheet.
+function addToKybrary(bookId){
+  const b=library[bookId];if(!b)return;
+  b.owned=true;b.updated=Date.now();
+  save();renderLibrary();
+  _showToast(`📗 Added "${b.title}" to your Ky-Brary`);
+}
+// #894 — fast quick-add for a book K already owns but hasn't tracked yet. Skips the
+// full New Book sheet (title/author only). Checks for an existing match first — #892 —
+// so re-adding a book she already has just marks the existing one owned instead of
+// creating a visual duplicate, unless she confirms she genuinely has a second copy.
+function quickAddToKybrary(){
+  const titleRaw=prompt('Title of the book you own:','');
+  if(titleRaw==null)return;
+  const title=titleRaw.trim();
+  if(!title)return;
+  const authorRaw=prompt('Author (optional):','')||'';
+  const author=authorRaw.trim();
+  const dup=findMatchingBook(title,author);
+  if(dup){
+    const useExisting=confirm(`You already have "${dup.title}"${dup.author?' by '+dup.author:''} in your library (${LIB_STATUS_LABEL[dup.status]||dup.status}).\n\nOK = just mark that one as owned (Ky-Brary), don't create a new entry.\nCancel = I really do have a separate copy — add it as another one.`);
+    if(useExisting){
+      dup.owned=true;dup.updated=Date.now();
+      save();
+      libTab='kybrary';goLib();_fixLibTabActive('kybrary');
+      _showToast(`📗 Marked "${dup.title}" as owned`);
+      return;
+    }
+    dup.multiCopy=true;dup.updated=Date.now(); // #892 — flag both records so neither looks like a stray accidental duplicate
+  }
+  const id='b'+Date.now()+Math.floor(Math.random()*1000);
+  library[id]={id,title,author,genre:'fiction',status:'want',owned:true,multiCopy:!!dup,
+    entries:[],sessions:[],locations:[],created:Date.now(),updated:Date.now(),origLang:'',transLang:''};
+  save();
+  libTab='kybrary';goLib();_fixLibTabActive('kybrary');
+  _showToast(`📗 Added "${title}" to your Ky-Brary${dup?' (as an additional copy)':''} and Want to Read`);
+}
+// Shared with convertRefToBook's pattern — goLib() re-renders but doesn't touch the
+// tab button's active class, so fix it up right after navigating tabs programmatically.
+function _fixLibTabActive(tab){
+  setTimeout(()=>{
+    try{
+      document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
+      const tb=document.getElementById('lib-tab-'+tab);if(tb)tb.classList.add('active');
+    }catch(e){}
+  },50);
 }
 
 // ══ #868 — community rating/popularity via Open Library (already used elsewhere in this app for lookupBook) ══
@@ -3828,10 +3905,12 @@ function authorLastName(author){
 function sortLibraryBooks(books,mode){
   const arr=[...books];
   const byAuthor=(a,b)=>authorLastName(a.author).localeCompare(authorLastName(b.author));
-  // #882 — rating/popular sorts now break ties by author last name ("highest rated THEN author")
+  // #882/#893 — rating/popular sorts chain: primary key, then the OTHER community
+  // signal as a tiebreak, then author last name as the final tiebreak. So "Highest
+  // rated" effectively reads as "highest rated, then most popular, then by author."
   if(mode==='author')return arr.sort(byAuthor);
-  if(mode==='rating')return arr.sort((a,b)=>((+b.communityRating||0)-(+a.communityRating||0))||byAuthor(a,b));
-  if(mode==='popular')return arr.sort((a,b)=>((+b.wantCount||0)-(+a.wantCount||0))||byAuthor(a,b));
+  if(mode==='rating')return arr.sort((a,b)=>((+b.communityRating||0)-(+a.communityRating||0))||((+b.wantCount||0)-(+a.wantCount||0))||byAuthor(a,b));
+  if(mode==='popular')return arr.sort((a,b)=>((+b.wantCount||0)-(+a.wantCount||0))||((+b.communityRating||0)-(+a.communityRating||0))||byAuthor(a,b));
   if(mode==='finished')return arr.sort((a,b)=>(b.de||'').localeCompare(a.de||''));
   return arr.sort((a,b)=>{
     if(a.seriesName&&b.seriesName&&a.seriesName===b.seriesName)return(+a.seriesNum||0)-(+b.seriesNum||0);
@@ -3843,15 +3922,17 @@ function renderLibrary(){
   const body=document.getElementById('lib-body');
   const empty=document.getElementById('lib-empty');
   const seriesBar=document.getElementById('lib-series-bar');
-  let books=Object.values(library).filter(b=>b&&b.title&&b.status===libTab);
-  if(!window._libSortModeByTab)window._libSortModeByTab={want:'recent',reading:'recent',finished:'finished'};
+  // #894 — Ky-Brary is a 4th tab alongside Reading/Want/Finished, filtered by
+  // ownership (b.owned) rather than reading status, since an owned book can be in
+  // any of the other three states at the same time.
+  let books=Object.values(library).filter(b=>b&&b.title&&(libTab==='kybrary'?b.owned:b.status===libTab));
+  if(!window._libSortModeByTab)window._libSortModeByTab={want:'recent',reading:'recent',finished:'finished',kybrary:'recent'};
   const sm=window._libSortModeByTab[libTab]||'recent';
   const rf=window._libRatingFilter||0;
   const gf=window._libGenreFilters||[];
   const of=window._libOwnedFilter||'';
   const af=window._libAudiobookFilter||'';
   const pf=window._libPimaFilter||'';
-  const cf=window._libPccFilter||'';
   const nf=!!window._libNeedsOLFilter;
   // #883 — every active filter is AND'd together (genre facet itself is OR-among-selected-genres)
   if(rf>0)books=books.filter(b=>(+b.communityRating||0)>=rf);
@@ -3859,14 +3940,13 @@ function renderLibrary(){
   if(of)books=books.filter(b=>(of==='yes')===!!b.owned);
   if(af)books=books.filter(b=>(af==='yes')===(b.hasAudiobook==='yes'));
   if(pf)books=books.filter(b=>b.pimaAvailable===pf);
-  if(cf)books=books.filter(b=>b.pccAvailable===cf);
   if(nf)books=books.filter(b=>!b.olKey);
   books=sortLibraryBooks(books,sm);
   // #868/#873/#880/#882/#883 — sort control + ratings refresh, all tabs
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
     sortBar.style.display='';
-    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,!!cf,nf].filter(Boolean).length;
+    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,nf].filter(Boolean).length;
     sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <select onchange="window._libSortModeByTab['${libTab}']=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
         <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
@@ -3877,6 +3957,7 @@ function renderLibrary(){
       </select>
       <button class="btn btn-sm" onclick="openLibFilters()" style="flex-shrink:0;position:relative;">🔍 Filters${activeCount?` (${activeCount})`:''}</button>
     </div>
+    ${libTab==='kybrary'?`<button class="btn btn-sm" onclick="quickAddToKybrary()" style="width:100%;margin-bottom:6px;">📗 Fast add a book you own</button>`:''}
     <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="width:100%;">🔄 Refresh ratings</button>`;
   }
   // #873 — genre filter chips, all tabs
@@ -3896,13 +3977,15 @@ function renderLibrary(){
       seriesBar.style.display='none';
     }
   }
-  const _hasActiveFilter=!!(window._libRatingFilter||window._libGenreFilter||window._libSeriesFilter);
-  const _tabHadBooksBeforeFilters=Object.values(library).some(b=>b&&b.title&&b.status===libTab);
+  const _hasActiveFilter=!!(rf||gf.length||of||af||pf||nf||window._libSeriesFilter);
+  const _tabHadBooksBeforeFilters=Object.values(library).some(b=>b&&b.title&&(libTab==='kybrary'?b.owned:b.status===libTab));
   if(!books.length){
     body.innerHTML='';
     empty.style.display='';
     if(_hasActiveFilter&&_tabHadBooksBeforeFilters){
-      empty.innerHTML=`<div class="empty-icon">🔍</div><div class="empty-text">No books match these filters</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="window._libRatingFilter=0;window._libGenreFilter='';window._libSeriesFilter='';renderLibrary();">Clear filters</div>`;
+      empty.innerHTML=`<div class="empty-icon">🔍</div><div class="empty-text">No books match these filters</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="clearLibFilters();">Clear filters</div>`;
+    } else if(libTab==='kybrary'){
+      empty.innerHTML=`<div class="empty-icon">🗄️</div><div class="empty-text">No books in your Ky-Brary yet</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="quickAddToKybrary()">+ Add a book you own</div>`;
     } else {
       empty.innerHTML=`<div class="empty-icon">📚</div><div class="empty-text">No books here yet</div><div class="empty-sub">Tap + New to add one</div>`;
     }
@@ -3936,24 +4019,23 @@ function bookCardHTML(b,i,sortMode){
   const commRating=b.communityRating?`<span title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`:'';
   const commPopular=b.wantCount?`<span title="People with this on their to-read list">🔥 ${b.wantCount}</span>`:'';
   const commHTML=(commRating||commPopular)?`<div style="font-size:10px;color:var(--t2);display:flex;gap:8px;margin-bottom:2px;">${commRating}${commPopular}</div>`:'';
-  // #867/#884 — Pima + PCC availability deep links + self-reported tags (Want tab)
+  // #867 — Pima availability deep link + self-reported tag (Want tab). #895 — PCC removed per K.
   const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Pima</span>
     <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','yes')" title="Mark available at Pima">✅</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>
-    <span style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:4px;" onclick="event.stopPropagation();window.open(pccLink(),'_blank')">🎓 PCC</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pccAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPccStatus('${b.id}','yes')" title="Mark available at PCC">✅</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pccAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPccStatus('${b.id}','no')" title="Mark checked out at PCC">🚫</span>`:'';
+    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>`:'';
   const availBadges=[
     b.pimaAvailable==='yes'?'🟢 Pima':b.pimaAvailable==='no'?'🔴 Pima':'',
-    b.pccAvailable==='yes'?'🟢 PCC':b.pccAvailable==='no'?'🔴 PCC':'',
   ].filter(Boolean).join(' · ');
   const availHTML=availBadges?`<div style="font-size:10px;font-weight:600;margin-bottom:2px;">${availBadges}</div>`:'';
   const dnfBadge=b.dnf?`<span style="font-size:10px;color:var(--t3);font-weight:600;">DNF</span>`:'';
-  // #885 — owned / loaned / friend-has-it / audiobook badges
+  // #885/#894 — owned / loaned / friend-has-it / audiobook / multi-copy badges, plus a
+  // fast one-tap way to add an already-tracked book to the Ky-Brary without opening Edit.
   const ownBits=[];
-  if(b.owned){ownBits.push(b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Owned');}
+  if(b.owned){ownBits.push(b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Owned (Ky-Brary)');}
+  else if(libTab!=='kybrary'){ownBits.push(`<span style="color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();addToKybrary('${b.id}')">📗 Add to Ky-Brary</span>`);}
   if(b.friendHasIt)ownBits.push(`🤝 ${esc(b.friendHasIt)} has a copy`);
   if(b.hasAudiobook==='yes')ownBits.push('🎧 Audiobook');
+  if(b.multiCopy)ownBits.push('🔁 Multiple copies');
   const ownHTML=ownBits.length?`<div style="font-size:10px;color:var(--t2);margin-bottom:2px;">${ownBits.join(' · ')}</div>`:'';
   // #886 — quick status change, no need to open full Edit Book
   const quickStatus=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookStatus('${b.id}',this.value)" style="font-size:10px;padding:2px 4px;border-radius:6px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
@@ -4011,14 +4093,7 @@ function convertRefToBook(bookId,refId){
   libTab='want';
   save();
   // Navigate to library and show want tab immediately
-  goLib();
-  // Ensure want tab is active after goLib (which calls renderLibrary with libTab='want')
-  setTimeout(()=>{
-    try{
-      document.querySelectorAll('#lib-screen .tab').forEach(b=>b.classList.remove('active'));
-      const wb=document.getElementById('lib-tab-want');if(wb)wb.classList.add('active');
-    }catch(e){}
-  },50);
+  goLib();_fixLibTabActive('want');
   _showToast(`✅ "${ref.content}" added to Want to Read`);
 }
 function openBook(id){
@@ -5134,6 +5209,7 @@ function openNewBookSheet(){
   document.getElementById('nb-author-hint').style.display='none';
   ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total','nb-review','nb-loaned','nb-friend-has'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('nb-owned').checked=false;
+  document.getElementById('nb-multicopy').checked=false;
   document.getElementById('nb-loaned-wrap').style.display='none';
   document.getElementById('nb-audiobook').value='';
   document.getElementById('nb-genre').value='fiction';
@@ -5165,6 +5241,7 @@ function openEditBook(id){
   document.getElementById('nb-why').value=b.why||'';
   document.getElementById('nb-review').value=b.review||'';
   document.getElementById('nb-owned').checked=!!b.owned;
+  document.getElementById('nb-multicopy').checked=!!b.multiCopy;
   document.getElementById('nb-loaned').value=b.loanedTo||'';
   document.getElementById('nb-loaned-wrap').style.display=b.owned?'':'none';
   document.getElementById('nb-friend-has').value=b.friendHasIt||'';
@@ -5198,9 +5275,25 @@ function saveBook(applyWiki){
   if(!title){titleEl.style.borderColor='#E24B4A';titleEl.placeholder='Title is required';titleEl.focus();return;}
   titleEl.style.borderColor='';
   const editId=document.getElementById('nb-edit-id').value;
+  // #892 — duplicate check, new books only (editing an existing book never re-checks itself)
+  let _forceMultiCopy=false;
+  if(!editId){
+    const authorVal=document.getElementById('nb-author').value.trim();
+    const dup=findMatchingBook(title,authorVal);
+    if(dup&&!document.getElementById('nb-multicopy').checked){
+      const useExisting=confirm(`You already have "${dup.title}"${dup.author?' by '+dup.author:''} in your library (${LIB_STATUS_LABEL[dup.status]||dup.status}).\n\nOK = don't create a duplicate — open that book instead.\nCancel = this really is a separate copy, save it anyway.`);
+      if(useExisting){
+        closeSheet('nb-overlay');
+        openBook(dup.id);
+        return;
+      }
+      dup.multiCopy=true;dup.updated=Date.now(); // flag both records so neither looks like a stray accidental duplicate
+      _forceMultiCopy=true;
+    }
+  }
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),review:document.getElementById('nb-review').value.trim(),owned:document.getElementById('nb-owned').checked,loanedTo:document.getElementById('nb-loaned').value.trim(),friendHasIt:document.getElementById('nb-friend-has').value.trim(),hasAudiobook:document.getElementById('nb-audiobook').value,cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),review:document.getElementById('nb-review').value.trim(),owned:document.getElementById('nb-owned').checked,multiCopy:document.getElementById('nb-multicopy').checked||_forceMultiCopy,loanedTo:document.getElementById('nb-loaned').value.trim(),friendHasIt:document.getElementById('nb-friend-has').value.trim(),hasAudiobook:document.getElementById('nb-audiobook').value,cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
   // #868 — attach community rating/popularity captured from the lookup, if any, then clear it
   // #888 — apply pending community-rating data on both new AND edited books (confirmBookInfo can fire on an existing book too)
   if(window._pendingBookRatings){Object.assign(library[id],window._pendingBookRatings);}
@@ -8423,25 +8516,21 @@ function deleteEntryFromForm(){
   const id=Number(editId);
   const e=entries().find(x=>x.id===id);
   if(!e){closeSheet('ae-overlay');return;}
-  // Use a SHORT confirm here; deleteEntry runs its own typed confirmations for
-  // characters with consequential cleanup. For non-character entries, this confirm
-  // is the only one — keep it explicit.
   const isChar=CT.includes(e.type);
   const label=e.cn||e.content||'this entry';
   if(!isChar){
     if(!confirm(`Delete this ${e.type} entry?\n\n"${(label||'').slice(0,80)}"\n\nIt will move to the Recycle Bin where you can restore it later.`))return;
   }
-  // Close the form first, then run delete (which itself may pop more confirms for chars).
-  // #881 — pass preConfirmed=true for non-character entries: we already confirmed above,
-  // so deleteEntry() shouldn't confirm a second time. That second confirm(), firing right
-  // after closeSheet()'s animation, was landing in the same "iOS won't reliably show a
-  // dialog fired right after a touch-driven UI transition" trap already known elsewhere in
-  // this app — so the delete silently did nothing. This was the "can't delete entries" bug.
-  closeSheet('ae-overlay');
-  deleteEntry(id,!isChar);
+  // #890 — run the confirm+delete BEFORE closing the sheet, not after. #881 fixed a
+  // double-confirm for non-character entries, but characters only ever had ONE
+  // confirm() — and it was still firing right after closeSheet()'s animation, which
+  // iOS can silently swallow. That was the real remaining cause of "can't delete."
+  // Now the sheet only closes once deleteEntry() confirms the deletion actually happened.
+  const ok=deleteEntry(id,!isChar);
+  if(ok!==false)closeSheet('ae-overlay');
 }
 function deleteEntry(id,preConfirmed){
-  const e=entries().find(x=>x.id===id);if(!e)return;
+  const e=entries().find(x=>x.id===id);if(!e)return false;
   if(CT.includes(e.type)){
     const name=e.cn||e.content;
     const all=entries();
@@ -8469,7 +8558,12 @@ function deleteEntry(id,preConfirmed){
     if(dialsOwned.length)lines.push(`• ${dialsOwned.length} solo dialogue${dialsOwned.length>1?'s':''} → recycle bin`);
     if(taggedOnly.length)lines.push(`• ${taggedOnly.length} entr${taggedOnly.length>1?'ies':'y'} where they're tagged → kept with ⚠️ marker`);
     if(lines.length)msg+='\n\nThis will also affect:\n'+lines.join('\n');
-    if(!confirm(msg))return;
+    // #890 — respect preConfirmed here too: the "unable to delete" bug persisted for
+    // characters even after #881, because characters only ever had ONE confirm() —
+    // and deleteEntryFromForm was still closing the sheet before THIS confirm ran,
+    // which is the actual timing problem (not really about double-confirms specifically).
+    // See the reordered deleteEntryFromForm below for the real fix.
+    if(!preConfirmed&&!confirm(msg))return false;
     // Move all owned entries to recycle bin (all share same ts so cascade restore works)
     toDelete.forEach(r=>{getRecycleBin().unshift({...r,deletedAt:ts});});
     book().entries=book().entries.filter(x=>!toDelete.some(r=>r.id===x.id));
@@ -8488,9 +8582,9 @@ function deleteEntry(id,preConfirmed){
       if((e.cn||e.content)===currentCharName)show('book-screen','char-screen');
       else renderCharDetail(currentCharName);
     }
-    return; // early return — character already in bin, don't fall through
+    return true; // early return — character already in bin, don't fall through
   } else {
-    if(!preConfirmed&&!confirm('Delete this entry?'))return;
+    if(!preConfirmed&&!confirm('Delete this entry?'))return false;
   }
   getRecycleBin().unshift({...e,deletedAt:Date.now()});
   book().recycleBin=getRecycleBin().slice(0,200);
@@ -8504,6 +8598,7 @@ function deleteEntry(id,preConfirmed){
   }
   if(currentLocName&&document.getElementById('loc-screen').classList.contains('active'))renderLocDetail(currentLocName);
   if(currentChapNum!=null&&document.getElementById('chap-screen').classList.contains('active'))renderChapDetail(currentChapNum);
+  return true;
 }
 function deleteLocCard(name){
   if(!confirm(`Delete location "${name}"? This removes the location record but not entries tagged to it.`))return;
@@ -9779,7 +9874,7 @@ function renderChars(){
     const delBtn=e.target.closest('.char-list-del');
     if(delBtn){e.stopPropagation();
       if(confirm('Delete this character? Their relationships and quotes will be moved to the recycle bin.')){
-        deleteEntry(+delBtn.getAttribute('data-char-id'));
+        deleteEntry(+delBtn.getAttribute('data-char-id'),true); // #890 — already confirmed above, don't ask again
       }
       return;}
     const card=e.target.closest('.char-list-card');
@@ -15945,7 +16040,7 @@ function _swipeInit(){/* removed */}
   </div>
 </div>
 
-<!-- #883 — combined AND filters (genre multi-select, rating, owned, audiobook, Pima/PCC availability, needs-OL-match) -->
+<!-- #883/#891 — combined AND filters, chip-based with visual checkmarks, applies immediately -->
 <div class="sheet-overlay" id="lib-filters-overlay" onclick="mc('lib-filters-overlay',event)">
   <div class="sheet">
     <div class="sheet-topbar">
@@ -15953,32 +16048,10 @@ function _swipeInit(){/* removed */}
       <button class="sheet-x" onclick="closeSheet('lib-filters-overlay')">×</button>
     </div>
     <div class="sheet-inner" style="padding-bottom:24px;">
-      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">All filters below combine together (a book has to match every one you set). Genres are OR'd against each other — check as many as you like.</div>
-      <div class="fg"><label style="font-size:12px;font-weight:600;margin-bottom:6px;display:block;">Genre</label>
-        <div id="lf-genre-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;"></div>
-      </div>
-      <div class="divider"></div>
-      <div class="fg"><label>Minimum rating</label>
-        <select id="lf-rating"><option value="0">Any rating</option><option value="3">★ 3+</option><option value="3.5">★ 3.5+</option><option value="4">★ 4+</option><option value="4.5">★ 4.5+</option></select>
-      </div>
-      <div class="fg"><label>Owned</label>
-        <select id="lf-owned"><option value="">Any</option><option value="yes">I own it</option><option value="no">Don't own it</option></select>
-      </div>
-      <div class="fg"><label>Audiobook edition</label>
-        <select id="lf-audiobook"><option value="">Any</option><option value="yes">Available as audiobook</option><option value="no">No audiobook edition</option></select>
-      </div>
-      <div class="fg"><label>Pima County Library</label>
-        <select id="lf-pima"><option value="">Any</option><option value="yes">Marked available</option><option value="no">Marked checked out</option></select>
-      </div>
-      <div class="fg"><label>PCC Library</label>
-        <select id="lf-pcc"><option value="">Any</option><option value="yes">Marked available</option><option value="no">Marked checked out</option></select>
-      </div>
-      <div class="fg"><label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="lf-needsol" style="width:auto;"/> Needs Open Library match</label>
-        <div style="font-size:10px;color:var(--t3);margin-top:3px;">Shows books with no community rating/cover matched yet — for quickly working through and confirming them.</div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="btn" onclick="clearLibFilters()" style="flex:1;">Clear all</button>
-        <button class="btn btn-primary" onclick="applyLibFilters()" style="flex:1;">Apply</button>
+      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">Tap to toggle — changes apply right away. Everything below combines together (a book has to match every filter you set); genres are OR'd against each other.</div>
+      <div id="lib-filters-body"></div>
+      <div style="margin-top:14px;">
+        <button class="btn" onclick="clearLibFilters()" style="width:100%;">Clear all filters</button>
       </div>
     </div>
   </div>
