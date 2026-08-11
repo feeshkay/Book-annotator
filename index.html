@@ -273,6 +273,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div id="lib-series-bar" style="display:none;padding:6px 12px 2px;"></div>
     <div id="lib-genre-bar" style="display:none;padding:4px 12px 2px;"></div>
+    <div style="position:relative;padding:8px 12px 0;"><input type="text" id="lib-search" placeholder="🔍 Search title or author…" oninput="renderLibrary()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('lib-search').value='';renderLibrary();" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
     <div id="lib-sort-bar" style="display:none;padding:4px 12px 2px;"></div>
     <div id="lib-body" style="padding:12px;padding-bottom:80px;"></div>
     <div id="lib-empty" class="empty" style="display:none;padding:40px 14px;">
@@ -528,6 +529,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>Date started</label><input type="date" id="nb-ds"/></div>
       <div class="fg"><label>Date finished</label><input type="date" id="nb-de"/></div>
     </div>
+    <div class="fg"><label>How are you experiencing this book?</label>
+      <select id="nb-format">
+        <option value="">Not specified</option>
+        <option value="read">📖 Read (print/ebook)</option>
+        <option value="listened">🎧 Listened (audiobook)</option>
+        <option value="both">📖🎧 Both</option>
+      </select>
+    </div>
     <div class="fg" id="nb-rating-group" style="display:none">
       <label>Rating</label>
       <select id="nb-rating">
@@ -566,6 +575,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="fg" id="nb-loaned-wrap" style="display:none;"><label>Loaned out to</label><input type="text" id="nb-loaned" placeholder="Who has your copy right now?"/></div>
     <div class="fg"><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="nb-multicopy" style="width:auto;"/> I have more than one copy of this book <span style="font-weight:400;color:var(--t3);">(don't flag as a duplicate)</span></label></div>
     <div class="fg"><label>A friend has a copy</label><input type="text" id="nb-friend-has" placeholder="Who could you borrow this from?"/></div>
+    <div class="fg"><label>Currently borrowing this from</label><input type="text" id="nb-borrowed-from" placeholder="Whose copy do you have right now?"/></div>
     <div class="fg"><label>Audiobook edition</label>
       <select id="nb-audiobook"><option value="">Unknown</option><option value="yes">Yes, available as audiobook</option><option value="no">No audiobook edition</option></select>
     </div>
@@ -2116,6 +2126,14 @@ function _migrateLibrary(){
         }
       });
     });
+    // #897 — clean up any review text that got saved with raw HTML from a prior
+    // StoryGraph import (before this was fixed). Only touches values that actually
+    // look like markup, so normal typed reviews are never altered.
+    Object.values(library).forEach(b=>{
+      if(b&&b.review&&/<[a-z][\s\S]*>/i.test(b.review)&&typeof _stripHtml==='function'){
+        b.review=_stripHtml(b.review);
+      }
+    });
     // Always save after migration so cleaned data is persisted to IDB
     // Use queueMicrotask to avoid recursive save during load
     queueMicrotask(()=>{try{save();}catch(e){}});
@@ -3207,13 +3225,16 @@ function confirmBookInfo(){
 async function lookupBook(title){
   if(!title||title.length<3)return;
   try{
-    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=5&fields=key,title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series,ratings_average,ratings_count,want_to_read_count`);
+    // #896 — was limit=5, which meant a book that wasn't in Open Library's top 5
+    // relevance-ranked results for a title was simply impossible to select. Now
+    // pulls 20 and shows them in a scrollable list instead of an unbounded one.
+    const r=await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(title)}&limit=20&fields=key,title,author_name,first_publish_year,isbn,publisher,cover_i,first_sentence,series,ratings_average,ratings_count,want_to_read_count`);
     const d=await r.json();
     const hint=document.getElementById('nb-lookup-hint');
     if(!d.docs||!d.docs.length){hint.style.display='';hint.innerHTML='No results found.';return;}
     window._bookLookupResults=d.docs;
     hint.style.display='';
-    hint.innerHTML=d.docs.map((b,i)=>{
+    hint.innerHTML=`<div style="max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;">${d.docs.map((b,i)=>{
       const coverUrl=b.cover_i?`https://covers.openlibrary.org/b/id/${b.cover_i}-S.jpg`:'';
       return`<div style="padding:5px 0;border-bottom:0.5px solid var(--cb);display:flex;align-items:center;gap:8px;">
         ${coverUrl?`<img src="${coverUrl}" style="width:28px;height:40px;object-fit:cover;border-radius:3px;flex-shrink:0;"/>`:``}
@@ -3221,7 +3242,7 @@ async function lookupBook(title){
         </div>
         <button class="btn btn-sm" onclick="applyLookup(${i})" style="touch-action:manipulation;flex-shrink:0;">Use</button>
       </div>`;
-    }).join('');
+    }).join('')}</div>${d.docs.length>=20?`<div style="font-size:10px;color:var(--t3);padding:4px 0 0;">Showing the first 20 — if yours still isn\\'t here, try a more specific search (add the author or a subtitle word).</div>`:''}`;
   }catch(e){console.error('Book lookup error:',e);}
 }
 // #876 — "more by this author" nudge, fires when the Author field loses focus in New/Edit Book
@@ -3644,6 +3665,49 @@ function _sgDateToISO(d){
   if(!m)return'';
   return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
 }
+// #897 — StoryGraph's Review column comes out of a rich-text editor, so it often
+// arrives as raw HTML ("<div>...&nbsp;</div>") instead of plain text. Strip it down
+// to something readable before it ever touches a book record.
+function _stripHtml(html){
+  if(!html)return'';
+  return html
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/(p|div|li)>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/gi,' ')
+    .replace(/&amp;/gi,'&')
+    .replace(/&lt;/gi,'<')
+    .replace(/&gt;/gi,'>')
+    .replace(/&quot;/gi,'"')
+    .replace(/&#0?39;/gi,"'")
+    .replace(/[ \t]+\n/g,'\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+// #898 — best-effort mapping from StoryGraph's freeform Tags column to this app's
+// fixed genre list. Only ever applied to brand-new books on import — an existing
+// book's genre is never overwritten by a re-import, same rule as date-started/review.
+const SG_GENRE_MAP={
+  'fiction':'fiction','literary fiction':'fiction','contemporary':'fiction','classics':'fiction','classic':'fiction','literary':'fiction',
+  'nonfiction':'nonfiction','non-fiction':'nonfiction','true crime':'nonfiction','science':'nonfiction',
+  'biography':'memoir','memoir':'memoir','autobiography':'memoir','biography memoir':'memoir',
+  'mystery':'mystery','thriller':'mystery','crime':'mystery','mystery thriller':'mystery','horror':'mystery',
+  'fantasy':'scifi','science fiction':'scifi','sci-fi':'scifi','scifi':'scifi','dystopian':'scifi','speculative fiction':'scifi','magical realism':'scifi',
+  'history':'history','historical':'history',
+  'self help':'selfhelp','self-help':'selfhelp','self improvement':'selfhelp','personal development':'selfhelp',
+  'poetry':'poetry',
+  'essays':'essays','essay collection':'essays','essay':'essays',
+  'anthology':'anthology','short stories':'shortfiction','short story collection':'shortfiction',
+  'graphic novel':'graphic','graphic novels':'graphic','comics':'graphic','manga':'graphic',
+  'plays':'play','play':'play','drama':'play','theatre':'play',
+  'young adult':'ya','ya':'ya','young adult fantasy':'ya','young adult fiction':'ya',
+};
+function _mapStoryGraphGenre(tagsStr){
+  if(!tagsStr)return'';
+  const tagList=tagsStr.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+  for(const t of tagList){if(SG_GENRE_MAP[t])return SG_GENRE_MAP[t];}
+  return'';
+}
 function _importStoryGraphCSV(text){
   const rows=_parseCSV(text);
   if(!rows.length){alert('No rows found in that file.');return;}
@@ -3667,8 +3731,9 @@ function _importStoryGraphCSV(text){
     const endDateRaw=(periodDates.length>1?periodDates[periodDates.length-1]:'')||(row['Last Date Read']||'').trim();
     const dateStarted=startDateRaw?_sgDateToISO(startDateRaw):'';
     const dateFinished=endDateRaw?_sgDateToISO(endDateRaw):'';
-    const review=(row['Review']||'').trim();
+    const review=_stripHtml((row['Review']||'').trim());
     const tags=(row['Tags']||'').trim();
+    const mappedGenre=_mapStoryGraphGenre(tags);
     // #878 — match on ISBN first (catches title-variant duplicates: "A Novel" suffixes,
     // subtitle differences, edition text, etc.), fall back to title+author match.
     const isbnDigits=(isbn||'').replace(/[^0-9Xx]/g,'');
@@ -3684,12 +3749,13 @@ function _importStoryGraphCSV(text){
       if(dateStarted&&!existing.ds)existing.ds=dateStarted;
       if(dateFinished&&!existing.de)existing.de=dateFinished;
       if(review&&!existing.review)existing.review=review;
+      if(tags&&!existing.storygraphTags)existing.storygraphTags=tags;
       existing.sgImported=true;existing.updated=Date.now();
       touchedIds.push(existing.id);updated++;
     } else {
       const id='b'+Date.now()+Math.floor(Math.random()*1000);
-      library[id]={id,title,author,genre:'fiction',status,dnf:dnf||undefined,entries:[],sessions:[],locations:[],created:Date.now(),
-        isbn,rating:rating||'',ds:dateStarted,de:dateFinished,review,
+      library[id]={id,title,author,genre:mappedGenre||'fiction',status,dnf:dnf||undefined,entries:[],sessions:[],locations:[],created:Date.now(),
+        isbn,rating:rating||'',ds:dateStarted,de:dateFinished,review,storygraphTags:tags,
         why:tags?`StoryGraph tags: ${tags}`:'',sgImported:true,origLang:'',transLang:''};
       touchedIds.push(id);added++;
     }
@@ -3902,6 +3968,11 @@ function authorLastName(author){
   const parts=a.trim().split(/\s+/);
   return parts[parts.length-1]||author;
 }
+// #899 — A-Z title sort ignores a leading "The"/"A"/"An" so it sorts the way a
+// library shelf would (e.g. "The Bean Trees" files under B, not T).
+function _titleSortKey(title){
+  return(title||'').trim().replace(/^(the|a|an)\s+/i,'').toLowerCase();
+}
 function sortLibraryBooks(books,mode){
   const arr=[...books];
   const byAuthor=(a,b)=>authorLastName(a.author).localeCompare(authorLastName(b.author));
@@ -3909,6 +3980,7 @@ function sortLibraryBooks(books,mode){
   // signal as a tiebreak, then author last name as the final tiebreak. So "Highest
   // rated" effectively reads as "highest rated, then most popular, then by author."
   if(mode==='author')return arr.sort(byAuthor);
+  if(mode==='title')return arr.sort((a,b)=>_titleSortKey(a.title).localeCompare(_titleSortKey(b.title)));
   if(mode==='rating')return arr.sort((a,b)=>((+b.communityRating||0)-(+a.communityRating||0))||((+b.wantCount||0)-(+a.wantCount||0))||byAuthor(a,b));
   if(mode==='popular')return arr.sort((a,b)=>((+b.wantCount||0)-(+a.wantCount||0))||((+b.communityRating||0)-(+a.communityRating||0))||byAuthor(a,b));
   if(mode==='finished')return arr.sort((a,b)=>(b.de||'').localeCompare(a.de||''));
@@ -3934,6 +4006,7 @@ function renderLibrary(){
   const af=window._libAudiobookFilter||'';
   const pf=window._libPimaFilter||'';
   const nf=!!window._libNeedsOLFilter;
+  const sq=(document.getElementById('lib-search')?.value||'').trim().toLowerCase();
   // #883 — every active filter is AND'd together (genre facet itself is OR-among-selected-genres)
   if(rf>0)books=books.filter(b=>(+b.communityRating||0)>=rf);
   if(gf.length)books=books.filter(b=>gf.includes(b.genre));
@@ -3941,15 +4014,18 @@ function renderLibrary(){
   if(af)books=books.filter(b=>(af==='yes')===(b.hasAudiobook==='yes'));
   if(pf)books=books.filter(b=>b.pimaAvailable===pf);
   if(nf)books=books.filter(b=>!b.olKey);
+  // #900 — free-text search, title or author, AND'd with everything else
+  if(sq)books=books.filter(b=>(b.title||'').toLowerCase().includes(sq)||(b.author||'').toLowerCase().includes(sq));
   books=sortLibraryBooks(books,sm);
   // #868/#873/#880/#882/#883 — sort control + ratings refresh, all tabs
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
     sortBar.style.display='';
-    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,nf].filter(Boolean).length;
+    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,nf,!!sq].filter(Boolean).length;
     sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <select onchange="window._libSortModeByTab['${libTab}']=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
         <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
+        <option value="title"${sm==='title'?' selected':''}>Title (A-Z)</option>
         <option value="author"${sm==='author'?' selected':''}>Author (last name)</option>
         <option value="rating"${sm==='rating'?' selected':''}>Highest rated</option>
         <option value="popular"${sm==='popular'?' selected':''}>Most popular</option>
@@ -3977,13 +4053,13 @@ function renderLibrary(){
       seriesBar.style.display='none';
     }
   }
-  const _hasActiveFilter=!!(rf||gf.length||of||af||pf||nf||window._libSeriesFilter);
+  const _hasActiveFilter=!!(rf||gf.length||of||af||pf||nf||sq||window._libSeriesFilter);
   const _tabHadBooksBeforeFilters=Object.values(library).some(b=>b&&b.title&&(libTab==='kybrary'?b.owned:b.status===libTab));
   if(!books.length){
     body.innerHTML='';
     empty.style.display='';
     if(_hasActiveFilter&&_tabHadBooksBeforeFilters){
-      empty.innerHTML=`<div class="empty-icon">🔍</div><div class="empty-text">No books match these filters</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="clearLibFilters();">Clear filters</div>`;
+      empty.innerHTML=`<div class="empty-icon">🔍</div><div class="empty-text">No books match ${sq?'this search':'these filters'}</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="document.getElementById('lib-search').value='';clearLibFilters();">Clear ${sq?'search & filters':'filters'}</div>`;
     } else if(libTab==='kybrary'){
       empty.innerHTML=`<div class="empty-icon">🗄️</div><div class="empty-text">No books in your Ky-Brary yet</div><div class="empty-sub" style="color:var(--accent);cursor:pointer;" onclick="quickAddToKybrary()">+ Add a book you own</div>`;
     } else {
@@ -4034,7 +4110,11 @@ function bookCardHTML(b,i,sortMode){
   if(b.owned){ownBits.push(b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Owned (Ky-Brary)');}
   else if(libTab!=='kybrary'){ownBits.push(`<span style="color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();addToKybrary('${b.id}')">📗 Add to Ky-Brary</span>`);}
   if(b.friendHasIt)ownBits.push(`🤝 ${esc(b.friendHasIt)} has a copy`);
-  if(b.hasAudiobook==='yes')ownBits.push('🎧 Audiobook');
+  if(b.borrowedFrom)ownBits.push(`📥 Borrowing from ${esc(b.borrowedFrom)}`);
+  if(b.hasAudiobook==='yes')ownBits.push('🎧 Audiobook edition exists');
+  if(b.format==='read')ownBits.push('📖 Read');
+  else if(b.format==='listened')ownBits.push('🎧 Listened');
+  else if(b.format==='both')ownBits.push('📖🎧 Read & listened');
   if(b.multiCopy)ownBits.push('🔁 Multiple copies');
   const ownHTML=ownBits.length?`<div style="font-size:10px;color:var(--t2);margin-bottom:2px;">${ownBits.join(' · ')}</div>`:'';
   // #886 — quick status change, no need to open full Edit Book
@@ -5207,7 +5287,8 @@ function openNewBookSheet(){
   document.getElementById('chap-setup-list').innerHTML='';
   document.getElementById('nb-lookup-hint').style.display='none';
   document.getElementById('nb-author-hint').style.display='none';
-  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total','nb-review','nb-loaned','nb-friend-has'].forEach(x=>document.getElementById(x).value='');
+  ['nb-title','nb-author','nb-ds','nb-de','nb-pub','nb-year','nb-isbn','nb-edition','nb-about-author','nb-summary','nb-orig-lang','nb-trans-lang','nb-why','nb-prog','nb-total','nb-review','nb-loaned','nb-friend-has','nb-borrowed-from'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('nb-format').value='';
   document.getElementById('nb-owned').checked=false;
   document.getElementById('nb-multicopy').checked=false;
   document.getElementById('nb-loaned-wrap').style.display='none';
@@ -5245,7 +5326,9 @@ function openEditBook(id){
   document.getElementById('nb-loaned').value=b.loanedTo||'';
   document.getElementById('nb-loaned-wrap').style.display=b.owned?'':'none';
   document.getElementById('nb-friend-has').value=b.friendHasIt||'';
+  document.getElementById('nb-borrowed-from').value=b.borrowedFrom||'';
   document.getElementById('nb-audiobook').value=b.hasAudiobook||'';
+  document.getElementById('nb-format').value=b.format||'';
   document.getElementById('nb-prog').value=b.progressPage||'';
   document.getElementById('nb-total').value=b.totalPages||'';
   document.getElementById('nb-rating').value=b.rating||'';
@@ -5293,7 +5376,7 @@ function saveBook(applyWiki){
   }
   const id=editId||('b'+Date.now());
   const existing=editId?library[editId]:{entries:[],sessions:[],locations:[],created:Date.now()};
-  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),review:document.getElementById('nb-review').value.trim(),owned:document.getElementById('nb-owned').checked,multiCopy:document.getElementById('nb-multicopy').checked||_forceMultiCopy,loanedTo:document.getElementById('nb-loaned').value.trim(),friendHasIt:document.getElementById('nb-friend-has').value.trim(),hasAudiobook:document.getElementById('nb-audiobook').value,cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
+  library[id]={...existing,id,title,author:document.getElementById('nb-author').value.trim(),genre:document.getElementById('nb-genre').value,status:document.getElementById('nb-status').value,ds:document.getElementById('nb-ds').value,de:document.getElementById('nb-de').value,format:document.getElementById('nb-format').value,pub:document.getElementById('nb-pub').value.trim(),year:document.getElementById('nb-year').value.trim(),isbn:document.getElementById('nb-isbn').value.trim(),edition:document.getElementById('nb-edition').value.trim(),aboutAuthor:document.getElementById('nb-about-author').value.trim(),summary:document.getElementById('nb-summary').value.trim(),origLang:document.getElementById('nb-orig-lang').value.trim(),transLang:document.getElementById('nb-trans-lang').value.trim(),why:document.getElementById('nb-why').value.trim(),review:document.getElementById('nb-review').value.trim(),owned:document.getElementById('nb-owned').checked,multiCopy:document.getElementById('nb-multicopy').checked||_forceMultiCopy,loanedTo:document.getElementById('nb-loaned').value.trim(),friendHasIt:document.getElementById('nb-friend-has').value.trim(),borrowedFrom:document.getElementById('nb-borrowed-from').value.trim(),hasAudiobook:document.getElementById('nb-audiobook').value,cover:document.getElementById('nb-cover-data').value||'',chapSetup:getChapSetup(),rating:document.getElementById('nb-rating').value||'',progressPage:document.getElementById('nb-prog').value,totalPages:document.getElementById('nb-total').value,seriesName:(document.getElementById('nb-series')?.value||'').trim(),seriesNum:(document.getElementById('nb-series-num')?.value||''),updated:Date.now()};
   // #868 — attach community rating/popularity captured from the lookup, if any, then clear it
   // #888 — apply pending community-rating data on both new AND edited books (confirmBookInfo can fire on an existing book too)
   if(window._pendingBookRatings){Object.assign(library[id],window._pendingBookRatings);}
@@ -8510,26 +8593,38 @@ function _goToQuestion(qid){
 
 // xlsx #427 — Universal Delete button on entry forms (edit mode). Reads editId,
 // confirms, runs deleteEntry, then closes the sheet. Wires to the #ae-delete-btn button.
+// #901 — wrapped in try/catch with a visible alert on any unexpected failure, so a
+// delete NEVER just silently does nothing again — either it works, or you get told why.
 function deleteEntryFromForm(){
-  const editId=document.getElementById('ae-edit-id')?.value;
-  if(!editId)return;
-  const id=Number(editId);
-  const e=entries().find(x=>x.id===id);
-  if(!e){closeSheet('ae-overlay');return;}
-  const isChar=CT.includes(e.type);
-  const label=e.cn||e.content||'this entry';
-  if(!isChar){
-    if(!confirm(`Delete this ${e.type} entry?\n\n"${(label||'').slice(0,80)}"\n\nIt will move to the Recycle Bin where you can restore it later.`))return;
+  try{
+    const editId=document.getElementById('ae-edit-id')?.value;
+    if(!editId)return;
+    const id=Number(editId);
+    const e=entries().find(x=>x.id===id);
+    if(!e){
+      alert('Could not find this entry to delete (it may have already been removed). Closing without changes.');
+      closeSheet('ae-overlay');
+      return;
+    }
+    const isChar=CT.includes(e.type);
+    const label=e.cn||e.content||'this entry';
+    if(!isChar){
+      if(!confirm(`Delete this ${e.type} entry?\n\n"${(label||'').slice(0,80)}"\n\nIt will move to the Recycle Bin where you can restore it later.`))return;
+    }
+    // #890 — run the confirm+delete BEFORE closing the sheet, not after. #881 fixed a
+    // double-confirm for non-character entries, but characters only ever had ONE
+    // confirm() — and it was still firing right after closeSheet()'s animation, which
+    // iOS can silently swallow. That was the real remaining cause of "can't delete."
+    // Now the sheet only closes once deleteEntry() confirms the deletion actually happened.
+    const ok=deleteEntry(id,!isChar);
+    if(ok!==false)closeSheet('ae-overlay');
+  }catch(err){
+    console.error('deleteEntryFromForm failed:',err);
+    alert('Something went wrong deleting this entry and nothing was changed. Please try again — if it keeps happening, this is worth flagging.');
   }
-  // #890 — run the confirm+delete BEFORE closing the sheet, not after. #881 fixed a
-  // double-confirm for non-character entries, but characters only ever had ONE
-  // confirm() — and it was still firing right after closeSheet()'s animation, which
-  // iOS can silently swallow. That was the real remaining cause of "can't delete."
-  // Now the sheet only closes once deleteEntry() confirms the deletion actually happened.
-  const ok=deleteEntry(id,!isChar);
-  if(ok!==false)closeSheet('ae-overlay');
 }
 function deleteEntry(id,preConfirmed){
+ try{
   const e=entries().find(x=>x.id===id);if(!e)return false;
   if(CT.includes(e.type)){
     const name=e.cn||e.content;
@@ -8599,6 +8694,11 @@ function deleteEntry(id,preConfirmed){
   if(currentLocName&&document.getElementById('loc-screen').classList.contains('active'))renderLocDetail(currentLocName);
   if(currentChapNum!=null&&document.getElementById('chap-screen').classList.contains('active'))renderChapDetail(currentChapNum);
   return true;
+ }catch(err){
+  console.error('deleteEntry failed:',err);
+  alert('Something went wrong deleting this entry and nothing was changed. Please try again — if it keeps happening, this is worth flagging.');
+  return false;
+ }
 }
 function deleteLocCard(name){
   if(!confirm(`Delete location "${name}"? This removes the location record but not entries tagged to it.`))return;
@@ -13423,6 +13523,132 @@ function undoMerge(keeperId,histIdx){
   if(!keeper.mergeHistory.length)delete keeper.mergeHistory;
   save();renderAll();
   _showToast('Entry restored.');
+}
+// ══ #902 — Merge Books. Same conventions as the entry-level merge above (mergeHistory
+// with a full loserSnapshot, so a merge can always be undone), but at the BOOK level:
+// whichever of the two books has more entries (annotations) is kept, and the other's
+// entries/sessions/locations and any details the keeper is missing get folded in. ══
+function openMergeBookPicker(){
+  const editId=document.getElementById('nb-edit-id').value;
+  if(!editId){alert('Save this book first, then you can merge it with another.');return;}
+  const current=library[editId];
+  if(!current)return;
+  const candidates=Object.values(library).filter(b=>b&&b.title&&!b._deleted&&b.id!==editId)
+    .sort((a,b)=>a.title.localeCompare(b.title));
+  if(!candidates.length){alert('No other books in your library to merge with.');return;}
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;';
+  const panel=document.createElement('div');
+  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:80vh;overflow-y:auto;';
+  panel.innerHTML=`<div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔀 Merge "${esc(current.title)}" with…</div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:10px;">Whichever of the two has more entries stays; the other's entries, sessions, and any details it has that the keeper is missing get folded in, then it moves to the Recycle Bin (fully undoable from the keeper's merge history).</div>
+    <input type="text" id="merge-pick-search" placeholder="🔍 Search your library…" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);margin-bottom:8px;" oninput="_filterMergePicker()"/>
+    <div id="merge-pick-list"></div>
+    <button class="btn" style="width:100%;margin-top:8px;" onclick="window._mergePickOverlay?.remove();window._mergePickOverlay=null;">Cancel</button>`;
+  ov.appendChild(panel);
+  ov.onclick=(ev)=>{if(ev.target===ov){ov.remove();window._mergePickOverlay=null;}};
+  document.body.appendChild(ov);
+  window._mergePickOverlay=ov;
+  window._mergePickCandidates=candidates;
+  window._mergePickCurrentId=editId;
+  _filterMergePicker();
+}
+function _filterMergePicker(){
+  const q=(document.getElementById('merge-pick-search')?.value||'').toLowerCase().trim();
+  const list=document.getElementById('merge-pick-list');if(!list)return;
+  const cands=(window._mergePickCandidates||[]).filter(b=>!q||b.title.toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q));
+  list.innerHTML=cands.slice(0,40).map(b=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cb);">
+    <div style="flex:1;font-size:13px;">${esc(b.title)}${b.author?` <span style="color:var(--t3);">by ${esc(b.author)}</span>`:''}<div style="font-size:10px;color:var(--t3);">${(b.entries||[]).length} entries · ${LIB_STATUS_LABEL[b.status]||b.status}</div></div>
+    <button class="btn btn-sm" onclick="confirmMergeBooks('${window._mergePickCurrentId}','${b.id}')">Merge</button>
+  </div>`).join('')||'<div style="font-size:12px;color:var(--t3);padding:8px 0;">No matches.</div>';
+}
+function confirmMergeBooks(idA,idB){
+  mergeBooks(idA,idB);
+  window._mergePickOverlay?.remove();window._mergePickOverlay=null;
+}
+function mergeBooks(idA,idB){
+ try{
+  const a=library[idA],b=library[idB];
+  if(!a||!b||a._deleted||b._deleted){alert('Could not find both books to merge.');return;}
+  const aCount=(a.entries||[]).length,bCount=(b.entries||[]).length;
+  let keeper,loser;
+  if(aCount!==bCount){[keeper,loser]=aCount>bCount?[a,b]:[b,a];}
+  else{[keeper,loser]=(a.created||0)<=(b.created||0)?[a,b]:[b,a];}
+  const keepCount=Math.max(aCount,bCount),loseCount=Math.min(aCount,bCount);
+  if(!confirm(`Merge "${loser.title}" into "${keeper.title}"?\n\n"${keeper.title}" has more entries (${keepCount} vs ${loseCount}) and will be kept. Everything from "${loser.title}" — its entries, sessions, and any details "${keeper.title}" is missing — gets folded in. "${loser.title}" then moves to the Recycle Bin (undoable from ${keeper.title}'s merge history).`))return;
+  // Snapshot the loser BEFORE touching anything, for undo — same pattern as the entry-level merge (#145)
+  if(!keeper.mergeHistory)keeper.mergeHistory=[];
+  keeper.mergeHistory.push({at:new Date().toISOString(),loserSnapshot:JSON.parse(JSON.stringify(loser))});
+  // Blank-fill text/detail fields from loser (never overwrites something keeper already has)
+  const fillFields=['isbn','pub','year','edition','aboutAuthor','summary','origLang','transLang','review','why','cover','loanedTo','friendHasIt','borrowedFrom','seriesName','seriesNum','storygraphTags'];
+  fillFields.forEach(f=>{if(!keeper[f]&&loser[f])keeper[f]=loser[f];});
+  if(!keeper.rating&&loser.rating)keeper.rating=loser.rating;
+  if(!keeper.hasAudiobook&&loser.hasAudiobook)keeper.hasAudiobook=loser.hasAudiobook;
+  if(!keeper.chapSetup&&loser.chapSetup)keeper.chapSetup=loser.chapSetup;
+  keeper.owned=!!(keeper.owned||loser.owned);
+  // If one record was marked "read" and the other "listened", the merged book reflects both
+  if(keeper.format!==loser.format&&['read','listened'].includes(keeper.format)&&['read','listened'].includes(loser.format)){keeper.format='both';}
+  else if(!keeper.format&&loser.format)keeper.format=loser.format;
+  keeper.multiCopy=false; // now one record, so the "don't flag as duplicate" concern no longer applies
+  keeper.entries=[...(keeper.entries||[]),...(loser.entries||[])];
+  keeper.sessions=[...(keeper.sessions||[]),...(loser.sessions||[])];
+  keeper.locations=[...(keeper.locations||[]),...(loser.locations||[])];
+  keeper.updated=Date.now();
+  // Tombstone the loser — same #724 pattern as deleteBook, so sync propagates the removal
+  library[loser.id]={id:loser.id,_deleted:true,_deletedAt:Date.now(),updated:Date.now()};
+  save();
+  if(currentId===loser.id)currentId=keeper.id;
+  closeSheet('nb-overlay');
+  goLib();
+  _showToast(`Merged into "${keeper.title}" (${keeper.entries.length} entries total).`);
+ }catch(err){
+  console.error('mergeBooks failed:',err);
+  alert('Something went wrong merging these books and nothing was changed. Please try again.');
+ }
+}
+function viewBookMergeHistory(bookId){
+  const keeper=library[bookId];
+  if(!keeper||!keeper.mergeHistory||!keeper.mergeHistory.length){_showToast('No merge history for this book.');return;}
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:flex-end;';
+  const panel=document.createElement('div');
+  panel.style.cssText='background:var(--bg);border-radius:var(--rx) var(--rx) 0 0;padding:18px 16px calc(18px + var(--sb));width:100%;max-height:80vh;overflow-y:auto;';
+  const hist=[...keeper.mergeHistory].reverse();
+  panel.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:4px;">🔀 Merge History</div>'+
+    '<div style="font-size:11px;color:var(--t2);margin-bottom:12px;">Books merged into this one. Undo restores the other book separately again — entries already folded in here stay here too, so check both afterward.</div>'+
+    hist.map((h,i)=>{
+      const snap=h.loserSnapshot;
+      const lbl=(snap.title||'(untitled)').slice(0,60);
+      const when=h.at?new Date(h.at).toLocaleString():'unknown';
+      const realIdx=hist.length-1-i;
+      return '<div style="background:var(--card);border:0.5px solid var(--cb);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;">'+
+        '<div style="font-size:13px;font-weight:600;">'+esc(lbl)+'</div>'+
+        '<div style="font-size:10px;color:var(--t3);">'+(snap.entries||[]).length+' entries · Merged: '+when+'</div>'+
+        '<div style="margin-top:7px;"><button class="btn btn-sm" onclick="undoBookMerge(\''+bookId+'\','+realIdx+');window._mergePickOverlay=null;this.closest(\'div[style*=fixed]\').parentElement.remove();" style="background:var(--red);color:#fff;border-color:var(--red);">↩ Undo</button></div>'+
+        '</div>';
+    }).join('')+
+    '<button class="btn" style="width:100%;margin-top:4px;" onclick="this.parentElement.remove();">Close</button>';
+  ov.appendChild(panel);ov.onclick=(ev)=>{if(ev.target===ov)ov.remove();};
+  document.body.appendChild(ov);
+}
+function undoBookMerge(keeperId,histIdx){
+ try{
+  const keeper=library[keeperId];
+  if(!keeper||!keeper.mergeHistory)return;
+  const h=keeper.mergeHistory[histIdx];if(!h)return;
+  const restored=JSON.parse(JSON.stringify(h.loserSnapshot));
+  restored.id='b'+Date.now()+Math.floor(Math.random()*1000); // fresh id — the old one is tombstoned
+  restored.updated=Date.now();
+  delete restored._deleted;delete restored._deletedAt;
+  library[restored.id]=restored;
+  keeper.mergeHistory.splice(histIdx,1);
+  if(!keeper.mergeHistory.length)delete keeper.mergeHistory;
+  save();renderLibrary();
+  _showToast(`"${restored.title}" restored as a separate book. Entries already merged into "${keeper.title}" are still there too — worth a look at both.`);
+ }catch(err){
+  console.error('undoBookMerge failed:',err);
+  alert('Something went wrong restoring this book. Please try again.');
+ }
 }
 function skipDuplicate(gkey){
   if(!book().dupSkipped)book().dupSkipped={};
