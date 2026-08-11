@@ -1431,6 +1431,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
     </div>
     <div class="fa">
+      <button class="btn" onclick="closeSheet('settings-overlay');openMergeBookPicker(currentId)">🔀 Merge with another book</button>
+      <button class="btn" id="book-merge-history-btn" style="display:none;" onclick="viewBookMergeHistory(currentId)">↩ Merge history</button>
+    </div>
+    <div class="fa">
       <button class="btn" style="color:#A32D2D;" onclick="deleteBook()">Delete this book</button>
     </div>
     <div style="font-size:10px;color:var(--t3);margin-top:12px;line-height:1.6;padding:8px;background:var(--bg2);border-radius:var(--r);">
@@ -4233,7 +4237,11 @@ return liveEventIds.has(Number(ref));});if(e.attachedEventIds.length!==b)changed
   if(changed)save();
 }
 function goLib(){currentId=null;currentCharName=null;currentLocName=null;show('lib-screen','book-screen');renderLibrary();}
-function openBookSettings(){openSheet('settings-overlay');}
+function openBookSettings(){
+  const btn=document.getElementById('book-merge-history-btn');
+  if(btn)btn.style.display=(library[currentId]?.mergeHistory||[]).length?'':'none';
+  openSheet('settings-overlay');
+}
 // #274/285 — Library-wide settings menu (gear icon in library topbar)
 function openLibSettings(){openSheet('lib-settings-overlay');}
 
@@ -13528,11 +13536,11 @@ function undoMerge(keeperId,histIdx){
 // with a full loserSnapshot, so a merge can always be undone), but at the BOOK level:
 // whichever of the two books has more entries (annotations) is kept, and the other's
 // entries/sessions/locations and any details the keeper is missing get folded in. ══
-function openMergeBookPicker(){
-  const editId=document.getElementById('nb-edit-id').value;
-  if(!editId){alert('Save this book first, then you can merge it with another.');return;}
+function openMergeBookPicker(bookId){
+  const editId=bookId||document.getElementById('nb-edit-id')?.value||currentId;
+  if(!editId){alert('Open or save a book first, then you can merge it with another.');return;}
   const current=library[editId];
-  if(!current)return;
+  if(!current){alert('Could not find this book.');return;}
   const candidates=Object.values(library).filter(b=>b&&b.title&&!b._deleted&&b.id!==editId)
     .sort((a,b)=>a.title.localeCompare(b.title));
   if(!candidates.length){alert('No other books in your library to merge with.');return;}
@@ -13598,7 +13606,7 @@ function mergeBooks(idA,idB){
   library[loser.id]={id:loser.id,_deleted:true,_deletedAt:Date.now(),updated:Date.now()};
   save();
   if(currentId===loser.id)currentId=keeper.id;
-  closeSheet('nb-overlay');
+  closeSheet('nb-overlay');closeSheet('settings-overlay');
   goLib();
   _showToast(`Merged into "${keeper.title}" (${keeper.entries.length} entries total).`);
  }catch(err){
