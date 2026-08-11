@@ -3790,6 +3790,7 @@ function renderLibFiltersBody(){
   const af=window._libAudiobookFilter||'';
   const pf=window._libPimaFilter||'';
   const nf=!!window._libNeedsOLFilter;
+  const ff=window._libFormatFilter||'';
   el.innerHTML=`
     <div class="fg">
       <label>Genre <span style="font-weight:400;color:var(--t3);">(any of these)</span></label>
@@ -3804,6 +3805,10 @@ function renderLibFiltersBody(){
       <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(of==='yes','Owned',`setLibOwnedFilter('yes')`)}${_libFilterChip(of==='no','Not owned',`setLibOwnedFilter('no')`)}</div>
     </div>
     <div class="fg">
+      <label>Read or listened?</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(ff==='unset','Not marked yet',`setLibFormatFilter('unset')`)}${_libFilterChip(ff==='read','Read',`setLibFormatFilter('read')`)}${_libFilterChip(ff==='listened','Listened',`setLibFormatFilter('listened')`)}${_libFilterChip(ff==='both','Both',`setLibFormatFilter('both')`)}</div>
+    </div>
+    <div class="fg">
       <label>Audiobook edition</label>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">${_libFilterChip(af==='yes','Available',`setLibAudiobookFilter('yes')`)}${_libFilterChip(af==='no','Not available',`setLibAudiobookFilter('no')`)}</div>
     </div>
@@ -3816,6 +3821,7 @@ function renderLibFiltersBody(){
     </div>
   `;
 }
+function setLibFormatFilter(v){window._libFormatFilter=(window._libFormatFilter===v)?'':v;renderLibFiltersBody();renderLibrary();}
 function setLibGenreFilter(g){
   const arr=window._libGenreFilters||(window._libGenreFilters=[]);
   const i=arr.indexOf(g);if(i>=0)arr.splice(i,1);else arr.push(g);
@@ -3831,7 +3837,7 @@ function openLibFilters(){
   openSheet('lib-filters-overlay');
 }
 function clearLibFilters(){
-  window._libGenreFilters=[];window._libRatingFilter=0;window._libOwnedFilter='';window._libAudiobookFilter='';window._libPimaFilter='';window._libNeedsOLFilter=false;
+  window._libGenreFilters=[];window._libRatingFilter=0;window._libOwnedFilter='';window._libAudiobookFilter='';window._libPimaFilter='';window._libNeedsOLFilter=false;window._libFormatFilter='';
   renderLibFiltersBody();
   renderLibrary();
 }
@@ -3881,6 +3887,12 @@ function quickSetBookStatus(bookId,newStatus){
 function quickSetBookDNF(bookId){
   const b=library[bookId];if(!b)return;
   b.status='finished';b.dnf=true;b.updated=Date.now();
+  save();renderLibrary();
+}
+// #904 — fast read/listened tagging right from the card, no trip through Edit Book.
+function quickSetBookFormat(bookId,val){
+  const b=library[bookId];if(!b)return;
+  b.format=val;b.updated=Date.now();
   save();renderLibrary();
 }
 // #894 — one-tap way to add an already-tracked book (Want/Reading/Finished) to the
@@ -4010,6 +4022,7 @@ function renderLibrary(){
   const af=window._libAudiobookFilter||'';
   const pf=window._libPimaFilter||'';
   const nf=!!window._libNeedsOLFilter;
+  const ff=window._libFormatFilter||'';
   const sq=(document.getElementById('lib-search')?.value||'').trim().toLowerCase();
   // #883 — every active filter is AND'd together (genre facet itself is OR-among-selected-genres)
   if(rf>0)books=books.filter(b=>(+b.communityRating||0)>=rf);
@@ -4018,6 +4031,7 @@ function renderLibrary(){
   if(af)books=books.filter(b=>(af==='yes')===(b.hasAudiobook==='yes'));
   if(pf)books=books.filter(b=>b.pimaAvailable===pf);
   if(nf)books=books.filter(b=>!b.olKey);
+  if(ff)books=books.filter(b=>ff==='unset'?!b.format:b.format===ff);
   // #900 — free-text search, title or author, AND'd with everything else
   if(sq)books=books.filter(b=>(b.title||'').toLowerCase().includes(sq)||(b.author||'').toLowerCase().includes(sq));
   books=sortLibraryBooks(books,sm);
@@ -4025,7 +4039,7 @@ function renderLibrary(){
   const sortBar=document.getElementById('lib-sort-bar');
   if(sortBar){
     sortBar.style.display='';
-    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,nf,!!sq].filter(Boolean).length;
+    const activeCount=[rf>0,gf.length>0,!!of,!!af,!!pf,nf,!!ff,!!sq].filter(Boolean).length;
     sortBar.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
       <select onchange="window._libSortModeByTab['${libTab}']=this.value;renderLibrary();" style="flex:1;font-size:12px;padding:5px 7px;border-radius:var(--r);border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
         <option value="recent"${sm==='recent'?' selected':''}>Recently added</option>
@@ -4057,7 +4071,7 @@ function renderLibrary(){
       seriesBar.style.display='none';
     }
   }
-  const _hasActiveFilter=!!(rf||gf.length||of||af||pf||nf||sq||window._libSeriesFilter);
+  const _hasActiveFilter=!!(rf||gf.length||of||af||pf||nf||ff||sq||window._libSeriesFilter);
   const _tabHadBooksBeforeFilters=Object.values(library).some(b=>b&&b.title&&(libTab==='kybrary'?b.owned:b.status===libTab));
   if(!books.length){
     body.innerHTML='';
@@ -4129,6 +4143,14 @@ function bookCardHTML(b,i,sortMode){
   </select>${b.status!=='finished'||!b.dnf?`<span style="font-size:9px;color:var(--t3);cursor:pointer;margin-left:4px;" onclick="event.stopPropagation();quickSetBookDNF('${b.id}')" title="Mark as Did Not Finish">mark DNF</span>`:''}`;
   // #887 — quick "needs Open Library match" confirm shortcut
   const needsOLHTML=!b.olKey?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}');confirmBookInfo();" title="Look up this book's info on Open Library">🔎 Confirm info</span>`:'';
+  // #904 — quick format (read/listened) right on the card. Unset shows in accent color
+  // so it's easy to spot which books still need tagging at a glance.
+  const quickFormat=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookFormat('${b.id}',this.value)" style="font-size:10px;padding:2px 4px;border-radius:6px;border:0.5px solid ${b.format?'var(--cb)':'var(--am)'};background:${b.format?'var(--bg2)':'var(--al)'};color:${b.format?'var(--text)':'var(--accent)'};">
+    <option value=""${!b.format?' selected':''}>Read or listened?</option>
+    <option value="read"${b.format==='read'?' selected':''}>📖 Read</option>
+    <option value="listened"${b.format==='listened'?' selected':''}>🎧 Listened</option>
+    <option value="both"${b.format==='both'?' selected':''}>📖🎧 Both</option>
+  </select>`;
   return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
@@ -4141,7 +4163,7 @@ function bookCardHTML(b,i,sortMode){
       ${availHTML}
       ${ownHTML}
       ${progHTML}
-      <div style="margin-top:4px;">${quickStatus}</div>
+      <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">${quickStatus}${(b.status==='reading'||b.status==='finished')?quickFormat:''}</div>
       <div class="book-meta" style="margin-top:4px;">
         <span class="gbadge">${GL[b.genre]||b.genre}</span>
         <span class="sdot status-${b.status}"></span>
@@ -8599,6 +8621,20 @@ function _goToQuestion(qid){
   },650);
 }
 
+// #905 — THE ACTUAL DELETE BUG. getRecycleBin() was called in 6 places (both delete
+// paths, and the recycle bin viewer/restore screen itself) but was never defined
+// anywhere in this file. Every non-character delete — and the whole Recycle Bin
+// screen — has been throwing "getRecycleBin is not defined" and failing silently
+// this whole time, regardless of the confirm()/closeSheet() ordering fixes from
+// earlier sessions (those were real fixes for a real secondary issue, just not THE
+// issue). The #901 try/catch added this session is what finally surfaced it instead
+// of failing silently. Self-heals books that don't have a recycleBin array yet.
+function getRecycleBin(){
+  const b=book();
+  if(!b)return[];
+  if(!Array.isArray(b.recycleBin))b.recycleBin=[];
+  return b.recycleBin;
+}
 // xlsx #427 — Universal Delete button on entry forms (edit mode). Reads editId,
 // confirms, runs deleteEntry, then closes the sheet. Wires to the #ae-delete-btn button.
 // #901 — wrapped in try/catch with a visible alert on any unexpected failure, so a
