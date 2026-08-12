@@ -83,6 +83,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .book-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .gbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px;background:var(--al);color:var(--accent);}
 .sdot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+/* #906 — compact chip styles for the decluttered book-card redesign. info-chip =
+   grey/FYI (community rating, ownership, format, etc.), action-chip = accent/tappable
+   (add to Ky-Brary, mark DNF, Pima self-report). Both replace what used to be several
+   differently-styled divs each with their own margin, so a card with a lot of
+   metadata reads as one tidy strip instead of a stack of separate announcements. */
+.info-chip{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--bg2);color:var(--t2);border:0.5px solid var(--cb);white-space:nowrap;display:inline-block;line-height:1.5;}
+.action-chip{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--al);color:var(--accent);border:0.5px solid var(--am);white-space:nowrap;display:inline-block;cursor:pointer;line-height:1.5;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.card-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.card-toggle{font-size:10px;color:var(--accent);cursor:pointer;font-weight:600;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.card-ol-btn{font-size:12px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation;opacity:0.7;}
 .status-reading{background:#1D9E75;}.status-finished{background:#378ADD;}.status-want{background:#888780;}
 /* entry cards */
 .ec{background:var(--card);border-radius:var(--rl2);border:0.5px solid var(--cb);padding:10px 12px;margin-bottom:7px;border-left:3px solid var(--am);}
@@ -4051,8 +4061,7 @@ function renderLibrary(){
       </select>
       <button class="btn btn-sm" onclick="openLibFilters()" style="flex-shrink:0;position:relative;">🔍 Filters${activeCount?` (${activeCount})`:''}</button>
     </div>
-    ${libTab==='kybrary'?`<button class="btn btn-sm" onclick="quickAddToKybrary()" style="width:100%;margin-bottom:6px;">📗 Fast add a book you own</button>`:''}
-    <button class="btn btn-sm" onclick="bulkEnrichWantList()" title="Fetch community ratings for books missing them" style="width:100%;">🔄 Refresh ratings</button>`;
+    ${libTab==='kybrary'?`<button class="btn btn-sm" onclick="quickAddToKybrary()" style="width:100%;">📗 Fast add a book you own</button>`:''}`;
   }
   // #873 — genre filter chips, all tabs
   // #389 — series filter chips
@@ -4109,48 +4118,59 @@ function bookCardHTML(b,i,sortMode){
   let progHTML='';
   if(b.progressPage&&b.totalPages){const pct=Math.min(100,Math.round((+b.progressPage/+b.totalPages)*100));progHTML=`<div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col};"></div></div><div style="font-size:10px;color:var(--t3);margin-top:2px;">p.${b.progressPage}/${b.totalPages} · ${pct}%</div>`;}
   const dates=[b.ds?`Started ${fmt(b.ds)}`:null,b.de?`Finished ${fmt(b.de)}`:null].filter(Boolean).join(' · ');
-  // #868 — community rating/popularity badge
-  const commRating=b.communityRating?`<span title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`:'';
-  const commPopular=b.wantCount?`<span title="People with this on their to-read list">🔥 ${b.wantCount}</span>`:'';
-  const commHTML=(commRating||commPopular)?`<div style="font-size:10px;color:var(--t2);display:flex;gap:8px;margin-bottom:2px;">${commRating}${commPopular}</div>`:'';
-  // #867 — Pima availability deep link + self-reported tag (Want tab). #895 — PCC removed per K.
-  const pimaHTML=b.status==='want'?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Pima</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='yes'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','yes')" title="Mark available at Pima">✅</span>
-    <span style="font-size:11px;cursor:pointer;opacity:${b.pimaAvailable==='no'?1:0.35};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫</span>`:'';
-  const availBadges=[
-    b.pimaAvailable==='yes'?'🟢 Pima':b.pimaAvailable==='no'?'🔴 Pima':'',
-  ].filter(Boolean).join(' · ');
-  const availHTML=availBadges?`<div style="font-size:10px;font-weight:600;margin-bottom:2px;">${availBadges}</div>`:'';
   const dnfBadge=b.dnf?`<span style="font-size:10px;color:var(--t3);font-weight:600;">DNF</span>`:'';
-  // #885/#894 — owned / loaned / friend-has-it / audiobook / multi-copy badges, plus a
-  // fast one-tap way to add an already-tracked book to the Ky-Brary without opening Edit.
-  const ownBits=[];
-  if(b.owned){ownBits.push(b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Owned (Ky-Brary)');}
-  else if(libTab!=='kybrary'){ownBits.push(`<span style="color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();addToKybrary('${b.id}')">📗 Add to Ky-Brary</span>`);}
-  if(b.friendHasIt)ownBits.push(`🤝 ${esc(b.friendHasIt)} has a copy`);
-  if(b.borrowedFrom)ownBits.push(`📥 Borrowing from ${esc(b.borrowedFrom)}`);
-  if(b.hasAudiobook==='yes')ownBits.push('🎧 Audiobook edition exists');
-  if(b.format==='read')ownBits.push('📖 Read');
-  else if(b.format==='listened')ownBits.push('🎧 Listened');
-  else if(b.format==='both')ownBits.push('📖🎧 Read & listened');
-  if(b.multiCopy)ownBits.push('🔁 Multiple copies');
-  const ownHTML=ownBits.length?`<div style="font-size:10px;color:var(--t2);margin-bottom:2px;">${ownBits.join(' · ')}</div>`:'';
-  // #886 — quick status change, no need to open full Edit Book
-  const quickStatus=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookStatus('${b.id}',this.value)" style="font-size:10px;padding:2px 4px;border-radius:6px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
+
+  // #906 — REDESIGNED CARD (mobile declutter pass). Everything that used to be its
+  // own separately-styled row (community rating, popularity, Pima availability,
+  // owned/loaned/friend/borrowed/audiobook/format/multi-copy) is now one set of
+  // small consistent chips: grey "info-chip" for FYI facts, accent "action-chip" for
+  // anything tappable. These, plus the less-frequently-needed actions, live behind a
+  // per-card "▾ Details" toggle so the list stays scannable — status stays out front
+  // since it's the one thing K changes most often, and Confirm Info stays out front
+  // too (as a small icon) since #907 makes it available on every card everywhere.
+  const infoChips=[];
+  if(b.communityRating)infoChips.push(`<span class="info-chip" title="${b.communityRatingCount||0} community ratings">★ ${(+b.communityRating).toFixed(1)}</span>`);
+  if(b.wantCount)infoChips.push(`<span class="info-chip" title="People with this on their to-read list">🔥 ${b.wantCount}</span>`);
+  if(b.pimaAvailable==='yes')infoChips.push(`<span class="info-chip">🟢 Pima</span>`);
+  if(b.pimaAvailable==='no')infoChips.push(`<span class="info-chip">🔴 Pima</span>`);
+  if(b.owned)infoChips.push(`<span class="info-chip">${b.loanedTo?`📤 Loaned to ${esc(b.loanedTo)}`:'📗 Ky-Brary'}</span>`);
+  if(b.friendHasIt)infoChips.push(`<span class="info-chip">🤝 ${esc(b.friendHasIt)} has a copy</span>`);
+  if(b.borrowedFrom)infoChips.push(`<span class="info-chip">📥 From ${esc(b.borrowedFrom)}</span>`);
+  if(b.hasAudiobook==='yes')infoChips.push(`<span class="info-chip">🎧 Audiobook exists</span>`);
+  if(b.format==='read')infoChips.push(`<span class="info-chip">📖 Read</span>`);
+  else if(b.format==='listened')infoChips.push(`<span class="info-chip">🎧 Listened</span>`);
+  else if(b.format==='both')infoChips.push(`<span class="info-chip">📖🎧 Read &amp; listened</span>`);
+  if(b.multiCopy)infoChips.push(`<span class="info-chip">🔁 2+ copies</span>`);
+
+  const actionChips=[];
+  if(!b.owned&&libTab!=='kybrary')actionChips.push(`<span class="action-chip" onclick="event.stopPropagation();addToKybrary('${b.id}')">📗 Add to Ky-Brary</span>`);
+  if(b.status!=='finished'||!b.dnf)actionChips.push(`<span class="action-chip" onclick="event.stopPropagation();quickSetBookDNF('${b.id}')">Mark DNF</span>`);
+  if(b.status==='finished'&&!b.rating&&!b.dnf)actionChips.push(`<span class="action-chip" onclick="event.stopPropagation();openEditBook('${b.id}')">⭐ Rate this book</span>`);
+  if(b.status==='want'){
+    actionChips.push(`<span class="action-chip" onclick="event.stopPropagation();window.open(pimaLink('${esc(b.title)}','${esc(b.author||'')}'),'_blank')">📍 Pima</span>`);
+    actionChips.push(`<span class="action-chip" style="opacity:${b.pimaAvailable==='yes'?1:0.5};" onclick="event.stopPropagation();setPimaStatus('${b.id}','yes')" title="Mark available at Pima">✅ Avail.</span>`);
+    actionChips.push(`<span class="action-chip" style="opacity:${b.pimaAvailable==='no'?1:0.5};" onclick="event.stopPropagation();setPimaStatus('${b.id}','no')" title="Mark checked out at Pima">🚫 Out</span>`);
+  }
+
+  const quickStatus=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookStatus('${b.id}',this.value)" style="font-size:10px;padding:3px 6px;border-radius:6px;border:0.5px solid var(--cb);background:var(--bg2);color:var(--text);">
     <option value="want"${b.status==='want'?' selected':''}>Want to Read</option>
     <option value="reading"${b.status==='reading'?' selected':''}>Currently Reading</option>
     <option value="finished"${b.status==='finished'&&!b.dnf?' selected':''}>Finished</option>
-  </select>${b.status!=='finished'||!b.dnf?`<span style="font-size:9px;color:var(--t3);cursor:pointer;margin-left:4px;" onclick="event.stopPropagation();quickSetBookDNF('${b.id}')" title="Mark as Did Not Finish">mark DNF</span>`:''}`;
-  // #887 — quick "needs Open Library match" confirm shortcut
-  const needsOLHTML=!b.olKey?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}');confirmBookInfo();" title="Look up this book's info on Open Library">🔎 Confirm info</span>`:'';
-  // #904 — quick format (read/listened) right on the card. Unset shows in accent color
-  // so it's easy to spot which books still need tagging at a glance.
-  const quickFormat=`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookFormat('${b.id}',this.value)" style="font-size:10px;padding:2px 4px;border-radius:6px;border:0.5px solid ${b.format?'var(--cb)':'var(--am)'};background:${b.format?'var(--bg2)':'var(--al)'};color:${b.format?'var(--text)':'var(--accent)'};">
+  </select>`;
+  // #904 — quick format, tucked into Details now rather than always-on, since it's
+  // only relevant once a book's actually underway. Still just one tap away.
+  const quickFormat=(b.status==='reading'||b.status==='finished')?`<select onclick="event.stopPropagation();" onchange="event.stopPropagation();quickSetBookFormat('${b.id}',this.value)" style="font-size:10px;padding:3px 6px;border-radius:6px;border:0.5px solid ${b.format?'var(--cb)':'var(--am)'};background:${b.format?'var(--bg2)':'var(--al)'};color:${b.format?'var(--text)':'var(--accent)'};">
     <option value=""${!b.format?' selected':''}>Read or listened?</option>
     <option value="read"${b.format==='read'?' selected':''}>📖 Read</option>
     <option value="listened"${b.format==='listened'?' selected':''}>🎧 Listened</option>
     <option value="both"${b.format==='both'?' selected':''}>📖🎧 Both</option>
-  </select>`;
+  </select>`:'';
+
+  if(!window._expandedCards)window._expandedCards=new Set();
+  const expanded=window._expandedCards.has(b.id);
+  const extraCount=infoChips.length+actionChips.length+(quickFormat?1:0);
+  const detailsHTML=expanded?`<div class="card-chips">${infoChips.join('')}${actionChips.join('')}</div>${quickFormat?`<div style="margin-top:6px;">${quickFormat}</div>`:''}`:'';
+
   return `<div class="book-card" data-book-id="${b.id}" onclick="openBook('${b.id}')">
     <div class="book-cover">${coverHTML}</div>
     <div class="book-info">
@@ -4158,22 +4178,29 @@ function bookCardHTML(b,i,sortMode){
       ${b.seriesName?`<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:1px;cursor:pointer;" onclick="event.stopPropagation();openSeriesView('${esc(b.seriesName)}')" title="View series">${b.seriesName}${b.seriesNum?' #'+b.seriesNum:''} 📚</div>`:''}
       <div class="book-author">${authorDisplayName(b.author,sortMode)}</div>
       ${dates?`<div style="font-size:10px;color:var(--t3);margin-bottom:3px;">${dates}</div>`:''}
-      ${dnfBadge?`<div style="margin-bottom:2px;">${dnfBadge}</div>`:(stars?`<div style="font-size:12px;margin-bottom:2px;">${stars}</div>`:'')}
-      ${commHTML}
-      ${availHTML}
-      ${ownHTML}
-      ${progHTML}
-      <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">${quickStatus}${(b.status==='reading'||b.status==='finished')?quickFormat:''}</div>
-      <div class="book-meta" style="margin-top:4px;">
+      <div class="book-meta">
         <span class="gbadge">${GL[b.genre]||b.genre}</span>
         <span class="sdot status-${b.status}"></span>
         <span style="font-size:10px;color:var(--t3);">${b.entries.length} entries</span>
-        ${b.status==='finished'&&!b.rating&&!b.dnf?`<span style="font-size:10px;color:var(--accent);cursor:pointer;" onclick="event.stopPropagation();openEditBook('${b.id}')">Rate this book →</span>`:''}
-        ${needsOLHTML}
-        ${pimaHTML}
+        ${dnfBadge||(stars?`<span style="font-size:11px;">${stars}</span>`:'')}
+        <span class="card-ol-btn" onclick="event.stopPropagation();openEditBook('${b.id}');confirmBookInfo();" title="Look up / re-check this book's info on Open Library">🔎</span>
       </div>
+      ${progHTML}
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;">
+        ${quickStatus}
+        ${extraCount?`<span class="card-toggle" onclick="event.stopPropagation();toggleCardExpand('${b.id}')">${expanded?'▲ Less':'▾ Details ('+extraCount+')'}</span>`:''}
+      </div>
+      ${detailsHTML}
     </div>
   </div>`;
+}
+// #906 — expand state is per-book and persists across re-renders (a Set, not a flag
+// on the book itself, so it's session-only and never gets saved/synced).
+function toggleCardExpand(bookId){
+  if(!window._expandedCards)window._expandedCards=new Set();
+  if(window._expandedCards.has(bookId))window._expandedCards.delete(bookId);
+  else window._expandedCards.add(bookId);
+  renderLibrary();
 }
 function convertRefToBook(bookId,refId){
   const bk=library[bookId];if(!bk){alert('Could not find this book.');return;}
@@ -16320,8 +16347,9 @@ function _swipeInit(){/* removed */}
     <div class="sheet-inner" style="padding-bottom:24px;">
       <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">Tap to toggle — changes apply right away. Everything below combines together (a book has to match every filter you set); genres are OR'd against each other.</div>
       <div id="lib-filters-body"></div>
-      <div style="margin-top:14px;">
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
         <button class="btn" onclick="clearLibFilters()" style="width:100%;">Clear all filters</button>
+        <button class="btn btn-sm" onclick="bulkEnrichWantList()" style="width:100%;color:var(--t2);">🔄 Refresh community ratings</button>
       </div>
     </div>
   </div>
