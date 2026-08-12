@@ -657,6 +657,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <!-- CHARACTER -->
     <div id="ae-char-section" style="display:none">
+      <div class="slabel">Identity</div>
       <div class="r2">
         <div class="fg"><label>Full name *</label><input type="text" id="ae-cn" placeholder="e.g. Elizabeth Bennet" oninput="autoTitleCase(this);_patriDebounced();_seriesSuggest();" onblur="checkDuplicateChar(this.value.trim());suggestPatriLastName();"/></div>
         <div class="fg"><label>Nickname(s)</label><input type="text" id="ae-nick" placeholder="e.g. Lizzy"/></div>
@@ -665,6 +666,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="ae-series-char-hint" style="display:none;margin:-4px 0 8px;padding:7px 10px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);font-size:11px;color:var(--accent);"></div>
       <!-- #393 — patrilineal last-name suggester -->
       <div id="ae-patri-hint" style="display:none;font-size:11px;color:var(--accent);margin:-4px 0 8px;padding:6px 9px;background:var(--al);border-radius:var(--r);border:0.5px solid var(--am);"></div>
+      <div class="divider"></div>
+      <div class="slabel">Demographics</div>
       <div class="r3">
         <div class="fg"><label>Gender</label>
           <select id="ae-gender"><option value="">Unknown</option><option>Male</option><option>Female</option><option>Nonbinary</option><option>Transgender male</option><option>Transgender female</option><option>Genderfluid</option><option>Agender</option><option>Other</option></select>
@@ -692,6 +695,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
         <div class="fg"><label>Language(s) spoken</label><input type="text" id="ae-clang" placeholder="e.g. French, Latin"/></div>
       </div>
+      <div class="divider"></div>
+      <div class="slabel">Background &amp; appearance</div>
       <div class="fg"><label>Profession / Occupation <span style="font-weight:400;color:var(--t3);">— appears on card &amp; in web (optional)</span></label><input type="text" id="ae-cprofession" placeholder="e.g. Detective, Surgeon, Shopkeeper…"/></div>
       <div class="r2" style="align-items:end;">
         <div class="fg"><label>Introduced — p. <span style="font-size:13px;color:var(--accent);cursor:pointer;padding:2px 6px;" onclick="alert('The page where this character first appears in the book.')">ⓘ</span></label><input type="number" id="ae-cintro-pg" inputmode="numeric" placeholder="e.g. 34" min="1" oninput="autoCharIntroChap()" onblur="autoCharIntroChap()"/></div>
@@ -708,6 +713,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>Background / history <span style="font-weight:400;color:var(--t3);">(optional — backstory too narrative for a trait, not eventful enough for the timeline)</span></label>
         <textarea id="ae-cbg" placeholder="e.g. one-hit-wonder playwright turned head of department; raised by aunt after parents' death; estranged from siblings…" style="min-height:55px;"></textarea>
       </div>
+      <div class="divider"></div>
+      <div class="slabel">Photos</div>
       <div class="fg"><label>Photos (optional) <span style="font-weight:400;color:var(--t3);">— first photo becomes the avatar</span></label>
         <div id="ae-char-photos-strip" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;"></div>
         <input type="file" id="ae-char-photo-input" accept="image/*" style="display:none" onchange="handleCharPhoto(this)"/>
@@ -939,6 +946,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <strong>Timeline examples:</strong> "Year 1348 — Black Death begins" · "Three months after the wedding" · "Same day as Chapter 4" · "Unknown — sometime in winter"<br>
         Use the ± offset below to calculate from a prior event.
       </div>
+      <div class="slabel">When it happened</div>
       <!-- #303/#335 -->
       <div class="fg" id="ae-evdate-row">
         <label>Year / era <span style="color:#A32D2D;">*</span> <span style="font-weight:400;color:var(--t3);">(required)</span></label>
@@ -983,6 +991,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <input type="hidden" id="ae-evdate"/>
       <!-- #270 — manual sort key when no date is available -->
       <input type="hidden" id="ae-sortkey"/>
+      <div class="divider"></div>
+      <div class="slabel">Related event <span style="font-size:10px;font-weight:400;color:var(--t3);">(optional)</span></div>
       <!-- #218-A — collapsed by default; #218-B — renamed -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <input type="checkbox" id="ae-offset-toggle" style="width:auto;min-width:0;flex-shrink:0;" onchange="onOffsetToggleChange(this);"/>
@@ -1023,6 +1033,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         </div>
       </div>
       <!-- #253 — Supporting quote + speaker auto-tag + quote page (flows to Quote page display) -->
+      <div class="divider"></div>
+      <div class="slabel">Supporting quote <span style="font-size:10px;font-weight:400;color:var(--t3);">(optional)</span></div>
       <div class="fg" style="margin-top:10px;"><label>Supporting quote <span style="font-weight:400;color:var(--t3);">(optional — quote from the text that anchors this event)</span></label>
         <input type="text" id="ae-tl-sq" placeholder="Quote from the book…"/>
       </div>
@@ -1060,6 +1072,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div style="font-size:11px;color:var(--t2);background:var(--al);border-radius:var(--r);padding:7px 9px;margin-bottom:9px;">
         <strong>Event-specific fields.</strong> The Year/Month/Day, Significance, ± offset, and supporting quote fields above are shared with Timeline so events sort consistently on the Timeline tab.
       </div>
+      <div class="slabel">Event details</div>
       <div class="fg"><label>Significance</label>
         <!-- #342 follow-up — collapse to two user-facing options per request.
              Older entries with 'major' / 'lifechanging' still render correctly
@@ -1491,6 +1504,11 @@ const GL={fiction:'Fiction',nonfiction:'Non-Fiction',memoir:'Memoir/Bio',mystery
 const SL={reading:'Reading',finished:'Finished',want:'Want to Read'};
 const SPINE=['#534AB7','#1D9E75','#D85A30','#378ADD','#D4537E','#854F0B','#3B6D11','#A32D2D'];
 const CT=['Character','Person','Figure','Suspect'];
+// #908 — shared tab label/icon maps + which tabs stay always-visible in the
+// book-detail bar (rest collapse into the "More ▾" overflow sheet).
+const TAB_LABELS={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats',chaps:'Chapters'};
+const TAB_ICONS={web:'🕸',map:'📍',words:'📖',questions:'❓',refs:'📚',todo:'✅',stats:'📊',chaps:'📑'};
+const ALWAYS_VISIBLE_TABS=['log','quotes','chars','timeline'];
 const PARENT_TYPES=['Mother','Father','Parent','Grandmother','Grandfather','Great-grandmother','Great-grandfather','Great-great-grandmother','Great-great-grandfather','Great-great-grandparent','Distant ancestor','Adoptive parent','Step-parent','Guardian'];
 const CHILD_TYPES=['Child','Grandchild','Great-grandchild','Great-great-grandchild','Distant descendant','Adopted child','Step-child','Ward'];
 // #246 — Searchable relationship-type picker: grouped flat list with synonyms for search
@@ -5577,32 +5595,72 @@ function buildTabs(){
     if(charsIdx>=0)tabs.splice(charsIdx+1,0,'web');
     else tabs.push('web');
   }
-  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats',chaps:'Chapters'};
-  document.getElementById('tab-bar').innerHTML=tabs.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${lbl[t]||t}</button>`).join('');
+  // #908 — only a handful of tabs stay always-visible in the bar; the rest
+  // collapse into a "More ▾" button that opens an overflow sheet, so the row
+  // never silently scrolls off-screen for genres with a lot of tabs.
+  const visible=ALWAYS_VISIBLE_TABS.filter(t=>tabs.includes(t));
+  const more=tabs.filter(t=>!visible.includes(t));
+  window._moreTabs=more;
+  const overflowActive=more.includes(activeTab);
+  let html=visible.map(t=>`<button class="tab${t===activeTab?' active':''}" onclick="switchTab('${t}',this)">${TAB_LABELS[t]||t}</button>`).join('');
+  if(more.length){
+    html+=`<button class="tab${overflowActive?' active':''}" onclick="openMoreTabsSheet()">${overflowActive?(TAB_LABELS[activeTab]||activeTab)+' ▾':'More ▾'}</button>`;
+  }
+  document.getElementById('tab-bar').innerHTML=html;
   tabs.forEach(t=>{const p=document.getElementById(t+'-panel');if(p)p.className='panel'+(t===activeTab?' active':'');});
 }
-function switchTab(t,btn){
-  activeTab=t;
-  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
-  document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
-  const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
+function _renderActiveTabContent(t){
+  if(t==='log'){if(typeof buildFilterBar==='function')buildFilterBar();if(typeof renderEntries==='function')renderEntries();}
   if(t==='web')renderWeb();if(t==='chars')renderChars();if(t==='quotes')renderQuotes();
   if(t==='timeline')renderTimeline();if(t==='map'){renderMap();_osmInvalidate();}
   if(t==='chaps')renderChaps();
   if(t==='words')renderWords();if(t==='questions')renderQuestions();if(t==='refs')renderRefs();
   if(t==='todo')renderTodo();if(t==='stats')renderStats();
 }
+function switchTab(t,btn){
+  activeTab=t;
+  buildTabs();
+  _renderActiveTabContent(t);
+}
 function forceTab(t){
   activeTab=t;
-  const lbl={log:'Log',quotes:'Quotes',chars:'Characters',web:'Rel. Web',timeline:'Timeline',map:'Locations',words:'Vocabulary',questions:'Questions',refs:'References',todo:'To-Do',stats:'Stats',chaps:'Chapters'};
-  document.querySelectorAll('#tab-bar .tab').forEach(b=>b.classList.toggle('active',b.textContent===(lbl[t]||t)));
-  document.querySelectorAll('#panel-wrap .panel').forEach(p=>p.classList.remove('active'));
-  const p=document.getElementById(t+'-panel');if(p)p.classList.add('active');
-  // #187-A — when forced to Log tab, re-apply the current activeFilter (chip + list)
-  if(t==='log'){if(typeof buildFilterBar==='function')buildFilterBar();if(typeof renderEntries==='function')renderEntries();}
-  if(t==='web')renderWeb();if(t==='timeline')renderTimeline();if(t==='quotes')renderQuotes();
-  if(t==='map'){renderMap();_osmInvalidate();}if(t==='words')renderWords();if(t==='questions')renderQuestions();
-  if(t==='refs')renderRefs();if(t==='todo')renderTodo();if(t==='stats')renderStats();
+  buildTabs();
+  _renderActiveTabContent(t);
+}
+// #908 — "Frequently used" ranks overflow tabs by how many entries this book
+// actually has in them; everything also appears alphabetically below so
+// nothing is ever harder to find than before.
+function _tabUsageCount(t){
+  const all=entries();
+  switch(t){
+    case 'chars':return all.filter(e=>CT.includes(e.type)).length;
+    case 'web':return all.filter(e=>e.type==='Relationship').length;
+    case 'timeline':return all.filter(e=>['Timeline','Event','Date/Period'].includes(e.type)).length;
+    case 'map':return all.filter(e=>e.type==='Location').length;
+    case 'words':return all.filter(e=>e.type==='Word / Vocabulary').length;
+    case 'questions':return all.filter(e=>e.type==='Question').length;
+    case 'refs':return all.filter(e=>e.type==='Reference').length;
+    case 'chaps':return (typeof _getChapList==='function'?_getChapList().length:0);
+    case 'todo':return all.filter(e=>(e.type==='Word / Vocabulary'&&!e.definition)||(e.type==='Question'&&!e.answered)||(e.type==='Reference'&&!e.refDone)).length;
+    default:return 0;
+  }
+}
+function openMoreTabsSheet(){
+  const moreTabs=window._moreTabs||[];
+  const counted=moreTabs.map(t=>({id:t,label:TAB_LABELS[t]||t,icon:TAB_ICONS[t]||'',count:_tabUsageCount(t)}));
+  const frequent=counted.filter(c=>c.count>0).sort((a,b)=>b.count-a.count).slice(0,3);
+  const alpha=counted.slice().sort((a,b)=>a.label.localeCompare(b.label));
+  const row=(c)=>`<button class="btn" style="width:100%;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;${c.id===activeTab?'background:var(--al);color:var(--accent);border-color:var(--am);font-weight:700;':''}" onclick="closeSheet('more-tabs-overlay');selectMoreTab('${c.id}')"><span>${c.icon} ${c.label}</span>${c.count?`<span style="font-size:11px;color:var(--t3);font-weight:400;">${c.count}</span>`:''}</button>`;
+  const body=document.getElementById('more-tabs-body');
+  if(!body)return;
+  body.innerHTML=(frequent.length?`<div class="slabel">Frequently used</div>${frequent.map(row).join('')}<div class="divider"></div>`:'')
+    +`<div class="slabel">All</div>${alpha.map(row).join('')}`;
+  openSheet('more-tabs-overlay');
+}
+function selectMoreTab(t){
+  activeTab=t;
+  buildTabs();
+  _renderActiveTabContent(t);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -16376,6 +16434,19 @@ function _swipeInit(){/* removed */}
       </div>
       <div class="divider"></div>
       <div style="font-size:10px;color:var(--t3);text-align:center;padding:4px 0;">Book Annotator · Data lives on this device only</div>
+    </div>
+  </div>
+</div>
+
+<!-- #908 — overflow sheet for tabs collapsed under "More ▾" in the book-detail tab bar -->
+<div class="sheet-overlay" id="more-tabs-overlay" onclick="mc('more-tabs-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">More tabs</div>
+      <button class="sheet-x" onclick="closeSheet('more-tabs-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div id="more-tabs-body"></div>
     </div>
   </div>
 </div>
