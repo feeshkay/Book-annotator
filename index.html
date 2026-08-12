@@ -13,14 +13,14 @@
 :root{
   --bg:#faf9f6;--bg2:#f0ede6;--bg3:#e8e3d8;--card:#fff;--cb:rgba(0,0,0,0.09);
   --text:#1a1410;--t2:#6b6457;--t3:#b0a898;
-  --accent:#534AB7;--al:#EEEDFE;--am:#7F77DD;
+  --accent:#355E3B;--al:#E6EFE7;--am:#6B9E76;
   --green:#0F6E56;--gl:#E1F5EE;--red:#A32D2D;--rl:#FCEBEB;
   --r:10px;--rl2:14px;--rx:18px;
   --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
 }
 @media(prefers-color-scheme:dark){:root{
   --bg:#1a1412;--bg2:#221e1a;--bg3:#2a2420;--card:#2a2420;--cb:rgba(255,255,255,0.09);
-  --text:#f0ebe2;--t2:#a09880;--t3:#5a5248;--al:#2a2660;--am:#9f99e8;
+  --text:#f0ebe2;--t2:#a09880;--t3:#5a5248;--al:#1C2E20;--am:#7FB88F;
   --gl:#0a2e25;--rl:#2a1010;
 }}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -58,7 +58,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .r2 .fg label{min-height:2.4em;display:flex;align-items:flex-end;flex-wrap:wrap;line-height:1.2;}
 /* #400 — post-save highlight pulse. Briefly outlines a card so the user can spot
    which entry they just edited after the destination tab renders. */
-@keyframes justSavedPulse{0%{box-shadow:0 0 0 0 rgba(83,74,183,0.55),0 0 0 0 rgba(83,74,183,0.25);background-color:rgba(83,74,183,0.10);}60%{box-shadow:0 0 0 6px rgba(83,74,183,0),0 0 14px 8px rgba(83,74,183,0.10);background-color:rgba(83,74,183,0.04);}100%{box-shadow:0 0 0 0 rgba(83,74,183,0),0 0 0 0 rgba(83,74,183,0);background-color:transparent;}}
+@keyframes justSavedPulse{0%{box-shadow:0 0 0 0 rgba(53,94,59,0.55),0 0 0 0 rgba(53,94,59,0.25);background-color:rgba(53,94,59,0.10);}60%{box-shadow:0 0 0 6px rgba(53,94,59,0),0 0 14px 8px rgba(53,94,59,0.10);background-color:rgba(53,94,59,0.04);}100%{box-shadow:0 0 0 0 rgba(53,94,59,0),0 0 0 0 rgba(53,94,59,0);background-color:transparent;}}
 .just-saved{animation:justSavedPulse 1.2s ease-out;outline:2px solid var(--accent);outline-offset:1px;border-radius:var(--rl2);}
 /* #328 — keep paired labels visually aligned even when one has "(optional)" or other inline annotations that wrap. */
 .r2 .fg label{min-height:14px;}
@@ -190,7 +190,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .empty-text{font-size:13px;font-weight:500;}
 .empty-sub{font-size:11px;margin-top:4px;}
 /* fab */
-.fab{position:fixed;bottom:calc(18px + var(--sb));right:16px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(83,74,183,0.35);z-index:50;border:none;}
+.fab{position:fixed;bottom:calc(18px + var(--sb));right:16px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;font-size:24px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(53,94,59,0.35);z-index:50;border:none;}
 .fab:active{transform:scale(0.92);}
 /* char picker */
 .cpick-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
@@ -311,7 +311,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
     <div id="log-panel" class="panel active" style="padding:10px 11px 85px;">
       <div style="position:relative;margin-bottom:8px;"><input type="text" id="log-search" placeholder="🔍 Search log…" oninput="renderEntries()" style="width:100%;font-size:13px;padding:7px 10px;border-radius:var(--r);border:0.5px solid var(--am);background:var(--bg2);color:var(--text);"/><button onclick="document.getElementById('log-search').value='';renderEntries();" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;">×</button></div>
-      <div class="fscroll" id="filter-bar"></div>
+      <div id="filter-bar" style="margin-bottom:8px;"></div>
       <div id="entries-list"></div>
       <div id="log-empty" class="empty" style="display:none"><div class="empty-icon">✏️</div><div class="empty-text">No entries yet</div><div class="empty-sub">Tap + to begin</div></div>
     </div>
@@ -1412,41 +1412,55 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">Book settings</div>
-    <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
+
+    <div class="slabel">Book</div>
+    <div class="fa" style="margin-bottom:6px;flex-wrap:wrap;">
       <button class="btn" onclick="closeSheet('settings-overlay');openEditBook()">Edit book info</button>
-      <button class="btn" onclick="exportData()">Export / backup</button>
-      <button class="btn" onclick="exportMyMaps()">🗺️ Export to Google My Maps</button>
-    </div>
-    <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
-      <button class="btn" onclick="importDataMerge()">Import (merge)</button>
-      <button class="btn" onclick="exportPDF()">Download PDF</button>
-    </div>
-    <div class="fa" style="margin-bottom:8px;">
-      <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(()=>openLibGallery(!!currentId&&'book'),120);">🖼 Photo gallery</button>
-      <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openMergeBookPicker(currentId)">🔀 Merge with another book</button>
     </div>
     <div id="series-cast-btn-row" class="fa" style="display:none;margin-bottom:8px;">
       <button class="btn" style="background:var(--al);color:var(--accent);border-color:var(--am);width:100%;" onclick="closeSheet('settings-overlay');_showSeriesCastPicker()">📚 Pull cast from series book…</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
-      <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
+      <button class="btn" id="book-merge-history-btn" style="display:none;width:100%;" onclick="viewBookMergeHistory(currentId)">↩ Merge history</button>
     </div>
-    <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
-      <button class="btn" onclick="openSymbolCheatSheet()">📖 Annotation key</button>
-      <button class="btn" onclick="copySessionOpener()">📋 Copy session opener</button>
-      <button class="btn" onclick="freeStorage()" style="color:var(--red);border-color:var(--red);">🧹 Free up storage</button>
+
+    <div class="divider"></div>
+    <div class="slabel">Backup &amp; sync</div>
+    <div class="fa" style="margin-bottom:6px;flex-wrap:wrap;">
+      <button class="btn" onclick="exportData()">Export / backup</button>
+      <button class="btn" onclick="importDataMerge()">Import (merge)</button>
+    </div>
+    <div class="fa" style="margin-bottom:6px;flex-wrap:wrap;">
+      <button class="btn" onclick="exportPDF()">Download PDF</button>
+      <button class="btn" onclick="exportMyMaps()">🗺️ Export to Google My Maps</button>
+    </div>
+    <div class="fa" style="margin-bottom:6px;">
+      <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');setTimeout(()=>openLibGallery(!!currentId&&'book'),120);">🖼 Photo gallery</button>
     </div>
     <div class="fa" style="margin-bottom:8px;">
+      <button class="btn" onclick="closeSheet('settings-overlay');openRecycleBin()">🗑 Recycle Bin</button>
+      <button class="btn" onclick="freeStorage()">🧹 Free up storage</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="slabel">Help</div>
+    <div class="fa" style="margin-bottom:6px;flex-wrap:wrap;">
+      <button class="btn" onclick="openSymbolCheatSheet()">📖 Annotation key</button>
       <button class="btn" onclick="show('guide-screen','book-screen');renderGuide();closeSheet('settings-overlay')">📖 User guide</button>
-      <button class="btn" onclick="closeSheet('settings-overlay');openSync()">☁️ Sync</button>
     </div>
-    <div class="fa">
-      <button class="btn" onclick="closeSheet('settings-overlay');openMergeBookPicker(currentId)">🔀 Merge with another book</button>
-      <button class="btn" id="book-merge-history-btn" style="display:none;" onclick="viewBookMergeHistory(currentId)">↩ Merge history</button>
+    <div class="fa" style="margin-bottom:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="copySessionOpener()">📋 Copy session opener</button>
+      <button class="btn" onclick="closeSheet('settings-overlay');openReportIssue()" style="background:var(--al);color:var(--accent);border-color:var(--am);">🐛 Report issue / request feature</button>
     </div>
-    <div class="fa">
-      <button class="btn" style="color:#A32D2D;" onclick="deleteBook()">Delete this book</button>
+
+    <div class="divider"></div>
+    <div style="border:0.5px solid var(--red);background:var(--rl);border-radius:var(--r);padding:10px;">
+      <div class="slabel" style="color:var(--red);margin-bottom:6px;">⚠ Danger zone</div>
+      <button class="btn" style="width:100%;color:var(--red);border-color:var(--red);background:transparent;" onclick="deleteBook()">Delete this book</button>
     </div>
+
     <div style="font-size:10px;color:var(--t3);margin-top:12px;line-height:1.6;padding:8px;background:var(--bg2);border-radius:var(--r);">
       <strong>Privacy:</strong> All annotations live on this device in Safari's storage. Nothing is sent to any server. Export regularly for backups. Import (merge) after any app update to restore data without duplicating.
     </div>
@@ -2370,7 +2384,7 @@ function _photoTileHTML(compressed,stripId,inputId,legacyId){
   return `<img src="${compressed}" style="width:72px;height:72px;object-fit:cover;border-radius:var(--r);border:0.5px solid var(--cb);"/>
     <button class="avatar-pick-btn" title="Set as avatar" onclick="_makeAvatar(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">★</button>
     <button onclick="_removePhotoTile(this,'${stripId}','${inputId}','${legacyId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-    <span class="avatar-badge" style="display:none;position:absolute;bottom:2px;left:2px;right:2px;background:rgba(83,74,183,0.9);color:#fff;font-size:9px;font-weight:700;letter-spacing:0.04em;text-align:center;padding:1px 0;border-radius:3px;">AVATAR</span>
+    <span class="avatar-badge" style="display:none;position:absolute;bottom:2px;left:2px;right:2px;background:rgba(53,94,59,0.9);color:#fff;font-size:9px;font-weight:700;letter-spacing:0.04em;text-align:center;padding:1px 0;border-radius:3px;">AVATAR</span>
     <input type="hidden" class="photo-data-val" value="${compressed}"/>`;
 }
 function _refreshAvatarBadge(stripId){
@@ -9537,31 +9551,60 @@ function renderAll(){
   if(currentChapNum!=null&&document.getElementById('chap-screen').classList.contains('active'))renderChapDetail(currentChapNum);
 }
 
+// #908 — Log tab filter chips replaced with a "🔍 Filters" button that opens a
+// sheet (same tap-to-toggle pattern as the library Filters sheet), instead of a
+// never-ending horizontally-scrolling chip row.
 function buildFilterBar(){
+  const bar=document.getElementById('filter-bar');
+  if(!bar)return;
+  bar.innerHTML='';
+  const btn=document.createElement('button');
+  btn.className='btn btn-sm';
+  btn.style.cssText='flex-shrink:0;position:relative;';
+  btn.textContent='🔍 Filters'+(activeFilter!=='all'?' (1)':'');
+  btn.style.touchAction='manipulation';
+  btn.addEventListener('click',openLogFilters);
+  bar.appendChild(btn);
+}
+function renderLogFiltersBody(){
+  const el=document.getElementById('log-filters-body');
+  if(!el)return;
+  el.innerHTML='';
   const types=[...new Set(entries().filter(e=>e.type!=='Reference').map(e=>e.type))].sort((a,b)=>a.localeCompare(b));
   const chaps=[...new Set(entries().filter(e=>e.chapNum&&!e.chapNum.includes(',')).map(e=>e.chapNum))].sort((a,b)=>+a-+b);
-  const bar=document.getElementById('filter-bar');
-  bar.innerHTML='';
 
   function makeChip(label,filterVal,active){
     const btn=document.createElement('button');
+    btn.type='button';
     btn.className='chip'+(active?' active':'');
-    btn.textContent=label;
+    btn.textContent=(active?'✔️ ':'')+label;
     btn.style.touchAction='manipulation';
-    btn.addEventListener('touchend',function(e){e.preventDefault();setFilter(filterVal);},{passive:false});
-    btn.addEventListener('click',function(){setFilter(filterVal);});
+    btn.addEventListener('touchend',function(e){e.preventDefault();setFilter(filterVal);renderLogFiltersBody();},{passive:false});
+    btn.addEventListener('click',function(){setFilter(filterVal);renderLogFiltersBody();});
     return btn;
   }
 
-  bar.appendChild(makeChip('All','all',activeFilter==='all'));
-  types.forEach(t=>bar.appendChild(makeChip(t,t,activeFilter===t)));
+  const typeGroup=document.createElement('div');typeGroup.className='fg';
+  const typeLbl=document.createElement('label');typeLbl.textContent='Entry type';
+  typeGroup.appendChild(typeLbl);
+  const typeWrap=document.createElement('div');typeWrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px;';
+  typeWrap.appendChild(makeChip('All','all',activeFilter==='all'));
+  types.forEach(t=>typeWrap.appendChild(makeChip(t,t,activeFilter===t)));
+  typeGroup.appendChild(typeWrap);
+  el.appendChild(typeGroup);
+
   if(chaps.length){
-    const lbl=document.createElement('span');
-    lbl.style.cssText='font-size:9px;color:var(--t3);padding:4px 2px;flex-shrink:0;align-self:center;';
-    lbl.textContent='Ch:';bar.appendChild(lbl);
-    chaps.forEach(c=>bar.appendChild(makeChip('Ch.'+c,'ch:'+c,activeFilter==='ch:'+c)));
+    const chapGroup=document.createElement('div');chapGroup.className='fg';
+    const chapLbl=document.createElement('label');chapLbl.textContent='Chapter';
+    chapGroup.appendChild(chapLbl);
+    const chapWrap=document.createElement('div');chapWrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px;';
+    chaps.forEach(c=>chapWrap.appendChild(makeChip('Ch.'+c,'ch:'+c,activeFilter==='ch:'+c)));
+    chapGroup.appendChild(chapWrap);
+    el.appendChild(chapGroup);
   }
 }
+function openLogFilters(){renderLogFiltersBody();openSheet('log-filters-overlay');}
+function clearLogFilter(){setFilter('all');renderLogFiltersBody();}
 function setFilter(t){activeFilter=t;buildFilterBar();renderEntries();}
 function filterEntries(){
   const all=entries().filter(e=>e.type!=='Reference'&&!e.isDraft);
@@ -11478,9 +11521,9 @@ function renderTimeline(){
     }
     return null;
   };
-  const icol={major:'#D4537E',normal:'#534AB7',minor:'#888780',significant:'#378ADD',lifechanging:'#D4537E'};
+  const icol={major:'#D4537E',normal:'#355E3B',minor:'#888780',significant:'#378ADD',lifechanging:'#D4537E'};
   const renderItem=(item,i,arr)=>{
-    const col=icol[item.importance||item.eventSig||'normal']||'#534AB7';
+    const col=icol[item.importance||item.eventSig||'normal']||'#355E3B';
     const invB=(item.involved||[]).filter(c=>c!=null&&c!==''&&c!=='undefined'&&c!=='null').map(c=>{const cc=getCC(c);return`<span class="cbadge" style="background:${cc.bg};color:${cc.text};cursor:pointer;" onclick="openCharDetail('${esc(c)}',false)">${c}${_dcBadge(c)}</span>`;}).join('');
     const isEvent=item.type==='Event';
     const meIcons={Death:'🪦',Birth:'👶',Marriage:'💍','Move / Relocation':'📦',Betrayal:'🗡️',Revelation:'💡',Injury:'🩹',Loss:'💔','Life-changing moment':'⭐'};
@@ -14642,7 +14685,7 @@ function exportPDF(){
   const imgTag=(src,w,h)=>src?`<img src="${src}" style="width:${w||60}px;height:${h||80}px;object-fit:cover;border-radius:6px;"/>`:'';
   let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${b.title}</title>
   <style>body{font-family:Georgia,serif;max-width:700px;margin:36px auto;color:#1a1410;line-height:1.6;font-size:14px;}
-  h1{font-size:22px;margin-bottom:4px;}h2{font-size:17px;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:3px;}h3{font-size:14px;margin:14px 0 5px;color:#534AB7;}
+  h1{font-size:22px;margin-bottom:4px;}h2{font-size:17px;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:3px;}h3{font-size:14px;margin:14px 0 5px;color:#355E3B;}
   .meta{font-size:12px;color:#666;margin-bottom:18px;}.entry{margin-bottom:10px;padding:7px 10px;border-left:3px solid #ccc;background:#fafafa;}
   .et{font-size:10px;font-weight:700;text-transform:uppercase;color:#888;}.pg{font-size:10px;color:#aaa;}
   .ec{font-size:13px;margin-top:2px;}.en{font-size:11px;color:#666;font-style:italic;margin-top:2px;}
@@ -14693,7 +14736,7 @@ function exportPDF(){
       html+=`<div class="entry">
         <div class="et">Translation ${pair?'· '+pair:''} ${pg(e)?'<span class="pg">'+pg(e)+'</span>':''}</div>
         ${e.transOriginal?`<div class="ec" style="font-style:italic;color:#555;border-left:3px solid #ccc;padding-left:8px;margin-top:4px;">"${e.transOriginal}"</div>`:''}
-        ${e.transRendered?`<div class="ec" style="border-left:3px solid #534AB7;padding-left:8px;margin-top:5px;">${e.transRendered}</div>`:''}
+        ${e.transRendered?`<div class="ec" style="border-left:3px solid #355E3B;padding-left:8px;margin-top:5px;">${e.transRendered}</div>`:''}
         ${e.transTranslator?`<div class="en">Translator: ${e.transTranslator}</div>`:''}
         ${e.transWhy?`<div class="en">💭 ${e.transWhy}</div>`:''}
         ${e.note?`<div class="en">${e.note}</div>`:''}</div>`;
@@ -14702,7 +14745,7 @@ function exportPDF(){
   // Timeline section
   const tlItems=all.filter(e=>['Timeline','Event'].includes(e.type)).sort((a,b)=>(a.evdate||'').localeCompare(b.evdate||'')||(+a.chapNum||0)-(+b.chapNum||0));
   if(tlItems.length){
-    html+=`<h2 style="page-break-before:always;">Timeline (${tlItems.length})</h2><div style="border-left:3px solid #534AB7;padding-left:14px;margin-left:6px;">`;
+    html+=`<h2 style="page-break-before:always;">Timeline (${tlItems.length})</h2><div style="border-left:3px solid #355E3B;padding-left:14px;margin-left:6px;">`;
     tlItems.forEach(e=>{
       html+=`<div style="margin-bottom:12px;position:relative;">
         <div style="font-size:10px;color:#888;font-weight:600;">${e.evdate||''} ${pg(e)?'· '+pg(e):''}</div>
@@ -14733,7 +14776,7 @@ function exportPDF(){
     // B44: static OSM tile maps for geocoded real locations
     const geocodedLocs=locList.filter(l=>l.type==='real'&&l.lat&&l.lng);
     if(geocodedLocs.length){
-      html+=`<div style="margin-top:20px;"><h3 style="font-size:14px;margin-bottom:10px;color:#534AB7;">📍 Location Maps</h3><div style="display:flex;flex-wrap:wrap;gap:12px;">`;
+      html+=`<div style="margin-top:20px;"><h3 style="font-size:14px;margin-bottom:10px;color:#355E3B;">📍 Location Maps</h3><div style="display:flex;flex-wrap:wrap;gap:12px;">`;
       geocodedLocs.forEach(loc=>{
         const zoom=loc.city||loc.country?10:5;
         const staticUrl=`https://staticmap.openstreetmap.de/?center=${loc.lat},${loc.lng}&zoom=${zoom}&size=300x200&markers=${loc.lat},${loc.lng},red`;
@@ -14837,7 +14880,7 @@ function renderGuide(){
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #1D9E75;">
     <strong>Quote</strong> — A direct passage — something a character said, or something the narrator/author wrote. Speaker dropdown includes all characters plus "Narrator/Author." Add emotion/tone. Use <strong>＋ Add translation</strong> if the original is in another language — log the original text, translation, and translator name.
   </div>
-  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #7F77DD;">
+  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #6B9E76;">
     <strong>Dialogue</strong> — A multi-line exchange between characters. Add one line at a time; each line has a speaker dropdown (color-coded to that character) and a text box. Useful when a whole conversation matters, not just one line.
   </div>
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #993C1D;">
@@ -14849,7 +14892,7 @@ function renderGuide(){
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #D4537E;">
     <strong>Event</strong> — A significant story moment (death, betrayal, revelation, accident, etc.). Select event type(s) and significance level. Use <strong>Story date/when</strong> for story-internal time (e.g. "Summer 1923," "Day 12") — not the page number. Tag ALL affected characters so the event appears on each of their profiles.
   </div>
-  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #534AB7;">
+  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #355E3B;">
     <strong>Timeline</strong> — A time marker or narrative beat. Use for connective tissue: "Three weeks pass," "War begins in the background," "Ch.5 takes place one week after Ch.4." Use the relative offset field (+/- N days/weeks/months/years from previous event) to map story time precisely. <em>Timeline ≠ Event: Timeline is the calendar; Event is the emotional turning point.</em>
   </div>
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #639922;">
@@ -14861,7 +14904,7 @@ function renderGuide(){
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #639922;">
     <strong>Symbol</strong> — A concrete object, image, or place that carries deeper meaning. What does it represent literally vs. symbolically? How does its meaning shift? Is it tied to a character?
   </div>
-  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #7F77DD;">
+  <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #6B9E76;">
     <strong>Question</strong> — Something you're uncertain about. Tag characters involved. Check it off when resolved — it moves to the bottom of the Questions tab. Great discussion-starter material.
   </div>
   <div style="margin-bottom:10px;padding:8px 11px;background:var(--bg2);border-radius:var(--r);border-left:3px solid #854F0B;">
@@ -16333,6 +16376,23 @@ function _swipeInit(){/* removed */}
       </div>
       <div class="divider"></div>
       <div style="font-size:10px;color:var(--t3);text-align:center;padding:4px 0;">Book Annotator · Data lives on this device only</div>
+    </div>
+  </div>
+</div>
+
+<!-- #908 — Log tab Filters sheet, same tap-to-toggle chip pattern as lib-filters-overlay -->
+<div class="sheet-overlay" id="log-filters-overlay" onclick="mc('log-filters-overlay',event)">
+  <div class="sheet">
+    <div class="sheet-topbar">
+      <div class="sheet-topbar-title">🔍 Filters</div>
+      <button class="sheet-x" onclick="closeSheet('log-filters-overlay')">×</button>
+    </div>
+    <div class="sheet-inner" style="padding-bottom:24px;">
+      <div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;line-height:1.5;">Tap to toggle — changes apply right away.</div>
+      <div id="log-filters-body"></div>
+      <div style="margin-top:14px;">
+        <button class="btn" onclick="clearLogFilter()" style="width:100%;">Clear filter</button>
+      </div>
     </div>
   </div>
 </div>
