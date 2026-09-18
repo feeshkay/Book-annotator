@@ -1268,6 +1268,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-loc-state" placeholder="e.g. California"/></div>
       </div>
       <div class="r2">
+        <div class="fg"><label>Planet <span style="font-weight:400;color:var(--t3);">(optional — sci-fi / fantasy settings)</span></label><input type="text" id="ae-loc-planet" placeholder="e.g. Arrakis, Earth"/></div>
+        <div></div>
+      </div>
+      <div class="r2">
         <div class="fg"><label>Country</label><input type="text" id="ae-loc-country" placeholder="e.g. England"/></div>
         <div></div>
       </div>
@@ -1325,6 +1329,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <div class="r2">
             <div class="fg"><label>City / region</label><input type="text" id="ae-new-loc-city" placeholder="e.g. London" onblur="geocodeCity('ae-new-loc-city','ae-new-loc-country')"/></div>
             <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-new-loc-state" placeholder="e.g. California"/></div>
+          </div>
+          <div class="r2">
+            <div class="fg"><label>Planet <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="ae-new-loc-planet" placeholder="e.g. Arrakis, Earth"/></div>
+            <div></div>
           </div>
           <div class="r2">
             <div class="fg"><label>Country</label><input type="text" id="ae-new-loc-country" placeholder="e.g. England"/></div>
@@ -2217,7 +2225,7 @@ const TEMPLATE_FIELDS=[
   'ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex',
   'ae-evdate','ae-evdate-year','ae-evdate-month','ae-evdate-day','ae-medate',
   'ae-ref-author','ae-ref-url','ae-ref-length','ae-ref-actual-min','ae-ref-date-read','ae-cintro-ch','ae-cintro-pg',
-  'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-era','ae-loc-notes',
+  'ae-clang','ae-pronouns','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-planet','ae-loc-country','ae-loc-era','ae-loc-notes',
   'ae-trait-type','ae-imp','ae-event-sig','ae-loc-type','ae-ref-type'
 ];
 function openTemplateMenu(){
@@ -2932,6 +2940,7 @@ function openEditLocSheet(name){
   document.getElementById('eloc-building').value=d.building||'';
   document.getElementById('eloc-city').value=d.city||'';
   {const _es=document.getElementById('eloc-state');if(_es)_es.value=d.state||'';}
+  {const _ep=document.getElementById('eloc-planet');if(_ep)_ep.value=d.planet||'';}
   document.getElementById('eloc-country').value=d.country||'';
   document.getElementById('eloc-era').value=d.era||'';
   document.getElementById('eloc-notes').value=d.notes||'';
@@ -2953,7 +2962,7 @@ function saveEditLoc(){
   const origName=document.getElementById('eloc-orig-name').value;
   const newName=document.getElementById('eloc-name').value.trim();
   if(!newName)return;
-  const data={name:newName,type:document.getElementById('eloc-type').value,building:document.getElementById('eloc-building').value.trim(),city:document.getElementById('eloc-city').value.trim(),state:(document.getElementById('eloc-state')?.value||'').trim(),country:document.getElementById('eloc-country').value.trim(),era:document.getElementById('eloc-era').value.trim(),notes:document.getElementById('eloc-notes').value.trim(),
+  const data={name:newName,type:document.getElementById('eloc-type').value,building:document.getElementById('eloc-building').value.trim(),city:document.getElementById('eloc-city').value.trim(),state:(document.getElementById('eloc-state')?.value||'').trim(),planet:(document.getElementById('eloc-planet')?.value||'').trim(),country:document.getElementById('eloc-country').value.trim(),era:document.getElementById('eloc-era').value.trim(),notes:document.getElementById('eloc-notes').value.trim(),
     photo:document.getElementById('eloc-photo-data').value||'', // #334
     parent:document.getElementById('eloc-parent').value||'' // #328
   };
@@ -3146,6 +3155,7 @@ function saveQuickLoc(){
     street:document.getElementById('ae-new-loc-street')?.value.trim()||'',
     city:document.getElementById('ae-new-loc-city').value.trim(),
     state:(document.getElementById('ae-new-loc-state')?.value||'').trim(),
+    planet:(document.getElementById('ae-new-loc-planet')?.value||'').trim(),
     country:document.getElementById('ae-new-loc-country').value.trim(),
     era:document.getElementById('ae-new-loc-era').value.trim(),
     // #328 part 4 — preserve parent nesting when added inline so the
@@ -3154,7 +3164,7 @@ function saveQuickLoc(){
   };
   saveLocation(name,locData);selectLocOption(name,name);
   document.getElementById('ae-quick-loc').style.display='none';
-  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-state','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-state','ae-new-loc-planet','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const _np=document.getElementById('ae-new-loc-parent');if(_np)_np.value='';
 }
 
@@ -4940,7 +4950,7 @@ function _pullSeriesLoc(bookId,entryId){
   const src=library[bookId];if(!src)return;
   const e=(src.entries||[]).find(x=>x.id===Number(entryId));if(!e)return;
   if(document.getElementById('ae-content'))document.getElementById('ae-content').value=e.content||'';
-  const fieldMap={locBuilding:'ae-loc-building',locAddress:'ae-loc-address',locCity:'ae-loc-city',locRegion:'ae-loc-region',locCountry:'ae-loc-country'};
+  const fieldMap={locBuilding:'ae-loc-building',locAddress:'ae-loc-address',locCity:'ae-loc-city',locRegion:'ae-loc-region',locPlanet:'ae-loc-planet',locCountry:'ae-loc-country'};
   Object.entries(fieldMap).forEach(([src_k,id])=>{const el=document.getElementById(id);if(el&&!el.value&&e[src_k])el.value=e[src_k];});
   const box=document.getElementById('ae-series-loc-hint');if(box)box.style.display='none';
   _showToast(`✅ Pulled "${e.content}" from ${src.title}`);
@@ -6936,7 +6946,7 @@ function _closeAEIfSafe(){
   _clearDirty();closeSheet('ae-overlay');
 }
 function clearAEForm(){
-  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why','ae-cprofession','ae-org-website','ae-scene'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
+  ['ae-content','ae-cn','ae-nick','ae-cdesc','ae-cphys','ae-cbg','ae-note','ae-ch','ae-pg','ae-loc-sel','ae-loc-search','ae-reldesc','ae-tl-sq','ae-tl-sq-pg','ae-def','ae-word-context','ae-wsrc','ae-word-etym','ae-word-mw-ex','ae-evdate','ae-evdate-year','ae-evdate-day','ae-evdate-hour','ae-evdate-min','ae-evdate-sec','ae-evdate-ampm','ae-medate','ae-ref-author','ae-ref-url','ae-ref-length','ae-cintro-ch','ae-cintro-pg','ae-clang','ae-pronouns','ae-offset-num','ae-loc-building','ae-loc-city','ae-loc-state','ae-loc-planet','ae-loc-country','ae-loc-street','ae-loc-era','ae-loc-notes','ae-word-trans-from','ae-word-trans-to','ae-word-trans-original','ae-word-trans-rendered','ae-word-trans-translator','ae-word-trans-why','ae-cprofession','ae-org-website','ae-scene'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});;
   document.querySelectorAll('.cpick').forEach(c=>c.classList.remove('sel'));
   // #328 — reset parent-location dropdown
   const _plp=document.getElementById('ae-loc-parent');if(_plp)_plp.value='';
@@ -8256,7 +8266,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     });
   }
   if(isTrans){entry.transFrom=document.getElementById('ae-trans-from').value.trim();entry.transTo=document.getElementById('ae-trans-to').value.trim();entry.transOriginal=document.getElementById('ae-trans-original').value.trim();entry.transRendered=document.getElementById('ae-trans-rendered').value.trim();entry.transTranslator=document.getElementById('ae-trans-translator').value.trim();entry.transWhy=document.getElementById('ae-trans-why').value.trim();if(!content&&entry.transOriginal)entry.content=entry.transOriginal;}
-  if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locState=(document.getElementById('ae-loc-state')?.value||'').trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
+  if(isLoc){entry.locType=document.getElementById('ae-loc-type').value;entry.locStreet=entry.locType==='real'?document.getElementById('ae-loc-street').value.trim():'';entry.locBuilding=document.getElementById('ae-loc-building').value.trim();entry.locCity=document.getElementById('ae-loc-city').value.trim();entry.locState=(document.getElementById('ae-loc-state')?.value||'').trim();entry.locPlanet=(document.getElementById('ae-loc-planet')?.value||'').trim();entry.locCountry=document.getElementById('ae-loc-country').value.trim();entry.locEra=document.getElementById('ae-loc-era').value.trim();entry.locNotes=document.getElementById('ae-loc-notes').value.trim();
     // #328 — parent location captured from standard form
     entry.locParent=(document.getElementById('ae-loc-parent')?.value||'').trim();
     // Save to locations list
@@ -8264,7 +8274,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     // #110/#334 — also push the entry's photo into the registry so the Locations
     // tab card shows the same image without an extra Edit-Location step.
     const entryPhoto=entry.photo||(entry.photos&&entry.photos[0])||'';
-    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,state:entry.locState||'',country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
+    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,state:entry.locState||'',planet:entry.locPlanet||'',country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
   }
   if(type==='Chapter'&&pgVal){
     // Sync chapSetup
@@ -9515,7 +9525,7 @@ function editEntry(id){
     if(e.refType){const rt=document.getElementById('ae-ref-type');if(rt)rt.value=e.refType;}
     if(e.refAuthor)document.getElementById('ae-ref-author').value=e.refAuthor;if(e.refUrl)document.getElementById('ae-ref-url').value=e.refUrl;if(e.refLength)document.getElementById('ae-ref-length').value=e.refLength;const _rAm=document.getElementById('ae-ref-actual-min');if(_rAm)_rAm.value=e.refActualMin||'';const _rDr=document.getElementById('ae-ref-date-read');if(_rDr)_rDr.value=e.refDateRead||'';
     const _ow=document.getElementById('ae-org-website');if(_ow)_ow.value=e.orgWebsite||'';const _ot=document.getElementById('ae-org-type');if(_ot)_ot.value=e.orgType||'';
-    if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;{const _ls=document.getElementById('ae-loc-state');if(_ls)_ls.value=e.locState||'';}if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
+    if(e.locType){document.getElementById('ae-loc-type').value=e.locType;onLocTypeChange();}if(e.locStreet)document.getElementById('ae-loc-street').value=e.locStreet||'';if(e.locBuilding)document.getElementById('ae-loc-building').value=e.locBuilding;if(e.locCity)document.getElementById('ae-loc-city').value=e.locCity;{const _ls=document.getElementById('ae-loc-state');if(_ls)_ls.value=e.locState||'';}{const _lp=document.getElementById('ae-loc-planet');if(_lp)_lp.value=e.locPlanet||'';}if(e.locCountry)document.getElementById('ae-loc-country').value=e.locCountry;if(e.locEra)document.getElementById('ae-loc-era').value=e.locEra;if(e.locNotes)document.getElementById('ae-loc-notes').value=e.locNotes||'';
     // #328 — restore parent. Pull from registry if entry didn't store one.
     const _psel=document.getElementById('ae-loc-parent');
     if(_psel){
@@ -16320,6 +16330,10 @@ function _swipeInit(){/* removed */}
       <div class="r2">
         <div class="fg"><label>City / region</label><input type="text" id="eloc-city" placeholder="e.g. London" onblur="geocodeCity('eloc-city','eloc-country')"/></div>
         <div class="fg"><label>State / Province <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="eloc-state" placeholder="e.g. California"/></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Planet <span style="font-weight:400;color:var(--t3);">(optional)</span></label><input type="text" id="eloc-planet" placeholder="e.g. Arrakis, Earth"/></div>
+        <div></div>
       </div>
       <div class="r2">
         <div class="fg"><label>Country</label><input type="text" id="eloc-country" placeholder="e.g. England"/></div>
