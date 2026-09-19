@@ -2933,6 +2933,26 @@ function autoTraitQuoteChap(){
 // ═══════════════════════════════════════════════════════════════
 function getLocations(){return book()?.locations||[];}
 function saveLocation(name,data){if(!currentId)return;if(!book().locations)book().locations=[];const idx=book().locations.findIndex(l=>l.name===name);if(idx>=0)book().locations[idx]={...book().locations[idx],...data};else book().locations.push({name,...data});save();}
+// #909 — when a location has a Planet set, auto-house it in the parent-location
+// hierarchy: Planet becomes/reuses its own top-level location, Country (if given)
+// nests under Planet, and this location nests under Country (or Planet directly
+// if no country) — so the existing breadcrumb / child-locations UI shows the
+// whole world without the user manually wiring up every parent by hand. Never
+// touches a parent the user already set on purpose.
+function _ensurePlanetHierarchy(name,data){
+  const planet=(data.planet||'').trim();
+  if(!planet||planet===name)return;
+  if(!getLocations().find(l=>l.name===planet))saveLocation(planet,{type:'fictional'});
+  const country=(data.country||'').trim();
+  let immediateParent=planet;
+  if(country&&country!==name){
+    const countryLoc=getLocations().find(l=>l.name===country);
+    if(!countryLoc)saveLocation(country,{type:data.type||'fictional',planet,parent:planet});
+    else if(!countryLoc.parent&&!countryLoc.planet)saveLocation(country,{planet,parent:planet});
+    immediateParent=country;
+  }
+  if(!data.parent)saveLocation(name,{parent:immediateParent});
+}
 function openEditLocSheet(name){
   const d=getLocations().find(l=>l.name===name)||{};
   document.getElementById('eloc-name').value=name;
@@ -2975,6 +2995,7 @@ function saveEditLoc(){
     (book().locations||[]).forEach(l=>{if(l.parent===origName)l.parent=newName;});
   }
   saveLocation(newName,data);
+  _ensurePlanetHierarchy(newName,data);
   closeSheet('edit-loc-overlay');renderAll();
   if(document.getElementById('loc-screen').classList.contains('active'))renderLocDetail(newName);
 }
@@ -3162,7 +3183,7 @@ function saveQuickLoc(){
     // hierarchy is visible from the Locations tab when tapping the name.
     parent:(document.getElementById('ae-new-loc-parent')?.value||'').trim(),
   };
-  saveLocation(name,locData);selectLocOption(name,name);
+  saveLocation(name,locData);_ensurePlanetHierarchy(name,locData);selectLocOption(name,name);
   document.getElementById('ae-quick-loc').style.display='none';
   ['ae-new-loc-name','ae-new-loc-building','ae-new-loc-street','ae-new-loc-city','ae-new-loc-state','ae-new-loc-planet','ae-new-loc-country','ae-new-loc-era'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const _np=document.getElementById('ae-new-loc-parent');if(_np)_np.value='';
@@ -8274,7 +8295,7 @@ entry.sq='';entry.sqp='';entry.sqc='';entry.traitSpeaker='';}
     // #110/#334 — also push the entry's photo into the registry so the Locations
     // tab card shows the same image without an extra Edit-Location step.
     const entryPhoto=entry.photo||(entry.photos&&entry.photos[0])||'';
-    if(locName)saveLocation(locName,Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,state:entry.locState||'',planet:entry.locPlanet||'',country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{}));
+    if(locName){const _locSaveData=Object.assign({type:entry.locType,street:entry.locStreet,building:entry.locBuilding,city:entry.locCity,state:entry.locState||'',planet:entry.locPlanet||'',country:entry.locCountry,era:entry.locEra,notes:entry.locNotes,parent:entry.locParent||''},entryPhoto?{photo:entryPhoto}:{});saveLocation(locName,_locSaveData);_ensurePlanetHierarchy(locName,_locSaveData);}
   }
   if(type==='Chapter'&&pgVal){
     // Sync chapSetup
@@ -12809,6 +12830,7 @@ function renderLocDetail(name){
         ${locData.parent?`<div style="font-size:12px;color:var(--accent);cursor:pointer;margin-top:1px;" onclick="openLocDetail('${esc(locData.parent)}','${esc(name)}')">↳ ${esc(locData.parent)}</div>`:''}
         <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">
           <span style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);">${typeLabel}</span>
+          ${locData.planet?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">🪐 ${esc(locData.planet)}</span>`:''}
           ${locData.building?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">🏛 ${esc(locData.building)}</span>`:''}
           ${locData.city||locData.country?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">📍 ${[locData.city,locData.country].filter(Boolean).join(', ')}</span>`:''}
           ${locData.era?`<span style="font-size:10px;color:var(--t3);">·</span><span style="font-size:11px;color:var(--t2);">⏳ ${esc(locData.era)}</span>`:''}
